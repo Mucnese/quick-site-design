@@ -1,0 +1,4106 @@
+<!DOCTYPE html>
+<!--
+  Quick-Site-Design
+  Copyright (C) 2026  Haoran Li
+
+  Dieses Programm ist freie Software: Sie können es unter den Bedingungen
+  der GNU General Public License, Version 3, weitergeben und/oder ändern.
+
+  Die Veröffentlichung erfolgt in der Hoffnung, dass es nützlich ist,
+  jedoch OHNE JEDE GEWÄHR, auch ohne die implizite Gewähr der
+  MARKTGÄNGIGKEIT oder EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.
+  Einzelheiten in der GNU General Public License.
+
+  Die Lizenz liegt der Software als Datei LICENSE bei,
+  siehe auch <https://www.gnu.org/licenses/gpl-3.0.html>.
+
+  Die Krandaten sind Richtwerte. Maßgeblich ist das Datenblatt
+  des Herstellers.
+-->
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quick-Site-Design</title>
+<style>
+  :root {
+    --ui-font: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    --ui-size: 12px;
+    --panel-w: 300px;
+    --radius: 0px;
+    --bg: #1e1e1e;
+    --scene: #22262b;
+    --panel-bg: rgba(45, 45, 48, 0.96);
+    --border: #3f3f46;
+    --border-strong: #5a5a62;
+    --text: #dcdcdc;
+    --text-dim: #a0a0a6;
+    --text-dim2: #75757c;
+    --accent: #4aa3df;
+    --danger: #d9534f;
+    --field: #333337;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: var(--ui-font); font-size: var(--ui-size);
+    overflow: hidden; -webkit-font-smoothing: antialiased;
+  }
+  canvas { display: block; }
+  #canvas-container { position: fixed; inset: 0; }
+
+  .panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+
+  .sec {
+    font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--text-dim2); padding: 7px 11px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .sec .act { color: var(--accent); cursor: pointer; letter-spacing: 0.08em; }
+  .sec .act:hover { text-decoration: underline; }
+  .body { padding: 9px 11px; }
+
+  /* ---------- Spalten ---------- */
+  #col-left, #col-right {
+    position: fixed; top: 14px; bottom: 112px; width: var(--panel-w);
+    display: flex; flex-direction: column; gap: 9px;
+    pointer-events: none; z-index: 5;
+  }
+  #col-left { left: 14px; }
+  #col-right { right: 14px; display: none; }
+  body.swapped #col-left { left: auto; right: 14px; }
+  body.swapped #col-right { right: auto; left: 14px; }
+  #col-left > *, #col-right > * { pointer-events: auto; }
+
+  #overview { flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; }
+  #tile-label {
+    font-size: 0.86em; color: var(--text-dim); padding: 7px 11px 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #tile-sub { font-size: 0.8em; color: var(--text-dim2); padding: 2px 11px 8px; }
+
+  .kv { display: flex; justify-content: space-between; padding: 3px 11px; font-size: 0.88em; }
+  .kv .k { color: var(--text-dim); }
+  .kv .v { font-variant-numeric: tabular-nums; }
+
+  #overview-list { overflow-y: auto; border-top: 1px solid var(--border); margin-top: 7px; }
+  .grp-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 11px; cursor: pointer; font-size: 0.9em;
+    border-left: 2px solid transparent;
+  }
+  .grp-row:hover { background: var(--field); }
+  .grp-row.selected { border-left-color: var(--accent); background: var(--field); }
+  .grp-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grp-count { color: var(--text-dim2); font-variant-numeric: tabular-nums; }
+  .dot { width: 6px; height: 6px; flex: 0 0 6px; }
+  .dot.container { background: var(--text-dim); }
+  .dot.tower { background: var(--accent); }
+  .dot.mobile { background: var(--danger); }
+  .empty { padding: 8px 11px; font-size: 0.86em; color: var(--text-dim2); }
+
+  #warning {
+    display: none; margin: 7px 11px 9px; padding: 6px 8px;
+    border: 1px solid var(--danger); color: var(--danger);
+    font-size: 0.82em; line-height: 1.4;
+  }
+
+  /* Beschriftung direkt am Messpunkt */
+  #point-label {
+    display: none; position: fixed; z-index: 6; pointer-events: none;
+    transform: translate(14px, -50%);
+    background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
+    padding: 5px 9px; font-size: 0.8em; line-height: 1.5;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  #point-label .mrow { display: flex; gap: 7px; }
+  #point-label .mk { color: var(--accent); width: 1.1em; }
+  #point-label .mv { font-variant-numeric: tabular-nums; flex: 1 1 auto; text-align: right; }
+  #point-label .msrc { color: var(--text-dim2); font-size: 0.9em; margin-top: 2px; }
+
+  /* ---------- Dateien ---------- */
+  .file-row { margin-bottom: 9px; }
+  .file-row:last-child { margin-bottom: 0; }
+  .file-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.86em; color: var(--text-dim); margin-bottom: 4px;
+  }
+  .file-head .act { color: var(--accent); cursor: pointer; font-size: 0.9em; }
+  input[type=file] { width: 100%; font-size: 0.8em; color: var(--text-dim); font-family: inherit; cursor: pointer; }
+  input[type=file]::-webkit-file-upload-button {
+    background: var(--field); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    padding: 3px 9px; font-size: 1em; font-family: inherit; cursor: pointer; margin-right: 8px;
+  }
+  .file-head .hintx { font-size: 0.85em; color: var(--text-dim2); }
+  .file-status { font-size: 0.78em; color: var(--text-dim2); margin-top: 3px; line-height: 1.35; word-break: break-word; }
+  .file-status.ok { color: var(--accent); }
+  .file-status.err { color: var(--danger); }
+  .file-status.busy { color: var(--text-dim); }
+
+  .detail-row { margin-top: 8px; }
+  .detail-row .det { color: var(--accent); font-size: 0.9em; }
+  #data.needs { border-color: var(--accent); }
+  #data.needs .sec { color: var(--accent); }
+  #data-note {
+    display: none; margin-top: 9px; padding: 6px 8px;
+    border: 1px dashed var(--accent); color: var(--accent);
+    font-size: 0.78em; line-height: 1.4; text-align: center;
+  }
+
+  /* ---------- Bausteinleiste unten ---------- */
+  #dock {
+    position: fixed; bottom: 56px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: stretch; gap: 7px; z-index: 7;
+  }
+  #palette {
+    display: flex; gap: 0;
+    background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .pal-card {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    width: 84px; padding: 9px 5px 8px; cursor: pointer;
+    background: transparent; border: none; border-right: 1px solid var(--border);
+    border-top: 2px solid transparent;
+    color: var(--text); font-family: inherit;
+  }
+  .pal-card:last-child { border-right: none; }
+  .pal-card:hover { background: var(--field); }
+  .pal-card.active { border-top-color: var(--accent); background: var(--field); }
+  .pal-card.active .pal-name { color: var(--accent); }
+  .pal-card.off { opacity: 0.35; cursor: not-allowed; }
+  .pal-name { font-size: 0.78em; letter-spacing: 0.04em; }
+  .pal-icon {
+    width: 38px; height: 26px;
+    background-size: contain; background-position: center; background-repeat: no-repeat;
+  }
+  .pal-icon.container {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 26' fill='none' stroke='%23aab6bd' stroke-width='1.1'><rect x='3' y='11' width='24' height='6'/><rect x='3' y='5' width='24' height='6'/><path d='M9 5v12M15 5v12M21 5v12'/><rect x='29' y='5' width='6' height='12'/></svg>");
+  }
+  .pal-icon.tower {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 26' fill='none' stroke='%23aab6bd' stroke-width='1.1'><path d='M16 24V6M22 24V6M16 6h-9M16 6h20M36 6v3M7 6V3M19 3v3M16 12h6M16 18h6'/></svg>");
+  }
+  .pal-icon.mobile {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1' stroke-linejoin='round'><path d='M5 19h34v-3.5H5z'/><path d='M8 15.5v-4h13v4'/><path d='M31 15.5v-4.5h7.5v4.5'/><path d='M33 11v-1.5h4V11'/><path d='M12 11.5L37 3.5'/><path d='M37 3.5v6.5'/><path d='M35.6 10h2.8'/><circle cx='9' cy='21' r='1.9'/><circle cx='14' cy='21' r='1.9'/><circle cx='19' cy='21' r='1.9'/><circle cx='27' cy='21' r='1.9'/><circle cx='32' cy='21' r='1.9'/><circle cx='37' cy='21' r='1.9'/></svg>");
+  }
+  .pal-icon.road {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1'><path d='M6 23C6 14 12 11 20 11s14-3 18-8'/><path d='M14 25C14 17 20 15 26 15s10-3 13-7'/><path d='M10 24l1.6-2M18 14.5l2.4-.6M28 10.6l2-1.4M36 5.2l1.6-1.8'/></svg>");
+  }
+  .dock-act {
+    background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text-dim); font-family: inherit; font-size: 0.78em;
+    padding: 0 12px; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .dock-act:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ---------- Parameter ---------- */
+  #param-wrap { flex: 1 1 auto; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
+  #param-title { padding: 8px 11px 2px; font-size: 0.95em; }
+  #param-hint {
+    padding: 0 11px 9px; font-size: 0.78em; color: var(--text-dim2);
+    line-height: 1.4; border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  #param-panel { padding: 10px 11px; }
+  .form { display: flex; flex-direction: column; gap: 10px; }
+  .form .sep { border-top: 1px solid var(--border); margin: 2px 0; }
+  .field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+  .field-head label { font-size: 0.84em; color: var(--text-dim); line-height: 1.25; }
+  .field-val { font-size: 0.84em; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 1px; background: var(--border-strong); outline: none; margin: 5px 0;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 9px; height: 15px; background: var(--accent); cursor: pointer; border: none; border-radius: 0;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 9px; height: 15px; background: var(--accent); cursor: pointer; border: none; border-radius: 0;
+  }
+  input[type=number], select {
+    width: 100%; padding: 4px 7px; background: var(--field);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-size: 0.9em; font-family: inherit; outline: none;
+  }
+  input[type=number]:focus, select:focus { border-color: var(--accent); }
+  select option { background: #1a1d20; color: #e6e9ea; }
+  input[type=checkbox] { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
+
+  .place-note {
+    margin-top: 12px; padding: 6px 8px;
+    border: 1px dashed var(--accent); color: var(--accent);
+    font-size: 0.78em; line-height: 1.4;
+  }
+  .actions { display: flex; gap: 5px; margin-top: 12px; flex-wrap: wrap; }
+  .btn {
+    flex: 1 1 auto; padding: 5px 8px; background: transparent;
+    border: 1px solid var(--border-strong); border-radius: var(--radius);
+    color: var(--text); font-size: 0.84em; font-family: inherit; cursor: pointer;
+  }
+  .btn:hover { background: var(--field); }
+  .btn.danger { color: var(--danger); border-color: var(--danger); }
+  .field-warn .field-val { color: var(--danger); }
+  .field-warn label { color: var(--danger); }
+  .field-warn input[type=range] { background: var(--danger); }
+  .field-warn input[type=range]::-webkit-slider-thumb { background: var(--danger); }
+  .field-warn input[type=range]::-moz-range-thumb { background: var(--danger); }
+
+  .crane-warn {
+    margin: 0 0 12px; padding: 8px 10px;
+    border: 1px solid var(--danger);
+    border-left-width: 3px;
+    background: var(--field);
+  }
+  .crane-warn-head {
+    font-size: 0.78em; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--danger); margin-bottom: 4px;
+  }
+  .crane-warn div:not(.crane-warn-head) {
+    font-size: 0.8em; line-height: 1.45; color: var(--text);
+  }
+  .sheet-link {
+    display: inline-block; margin-top: 6px;
+    font-size: 0.8em; color: var(--accent); text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+  }
+  .sheet-link:hover { opacity: 0.75; }
+
+  .data-note {
+    margin-top: 12px; padding: 6px 8px;
+    border-left: 2px solid var(--accent); background: var(--field);
+    font-size: 0.78em; line-height: 1.45; color: var(--text-dim);
+  }
+  a.btn.sheet {
+    display: block; margin-top: 7px; text-align: center;
+    text-decoration: none; color: var(--accent); border-color: var(--accent);
+  }
+  a.btn.sheet:hover { background: var(--field); }
+
+  /* ---------- Fußzeile ---------- */
+  #footer {
+    position: fixed; bottom: 14px; left: 14px;
+    display: flex; gap: 8px; pointer-events: none; z-index: 4;
+  }
+  body.swapped #footer { left: auto; right: 14px; }
+  #cursor-info, #hints, #crs-info, #acc-info, #unit-info {
+    background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 6px 11px; font-size: 0.84em; color: var(--text-dim);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  #hints b { color: var(--text); font-weight: normal; }
+
+  #road-hint {
+    display: none; position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-bg); border: 1px dashed var(--accent); border-radius: var(--radius);
+    padding: 6px 14px; font-size: 0.84em; color: var(--accent); z-index: 8; white-space: nowrap;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+
+  #status {
+    display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
+    padding: 6px 13px; font-size: 0.86em; color: var(--accent); z-index: 20; max-width: 50vw;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  #status.error { border-color: var(--danger); color: var(--danger); }
+
+  /* ---------- Tweak ---------- */
+  #btnbar {
+    position: fixed; right: 14px; bottom: 14px; z-index: 21;
+    display: flex; gap: 5px; align-items: stretch;
+  }
+  body.swapped #btnbar { right: auto; left: 14px; }
+  .lang-btn {
+    background: var(--panel-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
+    color: var(--text-dim); font-family: inherit; font-size: 0.8em;
+    padding: 7px 10px; cursor: pointer; letter-spacing: 0.08em;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .lang-btn:hover { color: var(--text); border-color: var(--text-dim); }
+  .lang-btn.on { color: var(--accent); border-color: var(--accent); }
+  #tweak-btn {
+    z-index: 21;
+    background: var(--panel-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
+    color: var(--text); font-family: inherit; font-size: 0.84em;
+    padding: 7px 13px; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  #tweak-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  #tweak-panel {
+    display: none; position: fixed; right: 14px; bottom: 52px; z-index: 22;
+    width: 296px; max-height: 76vh; overflow-y: auto;
+    background: var(--panel-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  body.swapped #tweak-panel { right: auto; left: 14px; }
+  #tweak-body { padding: 10px 11px; }
+  .tw-row { margin-bottom: 13px; }
+  .tw-row:last-child { margin-bottom: 0; }
+  .tw-label {
+    font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-dim2); margin-bottom: 5px;
+    display: flex; justify-content: space-between;
+  }
+  .tw-val { color: var(--accent); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .tw-group { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tw-opt {
+    padding: 4px 8px; background: transparent;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text-dim); font-family: inherit; font-size: 0.8em; cursor: pointer;
+  }
+  .tw-opt:hover { border-color: var(--border-strong); color: var(--text); }
+  .tw-opt.on { border-color: var(--accent); color: var(--accent); }
+  .tw-opt.swatch { width: 26px; height: 22px; padding: 0; }
+  .tw-opt.swatch.on { outline: 1px solid var(--text); outline-offset: 1px; }
+  .tw-select {
+    width: 100%; padding: 4px 7px; background: var(--field);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: inherit; font-size: 0.85em; outline: none;
+  }
+  .tw-select:focus { border-color: var(--accent); }
+  .tw-slider { width: 100%; }
+
+  #compass {
+    position: fixed; right: 16px; bottom: 60px; z-index: 8;
+    width: 62px; height: 62px; cursor: pointer;
+    background: none; border: none; color: var(--text-dim);
+    opacity: 0.8; transition: opacity 0.15s;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+  }
+  #compass:hover { opacity: 1; color: var(--text); }
+  body.swapped #compass { right: auto; left: 14px; }
+  #compass svg { width: 100%; height: 100%; display: block; }
+
+  #about {
+    flex: 0 0 auto; padding: 2px 4px;
+    font-size: 0.72em; line-height: 1.5; color: var(--text-dim2);
+    display: flex; flex-direction: column; gap: 1px;
+  }
+  #about a {
+    color: var(--text-dim); text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    align-self: flex-start;
+  }
+  #about a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  #about .legal { display: flex; gap: 5px; }
+  #about .legal a { border-bottom: none; }
+
+  #loading {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); font-size: 0.9em; color: var(--text-dim);
+    letter-spacing: 0.08em; text-align: center; padding: 20px;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); }
+
+  @media (max-width: 1000px) {
+    #footer { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading" data-i18n="loading">Lade</div>
+<div id="canvas-container"></div>
+
+<div id="col-left">
+  <div id="overview" class="panel">
+    <div class="sec"><span data-i18n="overview">Übersicht</span><span class="act" id="reset-view" data-i18n="reset">Zurücksetzen</span></div>
+    <div id="tile-label">–</div>
+    <div id="tile-sub"><span id="tile-size">–</span> · <span id="tile-grid">–</span> Raster</div>
+    <div class="kv"><span class="k" data-i18n="heightRange">Höhenbereich</span><span class="v" id="stat-relief">–</span></div>
+    <div class="kv"><span class="k" data-i18n="objects">Objekte</span><span class="v" id="stat-objects">0</span></div>
+    <div class="kv"><span class="k" data-i18n="containers">Container</span><span class="v" id="stat-containers">0</span></div>
+    <div class="kv"><span class="k" data-i18n="cranes">Krane</span><span class="v" id="stat-cranes">0</span></div>
+    <div class="kv"><span class="k" data-i18n="area">Stellfläche</span><span class="v" id="stat-area">0 m2</span></div>
+    <div class="kv"><span class="k" data-i18n="road">Baustraße</span><span class="v" id="stat-road">0 m</span></div>
+    <div id="warning"></div>
+    <div id="overview-list"></div>
+  </div>
+
+  <div id="data" class="panel">
+    <div class="sec"><span data-i18n="data">Daten</span></div>
+    <div class="body">
+      <div class="file-row">
+        <div class="file-head"><span data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="hintx">mehrere möglich</span></div>
+        <input type="file" id="dem-input" multiple accept=".tif,.tiff,image/tiff">
+        <div class="file-status" id="dem-status">Keine Datei</div>
+        <div class="detail-row">
+          <div class="file-head"><span data-i18n="detail">Detailstufe</span><span class="det" id="detail-val">260 Punkte</span></div>
+          <input type="range" id="detail-slider" min="0" max="4" step="1" value="1">
+        </div>
+      </div>
+      <div class="file-row">
+        <div class="file-head"><span data-i18n="buildingFile">Gebäude · CityGML</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>
+        <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,text/xml">
+        <div class="file-status" id="gml-status">Keine Datei</div>
+      </div>
+      <div id="data-note" data-i18n="loadFirst">Zum Starten ein Geländemodell laden</div>
+    </div>
+  </div>
+
+  <div id="about">
+    <span>Quick-Site-Design · © 2026 Haoran Li · GPL v3</span>
+    <a href="https://github.com/Mucnese/quick-site-design"
+       target="_blank" rel="noopener noreferrer"
+       data-i18n="sourceCode">Quelltext auf GitHub</a>
+    <span class="legal">
+      <a href="impressum.html" data-i18n="imprint">Impressum</a> ·
+      <a href="datenschutz.html" data-i18n="privacy">Datenschutz</a>
+    </span>
+  </div>
+
+</div>
+
+<div id="col-right">
+  <div id="param-wrap" class="panel">
+    <div id="param-title">–</div>
+    <div id="param-hint">–</div>
+    <div id="param-panel"></div>
+  </div>
+</div>
+
+<div id="dock">
+  <div id="palette"></div>
+  <button class="dock-act" id="clear-all" data-i18n="clear">Leeren</button>
+</div>
+
+<div id="footer">
+  <div id="cursor-info">–</div>
+  <div id="crs-info">KBS –</div>
+  <div id="acc-info">Genauigkeit –</div>
+  <div id="unit-info">Einheit Meter (m)</div>
+  <div id="hints"><b data-i18n="hintClick">Klick</b> <span data-i18n="hintMeasure">Messpunkt</span> · <b data-i18n="hintDrag">Ziehen</b> <span data-i18n="hintRotate">Drehen</span> · <b data-i18n="hintEsc">Esc</b> <span data-i18n="hintCancel">Abbrechen</span></div>
+</div>
+
+<div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
+
+<div id="point-label">
+  <div class="mrow"><span class="mk">R</span><span class="mv" id="measure-r">–</span></div>
+  <div class="mrow"><span class="mk">H</span><span class="mv" id="measure-h">–</span></div>
+  <div class="mrow"><span class="mk">Z</span><span class="mv" id="measure-z">–</span></div>
+  <div class="msrc" id="measure-src">–</div>
+</div>
+
+<div id="status"></div>
+
+<div id="btnbar">
+  <button class="lang-btn" id="lang-de">DE</button>
+  <button class="lang-btn" id="lang-en">EN</button>
+  <button class="lang-btn" id="view2d-btn">2D</button>
+  <button id="tweak-btn" data-i18n="tweak">Ansicht</button>
+</div>
+
+<div id="compass" title="Norden">
+  <svg viewBox="0 0 64 64" id="compass-needle">
+    <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor"
+            stroke-width="0.8" opacity="0.3"/>
+    <g stroke="currentColor" stroke-width="0.8" opacity="0.45">
+      <line x1="32" y1="5"  x2="32" y2="10"/>
+      <line x1="59" y1="32" x2="54" y2="32"/>
+      <line x1="32" y1="59" x2="32" y2="54"/>
+      <line x1="5"  y1="32" x2="10" y2="32"/>
+    </g>
+    <polygon points="32,11 38,36 32,31 26,36" fill="var(--danger)"/>
+    <polygon points="32,53 26,28 32,33 38,28" fill="currentColor" opacity="0.35"/>
+    <circle cx="32" cy="32" r="2.2" fill="currentColor" opacity="0.55"/>
+    <text x="32" y="9" text-anchor="middle" font-size="9" font-weight="600"
+          fill="var(--danger)" font-family="inherit">N</text>
+  </svg>
+</div>
+<div id="tweak-panel">
+  <div class="sec"><span data-i18n="appearance">Darstellung</span><span class="act" id="tweak-close" data-i18n="close">Schließen</span></div>
+  <div id="tweak-body"></div>
+</div>
+
+<!-- Bibliotheken liegen lokal bei, damit beim Aufruf keine Daten an fremde
+     Server gehen. Siehe lib/LIESMICH.txt -->
+<script src="lib/three.min.js"></script>
+<script src="lib/OrbitControls.js"></script>
+<script src="lib/geotiff.js"></script>
+<script>
+/* =========================================================
+   Quick-Site-Design  –  Kernlogik
+   Einheiten: 1 Three.js-Einheit = 1 Meter
+   ========================================================= */
+
+/* ---------- Stammdaten Mobilkrane (Richtwerte Liebherr LTM) ---------- */
+/* ---------- Mobilkrane (Liebherr LTM) ----------
+   Aufgenommen sind nur Modelle, für die Hersteller- oder Vermieterangaben
+   vorliegen. Nicht belegte Felder stehen auf null; die Oberfläche gibt
+   dann keinen Höchstwert vor. Abstützmaße und Fahrzeuglängen dienen
+   ausschließlich der Darstellung und sind schematisch.                */
+const CRANE_MODELS = [
+  { id: 'ltm1050',  name: 'LTM 1050-3.1',  maker: 'Liebherr', cap: 50,   boomTele: 38,  hookMax: 54,   radiusMax: 44,  hookDef: 36,  radiusDef: 18, outL: 6.3,  outW: 6.0,  chassisL: 10.9 },
+  { id: 'ltm1090',  name: 'LTM 1090-4.2',  maker: 'Liebherr', cap: 90,   boomTele: 60,  hookMax: 76,   radiusMax: 62,  hookDef: 56,  radiusDef: 26, outL: 7.4,  outW: 6.8,  chassisL: 13.1 },
+  { id: 'ltm1150',  name: 'LTM 1150-5.3',  maker: 'Liebherr', cap: 150,  boomTele: 66,  hookMax: 92,   radiusMax: 72,  hookDef: 60,  radiusDef: 30, outL: 8.07, outW: 7.90, chassisL: 14.9 },
+  { id: 'ltm1250',  name: 'LTM 1250-6.1',  maker: 'Liebherr', cap: 250,  boomTele: 72,  hookMax: 108,  radiusMax: 92,  hookDef: 66,  radiusDef: 34, outL: 8.9,  outW: 8.2,  chassisL: 16.5 },
+  { id: 'ltm1350',  name: 'LTM 1350-6.1',  maker: 'Liebherr', cap: 350,  boomTele: 70,  hookMax: 108,  radiusMax: 96,  hookDef: 66,  radiusDef: 36, outL: 9.4,  outW: 8.8,  chassisL: 17.4 },
+  { id: 'ltm1450',  name: 'LTM 1450-8.1',  maker: 'Liebherr', cap: 450,  boomTele: 85,  hookMax: 145,  radiusMax: 108, hookDef: 80,  radiusDef: 40, outL: 10.0, outW: 9.5,  chassisL: 18.5 },
+  { id: 'ltm1500',  name: 'LTM 1500-8.1',  maker: 'Liebherr', cap: 500,  boomTele: 84,  hookMax: 145,  radiusMax: 108, hookDef: 80,  radiusDef: 42, outL: 10.6, outW: 9.6,  chassisL: 18.8 },
+  { id: 'ltm1650',  name: 'LTM 1650-8.1',  maker: 'Liebherr', cap: 700,  boomTele: 80,  hookMax: 152,  radiusMax: 112, hookDef: 85,  radiusDef: 46, outL: 10.6, outW: 9.6,  chassisL: 19.5 },
+  { id: 'ltm1750',  name: 'LTM 1750-9.1',  maker: 'Liebherr', cap: 750,  boomTele: 52,  hookMax: 154,  radiusMax: 116, hookDef: 90,  radiusDef: 50, outL: 12.0, outW: 12.0, chassisL: 20.2 }
+];
+
+/* ---------- Turmdrehkrane ----------
+   Alle Werte aus den Original-Datenblättern der Hersteller.
+   kind: schnell = Schnellbaukran, flat = spitzenloser Obendreher,
+         head = Obendreher mit Turmkopf
+   hookMax ist die größte in der Hubhöhentabelle aufgeführte Höhe.
+   Bei WOLFFKRAN hängt sie von der Turmkombination ab und steht
+   deshalb auf null; der Regler bleibt dort offen.                 */
+const TOWER_MODELS = [
+  { id: 'lieb85ecb5', name: 'Liebherr 85 EC-B 5', maker: 'Liebherr', kind: 'flat', cap: 5, tip: 1.3, jibMax: 50.0, jibDef: 41, hookMax: 41.9, hookDef: 29, mast: 1.6 },
+  { id: 'lieb91k', name: 'Liebherr 91 K', maker: 'Liebherr', kind: 'schnell', cap: 6, tip: 1.13, jibMax: 48.0, jibDef: 39, hookMax: 57.2, hookDef: 40, mast: 1.6 },
+  { id: 'lieb125ecb6', name: 'Liebherr 125 EC-B 6', maker: 'Liebherr', kind: 'flat', cap: 6, tip: 1.4, jibMax: 58.0, jibDef: 48, hookMax: 59.5, hookDef: 42, mast: 1.6 },
+  { id: 'lieb125k', name: 'Liebherr 125 K', maker: 'Liebherr', kind: 'schnell', cap: 8, tip: 1.0, jibMax: 55.0, jibDef: 45, hookMax: 65.5, hookDef: 46, mast: 1.6 },
+  { id: 'lieb150ecb8', name: 'Liebherr 150 EC-B 8', maker: 'Liebherr', kind: 'flat', cap: 8, tip: 1.2, jibMax: 62.5, jibDef: 51, hookMax: 52.7, hookDef: 37, mast: 1.6 },
+  { id: 'lieb172ecb8', name: 'Liebherr 172 EC-B 8', maker: 'Liebherr', kind: 'flat', cap: 8, tip: 1.6, jibMax: 62.5, jibDef: 51, hookMax: 53.7, hookDef: 38, mast: 1.6 },
+  { id: 'lieb205ecb10', name: 'Liebherr 205 EC-B 10', maker: 'Liebherr', kind: 'flat', cap: 10, tip: 1.9, jibMax: 65.0, jibDef: 53, hookMax: 54.7, hookDef: 38, mast: 1.6 },
+  { id: 'lieb220ecb10', name: 'Liebherr 220 EC-B 10', maker: 'Liebherr', kind: 'flat', cap: 10, tip: 1.9, jibMax: 68.0, jibDef: 56, hookMax: 54.4, hookDef: 38, mast: 1.6 },
+  { id: 'lieb240ecb10', name: 'Liebherr 240 EC-B 10', maker: 'Liebherr', kind: 'flat', cap: 10, tip: 2.15, jibMax: 68.0, jibDef: 56, hookMax: 54.4, hookDef: 38, mast: 1.6 },
+  { id: 'lieb220ecb12', name: 'Liebherr 220 EC-B 12', maker: 'Liebherr', kind: 'flat', cap: 12, tip: 1.7, jibMax: 68.0, jibDef: 56, hookMax: 51.3, hookDef: 36, mast: 1.6 },
+  { id: 'lieb240ecb12', name: 'Liebherr 240 EC-B 12', maker: 'Liebherr', kind: 'flat', cap: 12, tip: 2.05, jibMax: 68.0, jibDef: 56, hookMax: 51.3, hookDef: 36, mast: 1.6 },
+  { id: 'lieb270ecb12', name: 'Liebherr 270 EC-B 12', maker: 'Liebherr', kind: 'flat', cap: 12, tip: 1.8, jibMax: 73.0, jibDef: 60, hookMax: 82.4, hookDef: 58, mast: 1.6 },
+  { id: 'lieb550ech20', name: 'Liebherr 550 EC-H 20', maker: 'Liebherr', kind: 'head', cap: 20, tip: 3.5, jibMax: 81.5, jibDef: 67, hookMax: 84.5, hookDef: 59, mast: 1.6 },
+  { id: 'lieb550ech40', name: 'Liebherr 550 EC-H 40', maker: 'Liebherr', kind: 'head', cap: 40, tip: 3.5, jibMax: 81.5, jibDef: 67, hookMax: 83.1, hookDef: 58, mast: 1.6 },
+  { id: 'lieb630ech40', name: 'Liebherr 630 EC-H 40', maker: 'Liebherr', kind: 'head', cap: 40, tip: 5.4, jibMax: 81.4, jibDef: 67, hookMax: 80.0, hookDef: 56, mast: 1.6 },
+  { id: 'lieb1000ech40', name: 'Liebherr 1000 EC-H 40', maker: 'Liebherr', kind: 'head', cap: 40, tip: 10.5, jibMax: 81.4, jibDef: 67, hookMax: 97.1, hookDef: 68, mast: 1.6 },
+  { id: 'lieb1188ech40', name: 'Liebherr 1188 EC-H 40', maker: 'Liebherr', kind: 'head', cap: 40, tip: 8.0, jibMax: 91.4, jibDef: 75, hookMax: 94.2, hookDef: 66, mast: 1.6 },
+  { id: 'lieb630ech50', name: 'Liebherr 630 EC-H 50', maker: 'Liebherr', kind: 'head', cap: 50, tip: 4.8, jibMax: 81.4, jibDef: 67, hookMax: 80.0, hookDef: 56, mast: 1.6 },
+  { id: 'wolff4518', name: 'WOLFF 4518', maker: 'WOLFFKRAN', kind: 'head', cap: 6.0, tip: 1.3, jibMax: 50.0, jibDef: 41, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff5014', name: 'WOLFF 5014', maker: 'WOLFFKRAN', kind: 'head', cap: 6.0, tip: 1.4, jibMax: 50.0, jibDef: 41, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff60236clear', name: 'WOLFF 6023.6 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 6.2, tip: null, jibMax: 60.0, jibDef: 49, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff50208clear', name: 'WOLFF 5020.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: null, jibMax: 55.0, jibDef: 45, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff60208clear', name: 'WOLFF 6020.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 1.7, jibMax: 60.0, jibDef: 49, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff60238clear', name: 'WOLFF 6023.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: null, jibMax: 60.0, jibDef: 49, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff60318clear', name: 'WOLFF 6031.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: null, jibMax: 65.0, jibDef: 53, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff65238clear', name: 'WOLFF 6523.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 2.3, jibMax: 65.0, jibDef: 53, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff70218clear', name: 'WOLFF 7021.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 2.1, jibMax: 70.0, jibDef: 57, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff70328clear', name: 'WOLFF 7032.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 3.2, jibMax: 70.0, jibDef: 57, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff75348clear', name: 'WOLFF 7534.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 3.4, jibMax: 75.0, jibDef: 61, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff702110clear', name: 'WOLFF 7021.10 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 10.5, tip: 2.1, jibMax: 70.0, jibDef: 57, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff652312clear', name: 'WOLFF 6523.12 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 12.0, tip: 1.9, jibMax: 65.0, jibDef: 53, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff703212clear', name: 'WOLFF 7032.12 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 12.0, tip: 2.8, jibMax: 70.0, jibDef: 57, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff224b', name: 'WOLFF 224 B', maker: 'WOLFFKRAN', kind: 'head', cap: 16.0, tip: null, jibMax: 60.0, jibDef: 49, hookMax: null, hookDef: 45, mast: 1.8 },
+  { id: 'wolff753416clear', name: 'WOLFF 7534.16 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 16.5, tip: 2.9, jibMax: 75.0, jibDef: 61, hookMax: null, hookDef: 45, mast: 1.8 }
+];
+
+/* Anlaufstellen für die Originaldatenblätter */
+const SHEET_URLS = {
+  liebherrK:   'https://www.liebherr.com/de-de/turmdrehkrane/produkte/schnelleinsatzkrane/k-krane-3815559',
+  liebherrLTM: 'https://www.liebherr.com',
+  liebherrTower: 'https://www.liebherr.com/de-de/turmdrehkrane/turmdrehkrane-3808172',
+  wolff:       'https://www.wolffkran.com'
+};
+
+function sheetUrlFor(m) {
+  if (!m) return null;
+  if (m.maker === 'WOLFFKRAN') return SHEET_URLS.wolff;
+  if (m.kind === 'schnell') return SHEET_URLS.liebherrK;
+  if (m.maker === 'Liebherr' && m.jibMax !== undefined && m.mast !== undefined
+      && m.kind !== 'schnell' && m.cap !== undefined && m.tip !== undefined
+      && String(m.name).indexOf('EC-') > 0) return SHEET_URLS.liebherrTower;
+  return SHEET_URLS.liebherrLTM;
+}
+
+function getTowerModel(id) {
+  for (let i = 0; i < TOWER_MODELS.length; i++) if (TOWER_MODELS[i].id === id) return TOWER_MODELS[i];
+  return TOWER_MODELS[0];
+}
+
+const MAT = {};
+const GEO = {};
+
+let scene, camera, renderer, controls, raycaster, pointer;
+let terrainMesh, terrainGeo, plinthMesh;
+let buildingsMesh = null;
+
+/* Geländezustand – wird beim Laden einer Datei ersetzt */
+let TERRAIN = null;   // erst nach dem Laden einer Datei gesetzt
+
+let objects = [];
+let nextId = 1;
+let activeTool = null;
+let selectedIds = [];
+let moveMode = false;
+let ghost = null;
+let selectionBoxes = [];
+let focusGoal = null;
+let camGoal = null;
+let measureMarker = null;
+let measurePoint = null;
+let roadNodes = null;        // sichtbare Stützpunkte der ausgewählten Baustraße
+let roadNodeObj = null;      // zugehöriges Objekt
+let activeNode = null;       // gerade zur Bearbeitung gewählter Stützpunkt
+
+/* =========================================================
+   Szene
+   ========================================================= */
+function initScene(container) {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a1013);
+  scene.fog = new THREE.FogExp2(0x0a1013, 0.00035);
+
+  camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 1, 20000);
+  camera.position.set(420, 300, 460);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.07;
+  controls.target.set(0, 20, 0);
+  controls.maxDistance = 6000;
+  controls.minDistance = 12;
+  controls.maxPolarAngle = Math.PI * 0.492;   // knapp unter die Horizontale, Draufsicht bleibt erlaubt
+
+  raycaster = new THREE.Raycaster();
+  pointer = new THREE.Vector2();
+
+  scene.add(new THREE.HemisphereLight(0xa8d8ee, 0x2a2218, 0.55));
+
+  const sun = new THREE.DirectionalLight(0xfff0d8, 1.25);
+  sun.position.set(-420, 620, 380);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 10;
+  sun.shadow.camera.far = 4000;
+  sun.shadow.bias = -0.0006;
+  scene.add(sun);
+  scene.add(sun.target);
+  MAT.__sun = sun;
+
+  const fill = new THREE.DirectionalLight(0x6fa8c8, 0.22);
+  fill.position.set(300, 180, -300);
+  scene.add(fill);
+}
+
+function initSharedResources() {
+  GEO.box = new THREE.BoxGeometry(1, 1, 1);
+  GEO.cyl = new THREE.CylinderGeometry(0.5, 0.5, 1, 10);
+  GEO.sphere = new THREE.SphereGeometry(1, 16, 12);
+
+  MAT.container   = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  MAT.linkBlock   = new THREE.MeshLambertMaterial({ color: 0xbfb8ab });
+  MAT.steelDark   = new THREE.MeshLambertMaterial({ color: 0x4a5258 });
+  MAT.craneYellow = new THREE.MeshLambertMaterial({ color: 0xe8b23c });
+  MAT.craneRed    = new THREE.MeshLambertMaterial({ color: 0xc4472e });
+  MAT.glass       = new THREE.MeshLambertMaterial({ color: 0x1e3a45 });
+  MAT.rubber      = new THREE.MeshLambertMaterial({ color: 0x22262a });
+  // DoubleSide: LOD2-Wandpolygone sind uneinheitlich gewickelt, sonst fehlen Flächen
+  MAT.building    = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: THREE.DoubleSide });
+  MAT.outline     = new THREE.LineBasicMaterial({ color: 0x11181c, transparent: true, opacity: 0.55 });
+  MAT.radiusMax   = new THREE.LineBasicMaterial({ color: 0xff7043, transparent: true, opacity: 0.6 });
+  MAT.radiusWork  = new THREE.LineBasicMaterial({ color: 0x5fd4c4, transparent: true, opacity: 0.95 });
+  MAT.hookLine    = new THREE.LineBasicMaterial({ color: 0xf0f0f0, transparent: true, opacity: 0.6 });
+  MAT.ghost       = new THREE.LineBasicMaterial({ color: 0x5fd4c4, transparent: true, opacity: 0.8 });
+  MAT.selection   = new THREE.LineBasicMaterial({ color: 0x5fd4c4 });
+  MAT.road        = new THREE.MeshLambertMaterial({ color: 0x8b8377, side: THREE.DoubleSide });
+  MAT.roadEdge    = new THREE.LineBasicMaterial({ color: 0xf2e6c8, transparent: true, opacity: 0.7 });
+  MAT.road        = new THREE.MeshLambertMaterial({ color: 0x6f6a60, side: THREE.DoubleSide });
+  MAT.roadEdge    = new THREE.LineBasicMaterial({ color: 0xe8e2d2, transparent: true, opacity: 0.75 });
+  // Immer sichtbar, damit der Punkt nicht im Gelände verschwindet
+  MAT.measure     = new THREE.MeshBasicMaterial({ color: 0x6cff8a, depthTest: false });
+  MAT.node        = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
+  MAT.nodeActive  = new THREE.MeshBasicMaterial({ color: 0xff8a3c, depthTest: false });
+}
+
+/* =========================================================
+   Gelände
+   ========================================================= */
+
+/* Wandelt das eingebettete Kompaktformat in den Geländezustand um */
+function terrainFromEmbedded(d) {
+  const n = d.n;
+  const rel = new Float32Array(n * n);
+  for (let i = 0; i < n * n; i++) rel[i] = d.heights[i] / d.scale;
+  return {
+    nx: n, nz: n,
+    w: d.width || 1000, d: d.depth || 1000,
+    originE: d.originE || 713500,
+    originN: d.originN || 5420500,
+    zmin: d.zmin, zmax: d.zmax,
+    rel: rel,
+    cell: (d.width || 1000) / (n - 1),
+    srcRes: (d.width || 1000) / (n - 1),
+    crs: crsLabel(d.epsg || 25832),
+    simplified: false,
+    cell: (d.width || 1000) / n, srcRes: (d.width || 1000) / n, simplified: false,
+    epsg: 25832, crs: crsLabel(25832),
+    label: d.label || 'Testkachel'
+  };
+}
+
+function hasTerrain() { return TERRAIN !== null; }
+
+function buildTerrain(t) {
+  TERRAIN = t;
+
+  if (terrainMesh) {
+    scene.remove(terrainMesh);
+    terrainGeo.dispose();
+    terrainMesh = null;
+  }
+  if (plinthMesh) {
+    scene.remove(plinthMesh);
+    plinthMesh.geometry.dispose();
+    plinthMesh = null;
+  }
+
+  terrainGeo = new THREE.PlaneGeometry(t.w, t.d, t.nx - 1, t.nz - 1);
+  terrainGeo.rotateX(-Math.PI / 2);
+  terrainGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(t.nx * t.nz * 3), 3));
+
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  terrainMesh = new THREE.Mesh(terrainGeo, mat);
+  terrainMesh.receiveShadow = true;
+  terrainMesh.castShadow = true;
+  terrainMesh.name = 'terrain';
+  scene.add(terrainMesh);
+
+  applyTerrainHeights();
+
+  const plinthH = Math.max((t.zmax - t.zmin) * 0.6, 12);
+  plinthMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(t.w, plinthH, t.d),
+    new THREE.MeshLambertMaterial({ color: 0x151c20 })
+  );
+  plinthMesh.position.y = -plinthH / 2 - 0.2;
+  plinthMesh.receiveShadow = true;
+  scene.add(plinthMesh);
+
+  // Schattenkamera, Nebel und Kameragrenzen an die Kachelgröße anpassen
+  const span = Math.max(t.w, t.d);
+  const sc = MAT.__sun.shadow.camera;
+  sc.left = -span * 0.62; sc.right = span * 0.62;
+  sc.top = span * 0.62; sc.bottom = -span * 0.62;
+  sc.far = span * 4;
+  MAT.__sun.position.set(-span * 0.42, span * 0.62, span * 0.38);
+  controls.maxDistance = span * 3;
+  scene.fog.density = 0.35 / span;
+
+  return { mesh: terrainMesh, material: mat };
+}
+
+let topView = false;
+
+function isTopView() { return topView; }
+
+/* Setzt die Ansicht senkrecht von oben. Kein Sperrzustand: sobald gedreht
+   wird, kippt die Kamera wieder frei in den Raum. */
+function setTopView() {
+  const t = controls.target;
+  const span = TERRAIN ? Math.max(TERRAIN.w, TERRAIN.d) : 500;
+  let d = camera.position.distanceTo(t);
+  if (!(d > 1)) d = span * 0.6;
+  camGoal = new THREE.Vector3(t.x, t.y + d, t.z + 0.001);
+  focusGoal = new THREE.Vector3(t.x, t.y, t.z);
+  topView = true;
+  return topView;
+}
+
+/* Neigung der Kamera gegen die Senkrechte in Grad */
+function cameraTilt() {
+  const t = controls.target;
+  const dx = camera.position.x - t.x;
+  const dy = camera.position.y - t.y;
+  const dz = camera.position.z - t.z;
+  const horiz = Math.sqrt(dx * dx + dz * dz);
+  return Math.atan2(horiz, Math.abs(dy)) * 180 / Math.PI;
+}
+
+/* Wird pro Bild geprüft: verlässt der Nutzer die Draufsicht, erlischt der
+   Zustand von selbst. */
+function refreshTopView() {
+  if (topView && !camGoal && cameraTilt() > 3) topView = false;
+  return topView;
+}
+
+/* ---------- 7: Nordrichtung ---------- */
+
+/* Winkel der Kamera um die Hochachse; 0 heißt Norden oben im Bild */
+function northAngle() {
+  const dx = camera.position.x - controls.target.x;
+  const dz = camera.position.z - controls.target.z;
+  if (Math.abs(dx) < 1e-9 && Math.abs(dz) < 1e-9) return 0;
+  return Math.atan2(dx, dz) * 180 / Math.PI;
+}
+
+/* Dreht die Ansicht so, dass Norden oben liegt */
+function faceNorth() {
+  const t = controls.target;
+  const dx = camera.position.x - t.x;
+  const dy = camera.position.y - t.y;
+  const dz = camera.position.z - t.z;
+  const horiz = Math.sqrt(dx * dx + dz * dz);
+  camGoal = new THREE.Vector3(t.x, t.y + dy, t.z + (horiz > 0.001 ? horiz : 1));
+  focusGoal = new THREE.Vector3(t.x, t.y, t.z);
+}
+
+function frameTerrain() {
+  if (!TERRAIN) return;
+  topView = false;
+  const span = Math.max(TERRAIN.w, TERRAIN.d);
+  camera.position.set(span * 0.42, span * 0.32, span * 0.46);
+  controls.target.set(0, (TERRAIN.zmax - TERRAIN.zmin) * 0.3, 0);
+  focusGoal = null;
+}
+
+const COLOR_STOPS = [
+  { t: 0.00, c: [0.16, 0.36, 0.42] },
+  { t: 0.28, c: [0.25, 0.48, 0.37] },
+  { t: 0.52, c: [0.56, 0.68, 0.31] },
+  { t: 0.76, c: [0.79, 0.63, 0.31] },
+  { t: 1.00, c: [0.72, 0.35, 0.24] }
+];
+
+function colorAt(t) {
+  if (!(t > 0)) return COLOR_STOPS[0].c;
+  if (t >= 1) return COLOR_STOPS[COLOR_STOPS.length - 1].c;
+  for (let i = 0; i < COLOR_STOPS.length - 1; i++) {
+    const a = COLOR_STOPS[i], b = COLOR_STOPS[i + 1];
+    if (t >= a.t && t <= b.t) {
+      const f = (t - a.t) / (b.t - a.t);
+      return [
+        a.c[0] + (b.c[0] - a.c[0]) * f,
+        a.c[1] + (b.c[1] - a.c[1]) * f,
+        a.c[2] + (b.c[2] - a.c[2]) * f
+      ];
+    }
+  }
+  return COLOR_STOPS[COLOR_STOPS.length - 1].c;
+}
+
+function applyTerrainHeights() {
+  const pos = terrainGeo.attributes.position;
+  const col = terrainGeo.attributes.color;
+  const span = Math.max(TERRAIN.zmax - TERRAIN.zmin, 0.0001);
+  const count = TERRAIN.nx * TERRAIN.nz;
+  for (let i = 0; i < count; i++) {
+    const h = TERRAIN.rel[i];
+    pos.setY(i, h);
+    const c = colorAt(h / span);
+    col.setXYZ(i, c[0], c[1], c[2]);
+  }
+  pos.needsUpdate = true;
+  col.needsUpdate = true;
+  terrainGeo.computeVertexNormals();
+}
+
+/* Bilineare Höheninterpolation in Weltkoordinaten */
+function getHeightAt(x, z) {
+  const t = TERRAIN;
+  if (!t) return 0;
+  const segX = t.w / (t.nx - 1);
+  const segZ = t.d / (t.nz - 1);
+  let fx = (x + t.w / 2) / segX;
+  let fz = (z + t.d / 2) / segZ;
+  fx = Math.min(Math.max(fx, 0), t.nx - 1.0001);
+  fz = Math.min(Math.max(fz, 0), t.nz - 1.0001);
+  const ix = Math.floor(fx), iz = Math.floor(fz);
+  const tx = fx - ix, tz = fz - iz;
+  const ix1 = Math.min(ix + 1, t.nx - 1);
+  const iz1 = Math.min(iz + 1, t.nz - 1);
+  const h0 = t.rel[iz * t.nx + ix] * (1 - tx) + t.rel[iz * t.nx + ix1] * tx;
+  const h1 = t.rel[iz1 * t.nx + ix] * (1 - tx) + t.rel[iz1 * t.nx + ix1] * tx;
+  return h0 * (1 - tz) + h1 * tz;
+}
+
+function getAbsoluteHeightAt(x, z) {
+  if (!TERRAIN) return 0;
+  return getHeightAt(x, z) + TERRAIN.zmin;
+}
+
+/* Konvention: +x = Ost, -z = Nord (Blick von oben ergibt ein lagerichtiges Kartenbild) */
+function worldToUTM(x, z) {
+  if (!TERRAIN) return { e: x, n: -z };
+  return { e: TERRAIN.originE + x, n: TERRAIN.originN - z };
+}
+
+function utmToWorld(e, n) {
+  return { x: e - TERRAIN.originE, z: TERRAIN.originN - n };
+}
+
+/* =========================================================
+   GeoTIFF einlesen (Browser, via geotiff.js)
+   ========================================================= */
+const MAX_GRID = 260;     // Voreinstellung der Stützpunkte je Achse
+const GRID_MIN = 80;
+const GRID_MAX = 1400;
+const GRID_CELL_CAP = 2500000;   // Obergrenze für die Originalauflösung    // darüber wird die Darstellung im Browser zäh
+
+/* Gängige Bezugssysteme für deutsche Geobasisdaten */
+const EPSG_NAMES = {
+  25831: 'ETRS89 / UTM 31N', 25832: 'ETRS89 / UTM 32N', 25833: 'ETRS89 / UTM 33N',
+  5650: 'ETRS89 / UTM 33N (Zone)', 4647: 'ETRS89 / UTM 32N (Zone)',
+  31466: 'DHDN / GK 2', 31467: 'DHDN / GK 3', 31468: 'DHDN / GK 4', 31469: 'DHDN / GK 5',
+  4326: 'WGS 84', 4258: 'ETRS89', 3857: 'Web Mercator'
+};
+
+function crsLabel(code) {
+  if (!code) return 'unbekannt';
+  const n = EPSG_NAMES[code];
+  return n ? 'EPSG:' + code + ' · ' + n : 'EPSG:' + code;
+}
+
+/* Liest eine einzelne Kachel ein und liefert Raster samt Georeferenz */
+async function readTiffTile(arrayBuffer, fileName) {
+  const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+  const image = await tiff.getImage();
+
+  const W = image.getWidth();
+  const H = image.getHeight();
+  if (!W || !H) throw new Error(fileName + ': kein lesbares Raster.');
+
+  const rasters = await image.readRasters();
+  const band = rasters[0];
+  if (!band || !band.length) throw new Error(fileName + ': keine Höhenwerte.');
+
+  let originX = 0, originY = 0, resX = 1, resY = 1;
+  try {
+    const o = image.getOrigin();
+    const r = image.getResolution();
+    originX = o[0]; originY = o[1];
+    resX = Math.abs(r[0]); resY = Math.abs(r[1]);
+  } catch (e) { /* ohne Georeferenz weiterarbeiten */ }
+  if (!isFinite(resX) || resX <= 0) resX = 1;
+  if (!isFinite(resY) || resY <= 0) resY = 1;
+  if (!isFinite(originX)) originX = 0;
+  if (!isFinite(originY)) originY = 0;
+
+  let nodata = null;
+  try {
+    const fd = image.getFileDirectory();
+    if (fd && fd.GDAL_NODATA !== undefined) {
+      const v = parseFloat(fd.GDAL_NODATA);
+      if (isFinite(v)) nodata = v;
+    }
+  } catch (e) { /* ohne NoData weiterarbeiten */ }
+
+  let epsg = null;
+  try {
+    const gk = image.getGeoKeys ? image.getGeoKeys() : null;
+    if (gk) epsg = gk.ProjectedCSTypeGeoKey || gk.GeographicTypeGeoKey || null;
+  } catch (e) { /* ohne GeoKeys weiterarbeiten */ }
+
+  return {
+    name: fileName, W: W, H: H, band: band,
+    originX: originX, originY: originY, resX: resX, resY: resY,
+    nodata: nodata, epsg: epsg, srcRes: Math.min(resX, resY)
+  };
+}
+
+function tileIsNoData(tile, v) {
+  if (!isFinite(v)) return true;
+  if (tile.nodata !== null && Math.abs(v - tile.nodata) < 1e-6) return true;
+  return v < -1000 || v > 9000;
+}
+
+/* Mehrere GeoTIFF-Kacheln zu einem Gelände verschmelzen.
+   Die Pixel aller Kacheln werden in ein gemeinsames Zielraster gemittelt;
+   dadurch spielen unterschiedliche Auflösungen und Überlappungen keine Rolle. */
+async function readTiffTiles(items) {
+  if (typeof GeoTIFF === 'undefined') {
+    throw new Error('Die Datei lib/geotiff.js fehlt. Siehe lib/LIESMICH.txt.');
+  }
+  if (!items || !items.length) throw new Error('Keine Datei ausgewählt.');
+  const tiles = [];
+  for (let i = 0; i < items.length; i++) {
+    tiles.push(await readTiffTile(items[i].buffer, items[i].name));
+  }
+  return tiles;
+}
+
+async function terrainFromGeoTIFFs(items, maxGrid) {
+  return gridTiles(await readTiffTiles(items), maxGrid);
+}
+
+/* Bringt die eingelesenen Kacheln auf ein gemeinsames Raster.
+   Getrennt vom Einlesen, damit die Auflösung ohne erneutes
+   Lesen der Dateien geändert werden kann. */
+function gridTiles(tiles, maxGrid) {
+  if (!tiles || !tiles.length) throw new Error('Keine Kacheln übergeben.');
+
+  // Gemeinsame Ausdehnung bestimmen
+  let minE = Infinity, maxE = -Infinity, minN = Infinity, maxN = -Infinity, finest = Infinity;
+  tiles.forEach(function (t) {
+    const e0 = t.originX, e1 = t.originX + t.W * t.resX;
+    const n1 = t.originY, n0 = t.originY - t.H * t.resY;
+    if (e0 < minE) minE = e0;
+    if (e1 > maxE) maxE = e1;
+    if (n0 < minN) minN = n0;
+    if (n1 > maxN) maxN = n1;
+    const r = Math.min(t.resX, t.resY);
+    if (r < finest) finest = r;
+  });
+
+  const widthM = maxE - minE;
+  const depthM = maxN - minN;
+  if (!(widthM > 0) || !(depthM > 0)) throw new Error('Die Kacheln haben keine gültige Ausdehnung.');
+
+  // Zellgröße: so fein wie die beste Kachel, aber begrenzt auf MAX_GRID
+  // maxGrid === 0 bedeutet ausdrücklich: keine Vereinfachung
+  let cell;
+  if (maxGrid === 0) {
+    cell = finest;
+    const nxFull = Math.round(widthM / cell), nzFull = Math.round(depthM / cell);
+    if (nxFull * nzFull > GRID_CELL_CAP) {
+      throw new Error('Originalauflösung wären ' + nxFull + ' × ' + nzFull +
+        ' Stützpunkte. Das ist zu viel für den Browser, bitte eine niedrigere Detailstufe wählen.');
+    }
+  } else {
+    const want = (maxGrid && maxGrid > 0) ? maxGrid : MAX_GRID;
+    const limit = Math.max(GRID_MIN, Math.min(want, GRID_MAX));
+    cell = Math.max(finest, widthM / limit, depthM / limit);
+  }
+  const nx = Math.max(2, Math.round(widthM / cell));
+  const nz = Math.max(2, Math.round(depthM / cell));
+
+  const sum = new Float64Array(nx * nz);
+  const cnt = new Uint32Array(nx * nz);
+
+  tiles.forEach(function (t) {
+    for (let row = 0; row < t.H; row++) {
+      const n = t.originY - (row + 0.5) * t.resY;
+      const iz = Math.floor((maxN - n) / depthM * nz);
+      if (iz < 0 || iz >= nz) continue;
+      const base = row * t.W;
+      const rowOff = iz * nx;
+      for (let col = 0; col < t.W; col++) {
+        const v = t.band[base + col];
+        if (tileIsNoData(t, v)) continue;
+        const e = t.originX + (col + 0.5) * t.resX;
+        const ix = Math.floor((e - minE) / widthM * nx);
+        if (ix < 0 || ix >= nx) continue;
+        sum[rowOff + ix] += v;
+        cnt[rowOff + ix]++;
+      }
+    }
+  });
+
+  const abs = new Float32Array(nx * nz);
+  let vmin = Infinity, vmax = -Infinity, valid = 0;
+  for (let i = 0; i < abs.length; i++) {
+    if (cnt[i]) {
+      const v = sum[i] / cnt[i];
+      abs[i] = v; valid++;
+      if (v < vmin) vmin = v;
+      if (v > vmax) vmax = v;
+    } else {
+      abs[i] = NaN;
+    }
+  }
+
+  if (!valid) throw new Error('Die Kacheln enthalten ausschließlich NoData-Werte.');
+  if (vmax - vmin < 0.001) vmax = vmin + 0.001;
+
+  const gaps = fillGaps(abs, nx, nz, (vmin + vmax) / 2);
+
+  const rel = new Float32Array(nx * nz);
+  for (let i = 0; i < abs.length; i++) rel[i] = abs[i] - vmin;
+
+  const label = tiles.length === 1
+    ? tiles[0].name + ' · ' + tiles[0].W + '×' + tiles[0].H + ' px · ' + tiles[0].resX.toFixed(1) + ' m'
+    : tiles.length + ' Kacheln · ' + Math.round(widthM) + '×' + Math.round(depthM) + ' m · ' + cell.toFixed(1) + ' m Zelle';
+
+  return {
+    nx: nx, nz: nz,
+    w: widthM, d: depthM,
+    originE: (minE + maxE) / 2,
+    originN: (minN + maxN) / 2,
+    zmin: vmin, zmax: vmax,
+    rel: rel,
+    tiles: tiles.length,
+    gaps: gaps,
+    cell: cell,
+    srcRes: finest,
+    epsg: tiles[0].epsg,
+    crs: crsLabel(tiles[0].epsg),
+    simplified: cell > finest * 1.001,
+    label: label
+  };
+}
+
+/* Einzeldatei als Sonderfall des Merges */
+async function terrainFromGeoTIFF(arrayBuffer, fileName) {
+  return terrainFromGeoTIFFs([{ buffer: arrayBuffer, name: fileName || 'GeoTIFF' }]);
+}
+
+/* Ersetzt NaN-Zellen iterativ durch den Mittelwert gültiger Nachbarn */
+function fillGaps(arr, nx, nz, fallback) {
+  let remaining = 0;
+  for (let i = 0; i < arr.length; i++) if (!isFinite(arr[i])) remaining++;
+  if (!remaining) return 0;
+  const filled = remaining;
+
+  for (let pass = 0; pass < 8 && remaining > 0; pass++) {
+    for (let iz = 0; iz < nz; iz++) {
+      for (let ix = 0; ix < nx; ix++) {
+        const i = iz * nx + ix;
+        if (isFinite(arr[i])) continue;
+        let sum = 0, cnt = 0;
+        for (let dz = -1; dz <= 1; dz++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const jx = ix + dx, jz = iz + dz;
+            if (jx < 0 || jz < 0 || jx >= nx || jz >= nz) continue;
+            const v = arr[jz * nx + jx];
+            if (isFinite(v)) { sum += v; cnt++; }
+          }
+        }
+        if (cnt) { arr[i] = sum / cnt; remaining--; }
+      }
+    }
+  }
+  for (let i = 0; i < arr.length; i++) if (!isFinite(arr[i])) arr[i] = fallback;
+  return filled;
+}
+
+/* =========================================================
+   CityGML LOD2 einlesen
+   ========================================================= */
+function parseCityGML(text) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'application/xml');
+
+  const err = doc.getElementsByTagName('parsererror');
+  if (err && err.length) throw new Error('Die Datei ist kein gültiges XML.');
+
+  const rings = [];
+  const polygons = doc.getElementsByTagNameNS('*', 'Polygon');
+
+  if (polygons.length) {
+    for (let i = 0; i < polygons.length; i++) {
+      const ext = polygons[i].getElementsByTagNameNS('*', 'exterior')[0];
+      const ring = readRing(ext || polygons[i]);
+      if (ring && ring.length >= 9) rings.push(ring);
+    }
+  } else {
+    // Fallback für TriangulatedSurface o. Ä. ohne gml:Polygon
+    const lrs = doc.getElementsByTagNameNS('*', 'LinearRing');
+    for (let i = 0; i < lrs.length; i++) {
+      const ring = readRing(lrs[i]);
+      if (ring && ring.length >= 9) rings.push(ring);
+    }
+  }
+
+  if (!rings.length) {
+    throw new Error('Keine Gebäudeflächen gefunden. Enthält die Datei LOD1/LOD2-Geometrie?');
+  }
+  return rings;
+}
+
+function readRing(node) {
+  const pl = node.getElementsByTagNameNS('*', 'posList')[0];
+  if (pl && pl.textContent) return parseNumbers(pl.textContent);
+
+  const pos = node.getElementsByTagNameNS('*', 'pos');
+  if (pos && pos.length) {
+    const out = [];
+    for (let i = 0; i < pos.length; i++) {
+      const v = parseNumbers(pos[i].textContent);
+      for (let k = 0; k < v.length; k++) out.push(v[k]);
+    }
+    return out;
+  }
+  return null;
+}
+
+function parseNumbers(s) {
+  if (!s) return [];
+  const parts = s.trim().split(/[\s,]+/);
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    const v = parseFloat(parts[i]);
+    if (isFinite(v)) out.push(v);
+  }
+  return out;
+}
+
+/* Mehrere CityGML-Dateien zu einer Ringliste zusammenführen */
+function mergeCityGML(files) {
+  if (!files || !files.length) throw new Error('Keine Datei ausgewählt.');
+  let rings = [];
+  const failed = [];
+  files.forEach(function (f) {
+    try {
+      const r = parseCityGML(f.text);
+      for (let i = 0; i < r.length; i++) rings.push(r[i]);
+    } catch (e) {
+      failed.push(f.name + ': ' + e.message);
+    }
+  });
+  if (!rings.length) {
+    throw new Error(failed.length ? failed.join(' | ') : 'Keine Gebäudeflächen gefunden.');
+  }
+  return { rings: rings, failed: failed, files: files.length };
+}
+
+/* Ermittelt, ob die erste Koordinate Rechts- oder Hochwert ist */
+function detectAxisOrder(rings, originE, originN) {
+  let sum0 = 0, sum1 = 0, n = 0;
+  for (let r = 0; r < rings.length && n < 400; r++) {
+    const ring = rings[r];
+    for (let i = 0; i + 2 < ring.length && n < 400; i += 3) {
+      sum0 += ring[i]; sum1 += ring[i + 1]; n++;
+    }
+  }
+  if (!n) return { swap: false, meanA: 0, meanB: 0 };
+  const m0 = sum0 / n, m1 = sum1 / n;
+  const direct = Math.abs(m0 - originE) + Math.abs(m1 - originN);
+  const swapped = Math.abs(m1 - originE) + Math.abs(m0 - originN);
+  return { swap: swapped < direct, meanA: m0, meanB: m1 };
+}
+
+/* Baut aus den Ringen ein einzelnes Mesh (ein Draw-Call) */
+function buildBuildingsMesh(rings) {
+  const t = TERRAIN;
+  if (!t) throw new Error('Bitte zuerst ein Geländemodell laden.');
+  const order = detectAxisOrder(rings, t.originE, t.originN);
+  const marginX = t.w / 2 + t.w * 0.15;
+  const marginZ = t.d / 2 + t.d * 0.15;
+
+  const positions = [];
+  const colors = [];
+  const baseY = [];
+
+  const wallCol = [0.82, 0.80, 0.76];
+  const roofCol = [0.64, 0.35, 0.28];
+
+  let used = 0, skipped = 0;
+
+  for (let r = 0; r < rings.length; r++) {
+    const ring = rings[r];
+    const pts = [];
+    for (let i = 0; i + 2 < ring.length; i += 3) {
+      const e  = order.swap ? ring[i + 1] : ring[i];
+      const nn = order.swap ? ring[i] : ring[i + 1];
+      pts.push([e - t.originE, ring[i + 2] - t.zmin, t.originN - nn]);
+    }
+    if (pts.length < 3) continue;
+
+    const f = pts[0], l = pts[pts.length - 1];
+    if (Math.abs(f[0] - l[0]) < 1e-6 && Math.abs(f[1] - l[1]) < 1e-6 && Math.abs(f[2] - l[2]) < 1e-6) {
+      pts.pop();
+    }
+    if (pts.length < 3) continue;
+
+    let inside = false;
+    for (let i = 0; i < pts.length; i++) {
+      if (Math.abs(pts[i][0]) <= marginX && Math.abs(pts[i][2]) <= marginZ) { inside = true; break; }
+    }
+    if (!inside) { skipped++; continue; }
+
+    // Fächertriangulierung – LOD2-Flächen sind eben und meist konvex
+    for (let i = 1; i + 1 < pts.length; i++) {
+      const a = pts[0], b = pts[i], c = pts[i + 1];
+      const nrm = triNormal(a, b, c);
+      const col = Math.abs(nrm[1]) > 0.55 ? roofCol : wallCol;
+      const tri = [a, b, c];
+      for (let k = 0; k < 3; k++) {
+        positions.push(tri[k][0], tri[k][1], tri[k][2]);
+        baseY.push(tri[k][1]);
+        colors.push(col[0], col[1], col[2]);
+      }
+    }
+    used++;
+  }
+
+  if (!positions.length) {
+    throw new Error('Die Gebäude liegen außerhalb der geladenen Geländekachel.');
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+  geo.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geo, MAT.building);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = 'buildings';
+  mesh.userData.baseY = new Float32Array(baseY);
+  mesh.userData.faces = used;
+  mesh.userData.skipped = skipped;
+  return mesh;
+}
+
+function triNormal(a, b, c) {
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+  const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  const nx = uy * vz - uz * vy;
+  const ny = uz * vx - ux * vz;
+  const nz = ux * vy - uy * vx;
+  const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+  return [nx / len, ny / len, nz / len];
+}
+
+function setBuildings(mesh) {
+  clearBuildings();
+  buildingsMesh = mesh;
+  if (mesh) scene.add(mesh);
+}
+
+function clearBuildings() {
+  if (buildingsMesh) {
+    scene.remove(buildingsMesh);
+    buildingsMesh.geometry.dispose();
+    buildingsMesh = null;
+  }
+}
+
+/* =========================================================
+   Baustein: Containeranlage
+   Container stehen mit der langen Seite nebeneinander.
+   X-Achse = Containerlänge, Z-Achse = Containerbreite.
+   ========================================================= */
+function defaultContainerParams() {
+  return { unitL: 6.06, unitB: 2.44, unitH: 2.60, cols: 6, rows: 1, levels: 2, rot: 0 };
+}
+
+const CONTAINER_GAP = 0.08;
+
+/* Berechnet die Anordnung einer Containeranlage.
+   Reihe 0 liegt hochkant (Länge in X). Jede weitere Reihe liegt quer dazu,
+   wie der Querriegel einer Containeranlage. */
+function containerLayout(p) {
+  const gap = CONTAINER_GAP;
+  const cols = Math.max(1, Math.round(p.cols));
+  const rows = Math.min(2, Math.max(1, Math.round(p.rows)));
+  const levels = Math.max(1, Math.round(p.levels));
+
+  // Alle Container liegen längs: Länge in X, Breite in Z
+  const depth = cols * p.unitB + (cols - 1) * gap;
+
+  // Bei zwei Reihen bleibt dazwischen ein Gang von einer Containerbreite,
+  // der von einem schlichten Verbindungsbau ausgefüllt wird.
+  const link = rows === 2 ? p.unitB : 0;
+  const totalW = rows * p.unitL + link;
+
+  const items = [];
+  for (let r = 0; r < rows; r++) {
+    const cx = -totalW / 2 + p.unitL / 2 + r * (p.unitL + link);
+    for (let lv = 0; lv < levels; lv++) {
+      for (let i = 0; i < cols; i++) {
+        items.push({
+          x: cx,
+          y: p.unitH / 2 + lv * p.unitH,
+          z: -depth / 2 + p.unitB / 2 + i * (p.unitB + gap),
+          quer: false,
+          row: r,
+          level: lv,
+          idx: i
+        });
+      }
+    }
+  }
+
+  return {
+    items: items,
+    count: items.length,
+    w: totalW,
+    d: depth,
+    h: levels * p.unitH,
+    rows: rows,
+    levels: levels,
+    // Maße des Verbindungsbaus; null, solange nur eine Reihe steht
+    link: link ? { w: link, d: depth, h: levels * p.unitH, x: 0 } : null
+  };
+}
+
+function buildContainer(p) {
+  const g = new THREE.Group();
+  const lay = containerLayout(p);
+
+  const inst = new THREE.InstancedMesh(GEO.box, MAT.container, lay.count);
+  inst.castShadow = true;
+  inst.receiveShadow = true;
+  inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+  const dummy = new THREE.Object3D();
+  const color = new THREE.Color();
+  const palette = [0xe8e4da, 0xd9d3c4, 0xc9d6d4, 0xe0d2bc, 0xd2dbe0];
+
+  lay.items.forEach(function (it, i) {
+    dummy.position.set(it.x, it.y, it.z);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.set(p.unitL, p.unitH, p.unitB);
+    dummy.updateMatrix();
+    inst.setMatrixAt(i, dummy.matrix);
+    color.setHex(palette[(it.idx * 7 + it.level * 23 + it.row * 11) % 5]);
+    inst.setColorAt(i, color);
+  });
+  inst.instanceMatrix.needsUpdate = true;
+  if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+  g.add(inst);
+
+  // Verbindungsbau zwischen den beiden Reihen
+  if (lay.link) {
+    const link = new THREE.Mesh(GEO.box, MAT.linkBlock);
+    link.scale.set(lay.link.w, lay.link.h, lay.link.d);
+    link.position.set(lay.link.x, lay.link.h / 2, 0);
+    link.castShadow = true;
+    link.receiveShadow = true;
+    link.name = 'link';
+    g.add(link);
+  }
+
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(lay.w, lay.h, lay.d)),
+    MAT.outline
+  );
+  outline.position.y = lay.h / 2;
+  g.add(outline);
+
+  g.userData.bbox = { w: lay.w, d: lay.d, h: lay.h };
+  g.userData.selBox = { w: lay.w, d: lay.d, h: lay.h, cy: lay.h / 2 };
+  g.userData.count = lay.count;
+  g.userData.link = lay.link;
+  g.rotation.y = (p.rot || 0) * Math.PI / 180;
+  return g;
+}
+
+/* =========================================================
+   Baustein: Turmdrehkran
+   Fundament und Turm stehen fest; nur der Oberbau dreht sich.
+   ========================================================= */
+function defaultTowerParams() {
+  const m = getTowerModel('lieb150ecb8');
+  return { model: m.id, hookHeight: m.hookDef, radius: m.jibDef,
+           mastWidth: m.mast, rot: 0, baseRot: 0, showRadius: true };
+}
+
+function buildTowerCrane(p) {
+  const g = new THREE.Group();
+  const m = getTowerModel(p.model);
+  const HH = Math.max(p.hookHeight, 8);
+  const R  = Math.max(p.radius, 10);
+  const mw = p.mastWidth || m.mast || 1.8;
+  const wipp = m.kind === 'wipp';
+
+  /* ---- feststehender Unterbau ---- */
+  const base = new THREE.Mesh(GEO.box, MAT.steelDark);
+  base.scale.set(mw * 3.2, 1.2, mw * 3.2);
+  base.position.y = 0.6;
+  base.castShadow = true; base.receiveShadow = true;
+  g.add(base);
+
+  const half = mw / 2;
+  [[half, half], [half, -half], [-half, half], [-half, -half]].forEach(function (c) {
+    const post = new THREE.Mesh(GEO.box, MAT.craneYellow);
+    post.scale.set(0.22, HH, 0.22);
+    post.position.set(c[0], HH / 2 + 1.2, c[1]);
+    post.castShadow = true;
+    g.add(post);
+  });
+
+  const tieSpacing = 2.5;
+  const levels = Math.max(Math.floor(HH / tieSpacing), 1);
+  const ties = new THREE.InstancedMesh(GEO.box, MAT.craneYellow, levels * 4);
+  ties.castShadow = true;
+  const d = new THREE.Object3D();
+  let ti = 0;
+  for (let l = 0; l < levels; l++) {
+    const y = 1.2 + (l + 1) * tieSpacing;
+    d.rotation.set(0, 0, 0);
+    d.position.set(0, y, half);  d.scale.set(mw, 0.14, 0.14); d.updateMatrix(); ties.setMatrixAt(ti++, d.matrix);
+    d.position.set(0, y, -half); d.updateMatrix(); ties.setMatrixAt(ti++, d.matrix);
+    d.position.set(half, y, 0);  d.scale.set(0.14, 0.14, mw); d.updateMatrix(); ties.setMatrixAt(ti++, d.matrix);
+    d.position.set(-half, y, 0); d.updateMatrix(); ties.setMatrixAt(ti++, d.matrix);
+  }
+  ties.instanceMatrix.needsUpdate = true;
+  g.add(ties);
+
+  const topY = HH + 1.2;
+
+  /* ---- drehbarer Oberbau: Kabine, Ausleger, Gegenausleger ---- */
+  const slew = new THREE.Group();
+  slew.name = 'slew';
+
+  const cab = new THREE.Mesh(GEO.box, MAT.glass);
+  cab.scale.set(2.2, 2.4, 2.0);
+  cab.position.set(0, topY - 1.2, mw / 2 + 1.2);
+  cab.castShadow = true;
+  slew.add(cab);
+
+  const jib = new THREE.Mesh(GEO.box, MAT.craneYellow);
+  if (wipp) {
+    // Wippausleger: Fußpunkt am Drehkranz, Spitze über der Ausladung
+    const lift = Math.max(HH * 0.28, 6);
+    const len = Math.sqrt(R * R + lift * lift);
+    jib.scale.set(len, 1.5, 1.4);
+    jib.position.set(R / 2, topY + lift / 2, 0);
+    jib.rotation.z = Math.atan2(lift, R);
+  } else {
+    jib.scale.set(R, 1.3, 1.2);
+    jib.position.set(R / 2, topY + 1.0, 0);
+  }
+  jib.castShadow = true;
+  slew.add(jib);
+
+  const cLen = Math.max(R * 0.32, 8);
+  const cjib = new THREE.Mesh(GEO.box, MAT.craneYellow);
+  cjib.scale.set(cLen, 1.3, 1.2);
+  cjib.position.set(-cLen / 2, topY + 1.0, 0);
+  cjib.castShadow = true;
+  slew.add(cjib);
+
+  const bal = new THREE.Mesh(GEO.box, MAT.steelDark);
+  bal.scale.set(2.6, 2.0, 3.0);
+  bal.position.set(-cLen + 1.3, topY + 0.4, 0);
+  bal.castShadow = true;
+  slew.add(bal);
+
+  // Spitzenloser Obendreher braucht keinen Turmkopf
+  if (m.kind !== 'flat') {
+    const tip = new THREE.Mesh(GEO.box, MAT.craneYellow);
+    tip.scale.set(0.6, 6.0, 0.6);
+    tip.position.set(0, topY + 4.5, 0);
+    tip.castShadow = true;
+    slew.add(tip);
+
+    slew.add(new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, topY + 7.5, 0), new THREE.Vector3(R * 0.95, topY + 1.6, 0),
+        new THREE.Vector3(0, topY + 7.5, 0), new THREE.Vector3(-cLen * 0.9, topY + 1.6, 0)
+      ]),
+      MAT.hookLine
+    ));
+  }
+
+  const hookTopY = wipp ? topY + Math.max(HH * 0.28, 6) : topY;
+  if (!wipp) {
+    const trolley = new THREE.Mesh(GEO.box, MAT.craneRed);
+    trolley.scale.set(1.4, 0.7, 1.4);
+    trolley.position.set(R, topY + 0.1, 0);
+    slew.add(trolley);
+  }
+
+  slew.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(R, hookTopY - 0.4, 0),
+      new THREE.Vector3(R, 1.5, 0)
+    ]),
+    MAT.hookLine
+  ));
+
+  // Der Oberbau haengt am gedrehten Unterbau; die Differenz haelt den
+  // Auslegerwinkel absolut, unabhaengig vom Fundamentwinkel.
+  const baseDeg = p.baseRot || 0;
+  slew.rotation.y = ((p.rot || 0) - baseDeg) * Math.PI / 180;
+  g.add(slew);
+
+  /* ---- Arbeitsradius auf Hakenhöhe ---- */
+  if (p.showRadius !== false) {
+    g.add(makeCircle(R, MAT.radiusWork, topY));
+    g.add(dropLines(R, topY, 4));
+  }
+  g.rotation.y = baseDeg * Math.PI / 180;
+
+  g.userData.bbox = { w: R * 2, d: 4, h: topY + 8 };
+  g.userData.selBox = { w: mw * 3.4, d: mw * 3.4, h: topY + 8, cy: (topY + 8) / 2 };
+  g.userData.hookHeight = HH;
+  g.userData.radius = R;
+  g.userData.topY = topY;
+  g.userData.slewDeg = p.rot || 0;
+  g.userData.baseDeg = baseDeg;
+  g.userData.model = m;
+  return g;
+}
+
+/* =========================================================
+   Baustein: Mobilkran
+   Unterwagen und Abstützung stehen fest; nur der Oberwagen dreht.
+   ========================================================= */
+function defaultMobileParams() {
+  const m = getModel('ltm1150');
+  return { model: m.id, hookHeight: m.hookDef, radius: m.radiusDef, rot: 0, baseRot: 0, showRadius: true };
+}
+
+function getModel(id) {
+  for (let i = 0; i < CRANE_MODELS.length; i++) if (CRANE_MODELS[i].id === id) return CRANE_MODELS[i];
+  return CRANE_MODELS[0];
+}
+
+function buildMobileCrane(p) {
+  const m = getModel(p.model);
+  const g = new THREE.Group();
+
+  const HH = Math.max(p.hookHeight, 10);
+  const R  = Math.max(p.radius, 3);
+
+  const chassisL = m.chassisL;
+  const chassisW = 3.0;
+  const slewX = -2.0;
+  const slewY = 3.4;
+
+  /* ---- feststehender Unterwagen samt Abstützung ---- */
+  const pads = new THREE.InstancedMesh(GEO.box, MAT.steelDark, 4);
+  const d = new THREE.Object3D();
+  [[m.outL / 2, m.outW / 2], [m.outL / 2, -m.outW / 2],
+   [-m.outL / 2, m.outW / 2], [-m.outL / 2, -m.outW / 2]].forEach(function (pp, i) {
+    d.position.set(pp[0], 0.25, pp[1]);
+    d.scale.set(2.2, 0.5, 2.2);
+    d.rotation.set(0, 0, 0);
+    d.updateMatrix();
+    pads.setMatrixAt(i, d.matrix);
+  });
+  pads.instanceMatrix.needsUpdate = true;
+  pads.castShadow = true; pads.receiveShadow = true;
+  g.add(pads);
+
+  g.add(new THREE.LineLoop(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3( m.outL / 2, 0.12,  m.outW / 2),
+      new THREE.Vector3( m.outL / 2, 0.12, -m.outW / 2),
+      new THREE.Vector3(-m.outL / 2, 0.12, -m.outW / 2),
+      new THREE.Vector3(-m.outL / 2, 0.12,  m.outW / 2)
+    ]),
+    MAT.radiusMax
+  ));
+
+  const chassis = new THREE.Mesh(GEO.box, MAT.craneYellow);
+  chassis.scale.set(chassisL, 1.5, chassisW);
+  chassis.position.set(0, 1.75, 0);
+  chassis.castShadow = true;
+  g.add(chassis);
+
+  const axles = Math.max(2, Math.round(m.chassisL / 3.2));
+  const wheels = new THREE.InstancedMesh(GEO.cyl, MAT.rubber, axles * 2);
+  let wi = 0;
+  for (let a = 0; a < axles; a++) {
+    const wx = -chassisL / 2 + 2.0 + a * ((chassisL - 4.0) / (axles - 1));
+    [1, -1].forEach(function (side) {
+      d.position.set(wx, 0.85, side * (chassisW / 2 + 0.1));
+      d.rotation.set(Math.PI / 2, 0, 0);
+      d.scale.set(1.7, 0.7, 1.7);
+      d.updateMatrix();
+      wheels.setMatrixAt(wi++, d.matrix);
+    });
+  }
+  wheels.instanceMatrix.needsUpdate = true;
+  wheels.castShadow = true;
+  g.add(wheels);
+
+  const driverCab = new THREE.Mesh(GEO.box, MAT.glass);
+  driverCab.scale.set(2.8, 1.8, 2.8);
+  driverCab.position.set(chassisL / 2 - 1.8, 3.4, 0);
+  driverCab.castShadow = true;
+  g.add(driverCab);
+
+  /* ---- drehbarer Oberwagen ---- */
+  const slew = new THREE.Group();
+  slew.name = 'slew';
+
+  const upper = new THREE.Mesh(GEO.box, MAT.craneYellow);
+  upper.scale.set(6.5, 2.2, 3.2);
+  upper.position.set(slewX - 1.0, slewY + 0.3, 0);
+  upper.castShadow = true;
+  slew.add(upper);
+
+  const ballast = new THREE.Mesh(GEO.box, MAT.steelDark);
+  ballast.scale.set(3.0, 2.4, 5.2);
+  ballast.position.set(slewX - 4.6, slewY + 0.6, 0);
+  ballast.castShadow = true;
+  slew.add(ballast);
+
+  const opCab = new THREE.Mesh(GEO.box, MAT.glass);
+  opCab.scale.set(2.4, 1.9, 1.6);
+  opCab.position.set(slewX + 1.2, slewY + 1.0, 2.0);
+  slew.add(opCab);
+
+  // Ausleger vom Drehkranz zur Hakenposition
+  const px = slewX, py = slewY + 1.6;
+  const dx = R, dy = HH - py;
+  const boomLen = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx);
+
+  const boom = new THREE.Mesh(GEO.box, MAT.craneYellow);
+  boom.scale.set(boomLen, 1.6, 1.5);
+  boom.position.set(px + dx / 2, py + dy / 2, 0);
+  boom.rotation.z = angle;
+  boom.castShadow = true;
+  slew.add(boom);
+
+  slew.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(slewX + R, HH, 0),
+      new THREE.Vector3(slewX + R, 1.5, 0)
+    ]),
+    MAT.hookLine
+  ));
+
+  const baseDeg = p.baseRot || 0;
+  slew.rotation.y = ((p.rot || 0) - baseDeg) * Math.PI / 180;
+  g.add(slew);
+
+  /* ---- Arbeitsradius auf Hakenhöhe ---- */
+  if (p.showRadius !== false) {
+    const work = makeCircle(R, MAT.radiusWork, HH);
+    work.position.x = slewX;
+    g.add(work);
+    const dl = dropLines(R, HH, 4);
+    dl.position.x = slewX;
+    g.add(dl);
+  }
+
+  g.userData.bbox = { w: R * 2, d: m.outW, h: HH };
+  g.userData.selBox = { w: m.outL, d: m.outW, h: 5.5, cy: 2.75 };
+  g.userData.boomLength = boomLen;
+  g.userData.boomAngle = angle * 180 / Math.PI;
+  g.userData.hookHeight = HH;
+  g.userData.radius = R;
+  g.userData.model = m;
+  g.userData.slewDeg = p.rot || 0;
+  g.userData.baseDeg = baseDeg;
+  g.rotation.y = baseDeg * Math.PI / 180;
+  return g;
+}
+
+/* ---------- Hilfsgeometrien ---------- */
+function makeCircle(radius, material, y) {
+  const pts = [];
+  const seg = 72;
+  for (let i = 0; i < seg; i++) {
+    const a = (i / seg) * Math.PI * 2;
+    pts.push(new THREE.Vector3(Math.cos(a) * radius, y || 0, Math.sin(a) * radius));
+  }
+  return new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), material);
+}
+
+/* Senkrechte Hilfslinien vom Radiuskreis nach unten */
+function dropLines(radius, y, count) {
+  const pts = [];
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const x = Math.cos(a) * radius, z = Math.sin(a) * radius;
+    pts.push(new THREE.Vector3(x, y, z));
+    pts.push(new THREE.Vector3(x, 0.2, z));
+  }
+  return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), MAT.radiusMax);
+}
+
+
+/* =========================================================
+   Baustein: Baustraße
+   Der Nutzer setzt Stützpunkte; die Ecken werden mit dem
+   gewünschten Mindestradius ausgerundet. Passt ein Radius
+   nicht zwischen zwei Punkte, wird er dort so weit verkleinert
+   wie nötig und das Ergebnis gemeldet.
+   ========================================================= */
+function defaultRoadParams() {
+  return { points: [], width: 6.0, radius: 15, showEdge: true };
+}
+
+function dist2d(a, b) {
+  const dx = a.x - b.x, dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dz * dz);
+}
+
+/* Rundet die Ecken eines Polygonzugs aus */
+function filletPath(pts, radius) {
+  const n = pts.length;
+  if (n < 2) return { path: pts.slice(), reduced: 0, minRadius: radius };
+  if (n === 2) return { path: [pts[0], pts[1]], reduced: 0, minRadius: radius };
+
+  const out = [{ x: pts[0].x, z: pts[0].z }];
+  let reduced = 0;
+  let minRadius = Infinity;
+
+  for (let i = 1; i < n - 1; i++) {
+    const A = pts[i - 1], B = pts[i], C = pts[i + 1];
+    let v1x = A.x - B.x, v1z = A.z - B.z;
+    let v2x = C.x - B.x, v2z = C.z - B.z;
+    const l1 = Math.sqrt(v1x * v1x + v1z * v1z);
+    const l2 = Math.sqrt(v2x * v2x + v2z * v2z);
+    if (l1 < 1e-6 || l2 < 1e-6) continue;
+    v1x /= l1; v1z /= l1; v2x /= l2; v2z /= l2;
+
+    let cos = v1x * v2x + v1z * v2z;
+    cos = Math.max(-1, Math.min(1, cos));
+    const theta = Math.acos(cos);                 // Winkel zwischen den Schenkeln
+    if (theta > Math.PI - 0.02 || theta < 0.02) { // nahezu gerade oder Kehrtwende
+      out.push({ x: B.x, z: B.z });
+      continue;
+    }
+
+    const half = theta / 2;
+    let r = radius;
+    let t = r / Math.tan(half);
+    const maxT = Math.min(l1, l2) * 0.5;
+    if (t > maxT) {
+      t = maxT;
+      r = t * Math.tan(half);
+      reduced++;
+    }
+    if (r < minRadius) minRadius = r;
+
+    const p1 = { x: B.x + v1x * t, z: B.z + v1z * t };
+    const p2 = { x: B.x + v2x * t, z: B.z + v2z * t };
+
+    let bx = v1x + v2x, bz = v1z + v2z;
+    const bl = Math.sqrt(bx * bx + bz * bz);
+    if (bl < 1e-9) { out.push({ x: B.x, z: B.z }); continue; }
+    bx /= bl; bz /= bl;
+    const d = r / Math.sin(half);
+    const cx = B.x + bx * d, cz = B.z + bz * d;
+
+    let a1 = Math.atan2(p1.z - cz, p1.x - cx);
+    const a2 = Math.atan2(p2.z - cz, p2.x - cx);
+    let da = a2 - a1;
+    while (da > Math.PI) da -= 2 * Math.PI;
+    while (da < -Math.PI) da += 2 * Math.PI;
+
+    const steps = Math.max(2, Math.ceil(Math.abs(da) / 0.12));
+    out.push(p1);
+    for (let k = 1; k < steps; k++) {
+      const a = a1 + da * k / steps;
+      out.push({ x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r });
+    }
+    out.push(p2);
+  }
+
+  out.push({ x: pts[n - 1].x, z: pts[n - 1].z });
+  return {
+    path: out,
+    reduced: reduced,
+    minRadius: isFinite(minRadius) ? minRadius : radius
+  };
+}
+
+/* Verdichtet den Weg, damit er dem Gelände folgen kann */
+function densifyPath(path, step) {
+  if (path.length < 2) return path.slice();
+  const out = [path[0]];
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i];
+    const d = dist2d(a, b);
+    const k = Math.max(1, Math.ceil(d / step));
+    for (let j = 1; j <= k; j++) {
+      out.push({ x: a.x + (b.x - a.x) * j / k, z: a.z + (b.z - a.z) * j / k });
+    }
+  }
+  return out;
+}
+
+function pathLength(path) {
+  let l = 0;
+  for (let i = 1; i < path.length; i++) l += dist2d(path[i - 1], path[i]);
+  return l;
+}
+
+/* Erzeugt das Band der Baustraße; Höhen kommen aus dem Gelände */
+function roadGeometry(path, width) {
+  const half = width / 2;
+  const pos = [];
+  const idx = [];
+
+  for (let i = 0; i < path.length; i++) {
+    const prev = path[Math.max(i - 1, 0)];
+    const next = path[Math.min(i + 1, path.length - 1)];
+    let tx = next.x - prev.x, tz = next.z - prev.z;
+    const tl = Math.sqrt(tx * tx + tz * tz) || 1;
+    tx /= tl; tz /= tl;
+    const nx = -tz, nz = tx;                    // Querrichtung
+
+    const lx = path[i].x + nx * half, lz = path[i].z + nz * half;
+    const rx = path[i].x - nx * half, rz = path[i].z - nz * half;
+    pos.push(lx, getHeightAt(lx, lz) + 0.12, lz);
+    pos.push(rx, getHeightAt(rx, rz) + 0.12, rz);
+
+    if (i > 0) {
+      const a = (i - 1) * 2, b = a + 1, c = i * 2, d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+  }
+  return { positions: pos, indices: idx };
+}
+
+function buildRoad(p) {
+  const g = new THREE.Group();
+  const pts = p.points || [];
+
+  if (pts.length < 2) {
+    g.userData.bbox = { w: 4, d: 4, h: 1 };
+    g.userData.selBox = { w: 4, d: 4, h: 1, cy: 0.5, cx: 0, cz: 0 };
+    g.userData.length = 0;
+    g.userData.reduced = 0;
+    return g;
+  }
+
+  const fil = filletPath(pts, Math.max(p.radius, 1));
+  const path = densifyPath(fil.path, 2.5);
+  const rg = roadGeometry(path, Math.max(p.width, 1));
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(rg.positions), 3));
+  geo.setIndex(rg.indices);
+  geo.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geo, MAT.road);
+  mesh.receiveShadow = true;
+  g.add(mesh);
+
+  if (p.showEdge !== false) {
+    const left = [], right = [];
+    for (let i = 0; i < path.length; i++) {
+      const o = i * 6;
+      left.push(new THREE.Vector3(rg.positions[o], rg.positions[o + 1] + 0.02, rg.positions[o + 2]));
+      right.push(new THREE.Vector3(rg.positions[o + 3], rg.positions[o + 4] + 0.02, rg.positions[o + 5]));
+    }
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(left), MAT.roadEdge));
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(right), MAT.roadEdge));
+  }
+
+  let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
+  path.forEach(function (q) {
+    if (q.x < minx) minx = q.x;
+    if (q.x > maxx) maxx = q.x;
+    if (q.z < minz) minz = q.z;
+    if (q.z > maxz) maxz = q.z;
+  });
+  const half = Math.max(p.width, 1) / 2;
+
+  g.userData.bbox = { w: maxx - minx + width0(half), d: maxz - minz + width0(half), h: 1 };
+  g.userData.selBox = {
+    w: maxx - minx + width0(half) + 2, d: maxz - minz + width0(half) + 2, h: 2,
+    cy: 1, cx: (minx + maxx) / 2, cz: (minz + maxz) / 2
+  };
+  g.userData.length = pathLength(path);
+  g.userData.reduced = fil.reduced;
+  g.userData.minRadius = fil.minRadius;
+  g.userData.path = path;
+  return g;
+}
+
+function width0(h) { return h * 2; }
+
+/* Mittelpunkt der gesetzten Stützpunkte */
+/* Kennzahlen einer Baustraße ohne Mesh-Aufbau */
+function roadInfo(p) {
+  const pts = (p && p.points) || [];
+  if (pts.length < 2) return { length: 0, minRadius: (p && p.radius) || 0, reduced: 0 };
+  const fil = filletPath(pts, p.radius);
+  const path = densifyPath(fil.path, 2);
+  return { length: pathLength(path), minRadius: fil.minRadius, reduced: fil.reduced };
+}
+
+function roadCentroid(pts) {
+  if (!pts || !pts.length) return { x: 0, z: 0 };
+  let sx = 0, sz = 0;
+  pts.forEach(function (q) { sx += q.x; sz += q.z; });
+  return { x: sx / pts.length, z: sz / pts.length };
+}
+
+/* ---------- Vorschau während des Setzens ---------- */
+let roadPreview = null;
+
+function setRoadPreview(pts, hover) {
+  clearRoadPreview();
+  if (!pts || !pts.length) return;
+  const g = new THREE.Group();
+  const all = hover ? pts.concat([hover]) : pts;
+
+  if (all.length >= 2) {
+    const line = all.map(function (q) {
+      return new THREE.Vector3(q.x, getHeightAt(q.x, q.z) + 0.4, q.z);
+    });
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line), MAT.ghost));
+  }
+  pts.forEach(function (q) {
+    const m = new THREE.Mesh(GEO.sphere, MAT.measure);
+    m.position.set(q.x, getHeightAt(q.x, q.z) + 0.4, q.z);
+    m.scale.set(0.7, 0.7, 0.7);
+    g.add(m);
+  });
+  scene.add(g);
+  roadPreview = g;
+  return g;
+}
+
+function clearRoadPreview() {
+  if (roadPreview) {
+    disposeGroup(roadPreview);
+    scene.remove(roadPreview);
+    roadPreview = null;
+  }
+}
+
+
+/* =========================================================
+   Objektverwaltung
+   ========================================================= */
+function builderFor(type) {
+  if (type === 'container') return buildContainer;
+  if (type === 'tower') return buildTowerCrane;
+  if (type === 'mobile') return buildMobileCrane;
+  if (type === 'road') return buildRoad;
+  throw new Error('Unbekannter Typ: ' + type);
+}
+
+function defaultsFor(type) {
+  if (type === 'container') return defaultContainerParams();
+  if (type === 'tower') return defaultTowerParams();
+  if (type === 'mobile') return defaultMobileParams();
+  if (type === 'road') return defaultRoadParams();
+  throw new Error('Unbekannter Typ: ' + type);
+}
+
+function labelFor(type, params) {
+  if (type === 'container') {
+    const lay = containerLayout(params);
+    return 'Container ' + lay.count + '× · ' + params.cols + ' neben, ' +
+           params.rows + ' Reihe(n), ' + params.levels + ' Eb.';
+  }
+  if (type === 'tower') return getTowerModel(params.model).name;
+  if (type === 'mobile') return getModel(params.model).name;
+  if (type === 'road') {
+    return 'Baustraße ' + Math.round(roadInfo(params).length) + ' m · ' + params.width.toFixed(1) + ' m';
+  }
+  if (type === 'road') {
+    const fil = filletPath(params.points || [], Math.max(params.radius, 1));
+    const l = pathLength(densifyPath(fil.path, 2.5));
+    return 'Baustraße ' + Math.round(l) + ' m · ' + params.width.toFixed(1) + ' m breit';
+  }
+  return type;
+}
+
+function placeGroup(obj) {
+  if (obj.type === 'road') {
+    // Die Geometrie liegt bereits in Weltkoordinaten
+    obj.group.position.set(0, 0, 0);
+    const c = roadCentroid(obj.params.points);
+    obj.x = c.x; obj.z = c.z;
+  } else {
+    obj.group.position.set(obj.x, getHeightAt(obj.x, obj.z), obj.z);
+  }
+}
+
+function addObject(type, x, z, params) {
+  const p = params || defaultsFor(type);
+  const group = builderFor(type)(p);
+  scene.add(group);
+
+  const obj = { id: nextId++, type: type, params: p, group: group, x: x, z: z };
+  placeGroup(obj);
+  group.userData.__objId = obj.id;
+  objects.push(obj);
+  return obj;
+}
+
+function rebuildObject(obj) {
+  disposeGroup(obj.group);
+  scene.remove(obj.group);
+  obj.group = builderFor(obj.type)(obj.params);
+  obj.group.userData.__objId = obj.id;
+  scene.add(obj.group);
+  placeGroup(obj);
+  if (isSelected(obj.id)) updateSelectionBoxes();
+}
+
+function moveObject(obj, x, z) {
+  if (obj.type === 'road') {
+    const dx = x - obj.x, dz = z - obj.z;
+    obj.params.points = (obj.params.points || []).map(function (q) {
+      return { x: q.x + dx, z: q.z + dz };
+    });
+    rebuildObject(obj);
+    if (isSelected(obj.id)) focusOnObject(obj);
+    return;
+  }
+  obj.x = x; obj.z = z;
+  obj.group.position.set(x, getHeightAt(x, z), z);
+  if (isSelected(obj.id)) { updateSelectionBoxes(); focusOnObject(obj); }
+}
+
+function removeObject(id) {
+  let idx = -1;
+  for (let i = 0; i < objects.length; i++) if (objects[i].id === id) { idx = i; break; }
+  if (idx < 0) return false;
+  disposeGroup(objects[idx].group);
+  scene.remove(objects[idx].group);
+  objects.splice(idx, 1);
+  const si = selectedIds.indexOf(id);
+  if (si >= 0) { selectedIds.splice(si, 1); updateSelectionBoxes(); }
+  return true;
+}
+
+function findObject(id) {
+  for (let i = 0; i < objects.length; i++) if (objects[i].id === id) return objects[i];
+  return null;
+}
+
+function disposeGroup(group) {
+  group.traverse(function (child) {
+    if (child.geometry && child.geometry !== GEO.box && child.geometry !== GEO.cyl) {
+      child.geometry.dispose();
+    }
+  });
+}
+
+function reseatAllObjects() {
+  for (let i = 0; i < objects.length; i++) {
+    if (objects[i].type === 'road') rebuildObject(objects[i]);
+    else objects[i].group.position.y = getHeightAt(objects[i].x, objects[i].z);
+  }
+  if (selectedIds.length) updateSelectionBoxes();
+}
+
+/* Objekte entfernen, die außerhalb der neuen Kachel liegen */
+function pruneObjectsOutside() {
+  if (!TERRAIN) return 0;
+  const mx = TERRAIN.w / 2, mz = TERRAIN.d / 2;
+  let n = 0;
+  objects.slice().forEach(function (o) {
+    if (Math.abs(o.x) > mx || Math.abs(o.z) > mz) { removeObject(o.id); n++; }
+  });
+  return n;
+}
+
+/* =========================================================
+   Auswahl und Kamerafokus
+   ========================================================= */
+function selectObject(id) {
+  selectObjects(id === null ? [] : [id]);
+}
+
+/* Mehrere Objekte gleichzeitig auswählen und einrahmen */
+function selectObjects(ids, frame) {
+  selectedIds = (ids || []).filter(function (i) { return findObject(i) !== null; });
+  updateSelectionBoxes();
+  if (!selectedIds.length) return;
+  const objs = selectedIds.map(findObject);
+  if (frame === false) return;
+  if (objs.length === 1) focusOnObject(objs[0]);
+  else frameObjects(objs);
+}
+
+function getSelectedId() {
+  return selectedIds.length === 1 ? selectedIds[0] : null;
+}
+
+function isSelected(id) {
+  return selectedIds.indexOf(id) >= 0;
+}
+
+/* Angeklicktes Objekt wird zum Drehzentrum der Kamera */
+function focusOnObject(obj) {
+  const b = obj.group.userData.selBox || { cy: 5 };
+  if (obj.type === 'road') { frameObjects([obj]); return; }
+  focusGoal = new THREE.Vector3(obj.x, getHeightAt(obj.x, obj.z) + b.cy, obj.z);
+  camGoal = null;
+}
+
+/* Kamera so setzen, dass alle übergebenen Objekte ins Bild passen */
+function frameObjects(objs) {
+  if (!objs || !objs.length) return;
+  let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity, maxy = 0;
+  objs.forEach(function (o) {
+    const bb = o.group.userData.bbox || { w: 20, d: 20, h: 10 };
+    const r = Math.max(bb.w, bb.d) / 2;
+    if (o.x - r < minx) minx = o.x - r;
+    if (o.x + r > maxx) maxx = o.x + r;
+    if (o.z - r < minz) minz = o.z - r;
+    if (o.z + r > maxz) maxz = o.z + r;
+    const top = getHeightAt(o.x, o.z) + bb.h;
+    if (top > maxy) maxy = top;
+  });
+
+  const cx = (minx + maxx) / 2, cz = (minz + maxz) / 2;
+  const radius = Math.max(Math.max(maxx - minx, maxz - minz) / 2, maxy / 2, 20);
+  focusGoal = new THREE.Vector3(cx, maxy * 0.4, cz);
+
+  const fov = camera.fov * Math.PI / 180;
+  const dist = (radius / Math.tan(fov / 2)) * 1.45 + radius;
+
+  // Blickrichtung beibehalten, nur den Abstand anpassen
+  let dx = camera.position.x - controls.target.x;
+  let dy = camera.position.y - controls.target.y;
+  let dz = camera.position.z - controls.target.z;
+  let len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (!(len > 0.001)) { dx = 0.6; dy = 0.55; dz = 0.6; len = Math.sqrt(0.36 + 0.3025 + 0.36); }
+  dx /= len; dy /= len; dz /= len;
+  if (dy < 0.25) { dy = 0.45; }
+
+  camGoal = new THREE.Vector3(cx + dx * dist, focusGoal.y + dy * dist, cz + dz * dist);
+}
+
+/* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
+function updateControls() {
+  if (focusGoal) {
+    controls.target.lerp(focusGoal, 0.16);
+    if (controls.target.distanceTo(focusGoal) < 0.08) {
+      controls.target.copy(focusGoal);
+      focusGoal = null;
+    }
+  }
+  updateMeasureScale();
+  updateNodeScale();
+  refreshTopView();
+  if (camGoal) {
+    camera.position.lerp(camGoal, 0.14);
+    if (camera.position.distanceTo(camGoal) < 0.2) {
+      camera.position.copy(camGoal);
+      camGoal = null;
+    }
+  }
+  controls.update();
+}
+
+function updateSelectionBoxes() {
+  clearSelectionBoxes();
+  selectedIds.forEach(function (id) {
+    const obj = findObject(id);
+    if (!obj) return;
+    const b = obj.group.userData.selBox || { w: 10, d: 10, h: 10, cy: 5 };
+    const box = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(b.w + 1.5, b.h + 1.5, b.d + 1.5)),
+      MAT.selection
+    );
+    box.name = '__selection';
+    box.position.copy(obj.group.position);
+    box.position.x += (b.cx || 0);
+    box.position.z += (b.cz || 0);
+    box.position.y += b.cy;
+    box.rotation.y = obj.group.rotation.y;
+    scene.add(box);
+    selectionBoxes.push(box);
+  });
+}
+
+function clearSelectionBoxes() {
+  selectionBoxes.forEach(function (b) {
+    scene.remove(b);
+    if (b.geometry) b.geometry.dispose();
+  });
+  selectionBoxes = [];
+}
+
+/* ---------- Messpunkt ---------- */
+const MEASURE_PIXELS = 9;   // Durchmesser der Kugel auf dem Bildschirm
+
+/* Setzt den Messpunkt und macht ihn zum Dreh- und Zoomzentrum */
+function focusOnPoint(x, y, z, zoom) {
+  focusGoal = new THREE.Vector3(x, y, z);
+  if (zoom === false) { camGoal = null; return; }
+  let dx = camera.position.x - controls.target.x;
+  let dy = camera.position.y - controls.target.y;
+  let dz = camera.position.z - controls.target.z;
+  let len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (!(len > 0.001)) return;
+  // Blickrichtung beibehalten, Abstand auf einen nahen Arbeitsabstand ziehen
+  const span = TERRAIN ? Math.max(TERRAIN.w, TERRAIN.d) : 500;
+  const want = Math.max(Math.min(len, span * 0.35), span * 0.12);
+  camGoal = new THREE.Vector3(x + dx / len * want, y + dy / len * want, z + dz / len * want);
+}
+
+function setMeasureMarker(x, y, z) {
+  clearMeasureMarker();
+  const m = new THREE.Mesh(GEO.sphere, MAT.measure);
+  m.position.set(x, y, z);
+  m.renderOrder = 999;
+  m.name = '__measure';
+  scene.add(m);
+  measureMarker = m;
+  measurePoint = new THREE.Vector3(x, y, z);
+  updateMeasureScale();
+  return m;
+}
+
+/* Hält die Kugel unabhängig vom Zoom gleich groß */
+function updateMeasureScale() {
+  if (!measureMarker) return;
+  const d = camera.position.distanceTo(measureMarker.position);
+  const fov = camera.fov * Math.PI / 180;
+  const r = (d * Math.tan(fov / 2) * 2 / window.innerHeight) * (MEASURE_PIXELS / 2);
+  measureMarker.scale.set(r, r, r);
+}
+
+function clearMeasureMarker() {
+  if (measureMarker) {
+    scene.remove(measureMarker);
+    measureMarker = null;
+  }
+  measurePoint = null;
+}
+
+/* Rechnet den Messpunkt in Bildschirmkoordinaten um.
+   Liefert null, wenn er hinter der Kamera liegt. */
+function measureScreenPos() {
+  if (!measurePoint) return null;
+  const v = measurePoint.clone();
+  v.project(camera);
+  if (v.z > 1) return null;
+  return {
+    x: (v.x * 0.5 + 0.5) * window.innerWidth,
+    y: (-v.y * 0.5 + 0.5) * window.innerHeight
+  };
+}
+
+/* =========================================================
+   Stützpunkte einer Baustraße
+   ========================================================= */
+const NODE_PIXELS = 13;
+
+function showRoadNodes(obj) {
+  // Nur die Darstellung erneuern; die Knotenauswahl bleibt bestehen
+  dropNodeGroup();
+  if (!obj || obj.type !== 'road') { clearRoadNodes(); return null; }
+  const pts = obj.params.points || [];
+  if (!pts.length) { clearRoadNodes(); return null; }
+
+  const g = new THREE.Group();
+  g.name = '__roadnodes';
+  pts.forEach(function (p, i) {
+    const m = new THREE.Mesh(GEO.sphere, i === activeNode ? MAT.nodeActive : MAT.node);
+    m.position.set(p.x, getHeightAt(p.x, p.z) + 0.5, p.z);
+    m.renderOrder = 998;
+    m.userData.__nodeIndex = i;
+    g.add(m);
+  });
+  scene.add(g);
+  roadNodes = g;
+  roadNodeObj = obj;
+  updateNodeScale();
+  return g;
+}
+
+function dropNodeGroup() {
+  if (roadNodes) {
+    scene.remove(roadNodes);
+    roadNodes = null;
+  }
+}
+
+function clearRoadNodes() {
+  dropNodeGroup();
+  roadNodeObj = null;
+  activeNode = null;
+}
+
+function refreshRoadNodes() {
+  if (roadNodeObj) showRoadNodes(findObject(roadNodeObj.id) || roadNodeObj);
+}
+
+/* Hält die Kugeln unabhängig vom Zoom gleich groß */
+function updateNodeScale() {
+  if (!roadNodes) return;
+  const fov = camera.fov * Math.PI / 180;
+  roadNodes.children.forEach(function (m) {
+    const d = camera.position.distanceTo(m.position);
+    const r = (d * Math.tan(fov / 2) * 2 / window.innerHeight) * (NODE_PIXELS / 2);
+    m.scale.set(r, r, r);
+  });
+}
+
+/* Liefert den Index des angeklickten Stützpunkts oder null */
+function raycastRoadNode(event) {
+  if (!roadNodes || !roadNodes.children.length) return null;
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(roadNodes.children, false);
+  if (!hits.length) return null;
+  const i = hits[0].object.userData.__nodeIndex;
+  return (i === undefined || i === null) ? null : i;
+}
+
+function activeRoadNode() { return activeNode; }
+
+function setActiveNode(i) {
+  activeNode = i;
+  refreshRoadNodes();
+  return activeNode;
+}
+
+/* Verschiebt einen Stützpunkt und baut die Trasse neu auf */
+function moveRoadNode(obj, index, x, z) {
+  if (!obj || obj.type !== 'road') return false;
+  const pts = obj.params.points;
+  if (!pts || index < 0 || index >= pts.length) return false;
+  pts[index] = { x: x, z: z };
+  const c = roadCentroid(pts);
+  obj.x = c.x; obj.z = c.z;
+  rebuildObject(obj);
+  refreshRoadNodes();
+  return true;
+}
+
+/* Stützpunkt entfernen; unter drei Punkten bleibt alles unverändert */
+function removeRoadNode(obj, index) {
+  if (!obj || obj.type !== 'road') return false;
+  const pts = obj.params.points;
+  if (!pts || pts.length <= 2 || index < 0 || index >= pts.length) return false;
+  pts.splice(index, 1);
+  const c = roadCentroid(pts);
+  obj.x = c.x; obj.z = c.z;
+  activeNode = null;
+  rebuildObject(obj);
+  refreshRoadNodes();
+  return true;
+}
+
+/* =========================================================
+   Raycasting
+   ========================================================= */
+function pointerToNDC(event) {
+  pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  return pointer;
+}
+
+function raycastTerrain(event) {
+  if (!terrainMesh) return null;
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObject(terrainMesh, false);
+  return hits.length ? hits[0].point : null;
+}
+
+/* Trifft Gelände oder Gebäude; liefert Punkt und Quelle */
+function raycastGround(event) {
+  if (!terrainMesh) return null;
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const targets = [terrainMesh];
+  if (buildingsMesh) targets.push(buildingsMesh);
+  const hits = raycaster.intersectObjects(targets, false);
+  if (!hits.length) return null;
+  return {
+    point: hits[0].point,
+    onBuilding: buildingsMesh ? hits[0].object === buildingsMesh : false
+  };
+}
+
+function raycastObjects(event) {
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const roots = objects.map(function (o) { return o.group; });
+  if (!roots.length) return null;
+  const hits = raycaster.intersectObjects(roots, true);
+  if (!hits.length) return null;
+  let node = hits[0].object;
+  while (node && !node.userData.__objId) node = node.parent;
+  return node ? findObject(node.userData.__objId) : null;
+}
+
+/* =========================================================
+   Ghost-Vorschau
+   ========================================================= */
+function makeGhost(type, params) {
+  const g = new THREE.Group();
+  if (type === 'road') return g;
+  if (type === 'container') {
+    const lay = containerLayout(params);
+    const ls = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(lay.w, lay.h, lay.d)), MAT.ghost);
+    ls.position.y = lay.h / 2;
+    ls.rotation.y = (params.rot || 0) * Math.PI / 180;
+    g.add(ls);
+  } else if (type === 'tower') {
+    const topY = Math.max(params.hookHeight, 8) + 1.2;
+    g.add(makeCircle(Math.max(params.radius, 10), MAT.ghost, topY));
+    const mast = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(2, topY, 2)), MAT.ghost);
+    mast.position.y = topY / 2;
+    g.add(mast);
+  } else {
+    const m = getModel(params.model);
+    g.add(makeCircle(Math.max(params.radius, 3), MAT.ghost, Math.max(params.hookHeight, 10)));
+    const box = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(m.outL, 3, m.outW)), MAT.ghost);
+    box.position.y = 1.5;
+    box.rotation.y = (params.rot || 0) * Math.PI / 180;
+    g.add(box);
+  }
+  return g;
+}
+
+function setGhost(type, params) {
+  clearGhost();
+  if (!type) return;
+  ghost = makeGhost(type, params);
+  ghost.visible = false;
+  scene.add(ghost);
+}
+
+function clearGhost() {
+  if (ghost) {
+    disposeGroup(ghost);
+    scene.remove(ghost);
+    ghost = null;
+  }
+}
+
+/* =========================================================
+   Kennzahlen
+   ========================================================= */
+function computeStats() {
+  let containers = 0, towers = 0, mobiles = 0, area = 0, roadLength = 0;
+  for (let i = 0; i < objects.length; i++) {
+    const o = objects[i];
+    if (o.type === 'container') {
+      const lay = containerLayout(o.params);
+      containers += lay.count;
+      area += lay.w * lay.d;
+    } else if (o.type === 'tower') towers++;
+    else if (o.type === 'mobile') mobiles++;
+    else if (o.type === 'road') roadLength += roadInfo(o.params).length;
+  }
+  return { containers: containers, towers: towers, mobiles: mobiles, area: area,
+           roadLength: roadLength, total: objects.length };
+}
+
+function radiusConflicts() {
+  const cranes = objects.filter(function (o) { return o.type === 'tower' || o.type === 'mobile'; });
+  const out = [];
+  for (let i = 0; i < cranes.length; i++) {
+    for (let j = i + 1; j < cranes.length; j++) {
+      const a = cranes[i], b = cranes[j];
+      const dx = a.x - b.x, dz = a.z - b.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      const sum = a.params.radius + b.params.radius;
+      if (dist < sum) out.push({ a: a.id, b: b.id, dist: dist, overlap: sum - dist });
+    }
+  }
+  return out;
+}
+
+/* =========================================================
+   Export für Tests
+   ========================================================= */
+
+/* =========================================================
+   Quick-Site-Design  –  Bedienoberfläche
+   ========================================================= */
+
+let toolParams = {};
+let formRefs = {};
+let statusTimer = null;
+let lastGmlRings = null;
+let lastDemTiles = null;      // eingelesene Kacheln, für Auflösungswechsel
+let lastDemNames = [];
+let gridLimit = MAX_GRID;
+let roadPoints = [];          // Stützpunkte während des Zeichnens
+
+/* =========================================================
+   Sprachen
+   ========================================================= */
+const STRINGS = {
+  de: {
+    lang: 'Deutsch',
+    overview: 'Übersicht', data: 'Daten', view: 'Ansicht', site: 'Baustelle',
+    clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Ansicht',
+    noTerrain: 'Kein Geländemodell geladen',
+    loadFirst: 'Zum Starten ein Geländemodell laden',
+    terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
+    detail: 'Detailstufe', original: 'Original', points: 'Punkte',
+    noFile: 'Keine Datei', remove: 'Entfernen',
+    heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
+    cranes: 'Krane', area: 'Stellfläche', road: 'Baustraße',
+    nothingPlaced: 'Noch nichts platziert',
+    nothingSelected: 'Kein Baustein gewählt',
+    pickHint: 'Baustein unten wählen oder ein platziertes Objekt anklicken.',
+    placeHint: 'Klick ins Gelände platziert. Esc bricht ab.',
+    roadHint: 'Punkt für Punkt setzen, dann Leertaste. Breite und Radius lassen sich danach ändern.',
+    another: 'Weiterer', move: 'Verschieben', duplicate: 'Duplizieren', del: 'Löschen',
+    deselect: 'Abwählen', delGroup: 'Gruppe löschen', selected: 'Objekte ausgewählt',
+    datasheet: 'Datenblatt beim Hersteller',
+    craneNote: 'Nur als Richtwert zu benutzen. Genaue Spezifikation siehe Datenblatt.',
+    guideValues: 'Achtung: Richtwerte',
+    dark: 'Dunkel', light: 'Hell',
+    topView: '2D', topViewSet: 'Draufsicht. Ziehen kippt die Ansicht wieder.',
+    north: 'Nach Norden ausrichten',
+    sourceCode: 'Quelltext auf GitHub',
+    imprint: 'Impressum', privacy: 'Datenschutz',
+    demoLoading: 'Beispieldaten werden geladen: Gelände',
+    demoLoadingBuildings: 'Beispieldaten werden geladen: Gebäude',
+    demoReady: 'Beispieldatensatz geladen. Baustein unten wählen und ins Gelände klicken.',
+    demoFailed: 'Beispieldaten konnten nicht geladen werden:',
+    radiusTooTight: 'Der Mindestradius passt nicht zwischen die Stützpunkte. Punkte weiter auseinander setzen oder Radius verkleinern.',
+    noManufacturerValue: 'keine Herstellerangabe',
+    crs: 'KBS', accuracy: 'Genauigkeit', unit: 'Einheit', unitMeter: 'Meter',
+    hintClick: 'Klick', hintMeasure: 'Messpunkt', hintDrag: 'Ziehen',
+    hintRotate: 'Drehen', hintEsc: 'Esc', hintCancel: 'Abbrechen',
+    measureOn: 'Messpunkt auf', ground: 'Gelände', building: 'Gebäude',
+    design: 'Design', font: 'Schriftart', fontSize: 'Schriftgröße',
+    accent: 'Akzentfarbe', layout: 'Anordnung', panelWidth: 'Fensterbreite',
+    language: 'Sprache', toolsLeft: 'Werkzeuge links', toolsRight: 'Werkzeuge rechts',
+    loading: 'Lade', reset: 'Zurücksetzen',
+    tCont: 'Container', tContHint: 'Ab zwei Reihen liegt die zweite quer',
+    tTower: 'Turmdrehkran', tTowerHint: 'Liebherr und WOLFF, inkl. Schnellbaukrane',
+    tMobile: 'Mobilkran', tMobileHint: 'Liebherr LTM',
+    tRoad: 'Baustraße', tRoadHint: 'Stützpunkte setzen, Leertaste schließt ab',
+    fCols: 'Anzahl nebeneinander', fRows: 'Reihen hintereinander', fLevels: 'Stockwerke',
+    fRot: 'Winkel Anlage', fUnitL: 'Länge je Container', fUnitB: 'Breite je Container',
+    fUnitH: 'Höhe je Container', fModel: 'Krantyp', fHook: 'Hakenhöhe',
+    fRadius: 'Ausladung', fMast: 'Turmbreite', fJibRot: 'Winkel Ausleger',
+    fBaseRot: 'Winkel Fundament', fVehRot: 'Winkel Fahrzeug', fShowRadius: 'Arbeitsradius zeigen',
+    fWidth: 'Straßenbreite', fMinRadius: 'Mindestradius Kurve', fShowEdge: 'Ränder zeigen',
+    msgPlaced: 'platziert.', msgMinTwo: 'Mindestens zwei Punkte setzen.',
+    msgCleared: 'Baustelle geleert.', msgViewReset: 'Ansicht zurückgesetzt.',
+    msgMoved: 'Position übernommen.', msgPickNew: 'Neue Position im Gelände anklicken.',
+    msgNextPos: 'Nächste Position anklicken.', msgNeedTerrain: 'Bitte zuerst ein Geländemodell laden.',
+    msgBuildingsLoaded: 'Gebäudemodell geladen.', msgBuildingsRemoved: 'Gebäudemodell entfernt.',
+    roadDrawing: 'Baustraße: Punkte im Gelände setzen',
+    roadSet: 'gesetzt', roadFinish: 'Leertaste beendet, Esc bricht ab',
+    long: 'lang', tightest: 'engster Radius', curvesTight: 'Kurve(n) enger als gewünscht',
+    conflict1: 'Kranradien überschneiden sich um', conflictN: 'Überschneidungen von Kranradien',
+    nodeHint: 'Stützpunkt anklicken, dann neue Position im Gelände wählen.', nodePicked: 'Stützpunkt gewählt. Neue Position anklicken.', nodeMoved: 'Stützpunkt verschoben.', nodePickFirst: 'Zuerst einen Stützpunkt anklicken.', nodeMinTwo: 'Eine Baustraße braucht mindestens zwei Stützpunkte.', delNode: 'Punkt löschen'
+  },
+  en: {
+    lang: 'English',
+    overview: 'Overview', data: 'Data', view: 'View', site: 'Site',
+    clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'View',
+    noTerrain: 'No terrain model loaded',
+    loadFirst: 'Load a terrain model to begin',
+    terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
+    detail: 'Detail level', original: 'Original', points: 'points',
+    noFile: 'No file', remove: 'Remove',
+    heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
+    cranes: 'Cranes', area: 'Footprint', road: 'Haul road',
+    nothingPlaced: 'Nothing placed yet',
+    nothingSelected: 'No item selected',
+    pickHint: 'Pick an item below or click a placed object.',
+    placeHint: 'Click the terrain to place. Esc cancels.',
+    roadHint: 'Set point by point, then press space. Width and radius can be changed afterwards.',
+    another: 'Another', move: 'Move', duplicate: 'Duplicate', del: 'Delete',
+    deselect: 'Deselect', delGroup: 'Delete group', selected: 'objects selected',
+    datasheet: 'Manufacturer data sheet',
+    craneNote: 'Guide values only. See the data sheet for exact specifications.',
+    guideValues: 'Caution: guide values',
+    dark: 'Dark', light: 'Light',
+    topView: '2D', topViewSet: 'Top view. Drag to tilt back.',
+    north: 'Face north',
+    sourceCode: 'Source code on GitHub',
+    imprint: 'Impressum', privacy: 'Datenschutz',
+    demoLoading: 'Loading sample data: terrain',
+    demoLoadingBuildings: 'Loading sample data: buildings',
+    demoReady: 'Sample data loaded. Pick an element below and click the terrain.',
+    demoFailed: 'Sample data could not be loaded:',
+    radiusTooTight: 'The minimum radius does not fit between the nodes. Move the nodes further apart or reduce the radius.',
+    noManufacturerValue: 'no manufacturer figure',
+    crs: 'CRS', accuracy: 'Accuracy', unit: 'Unit', unitMeter: 'Metre',
+    hintClick: 'Click', hintMeasure: 'Measure point', hintDrag: 'Drag',
+    hintRotate: 'Orbit', hintEsc: 'Esc', hintCancel: 'Cancel',
+    measureOn: 'Measure point on', ground: 'terrain', building: 'building',
+    design: 'Design', font: 'Typeface', fontSize: 'Text size',
+    accent: 'Accent colour', layout: 'Layout', panelWidth: 'Panel width',
+    language: 'Language', toolsLeft: 'Tools left', toolsRight: 'Tools right',
+    loading: 'Loading', reset: 'Reset',
+    tCont: 'Containers', tContHint: 'From two rows the second lies crosswise',
+    tTower: 'Tower crane', tTowerHint: 'Liebherr and WOLFF, incl. self-erecting',
+    tMobile: 'Mobile crane', tMobileHint: 'Liebherr LTM',
+    tRoad: 'Haul road', tRoadHint: 'Set points, space finishes',
+    fCols: 'Units side by side', fRows: 'Rows behind each other', fLevels: 'Storeys',
+    fRot: 'Angle', fUnitL: 'Unit length', fUnitB: 'Unit width',
+    fUnitH: 'Unit height', fModel: 'Crane type', fHook: 'Hook height',
+    fRadius: 'Radius', fMast: 'Mast width', fJibRot: 'Jib angle',
+    fBaseRot: 'Base angle', fVehRot: 'Carrier angle', fShowRadius: 'Show working radius',
+    fWidth: 'Road width', fMinRadius: 'Minimum curve radius', fShowEdge: 'Show edges',
+    msgPlaced: 'placed.', msgMinTwo: 'Set at least two points.',
+    msgCleared: 'Site cleared.', msgViewReset: 'View reset.',
+    msgMoved: 'Position applied.', msgPickNew: 'Click the new position on the terrain.',
+    msgNextPos: 'Click the next position.', msgNeedTerrain: 'Please load a terrain model first.',
+    msgBuildingsLoaded: 'Building model loaded.', msgBuildingsRemoved: 'Building model removed.',
+    roadDrawing: 'Haul road: set points on the terrain',
+    roadSet: 'set', roadFinish: 'space finishes, Esc cancels',
+    long: 'long', tightest: 'tightest radius', curvesTight: 'curve(s) tighter than requested',
+    conflict1: 'Crane radii overlap by', conflictN: 'overlapping crane radii',
+    nodeHint: 'Click a node, then pick its new position on the terrain.', nodePicked: 'Node selected. Click the new position.', nodeMoved: 'Node moved.', nodePickFirst: 'Select a node first.', nodeMinTwo: 'A haul road needs at least two nodes.', delNode: 'Delete node'
+  }
+};
+
+function T(key) {
+  const d = STRINGS[SETTINGS.language] || STRINGS.de;
+  return d[key] !== undefined ? d[key] : (STRINGS.de[key] !== undefined ? STRINGS.de[key] : key);
+}
+
+/* Setzt alle fest im Markup stehenden Texte */
+function applyLanguage() {
+  const nodes = document.querySelectorAll('[data-i18n]');
+  for (let i = 0; i < nodes.length; i++) {
+    const k = nodes[i].getAttribute('data-i18n');
+    if (k) nodes[i].textContent = T(k);
+  }
+  document.documentElement.lang = SETTINGS.language;
+}
+
+/* ---------- Parameterschemata ---------- */
+const SCHEMAS = {
+  container: [
+    { key: 'cols',   label: 'fCols',  type: 'range', min: 1, max: 25, step: 1, unit: '' },
+    { key: 'rows',   label: 'fRows', type: 'range', min: 1, max: 2,  step: 1, unit: '' },
+    { key: 'levels', label: 'fLevels',            type: 'range', min: 1, max: 5,  step: 1, unit: '' },
+    { key: 'rot',    label: 'fRot',         type: 'range', min: 0, max: 355, step: 5, unit: '°' },
+    { key: 'unitL',  label: 'fUnitL',  type: 'number', min: 2, max: 15, step: 0.01, unit: 'm' },
+    { key: 'unitB',  label: 'fUnitB', type: 'number', min: 1.5, max: 6, step: 0.01, unit: 'm' },
+    { key: 'unitH',  label: 'fUnitH',   type: 'number', min: 2, max: 4,  step: 0.01, unit: 'm' }
+  ],
+  tower: [
+    { key: 'model',      label: 'fModel',    type: 'select', source: 'tower' },
+    { key: 'hookHeight', label: 'fHook',  type: 'range', min: 15, max: 130, step: 1, unit: 'm' },
+    { key: 'radius',     label: 'fRadius',  type: 'range', min: 15, max: 85,  step: 1, unit: 'm' },
+    { key: 'mastWidth',  label: 'fMast', type: 'range', min: 1.1, max: 3.5, step: 0.1, unit: 'm' },
+    { key: 'rot',        label: 'fJibRot',  type: 'range', min: 0, max: 355, step: 5, unit: '°' },
+    { key: 'baseRot',    label: 'fBaseRot', type: 'range', min: 0, max: 355, step: 5, unit: '°' },
+    { key: 'showRadius', label: 'fShowRadius', type: 'checkbox' }
+  ],
+  mobile: [
+    { key: 'model',      label: 'fModel',    type: 'select', source: 'mobile' },
+    { key: 'hookHeight', label: 'fHook',  type: 'range', min: 10, max: 190, step: 1, unit: 'm' },
+    { key: 'radius',     label: 'fRadius',  type: 'range', min: 3,  max: 140, step: 1, unit: 'm' },
+    { key: 'rot',        label: 'fJibRot',  type: 'range', min: 0, max: 355, step: 5, unit: '°' },
+    { key: 'baseRot',    label: 'fVehRot',  type: 'range', min: 0, max: 355, step: 5, unit: '°' },
+    { key: 'showRadius', label: 'fShowRadius', type: 'checkbox' }
+  ],
+  road: [
+    { key: 'width',    label: 'fWidth',       type: 'range', min: 3, max: 14, step: 0.5, unit: 'm' },
+    { key: 'radius',   label: 'fMinRadius', type: 'range', min: 5, max: 60, step: 1, unit: 'm' },
+    { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' }
+  ]
+};
+
+const TOOL_INFO = {
+  container: { name: 'tCont',   hint: 'tContHint' },
+  tower:     { name: 'tTower',  hint: 'tTowerHint' },
+  mobile:    { name: 'tMobile', hint: 'tMobileHint' },
+  road:      { name: 'tRoad',   hint: 'tRoadHint' }
+};
+
+
+/* =========================================================
+   Darstellung: Designs und Einstellungen
+   ========================================================= */
+const THEMES = {
+  dunkel: {
+    name: 'dark',
+    vars: {
+      '--bg': '#191c1f', '--scene': '#1f2429',
+      '--panel-bg': 'rgba(32, 36, 40, 0.95)',
+      '--border': '#3a4047', '--border-strong': '#586069',
+      '--text': '#e2e6ea', '--text-dim': '#9aa3ac', '--text-dim2': '#6d7681',
+      '--accent': '#4da3d9', '--danger': '#e0655a',
+      '--field': '#262b30', '--radius': '2px'
+    }
+  },
+  hell: {
+    name: 'light',
+    vars: {
+      '--bg': '#cfd5db', '--scene': '#dde2e7',
+      '--panel-bg': 'rgba(250, 251, 252, 0.96)',
+      '--border': '#ccd2d8', '--border-strong': '#98a1aa',
+      '--text': '#1b1f23', '--text-dim': '#515a63', '--text-dim2': '#7d868f',
+      '--accent': '#1f6feb', '--danger': '#c4362c',
+      '--field': '#ffffff', '--radius': '2px'
+    }
+  }
+};
+
+
+
+const FONTS = {
+  system:  { name: 'Systemschrift',   stack: "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif" },
+  arial:   { name: 'Arial',           stack: "Arial, Helvetica, 'Liberation Sans', sans-serif" },
+  narrow:  { name: 'Arial Narrow',    stack: "'Arial Narrow', 'Liberation Sans Narrow', 'Nimbus Sans Narrow', Arial, sans-serif" },
+  calibri: { name: 'Calibri',         stack: "Calibri, Carlito, 'Segoe UI', Candara, sans-serif" },
+  helv:    { name: 'Helvetica',       stack: "'Helvetica Neue', Helvetica, Arial, sans-serif" },
+  verdana: { name: 'Verdana',         stack: "Verdana, Geneva, 'DejaVu Sans', sans-serif" },
+  tahoma:  { name: 'Tahoma',          stack: "Tahoma, Geneva, 'DejaVu Sans', sans-serif" },
+  times:   { name: 'Times New Roman', stack: "'Times New Roman', Times, 'Liberation Serif', serif" },
+  georgia: { name: 'Georgia',         stack: "Georgia, 'Iowan Old Style', 'Times New Roman', serif" },
+  simplex: { name: 'Simplex (CAD)',   stack: "'Simplex', 'ISOCPEUR', 'RomanS', 'Consolas', 'DejaVu Sans Mono', monospace" },
+  mono:    { name: 'Consolas',        stack: "Consolas, 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace" }
+};
+
+
+
+const ACCENTS = ['#4aa3df', '#0696d7', '#1858ff', '#e8890c', '#37a06a'];
+
+const SETTINGS = {
+  theme: 'dunkel',
+  font: 'system',
+  size: 12,
+  accent: null,
+  layout: 'links',
+  width: 300,
+  detail: 1,
+  language: 'de'
+};
+
+
+function applySettings() {
+  const root = document.documentElement;
+  const th = THEMES[SETTINGS.theme] || THEMES.blaupause;
+  Object.keys(th.vars).forEach(function (k) { root.style.setProperty(k, th.vars[k]); });
+  if (SETTINGS.accent) root.style.setProperty('--accent', SETTINGS.accent);
+
+  const f = FONTS[SETTINGS.font] || FONTS.system;
+  root.style.setProperty('--ui-font', f.stack);
+  root.style.setProperty('--ui-size', SETTINGS.size + 'px');
+  root.style.setProperty('--panel-w', SETTINGS.width + 'px');
+
+  document.body.className = SETTINGS.layout === 'rechts' ? 'swapped' : '';
+
+  // Szenenhintergrund an das Design angleichen
+  const sceneHex = parseInt((th.vars['--scene'] || '#0c2438').slice(1), 16);
+  if (scene && scene.background && scene.background.setHex) scene.background.setHex(sceneHex);
+  if (scene && scene.fog && scene.fog.color && scene.fog.color.setHex) scene.fog.color.setHex(sceneHex);
+}
+
+/* ---------- Tweak-Fenster ---------- */
+function optionRow(label, options, current, onPick) {
+  const row = document.createElement('div');
+  row.className = 'tw-row';
+  const lab = document.createElement('div');
+  lab.className = 'tw-label';
+  lab.textContent = label;
+  row.appendChild(lab);
+
+  const group = document.createElement('div');
+  group.className = 'tw-group';
+  options.forEach(function (o) {
+    const b = document.createElement('button');
+    b.className = 'tw-opt' + (o.value === current ? ' on' : '');
+    b.textContent = o.label;
+    if (o.color) { b.className += ' swatch'; b.style.background = o.color; b.textContent = ''; }
+    b.addEventListener('click', function () {
+      onPick(o.value);
+      applySettings();
+      buildTweakPanel();
+    });
+    group.appendChild(b);
+  });
+  row.appendChild(group);
+  return row;
+}
+
+function sliderRow(label, min, max, step, value, unit, onChange) {
+  const row = document.createElement('div');
+  row.className = 'tw-row';
+  const head = document.createElement('div');
+  head.className = 'tw-label';
+  head.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'tw-val';
+  val.textContent = value + unit;
+  head.appendChild(val);
+  row.appendChild(head);
+
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = min; input.max = max; input.step = step; input.value = value;
+  input.className = 'tw-slider';
+  input.addEventListener('input', function () {
+    const v = parseFloat(input.value);
+    if (!isFinite(v)) return;
+    val.textContent = v + unit;
+    onChange(v);
+    applySettings();
+  });
+  row.appendChild(input);
+  return row;
+}
+
+function selectRow(label, options, current, onPick) {
+  const row = document.createElement('div');
+  row.className = 'tw-row';
+  const lab = document.createElement('div');
+  lab.className = 'tw-label';
+  lab.textContent = label;
+  row.appendChild(lab);
+
+  const sel = document.createElement('select');
+  sel.className = 'tw-select';
+  options.forEach(function (o) {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    sel.appendChild(opt);
+  });
+  sel.value = current;
+  sel.addEventListener('change', function () {
+    onPick(sel.value);
+    applySettings();
+    refreshTexts();
+    buildTweakPanel();
+  });
+  row.appendChild(sel);
+  return row;
+}
+
+function buildTweakPanel() {
+  const body = document.getElementById('tweak-body');
+  body.innerHTML = '';
+
+  body.appendChild(optionRow(T('design'),
+    Object.keys(THEMES).map(function (k) { return { value: k, label: T(THEMES[k].name) }; }),
+    SETTINGS.theme, function (v) { SETTINGS.theme = v; SETTINGS.accent = null; }));
+
+  body.appendChild(selectRow(T('font'),
+    Object.keys(FONTS).map(function (k) { return { value: k, label: FONTS[k].name }; }),
+    SETTINGS.font, function (v) { SETTINGS.font = v; }));
+
+  body.appendChild(sliderRow(T('fontSize'), 10, 16, 0.5, SETTINGS.size, ' px',
+    function (v) { SETTINGS.size = v; }));
+
+  body.appendChild(optionRow(T('accent'),
+    ACCENTS.map(function (c) { return { value: c, label: '', color: c }; }),
+    SETTINGS.accent, function (v) { SETTINGS.accent = v; }));
+
+  body.appendChild(optionRow(T('layout'),
+    [{ value: 'links', label: T('toolsLeft') }, { value: 'rechts', label: T('toolsRight') }],
+    SETTINGS.layout, function (v) { SETTINGS.layout = v; }));
+
+  body.appendChild(sliderRow(T('panelWidth'), 250, 400, 10, SETTINGS.width, ' px',
+    function (v) { SETTINGS.width = v; }));
+}
+
+function setLanguage(code) {
+  if (!STRINGS[code] || SETTINGS.language === code) { markLanguageButtons(); return; }
+  SETTINGS.language = code;
+  markLanguageButtons();
+  refreshTexts();
+  if (document.getElementById('tweak-panel').style.display === 'block') buildTweakPanel();
+}
+
+function markLanguageButtons() {
+  Object.keys(STRINGS).forEach(function (code) {
+    const b = document.getElementById('lang-' + code);
+    if (b && b.classList) b.classList.toggle('on', SETTINGS.language === code);
+  });
+}
+
+/* Nach einem Sprachwechsel alle sichtbaren Texte erneuern */
+function refreshTexts() {
+  applyLanguage();
+  const pal = document.getElementById('palette').children;
+  for (let i = 0; i < pal.length; i++) {
+    const type = pal[i].dataset.tool;
+    if (!type) continue;
+    pal[i].title = T(TOOL_INFO[type].hint);
+    const nm = pal[i].children[1];
+    if (nm) nm.textContent = T(TOOL_INFO[type].name);
+  }
+  document.getElementById('detail-val').textContent = detailLabel();
+  updateInfoBar();
+  updateTerrainInfo();
+  renderOverview();
+  const id = getSelectedId();
+  if (id !== null) showObjectEditor(id);
+  else if (activeTool) selectTool(activeTool);
+  else selectTool(null);
+}
+
+function toggleTweak(force) {
+  const p = document.getElementById('tweak-panel');
+  const open = force !== undefined ? force : p.style.display !== 'block';
+  p.style.display = open ? 'block' : 'none';
+  if (open) buildTweakPanel();
+}
+
+/* =========================================================
+   Formulare
+   ========================================================= */
+function makeRow(field, value, onChange) {
+  const row = document.createElement('div');
+  row.className = 'field';
+
+  const head = document.createElement('div');
+  head.className = 'field-head';
+  const lab = document.createElement('label');
+  lab.textContent = T(field.label);
+  head.appendChild(lab);
+  const out = document.createElement('span');
+  out.className = 'field-val';
+  head.appendChild(out);
+  row.appendChild(head);
+
+  let input;
+  if (field.type === 'select') {
+    input = document.createElement('select');
+    const src = field.source === 'tower' ? TOWER_MODELS : CRANE_MODELS;
+    src.forEach(function (m) {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name + '  ' + m.cap + ' t';
+      input.appendChild(opt);
+    });
+    input.value = value;
+    input.addEventListener('change', function () { onChange(field.key, input.value); });
+  } else if (field.type === 'checkbox') {
+    input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = value !== false;
+    input.addEventListener('change', function () { onChange(field.key, input.checked); });
+  } else {
+    input = document.createElement('input');
+    input.type = field.type === 'number' ? 'number' : 'range';
+    input.min = field.min; input.max = field.max; input.step = field.step;
+    input.value = value;
+    out.textContent = formatVal(value, field.unit);
+    input.addEventListener('input', function () {
+      const v = parseFloat(input.value);
+      if (!isFinite(v)) return;
+      out.textContent = formatVal(v, field.unit);
+      onChange(field.key, v);
+    });
+  }
+  input.className = 'field-input';
+  row.appendChild(input);
+  return { row: row, input: input, out: out, field: field };
+}
+
+function formatVal(v, unit) {
+  const s = (Math.round(v * 100) / 100).toString();
+  return unit ? s + ' ' + unit : s;
+}
+
+/* Reihenfolge im Formular: Auswahl, Schieberegler, Zahlenfelder, Schalter */
+const FIELD_ORDER = { select: 0, range: 1, number: 2, checkbox: 3 };
+
+function fieldRank(type) {
+  // Achtung: select hat den Rang 0, deshalb kein ||-Kurzschluss
+  const r = FIELD_ORDER[type];
+  return r === undefined ? 9 : r;
+}
+
+function sortFields(fields) {
+  return fields.map(function (f, i) { return { f: f, i: i }; })
+    .sort(function (a, b) {
+      const d = fieldRank(a.f.type) - fieldRank(b.f.type);
+      return d !== 0 ? d : a.i - b.i;
+    })
+    .map(function (x) { return x.f; });
+}
+
+function buildForm(type, values, onChange) {
+  const wrap = document.createElement('div');
+  wrap.className = 'form';
+  const refs = {};
+  let lastGroup = null;
+  sortFields(SCHEMAS[type]).forEach(function (f) {
+    const grp = fieldRank(f.type);
+    if (lastGroup !== null && grp !== lastGroup) {
+      const sep = document.createElement('div');
+      sep.className = 'sep';
+      wrap.appendChild(sep);
+    }
+    lastGroup = grp;
+    const r = makeRow(f, values[f.key], onChange);
+    refs[f.key] = r;
+    wrap.appendChild(r.row);
+  });
+  return { element: wrap, refs: refs };
+}
+
+function syncForm(refs, values) {
+  Object.keys(refs).forEach(function (k) {
+    const r = refs[k];
+    if (!r) return;
+    const v = values[k];
+    if (r.field.type === 'checkbox') r.input.checked = v !== false;
+    else if (r.field.type === 'select') r.input.value = v;
+    else { r.input.value = v; r.out.textContent = formatVal(v, r.field.unit); }
+  });
+}
+
+function applyModelDefaults(values, refs, type) {
+  const tower = type === 'tower';
+  const m = tower ? getTowerModel(values.model) : getModel(values.model);
+
+  values.hookHeight = m.hookDef;
+  values.radius = tower ? m.jibDef : m.radiusDef;
+  // Turmbreite bleibt frei einstellbar und wird vom Modellwechsel nicht überschrieben
+
+  if (!refs) return;
+  // Ohne belegte Herstellerangabe bleibt der Bereich aus dem Schema stehen
+  const setMax = function (ref, v) {
+    if (!ref) return;
+    ref.input.max = (v === null || v === undefined) ? ref.field.max : v;
+  };
+  setMax(refs.hookHeight, m.hookMax);
+  setMax(refs.radius, tower ? m.jibMax : m.radiusMax);
+  syncForm(refs, values);
+}
+
+/* =========================================================
+   Rechtes Fenster ein- und ausblenden
+   ========================================================= */
+function showPanel(on) {
+  document.getElementById('col-right').style.display = on ? 'flex' : 'none';
+}
+
+/* ---------- Werkzeugwahl ---------- */
+function selectTool(type) {
+  clearRoadNodes();
+  if (activeTool === 'road' && type !== 'road') { roadPoints = []; clearRoadPreview(); setRoadHint(false); }
+  activeTool = type;
+  selectObject(null);
+  moveMode = false;
+  roadPoints = [];
+  clearRoadPreview();
+  setRoadHint(type === 'road');
+
+  const cards = document.getElementById('palette').children;
+  for (let i = 0; i < cards.length; i++) {
+    if (cards[i].classList) cards[i].classList.toggle('active', cards[i].dataset && cards[i].dataset.tool === type);
+  }
+
+  const panel = document.getElementById('param-panel');
+  panel.innerHTML = '';
+
+  if (!type) {
+    clearGhost();
+    showPanel(false);
+    renderOverview();
+    return;
+  }
+
+  if (!toolParams[type]) toolParams[type] = defaultsFor(type);
+  const values = toolParams[type];
+
+  document.getElementById('param-title').textContent = T(TOOL_INFO[type].name);
+  document.getElementById('param-hint').textContent = T(TOOL_INFO[type].hint);
+
+  const form = buildForm(type, values, function (key, v) {
+    values[key] = v;
+    if (key === 'model') applyModelDefaults(values, form.refs, type);
+    setGhost(type, values);
+  });
+  formRefs = form.refs;
+  panel.appendChild(form.element);
+
+  const note = document.createElement('div');
+  note.className = 'place-note';
+  note.textContent = type === 'road'
+    ? 'Stützpunkte nacheinander anklicken, Leertaste schließt die Straße ab. Esc bricht ab.'
+    : 'Klick ins Gelände platziert. Esc bricht ab.';
+  panel.appendChild(note);
+
+  showPanel(true);
+  if (type === 'road') {
+    clearGhost();
+    roadPoints = [];
+    clearRoadPreview();
+    setRoadHint(true);
+  } else {
+    setGhost(type, values);
+  }
+  renderOverview();
+}
+
+/* ---------- Editor eines platzierten Objekts ---------- */
+function showObjectEditor(id) {
+  const obj = findObject(id);
+  if (!obj) return;
+
+  activeTool = null;
+  clearGhost();
+  selectObject(id);
+  clearRoadNodes();
+  if (obj.type === 'road') showRoadNodes(obj);
+
+  const cards = document.getElementById('palette').children;
+  for (let i = 0; i < cards.length; i++) if (cards[i].classList) cards[i].classList.remove('active');
+
+  const panel = document.getElementById('param-panel');
+  panel.innerHTML = '';
+
+  const utm = worldToUTM(obj.x, obj.z);
+  document.getElementById('param-title').textContent = labelFor(obj.type, obj.params);
+  if (obj.type === 'road') {
+    document.getElementById('param-hint').textContent = roadHintText(obj);
+  } else {
+    document.getElementById('param-hint').textContent =
+      'R ' + Math.round(utm.e) + '   H ' + Math.round(utm.n) +
+      '   Z ' + getAbsoluteHeightAt(obj.x, obj.z).toFixed(2) + ' m';
+  }
+
+  if (obj.type === 'tower' || obj.type === 'mobile') {
+    const m = obj.type === 'tower' ? getTowerModel(obj.params.model) : getModel(obj.params.model);
+
+    const warn = document.createElement('div');
+    warn.className = 'crane-warn';
+    const head = document.createElement('div');
+    head.className = 'crane-warn-head';
+    head.textContent = T('guideValues');
+    warn.appendChild(head);
+    const body = document.createElement('div');
+    body.textContent = T('craneNote');
+    warn.appendChild(body);
+
+    const url = sheetUrlFor(m);
+    if (url) {
+      const a = document.createElement('a');
+      a.className = 'sheet-link';
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = T('datasheet') + ' · ' + m.maker + ' →';
+      warn.appendChild(a);
+    }
+    panel.appendChild(warn);
+  }
+
+  const form = buildForm(obj.type, obj.params, function (key, v) {
+    obj.params[key] = v;
+    if (key === 'model') applyModelDefaults(obj.params, form.refs, obj.type);
+    rebuildObject(obj);
+    renderOverview();
+    document.getElementById('param-title').textContent = labelFor(obj.type, obj.params);
+    if (obj.type === 'road') {
+      markRoadRadius(obj, form.refs);
+      document.getElementById('param-hint').textContent = roadHintText(obj);
+    }
+  });
+  formRefs = form.refs;
+  panel.appendChild(form.element);
+  if (obj.type === 'road') markRoadRadius(obj, form.refs);
+
+  if (obj.type === 'road') {
+    const note = document.createElement('div');
+    note.className = 'data-note';
+    note.textContent = T('nodeHint');
+    panel.appendChild(note);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+
+  const btnMore = document.createElement('button');
+  btnMore.className = 'btn';
+  btnMore.textContent = T('another');
+  if (obj.type === 'road') btnMore.style.display = 'none';
+  btnMore.title = 'Noch einen Baustein dieser Art platzieren';
+  btnMore.addEventListener('click', function () {
+    toolParams[obj.type] = JSON.parse(JSON.stringify(obj.params));
+    selectTool(obj.type);
+    setStatus(T('msgNextPos'));
+  });
+  actions.appendChild(btnMore);
+
+  const btnMove = document.createElement('button');
+  btnMove.className = 'btn';
+  btnMove.textContent = T('move');
+  btnMove.addEventListener('click', function () {
+    moveMode = true;
+    setStatus(T('msgPickNew'));
+  });
+  actions.appendChild(btnMove);
+
+  const btnDup = document.createElement('button');
+  btnDup.className = 'btn';
+  btnDup.textContent = T('duplicate');
+  btnDup.addEventListener('click', function () {
+    const copy = addObject(obj.type, obj.x + 20, obj.z + 20, JSON.parse(JSON.stringify(obj.params)));
+    showObjectEditor(copy.id);
+    renderOverview();
+  });
+  actions.appendChild(btnDup);
+
+  if (obj.type === 'road') {
+    const btnNode = document.createElement('button');
+    btnNode.className = 'btn';
+    btnNode.textContent = T('delNode');
+    btnNode.addEventListener('click', function () {
+      const i = activeRoadNode();
+      if (i === null) { setStatus(T('nodePickFirst'), true); return; }
+      if (removeRoadNode(obj, i)) {
+        showObjectEditor(obj.id);
+        renderOverview();
+      } else {
+        setStatus(T('nodeMinTwo'), true);
+      }
+    });
+    actions.appendChild(btnNode);
+  }
+
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn danger';
+  btnDel.textContent = T('del');
+  btnDel.addEventListener('click', function () {
+    removeObject(obj.id);
+    selectTool(null);
+    renderOverview();
+  });
+  actions.appendChild(btnDel);
+
+  panel.appendChild(actions);
+  showPanel(true);
+  renderOverview();
+}
+
+/* ---------- Editor für eine ausgewählte Gruppe ---------- */
+function showGroupEditor(ids, title) {
+  activeTool = null;
+  clearGhost();
+
+  const panel = document.getElementById('param-panel');
+  panel.innerHTML = '';
+  document.getElementById('param-title').textContent = title;
+  document.getElementById('param-hint').textContent = ids.length + ' ' + T('selected');
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+
+  const btnClear = document.createElement('button');
+  btnClear.className = 'btn';
+  btnClear.textContent = T('deselect');
+  btnClear.addEventListener('click', function () { selectTool(null); });
+  actions.appendChild(btnClear);
+
+  const btnDel = document.createElement('button');
+  btnDel.className = 'btn danger';
+  btnDel.textContent = T('delGroup');
+  btnDel.addEventListener('click', function () {
+    ids.slice().forEach(function (i) { removeObject(i); });
+    selectTool(null);
+    renderOverview();
+  });
+  actions.appendChild(btnDel);
+
+  panel.appendChild(actions);
+  showPanel(true);
+}
+
+/* =========================================================
+   Übersicht der Gerätschaften (oben links)
+   ========================================================= */
+/* Hinweistext einer Baustraße */
+function roadHintText(obj) {
+  const info = roadInfo(obj.params);
+  let txt = Math.round(info.length) + ' m ' + T('long') + ' · ' +
+            T('tightest') + ' ' + info.minRadius.toFixed(1) + ' m';
+  if (info.reduced) txt += ' · ' + info.reduced + ' ' + T('curvesTight');
+  return txt;
+}
+
+/* Färbt den Radiusregler, sobald der Wunschradius nicht gehalten werden kann.
+   Der Regler bleibt bedienbar, damit man ihn zurückdrehen kann. */
+function markRoadRadius(obj, refs) {
+  const ref = refs && refs.radius;
+  if (!ref) return null;
+  const info = roadInfo(obj.params);
+  const eng = info.reduced > 0;
+  ref.row.className = 'field' + (eng ? ' field-warn' : '');
+  ref.out.textContent = eng
+    ? formatVal(obj.params.radius, 'm') + ' → ' + info.minRadius.toFixed(1) + ' m'
+    : formatVal(obj.params.radius, 'm');
+  ref.input.title = eng ? T('radiusTooTight') : '';
+  return eng;
+}
+
+function groupKeyFor(o) {
+  if (o.type === 'container') return 'Containeranlage';
+  if (o.type === 'road') return 'Baustraße';
+  if (o.type === 'tower') return getTowerModel(o.params.model).name;
+  return getModel(o.params.model).name;
+}
+
+function buildGroups() {
+  const map = {};
+  const order = [];
+  objects.forEach(function (o) {
+    const k = groupKeyFor(o);
+    if (!map[k]) { map[k] = { key: k, type: o.type, ids: [], units: 0, meters: 0 }; order.push(k); }
+    map[k].ids.push(o.id);
+    map[k].units += o.type === 'container' ? containerLayout(o.params).count : 1;
+    if (o.type === 'road') map[k].meters += roadInfo(o.params).length;
+  });
+  return order.map(function (k) { return map[k]; });
+}
+
+function renderOverview() {
+  const s = computeStats();
+  document.getElementById('stat-objects').textContent = s.total;
+  document.getElementById('stat-containers').textContent = s.containers;
+  document.getElementById('stat-cranes').textContent = (s.towers + s.mobiles);
+  document.getElementById('stat-area').textContent = Math.round(s.area) + ' m2';
+  document.getElementById('stat-road').textContent = Math.round(s.roadLength) + ' m';
+
+  const list = document.getElementById('overview-list');
+  list.innerHTML = '';
+
+  const groups = buildGroups();
+  if (!groups.length) {
+    const e = document.createElement('div');
+    e.className = 'empty';
+    e.textContent = T('nothingPlaced');
+    list.appendChild(e);
+  } else {
+    groups.forEach(function (g) {
+      const allSel = g.ids.length > 0 && g.ids.every(isSelected);
+      const row = document.createElement('div');
+      row.className = 'grp-row' + (allSel ? ' selected' : '');
+
+      const dot = document.createElement('span');
+      dot.className = 'dot ' + g.type;
+      row.appendChild(dot);
+
+      const nm = document.createElement('span');
+      nm.className = 'grp-name';
+      nm.textContent = g.key;
+      row.appendChild(nm);
+
+      const cnt = document.createElement('span');
+      cnt.className = 'grp-count';
+      cnt.textContent = g.type === 'container'
+        ? g.ids.length + ' / ' + g.units + ' St.'
+        : (g.type === 'road' ? Math.round(g.meters) + ' m' : String(g.ids.length));
+      row.appendChild(cnt);
+
+      row.addEventListener('click', function () {
+        if (g.ids.length === 1) {
+          showObjectEditor(g.ids[0]);
+        } else {
+          selectObjects(g.ids);
+          showGroupEditor(g.ids, g.key);
+          renderOverview();
+        }
+      });
+      list.appendChild(row);
+    });
+  }
+
+  const conflicts = radiusConflicts();
+  const warn = document.getElementById('warning');
+  if (conflicts.length) {
+    warn.style.display = 'block';
+    warn.textContent = conflicts.length === 1
+      ? T('conflict1') + ' ' + conflicts[0].overlap.toFixed(1) + ' m'
+      : conflicts.length + ' ' + T('conflictN');
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+/* ---------- Statuszeile ---------- */
+function setRoadHint(on) {
+  const el = document.getElementById('road-hint');
+  el.style.display = on ? 'block' : 'none';
+  if (on) {
+    el.textContent = roadPoints.length < 2
+      ? T('roadDrawing') + ' · ' + roadPoints.length + ' ' + T('roadSet')
+      : T('tRoad') + ': ' + roadPoints.length + ' · ' + T('roadFinish');
+  }
+}
+
+function finishRoad() {
+  if (activeTool !== 'road') return false;
+  if (roadPoints.length < 2) {
+    setStatus(T('msgMinTwo'), true);
+    return false;
+  }
+  const params = JSON.parse(JSON.stringify(toolParams.road));
+  params.points = roadPoints.slice();
+  const c = roadCentroid(params.points);
+  const obj = addObject('road', c.x, c.z, params);
+
+  roadPoints = [];
+  clearRoadPreview();
+  setRoadHint(false);
+
+  const r = obj.group.userData;
+  if (r.reduced) {
+    setStatus(r.reduced + ' Kurve(n) zu eng: Radius dort auf ' +
+              r.minRadius.toFixed(1) + ' m verkleinert.', true);
+  } else {
+    setStatus('Baustraße angelegt: ' + Math.round(r.length) + ' m.');
+  }
+  showObjectEditor(obj.id);
+  return true;
+}
+
+function setStatus(msg, isError) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+  el.className = isError ? 'error' : '';
+  if (statusTimer) clearTimeout(statusTimer);
+  if (msg) statusTimer = setTimeout(function () { el.style.display = 'none'; }, isError ? 8000 : 3000);
+}
+
+function setNeedsData(on) {
+  const data = document.getElementById('data');
+  data.className = 'panel' + (on ? ' needs' : '');
+  document.getElementById('data-note').style.display = on ? 'block' : 'none';
+  const cards = document.getElementById('palette').children;
+  for (let i = 0; i < cards.length; i++) {
+    if (cards[i].classList) cards[i].classList.toggle('off', on);
+  }
+}
+
+function updateInfoBar() {
+  const t = TERRAIN;
+  document.getElementById('crs-info').textContent = T('crs') + ' ' + ((t && t.crs) || '–');
+  let acc = '–';
+  if (t && isFinite(t.cell)) {
+    acc = t.cell.toFixed(2) + ' m';
+    if (t.simplified && isFinite(t.srcRes)) acc += ' (Quelle ' + t.srcRes.toFixed(2) + ' m)';
+  }
+  document.getElementById('acc-info').textContent = T('accuracy') + ' ' + acc;
+  document.getElementById('unit-info').textContent = T('unit') + ' ' + T('unitMeter') + ' (m)';
+}
+
+function updateTerrainInfo() {
+  const t = TERRAIN;
+  updateInfoBar();
+  if (!t) {
+    document.getElementById('tile-label').textContent = T('noTerrain');
+    document.getElementById('tile-size').textContent = '–';
+    document.getElementById('tile-grid').textContent = '–';
+    document.getElementById('stat-relief').textContent = '–';
+    setNeedsData(true);
+    return;
+  }
+  setNeedsData(false);
+  document.getElementById('tile-label').textContent = t.label;
+  document.getElementById('tile-size').textContent = Math.round(t.w) + ' × ' + Math.round(t.d) + ' m';
+  document.getElementById('tile-grid').textContent = t.nx + ' × ' + t.nz;
+  document.getElementById('stat-relief').textContent = t.zmin.toFixed(1) + ' – ' + t.zmax.toFixed(1) + ' m';
+}
+
+/* ---------- Messpunkt ---------- */
+function showMeasure(pt, onBuilding) {
+  const utm = worldToUTM(pt.x, pt.z);
+  const z = pt.y + TERRAIN.zmin;
+  setMeasureMarker(pt.x, pt.y, pt.z);
+  focusOnPoint(pt.x, pt.y, pt.z);
+
+  document.getElementById('measure-r').textContent = utm.e.toFixed(2);
+  document.getElementById('measure-h').textContent = utm.n.toFixed(2);
+  document.getElementById('measure-z').textContent = z.toFixed(2);
+  document.getElementById('measure-src').textContent =
+    T('measureOn') + ' ' + (onBuilding ? T('building') : T('ground'));
+  document.getElementById('point-label').style.display = 'block';
+  updatePointLabel();
+}
+
+function hideMeasure() {
+  clearMeasureMarker();
+  document.getElementById('point-label').style.display = 'none';
+}
+
+/* Dreht die Nordnadel mit der Kamera; wird pro Bild aufgerufen */
+function updateCompass() {
+  const n = document.getElementById('compass-needle');
+  if (n) n.style.transform = 'rotate(' + northAngle().toFixed(1) + 'deg)';
+  // Der 2D-Knopf leuchtet nur, solange die Ansicht tatsächlich senkrecht steht
+  const b = document.getElementById('view2d-btn');
+  if (b && b.classList) b.classList.toggle('on', isTopView());
+}
+
+/* Hält die Beschriftung am Messpunkt; wird pro Bild aufgerufen */
+function updatePointLabel() {
+  const el = document.getElementById('point-label');
+  const p = measureScreenPos();
+  if (!p) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.style.left = Math.round(p.x) + 'px';
+  el.style.top = Math.round(p.y) + 'px';
+}
+
+/* ---------- Dateiimport ---------- */
+function setFileStatus(which, msg, kind) {
+  const el = document.getElementById(which === 'dem' ? 'dem-status' : 'gml-status');
+  el.textContent = msg;
+  el.className = 'file-status' + (kind ? ' ' + kind : '');
+}
+
+const DETAIL_STEPS = [140, 260, 500, 900, 0];   // 0 = ohne Vereinfachung
+
+function detailLimit() {
+  const i = Math.max(0, Math.min(DETAIL_STEPS.length - 1, Math.round(SETTINGS.detail)));
+  return DETAIL_STEPS[i];
+}
+
+function detailLabel() {
+  const v = detailLimit();
+  return v === 0 ? T('original') : v + ' ' + T('points');
+}
+
+async function rebuildTerrainDetail() {
+  if (!lastDemTiles) return;
+  setFileStatus('dem', 'Rechne neu', 'busy');
+  try {
+    const t = gridTiles(lastDemTiles, detailLimit());
+    buildTerrain(t);
+    reseatAllObjects();
+    updateTerrainInfo();
+    renderOverview();
+    if (lastGmlRings) {
+      try { setBuildings(buildBuildingsMesh(lastGmlRings)); } catch (e) { clearBuildings(); }
+    }
+    setFileStatus('dem', demStatusText(t), 'ok');
+  } catch (err) {
+    setFileStatus('dem', err.message, 'err');
+  }
+}
+
+function demStatusText(t) {
+  let st = lastDemNames.length > 1
+    ? lastDemNames.length + ' Kacheln verbunden'
+    : (lastDemNames[0] || '');
+  st += ' · ' + t.nx + '×' + t.nz;
+  if (t.gaps) st += ' · ' + t.gaps + ' Lücken gefüllt';
+  return st;
+}
+
+async function handleDemFiles(files) {
+  const list = Array.prototype.slice.call(files || []);
+  if (!list.length) return;
+  setFileStatus('dem', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Kacheln', 'busy');
+  try {
+    const items = [];
+    for (let i = 0; i < list.length; i++) {
+      items.push({ buffer: await list[i].arrayBuffer(), name: list[i].name });
+    }
+    lastDemTiles = await readTiffTiles(items);
+    lastDemNames = items.map(function (x) { return x.name; });
+    const t = gridTiles(lastDemTiles, detailLimit());
+
+    hideMeasure();
+    buildTerrain(t);
+    frameTerrain();
+    const removed = pruneObjectsOutside();
+    reseatAllObjects();
+    updateTerrainInfo();
+    renderOverview();
+
+    setFileStatus('dem', demStatusText(t), 'ok');
+
+    let msg = 'Gelände ersetzt: ' + Math.round(t.w) + ' × ' + Math.round(t.d) + ' m.';
+    if (removed) msg += ' ' + removed + ' Objekt(e) außerhalb entfernt.';
+    setStatus(msg);
+
+    if (lastGmlRings) {
+      try {
+        setBuildings(buildBuildingsMesh(lastGmlRings));
+        setFileStatus('gml', 'Neu eingepasst', 'ok');
+      } catch (e) {
+        clearBuildings();
+        setFileStatus('gml', e.message, 'err');
+      }
+    }
+  } catch (err) {
+    setFileStatus('dem', err.message, 'err');
+    setStatus('GeoTIFF nicht lesbar: ' + err.message, true);
+  }
+}
+
+async function handleGmlFiles(files) {
+  const list = Array.prototype.slice.call(files || []);
+  if (!list.length) return;
+  setFileStatus('gml', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Dateien', 'busy');
+  try {
+    const texts = [];
+    for (let i = 0; i < list.length; i++) {
+      texts.push({ name: list[i].name, text: await list[i].text() });
+    }
+    const merged = mergeCityGML(texts);
+    lastGmlRings = merged.rings;
+
+    const mesh = buildBuildingsMesh(merged.rings);
+    setBuildings(mesh);
+
+    let msg = mesh.userData.faces + ' Flächen';
+    if (merged.files > 1) msg = merged.files + ' Dateien · ' + msg;
+    if (mesh.userData.skipped) msg += ', ' + mesh.userData.skipped + ' außerhalb';
+    setFileStatus('gml', msg, merged.failed.length ? 'busy' : 'ok');
+    if (merged.failed.length) {
+      setStatus(merged.failed.length + ' Datei(en) übersprungen: ' + merged.failed[0], true);
+    } else {
+      setStatus(T('msgBuildingsLoaded'));
+    }
+  } catch (err) {
+    setFileStatus('gml', err.message, 'err');
+    setStatus('CityGML nicht lesbar: ' + err.message, true);
+  }
+}
+
+/* =========================================================
+   Beispieldatensatz über die Adresszeile laden
+   Aufruf:  index.html?demo=1
+   ========================================================= */
+const DEMO_FILES = {
+  dem: 'demo/demo_dgm.tif',
+  gml: 'demo/demo_lod2.gml'
+};
+
+/* Macht aus einer Antwort ein Objekt mit derselben Schnittstelle
+   wie eine vom Nutzer gewählte Datei. */
+function remoteFile(name, response) {
+  return {
+    name: name,
+    arrayBuffer: function () { return response.arrayBuffer(); },
+    text: function () { return response.text(); }
+  };
+}
+
+async function loadDemo() {
+  const box = document.getElementById('loading');
+  box.style.display = 'flex';
+  box.textContent = T('demoLoading');
+  try {
+    const demRes = await fetch(DEMO_FILES.dem);
+    if (!demRes.ok) throw new Error(DEMO_FILES.dem + ' (' + demRes.status + ')');
+    await handleDemFiles([remoteFile('demo_dgm.tif', demRes)]);
+
+    box.textContent = T('demoLoadingBuildings');
+    const gmlRes = await fetch(DEMO_FILES.gml);
+    if (!gmlRes.ok) throw new Error(DEMO_FILES.gml + ' (' + gmlRes.status + ')');
+    await handleGmlFiles([remoteFile('demo_lod2.gml', gmlRes)]);
+
+    box.style.display = 'none';
+    setStatus(T('demoReady'));
+    return true;
+  } catch (err) {
+    box.style.display = 'none';
+    setFileStatus('dem', err.message, 'err');
+    setStatus(T('demoFailed') + ' ' + err.message, true);
+    return false;
+  }
+}
+
+function demoRequested() {
+  const q = (window.location && window.location.search) || '';
+  return /[?&]demo=1/.test(q);
+}
+
+/* =========================================================
+   Zeigerereignisse
+   ========================================================= */
+let pressInfo = null;
+let lastPlaceTime = 0;
+const DRAG_TOLERANCE = 5;
+const REPEAT_GUARD = 250;
+
+function onCanvasPointerDown(event) {
+  if (event.button !== undefined && event.button !== 0) { pressInfo = null; return; }
+  pressInfo = { x: event.clientX, y: event.clientY, id: event.pointerId, t: Date.now() };
+}
+
+function onCanvasPointerUp(event) {
+  if (!pressInfo) return;
+  if (event.pointerId !== undefined && event.pointerId !== pressInfo.id) { pressInfo = null; return; }
+  const moved = Math.abs(event.clientX - pressInfo.x) + Math.abs(event.clientY - pressInfo.y);
+  pressInfo = null;
+  if (moved > DRAG_TOLERANCE) return;
+  const now = Date.now();
+  if (now - lastPlaceTime < REPEAT_GUARD) return;
+  lastPlaceTime = now;
+  onCanvasClick(event);
+}
+
+function onCanvasPointerCancel() { pressInfo = null; }
+
+function onCanvasMove(event) {
+  const pt = raycastTerrain(event);
+  if (pt) {
+    const utm = worldToUTM(pt.x, pt.z);
+    document.getElementById('cursor-info').textContent =
+      'R ' + Math.round(utm.e) + '   H ' + Math.round(utm.n) +
+      '   Z ' + getAbsoluteHeightAt(pt.x, pt.z).toFixed(1);
+  }
+  if (activeTool === 'road' && roadPoints.length) {
+    if (pt) setRoadPreview(roadPoints, { x: pt.x, z: pt.z });
+  }
+  if (ghost) {
+    if (pt) {
+      ghost.visible = true;
+      ghost.position.set(pt.x, getHeightAt(pt.x, pt.z), pt.z);
+    } else {
+      ghost.visible = false;
+    }
+  }
+}
+
+function onCanvasClick(event) {
+  // Stützpunkt einer ausgewählten Baustraße bearbeiten
+  const sel = findObject(getSelectedId());
+  if (sel && sel.type === 'road') {
+    const hit = raycastRoadNode(event);
+    if (hit !== null) {
+      setActiveNode(hit);
+      setStatus(T('nodePicked'));
+      return;
+    }
+    if (activeRoadNode() !== null) {
+      const pt = raycastTerrain(event);
+      if (pt) {
+        moveRoadNode(sel, activeRoadNode(), pt.x, pt.z);
+        setActiveNode(null);
+        showObjectEditor(sel.id);
+        setStatus(T('nodeMoved'));
+        return;
+      }
+    }
+  }
+
+  if (moveMode) {
+    const pt = raycastTerrain(event);
+    const obj = findObject(getSelectedId());
+    if (pt && obj) {
+      moveObject(obj, pt.x, pt.z);
+      moveMode = false;
+      setStatus(T('msgMoved'));
+      showObjectEditor(obj.id);
+    }
+    return;
+  }
+
+  if (activeTool === 'road') {
+    const pt = raycastTerrain(event);
+    if (!pt) return;
+    roadPoints.push({ x: pt.x, z: pt.z });
+    setRoadPreview(roadPoints);
+    setRoadHint(true);
+    return;
+  }
+
+  if (activeTool) {
+    const pt = raycastTerrain(event);
+    if (!pt) return;
+    const params = JSON.parse(JSON.stringify(toolParams[activeTool]));
+    const obj = addObject(activeTool, pt.x, pt.z, params);
+    setStatus(labelFor(obj.type, obj.params) + ' ' + T('msgPlaced'));
+    // Direkt zum Bearbeiten des eben gesetzten Objekts wechseln
+    showObjectEditor(obj.id);
+    return;
+  }
+
+  const hit = raycastObjects(event);
+  if (hit) {
+    hideMeasure();
+    showObjectEditor(hit.id);
+    return;
+  }
+
+  // Kein Baustein getroffen: Messpunkt auf Gelände oder Gebäude
+  const ground = raycastGround(event);
+  if (ground) {
+    selectTool(null);
+    showMeasure(ground.point, ground.onBuilding);
+  } else {
+    selectTool(null);
+    hideMeasure();
+  }
+}
+
+function onKeyDown(event) {
+  if (event.key === ' ' || event.code === 'Space') {
+    if (activeTool === 'road') {
+      if (event.preventDefault) event.preventDefault();
+      finishRoad();
+    }
+    return;
+  }
+  if (event.key === 'Escape') {
+    // Erst die Knotenauswahl lösen, die Objektauswahl bleibt bestehen
+    if (activeRoadNode() !== null) { setActiveNode(null); setStatus(''); return; }
+    moveMode = false;
+    roadPoints = []; clearRoadPreview(); setRoadHint(false);
+    selectTool(null);
+    hideMeasure();
+    toggleTweak(false);
+    setStatus('');
+  } else if (event.key === 'Delete' || event.key === 'Backspace') {
+    const ids = selectedIds.slice();
+    if (!ids.length) return;
+    ids.forEach(function (i) { removeObject(i); });
+    selectTool(null);
+    renderOverview();
+  }
+}
+
+/* =========================================================
+   Initialisierung
+   ========================================================= */
+function initUI() {
+  const palette = document.getElementById('palette');
+  ['container', 'tower', 'mobile', 'road'].forEach(function (type) {
+    const card = document.createElement('button');
+    card.className = 'pal-card';
+    card.dataset.tool = type;
+    card.title = T(TOOL_INFO[type].hint);
+
+    const icon = document.createElement('span');
+    icon.className = 'pal-icon ' + type;
+    card.appendChild(icon);
+
+    const nm = document.createElement('span');
+    nm.className = 'pal-name';
+    nm.textContent = T(TOOL_INFO[type].name);
+    card.appendChild(nm);
+
+    card.addEventListener('click', function () {
+      if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
+      selectTool(activeTool === type ? null : type);
+    });
+    palette.appendChild(card);
+  });
+
+  const demInput = document.getElementById('dem-input');
+  demInput.addEventListener('change', function () {
+    if (demInput.files && demInput.files.length) handleDemFiles(demInput.files);
+  });
+
+  const gmlInput = document.getElementById('gml-input');
+  gmlInput.addEventListener('change', function () {
+    if (gmlInput.files && gmlInput.files.length) handleGmlFiles(gmlInput.files);
+  });
+
+  const detail = document.getElementById('detail-slider');
+  detail.value = SETTINGS.detail;
+  document.getElementById('detail-val').textContent = detailLabel();
+  detail.addEventListener('change', function () {
+    const v = parseFloat(detail.value);
+    if (!isFinite(v)) return;
+    SETTINGS.detail = v;
+    document.getElementById('detail-val').textContent = detailLabel();
+    if (!lastDemTiles) return;
+    if (detailLimit() === 0) setStatus('Volle Auflösung kann bei großen Kacheln spürbar bremsen.', true);
+    rebuildTerrainDetail();
+  });
+  detail.addEventListener('input', function () {
+    const v = parseFloat(detail.value);
+    if (!isFinite(v)) return;
+    SETTINGS.detail = v;
+    document.getElementById('detail-val').textContent = detailLabel();
+  });
+
+  document.getElementById('gml-clear').addEventListener('click', function () {
+    clearBuildings();
+    lastGmlRings = null;
+    setFileStatus('gml', T('noFile'));
+    setStatus(T('msgBuildingsRemoved'));
+  });
+
+  document.getElementById('reset-view').addEventListener('click', function () {
+    frameTerrain();
+    setStatus(T('msgViewReset'));
+  });
+
+  document.getElementById('clear-all').addEventListener('click', function () {
+    objects.slice().forEach(function (o) { removeObject(o.id); });
+    selectTool(null);
+    hideMeasure();
+    renderOverview();
+    setStatus(T('msgCleared'));
+  });
+
+  Object.keys(STRINGS).forEach(function (code) {
+    const b = document.getElementById('lang-' + code);
+    if (b) b.addEventListener('click', function () { setLanguage(code); });
+  });
+  markLanguageButtons();
+
+  const btn2d = document.getElementById('view2d-btn');
+  btn2d.addEventListener('click', function () {
+    setTopView();
+    setStatus(T('topViewSet'));
+  });
+
+  document.getElementById('compass').addEventListener('click', function () { faceNorth(); });
+
+  document.getElementById('tweak-btn').addEventListener('click', function () { toggleTweak(); });
+  document.getElementById('tweak-close').addEventListener('click', function () { toggleTweak(false); });
+
+  const dom = renderer.domElement;
+  dom.addEventListener('pointermove', onCanvasMove);
+  dom.addEventListener('pointerdown', onCanvasPointerDown);
+  dom.addEventListener('pointerup', onCanvasPointerUp);
+  dom.addEventListener('pointercancel', onCanvasPointerCancel);
+  dom.addEventListener('pointerleave', onCanvasPointerCancel);
+  window.addEventListener('keydown', onKeyDown);
+
+  window.addEventListener('resize', function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  applySettings();
+  applyLanguage();
+  showPanel(false);
+  selectTool(null);
+  hideMeasure();
+  updateTerrainInfo();
+  renderOverview();
+}
+
+/* ---------- Export für Tests ---------- */
+
+/* =========================================================
+   Start
+   ========================================================= */
+function start() {
+  const loading = document.getElementById('loading');
+
+  if (typeof THREE === 'undefined') {
+    loading.textContent = 'Three.js fehlt. Liegt lib/three.min.js neben index.html? Siehe lib/LIESMICH.txt.';
+    return;
+  }
+  if (typeof THREE.OrbitControls !== 'function') {
+    loading.textContent = 'OrbitControls fehlt. Liegt lib/OrbitControls.js neben index.html? Siehe lib/LIESMICH.txt.';
+    return;
+  }
+
+  initScene(document.getElementById('canvas-container'));
+  initSharedResources();
+  // Bewusst ohne Gelände starten: der Nutzer lädt zuerst eine Datei.
+  initUI();
+  updateInfoBar();
+
+  if (typeof GeoTIFF === 'undefined') {
+    setFileStatus('dem', 'lib/geotiff.js fehlt – Geländeimport nicht möglich', 'err');
+  }
+
+  loading.style.display = 'none';
+
+  // Beispieldatensatz, wenn die Adresse ?demo=1 enthält
+  if (demoRequested()) loadDemo();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    updateControls();
+    updatePointLabel();
+    updateCompass();
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+try {
+  start();
+} catch (err) {
+  const el = document.getElementById('loading');
+  el.style.display = 'flex';
+  el.textContent = 'Fehler beim Start: ' + err.message;
+  if (typeof console !== 'undefined' && console.error) console.error(err);
+}
+
+</script>
+</body>
+</html>

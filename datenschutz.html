@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datenschutz · Quick-Site-Design</title>
+<style>
+  :root {
+    --bg: #191c1f;
+    --panel: #24282c;
+    --border: #3a4047;
+    --text: #e2e6ea;
+    --text-dim: #9aa3ac;
+    --accent: #4da3d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 20px 80px;
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    font-size: 15px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 1.5em; font-weight: 600; margin: 0 0 6px; }
+  h2 { font-size: 1.05em; font-weight: 600; margin: 32px 0 8px; }
+  .back { display: inline-block; margin-bottom: 28px; font-size: 0.88em; color: var(--accent); text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  a { color: var(--accent); }
+  p { margin: 0 0 14px; }
+  ul { margin: 0 0 14px; padding-left: 20px; }
+  li { margin-bottom: 5px; }
+  .dim { color: var(--text-dim); font-size: 0.9em; }
+  .box {
+    background: var(--panel); border: 1px solid var(--border);
+    padding: 14px 16px; margin: 0 0 14px;
+  }
+  .todo { border-left: 3px solid #d9884a; }
+  .good { border-left: 3px solid #5ec48a; }
+  address { font-style: normal; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border);
+           font-size: 0.85em; color: var(--text-dim); }
+  footer a { color: var(--text-dim); }
+</style>
+</head>
+<body>
+<main>
+
+<a class="back" href="index.html">← Zurück zur Anwendung</a>
+
+<h1>Datenschutzerklärung</h1>
+<p class="dim">Informationen nach Art. 13 DSGVO</p>
+
+<h2>Verantwortlicher</h2>
+
+<div class="box">
+<address>
+Haoran Li<br>
+Walter-Gropius-Straße 23<br>
+80807 München<br>
+Deutschland<br><br>
+E-Mail: <a href="mailto:info@quick-site-design.com">info@quick-site-design.com</a>
+</address>
+</div>
+
+<h2>Was diese Seite nicht tut</h2>
+
+<div class="box good">
+<p style="margin:0">
+Quick-Site-Design verarbeitet alle Daten ausschließlich im Browser. Weder die
+Geländemodelle und Gebäudemodelle, die Sie laden, noch Ihre Planung verlassen
+Ihr Gerät. Es findet keine Übertragung an einen Server statt, es werden keine
+Dateien gespeichert.
+</p>
+</div>
+
+<p>Ebenfalls nicht eingesetzt werden:</p>
+
+<ul>
+  <li>Cookies</li>
+  <li>Local Storage oder Session Storage</li>
+  <li>Analysedienste oder Zählpixel</li>
+  <li>Schriften oder Symbole von fremden Servern</li>
+  <li>Werbung oder Weitergabe an Dritte zu Werbezwecken</li>
+</ul>
+
+<p>
+Eine Einwilligung ist deshalb nicht erforderlich, ein Cookie-Banner erübrigt
+sich.
+</p>
+
+<h2>Aufruf der Seite: Server-Logdateien</h2>
+
+<p>
+Diese Seite wird bei GitHub Pages gehostet, einem Dienst der GitHub, Inc., 88
+Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA. Beim Aufruf der Seite
+werden dort technisch bedingt Zugriffsdaten verarbeitet, insbesondere Ihre
+IP-Adresse, Datum und Uhrzeit, die aufgerufene Datei und Angaben zu Browser und
+Betriebssystem.
+</p>
+
+<p>
+Diese Verarbeitung ist erforderlich, um die Seite überhaupt ausliefern zu
+können. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; das berechtigte
+Interesse liegt im technischen Betrieb und in der Sicherheit des Angebots.
+</p>
+
+<p>
+Die Verarbeitung findet auch in den Vereinigten Staaten statt. GitHub stützt
+die Übermittlung auf die Standardvertragsklauseln der Europäischen Kommission.
+Einzelheiten in der
+<a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">Datenschutzerklärung von GitHub</a>.
+</p>
+
+<p>
+Auf Umfang und Dauer dieser Protokollierung besteht kein Einfluss; ein Zugriff
+auf die Logdateien erfolgt nicht.
+</p>
+
+<h2>Verwendete Programmbibliotheken</h2>
+
+<p>
+Die Anwendung nutzt drei quelloffene Bibliotheken: three.js für die
+dreidimensionale Darstellung, OrbitControls für die Kamerasteuerung und
+geotiff.js zum Lesen der Geländemodelle.
+</p>
+
+<p>
+Diese Dateien werden zusammen mit der Seite ausgeliefert und <strong>nicht von
+einem Content Delivery Network nachgeladen</strong>. Beim Aufruf der Seite
+entstehen daher keine Verbindungen zu weiteren Anbietern.
+</p>
+
+<h2>Beispieldatensatz</h2>
+
+<p>
+Wird die Anwendung mit dem Zusatz <code>?demo=1</code> aufgerufen, lädt sie
+zwei Beispieldateien nach. Diese liegen auf demselben Server wie die Seite
+selbst; es entsteht keine Verbindung zu Dritten. Es handelt sich um amtliche
+Geobasisdaten ohne Personenbezug.
+</p>
+
+<h2>Ihre Rechte</h2>
+
+<p>
+Sie haben das Recht auf Auskunft über die zu Ihrer Person verarbeiteten Daten
+(Art. 15 DSGVO), auf Berichtigung (Art. 16), auf Löschung (Art. 17), auf
+Einschränkung der Verarbeitung (Art. 18), auf Datenübertragbarkeit (Art. 20)
+sowie auf Widerspruch gegen Verarbeitungen, die auf einem berechtigten
+Interesse beruhen (Art. 21).
+</p>
+
+<p>
+Ferner steht Ihnen ein Beschwerderecht bei einer Datenschutz-Aufsichtsbehörde
+zu (Art. 77 DSGVO). Zuständig ist die Behörde Ihres Wohnsitzes oder des Sitzes
+des Verantwortlichen.
+</p>
+
+<p>
+Da über diese Seite keine Daten erhoben werden, die einen Personenbezug
+herstellen, können Auskunfts- und Löschansprüche gegenüber dem Betreiber in
+der Regel nicht erfüllt werden. Für die Server-Logdateien wenden Sie sich
+bitte an GitHub.
+</p>
+
+<h2>Stand</h2>
+
+<p class="dim">Diese Erklärung gilt ab September 2026.</p>
+
+<footer>
+<a href="index.html">Anwendung</a> ·
+<a href="impressum.html">Impressum</a> ·
+<a href="https://github.com/Mucnese/quick-site-design" target="_blank" rel="noopener noreferrer">Quelltext</a>
+</footer>
+
+</main>
+</body>
+</html>
