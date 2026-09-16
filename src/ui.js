@@ -45,6 +45,7 @@ const STRINGS = {
     demoLoadingBuildings: 'Beispieldaten werden geladen: Gebäude',
     demoReady: 'Beispieldatensatz geladen. Baustein unten wählen und ins Gelände klicken.',
     demoFailed: 'Beispieldaten konnten nicht geladen werden:',
+    demoAttribution: 'Beispieldaten:',
     radiusTooTight: 'Der Mindestradius passt nicht zwischen die Stützpunkte. Punkte weiter auseinander setzen oder Radius verkleinern.',
     noManufacturerValue: 'keine Herstellerangabe',
     crs: 'KBS', accuracy: 'Genauigkeit', unit: 'Einheit', unitMeter: 'Meter',
@@ -106,6 +107,7 @@ const STRINGS = {
     demoLoadingBuildings: 'Loading sample data: buildings',
     demoReady: 'Sample data loaded. Pick an element below and click the terrain.',
     demoFailed: 'Sample data could not be loaded:',
+    demoAttribution: 'Sample data:',
     radiusTooTight: 'The minimum radius does not fit between the nodes. Move the nodes further apart or reduce the radius.',
     noManufacturerValue: 'no manufacturer figure',
     crs: 'CRS', accuracy: 'Accuracy', unit: 'Unit', unitMeter: 'Metre',
@@ -414,6 +416,7 @@ function refreshTexts() {
   updateInfoBar();
   updateTerrainInfo();
   renderOverview();
+  refreshAttribution();
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -1075,7 +1078,7 @@ function demStatusText(t) {
   return st;
 }
 
-async function handleDemFiles(files) {
+async function handleDemFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
   setFileStatus('dem', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Kacheln', 'busy');
@@ -1095,6 +1098,9 @@ async function handleDemFiles(files) {
     reseatAllObjects();
     updateTerrainInfo();
     renderOverview();
+
+    demoAttribDem = !!isDemo;
+    refreshAttribution();
 
     setFileStatus('dem', demStatusText(t), 'ok');
 
@@ -1117,7 +1123,7 @@ async function handleDemFiles(files) {
   }
 }
 
-async function handleGmlFiles(files) {
+async function handleGmlFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
   setFileStatus('gml', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Dateien', 'busy');
@@ -1131,6 +1137,9 @@ async function handleGmlFiles(files) {
 
     const mesh = buildBuildingsMesh(merged.rings);
     setBuildings(mesh);
+
+    demoAttribGml = !!isDemo;
+    refreshAttribution();
 
     let msg = mesh.userData.faces + ' Flächen';
     if (merged.files > 1) msg = merged.files + ' Dateien · ' + msg;
@@ -1156,6 +1165,57 @@ const DEMO_FILES = {
   gml: 'demo/demo_lod2.gml'
 };
 
+/* Quelle der Beispieldaten (CC BY 4.0). Beim Austausch der Daten in demo/
+   muss dieser Eintrag mitgeändert werden. */
+const DEMO_ATTRIBUTION = {
+  publisher: 'Bayerische Vermessungsverwaltung',
+  url: 'https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1',
+  license: 'CC BY 4.0',
+  licenseUrl: 'https://creativecommons.org/licenses/by/4.0/deed.de'
+};
+
+/* Getrennt für Gelände und Gebäude: ersetzt der Nutzer nur eines von
+   beiden durch eigene Daten, bleibt die Namensnennung für das jeweils
+   andere bestehen. */
+let demoAttribDem = false;
+let demoAttribGml = false;
+
+/* Blendet Herausgeber und Lizenz ein, solange Beispieldaten geladen sind. */
+function showAttribution(on) {
+  const el = document.getElementById('attribution');
+  if (!el) return;
+  if (!on) { el.style.display = 'none'; return; }
+
+  el.textContent = '';
+  const label = document.createElement('span');
+  label.textContent = T('demoAttribution');
+  el.appendChild(label);
+
+  const pub = document.createElement('a');
+  pub.href = DEMO_ATTRIBUTION.url;
+  pub.target = '_blank';
+  pub.rel = 'noopener noreferrer';
+  pub.textContent = DEMO_ATTRIBUTION.publisher;
+  el.appendChild(pub);
+
+  const lic = document.createElement('a');
+  lic.href = DEMO_ATTRIBUTION.licenseUrl;
+  lic.target = '_blank';
+  lic.rel = 'noopener noreferrer';
+  lic.textContent = DEMO_ATTRIBUTION.license;
+  el.appendChild(lic);
+
+  el.style.display = 'flex';
+}
+
+function refreshAttribution() {
+  showAttribution(demoAttribDem || demoAttribGml);
+}
+
+function isAttributionShown() {
+  return demoAttribDem || demoAttribGml;
+}
+
 /* Macht aus einer Antwort ein Objekt mit derselben Schnittstelle
    wie eine vom Nutzer gewählte Datei. */
 function remoteFile(name, response) {
@@ -1173,12 +1233,12 @@ async function loadDemo() {
   try {
     const demRes = await fetch(DEMO_FILES.dem);
     if (!demRes.ok) throw new Error(DEMO_FILES.dem + ' (' + demRes.status + ')');
-    await handleDemFiles([remoteFile('demo_dgm.tif', demRes)]);
+    await handleDemFiles([remoteFile('demo_dgm.tif', demRes)], true);
 
     box.textContent = T('demoLoadingBuildings');
     const gmlRes = await fetch(DEMO_FILES.gml);
     if (!gmlRes.ok) throw new Error(DEMO_FILES.gml + ' (' + gmlRes.status + ')');
-    await handleGmlFiles([remoteFile('demo_lod2.gml', gmlRes)]);
+    await handleGmlFiles([remoteFile('demo_lod2.gml', gmlRes)], true);
 
     box.style.display = 'none';
     setStatus(T('demoReady'));
@@ -1401,6 +1461,8 @@ function initUI() {
   document.getElementById('gml-clear').addEventListener('click', function () {
     clearBuildings();
     lastGmlRings = null;
+    demoAttribGml = false;
+    refreshAttribution();
     setFileStatus('gml', T('noFile'));
     setStatus(T('msgBuildingsRemoved'));
   });
@@ -1524,6 +1586,10 @@ if (typeof module !== 'undefined' && module.exports) {
     handleGmlFiles: handleGmlFiles,
     loadDemo: loadDemo,
     demoRequested: demoRequested,
+    DEMO_ATTRIBUTION: DEMO_ATTRIBUTION,
+    showAttribution: showAttribution,
+    refreshAttribution: refreshAttribution,
+    isAttributionShown: isAttributionShown,
 
     // Zeigerbedienung
     DRAG_TOLERANCE: DRAG_TOLERANCE,
@@ -1549,6 +1615,8 @@ if (typeof module !== 'undefined' && module.exports) {
       roadPoints = [];
       pressInfo = null;
       lastPlaceTime = 0;
+      demoAttribDem = false;
+      demoAttribGml = false;
     }
   };
 }

@@ -13,9 +13,9 @@ const THREE = require('./three-stub.js');
 const DOMParser = require('./xml-stub.js').DOMParser;
 
 let pass = 0, fail = 0;
-function test(name, fn) {
+async function test(name, fn) {
   try {
-    fn();
+    await fn();
     pass++;
     console.log('  ok   ' + name);
   } catch (e) {
@@ -28,11 +28,11 @@ function test(name, fn) {
 /* ---------- Minimales, nachsichtiges DOM ---------- */
 
 function makeElement() {
+  let ownText = '';
   const el = {
     style: {},
     dataset: {},
     className: '',
-    textContent: '',
     value: '',
     title: '',
     children: [],
@@ -45,6 +45,15 @@ function makeElement() {
     removeEventListener: function () {},
     getElementsByTagName: function () { return []; }
   };
+  // Wie im echten DOM: textContent eines Elements mit Kindern ist die
+  // Verkettung der Kind-textContent, nicht ein eigenes Feld.
+  Object.defineProperty(el, 'textContent', {
+    get: function () {
+      if (!el.children.length) return ownText;
+      return el.children.map(function (c) { return c.textContent || ''; }).join('');
+    },
+    set: function (v) { ownText = v; el.children = []; }
+  });
   return el;
 }
 
@@ -56,7 +65,40 @@ function makeDocument() {
       return byId[id];
     },
     createElement: function () { return makeElement(); },
+    querySelectorAll: function () { return []; },
+    documentElement: makeElement(),
     _byId: byId
+  };
+}
+
+/* Bildet gerade so viel von geotiff.js nach, wie readTiffTile() aufruft -
+   ein flaches Raster mit fester Georeferenz reicht für die Tests. */
+function fakeGeoTIFF(w, h, value, originE, originN) {
+  const pixels = new Float32Array(w * h).fill(value);
+  return {
+    fromArrayBuffer: function () {
+      return Promise.resolve({
+        getImage: function () {
+          return Promise.resolve({
+            getWidth: function () { return w; },
+            getHeight: function () { return h; },
+            readRasters: function () { return Promise.resolve([pixels]); },
+            getOrigin: function () { return [originE, originN]; },
+            getResolution: function () { return [1, 1]; },
+            getFileDirectory: function () { return {}; },
+            getGeoKeys: function () { return { ProjectedCSTypeGeoKey: 25832 }; }
+          });
+        }
+      });
+    }
+  };
+}
+
+function fakeFile(name, content) {
+  return {
+    name: name,
+    arrayBuffer: function () { return Promise.resolve(new ArrayBuffer(0)); },
+    text: function () { return Promise.resolve(content); }
   };
 }
 
@@ -72,6 +114,7 @@ function newScope() {
     Date: Date, RegExp: RegExp, String: String, Number: Number, Boolean: Boolean,
     THREE: THREE,
     DOMParser: DOMParser,
+    GeoTIFF: fakeGeoTIFF(20, 20, 500, 692000, 5336020),
     document: document,
     window: {
       innerWidth: 1024, innerHeight: 768, devicePixelRatio: 1,
@@ -96,7 +139,7 @@ function newScope() {
   vm.runInContext(
     'var __bridge = { STRINGS: STRINGS, TOOL_INFO: TOOL_INFO, FIELD_ORDER: FIELD_ORDER, ' +
     'DETAIL_STEPS: DETAIL_STEPS, SETTINGS: SETTINGS, DRAG_TOLERANCE: DRAG_TOLERANCE, ' +
-    'REPEAT_GUARD: REPEAT_GUARD };',
+    'REPEAT_GUARD: REPEAT_GUARD, DEMO_ATTRIBUTION: DEMO_ATTRIBUTION };',
     sandbox
   );
 
@@ -108,7 +151,9 @@ function newScope() {
 
 /* ---------- Sprachen ---------- */
 
-test('STRINGS: Deutsch und Englisch haben dieselben Schlüssel', function () {
+async function main() {
+
+await test('STRINGS: Deutsch und Englisch haben dieselben Schlüssel', function () {
   const s = newScope().__bridge.STRINGS;
   const de = Object.keys(s.de).sort();
   const en = Object.keys(s.en).sort();
@@ -117,14 +162,14 @@ test('STRINGS: Deutsch und Englisch haben dieselben Schlüssel', function () {
 
 /* ---------- Formulare: die FIELD_ORDER-Falle ---------- */
 
-test('fieldRank: "select" hat Rang 0, kein ||-Kurzschluss macht daraus 9', function () {
+await test('fieldRank: "select" hat Rang 0, kein ||-Kurzschluss macht daraus 9', function () {
   const s = newScope();
   assert.strictEqual(s.fieldRank('select'), 0);
   assert.strictEqual(s.fieldRank('range'), 1);
   assert.strictEqual(s.fieldRank('unbekannt'), 9);
 });
 
-test('sortFields: sortiert nach fieldRank, select vor allem anderen', function () {
+await test('sortFields: sortiert nach fieldRank, select vor allem anderen', function () {
   const s = newScope();
   const fields = [
     { key: 'a', type: 'checkbox' },
@@ -138,7 +183,7 @@ test('sortFields: sortiert nach fieldRank, select vor allem anderen', function (
 
 /* ---------- Detailstufe "Original" ---------- */
 
-test('detailLimit: die letzte Stufe ist maxGrid=0 ("Original"), kein Fallback auf die Voreinstellung', function () {
+await test('detailLimit: die letzte Stufe ist maxGrid=0 ("Original"), kein Fallback auf die Voreinstellung', function () {
   const s = newScope();
   s.__bridge.SETTINGS.detail = s.__bridge.DETAIL_STEPS.length - 1;
   assert.strictEqual(s.detailLimit(), 0);
@@ -147,7 +192,7 @@ test('detailLimit: die letzte Stufe ist maxGrid=0 ("Original"), kein Fallback au
 
 /* ---------- Esc: erst der Stützpunkt, dann erst die Objektauswahl ---------- */
 
-test('Esc mit aktivem Stützpunkt löst nur den Knoten, die Objektauswahl bleibt', function () {
+await test('Esc mit aktivem Stützpunkt löst nur den Knoten, die Objektauswahl bleibt', function () {
   const s = newScope();
   const p = s.defaultRoadParams();
   p.points = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }];
@@ -163,7 +208,7 @@ test('Esc mit aktivem Stützpunkt löst nur den Knoten, die Objektauswahl bleibt
 
 /* ---------- Übersicht: Gruppierung über Kran- und Modellnamen (app.js) ---------- */
 
-test('groupKeyFor/buildGroups gruppieren Turmdrehkrane nach Modellnamen aus app.js', function () {
+await test('groupKeyFor/buildGroups gruppieren Turmdrehkrane nach Modellnamen aus app.js', function () {
   const s = newScope();
   const p1 = s.defaultTowerParams();
   const p2 = s.defaultTowerParams();
@@ -177,7 +222,7 @@ test('groupKeyFor/buildGroups gruppieren Turmdrehkrane nach Modellnamen aus app.
 
 /* ---------- Zeigerbedienung: Toleranz und Wiederholungssperre ---------- */
 
-test('Platzierung: Loslassen weit vom Startpunkt entfernt löst keinen Klick aus', function () {
+await test('Platzierung: Loslassen weit vom Startpunkt entfernt löst keinen Klick aus', function () {
   const s = newScope();
   let clicks = 0;
   s.onCanvasClick = function () { clicks++; };
@@ -186,7 +231,7 @@ test('Platzierung: Loslassen weit vom Startpunkt entfernt löst keinen Klick aus
   assert.strictEqual(clicks, 0);
 });
 
-test('Platzierung: Loslassen innerhalb der Toleranz löst einen Klick aus', function () {
+await test('Platzierung: Loslassen innerhalb der Toleranz löst einen Klick aus', function () {
   const s = newScope();
   let clicks = 0;
   s.onCanvasClick = function () { clicks++; };
@@ -195,7 +240,7 @@ test('Platzierung: Loslassen innerhalb der Toleranz löst einen Klick aus', func
   assert.strictEqual(clicks, 1);
 });
 
-test('Platzierung: nur die linke Maustaste löst einen Druckvorgang aus', function () {
+await test('Platzierung: nur die linke Maustaste löst einen Druckvorgang aus', function () {
   const s = newScope();
   let clicks = 0;
   s.onCanvasClick = function () { clicks++; };
@@ -204,7 +249,7 @@ test('Platzierung: nur die linke Maustaste löst einen Druckvorgang aus', functi
   assert.strictEqual(clicks, 0);
 });
 
-test('Platzierung: Wiederholungssperre verhindert zwei Klicks innerhalb von 250 ms', function () {
+await test('Platzierung: Wiederholungssperre verhindert zwei Klicks innerhalb von 250 ms', function () {
   const s = newScope();
   let clicks = 0;
   s.onCanvasClick = function () { clicks++; };
@@ -215,5 +260,69 @@ test('Platzierung: Wiederholungssperre verhindert zwei Klicks innerhalb von 250 
   assert.strictEqual(clicks, 1, 'der zweite, unmittelbar folgende Klick muss gesperrt sein');
 });
 
+/* ---------- Namensnennung: CC-BY-4.0-Beispieldaten ---------- */
+
+await test('showAttribution(true) zeigt Herausgeber und Lizenz mit Verweisen an', function () {
+  const s = newScope();
+  s.showAttribution(true);
+  const el = s.document.getElementById('attribution');
+  assert.strictEqual(el.style.display, 'flex');
+  const links = el.children.filter(function (c) { return c.href; });
+  assert.strictEqual(links.length, 2, 'Herausgeber- und Lizenzlink erwartet');
+  assert.strictEqual(links[0].href, s.__bridge.DEMO_ATTRIBUTION.url);
+  assert.strictEqual(links[0].textContent, s.__bridge.DEMO_ATTRIBUTION.publisher);
+  assert.strictEqual(links[1].href, s.__bridge.DEMO_ATTRIBUTION.licenseUrl);
+  assert.strictEqual(links[1].textContent, s.__bridge.DEMO_ATTRIBUTION.license);
+});
+
+await test('showAttribution(false) blendet die Namensnennung wieder aus', function () {
+  const s = newScope();
+  s.showAttribution(true);
+  s.showAttribution(false);
+  assert.strictEqual(s.document.getElementById('attribution').style.display, 'none');
+});
+
+await test('Namensnennung bleibt getrennt für Gelände und Gebäude bestehen', async function () {
+  const s = newScope();
+  assert.strictEqual(s.isAttributionShown(), false, 'ohne geladene Daten darf nichts angezeigt werden');
+
+  await s.handleDemFiles([fakeFile('demo_dgm.tif')], true);
+  assert.strictEqual(s.isAttributionShown(), true, 'Beispielgelände muss die Namensnennung zeigen');
+
+  const gml =
+    '<CityModel xmlns:gml="http://www.opengis.net/gml"><gml:Polygon><gml:exterior><gml:LinearRing>' +
+    '<gml:posList>691995 5336005 500 692005 5336005 500 692005 5336015 500</gml:posList>' +
+    '</gml:LinearRing></gml:exterior></gml:Polygon></CityModel>';
+  await s.handleGmlFiles([fakeFile('demo_lod2.gml', gml)], true);
+  assert.strictEqual(s.isAttributionShown(), true);
+
+  // Eigenes Gelände ersetzt nur das Gelände - die Gebäude sind weiterhin die Beispieldaten.
+  await s.handleDemFiles([fakeFile('eigenes.tif')]);
+  assert.strictEqual(s.isAttributionShown(), true,
+    'die Namensnennung für die Beispielgebäude darf beim Ersetzen des Geländes nicht verschwinden');
+
+  // Eigene Gebäude ersetzen die Beispielgebäude - jetzt darf gar nichts mehr angezeigt werden.
+  await s.handleGmlFiles([fakeFile('eigenes.gml', gml)]);
+  assert.strictEqual(s.isAttributionShown(), false,
+    'nachdem beide Quellen ersetzt sind, darf keine Namensnennung mehr stehen');
+});
+
+await test('Namensnennung wechselt mit der Sprache mit', async function () {
+  const s = newScope();
+  await s.handleDemFiles([fakeFile('demo_dgm.tif')], true);
+  assert.strictEqual(s.document.getElementById('attribution').textContent.indexOf('Beispieldaten:'), 0);
+
+  s.setLanguage('en');
+
+  assert.strictEqual(
+    s.document.getElementById('attribution').textContent.indexOf('Sample data:'), 0,
+    'refreshTexts() muss refreshAttribution() aufrufen, sonst bleibt das Label in der alten Sprache stehen'
+  );
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
+
+}
+
+main();
