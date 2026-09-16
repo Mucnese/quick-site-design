@@ -195,6 +195,12 @@ function initSharedResources() {
     color: 0x5fd4c4, transparent: true, opacity: 0.55, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
   });
+  // Rot wie --danger im CSS: Rechteckauswahl im IFC-Export und die
+  // Baustraßen-Vorschau beim Zeichnen. Echte Boxen statt LineBasicMaterial
+  // (siehe thickLine()), damit "dicker" auch tatsächlich sichtbar ist.
+  MAT.drawPreview = new THREE.MeshBasicMaterial({
+    color: 0xd9534f, transparent: true, opacity: 0.9, depthTest: false
+  });
 }
 
 /* =========================================================
@@ -1284,6 +1290,28 @@ function dropLines(radius, y, count) {
   return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), MAT.radiusMax);
 }
 
+/* Baut eine sichtbar dicke Linie aus schmalen Boxen entlang der Segmente.
+   LineBasicMaterial.linewidth wird von so gut wie jedem Browser ignoriert
+   (WebGL/ANGLE-Beschränkung) – deshalb echte Geometrie statt linewidth.
+   Nur um die Hochachse gedreht (kein vollständiges 3D-"look at"): für
+   flache Vorschaulinien auf sanft geneigtem Gelände reicht das, echte
+   Steigungen an einzelnen Segmenten werden dabei leicht unterschlagen. */
+function thickLine(points, width, material, closed) {
+  const g = new THREE.Group();
+  const n = closed ? points.length : points.length - 1;
+  for (let i = 0; i < n; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    if (len < 1e-6) continue;
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(len, width * 0.4, width), material);
+    seg.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    seg.rotation.y = -Math.atan2(dz, dx);
+    g.add(seg);
+  }
+  return g;
+}
+
 
 /* =========================================================
    Baustein: Baustraße
@@ -1509,7 +1537,7 @@ function setRoadPreview(pts, hover) {
     const line = all.map(function (q) {
       return new THREE.Vector3(q.x, getHeightAt(q.x, q.z) + 0.4, q.z);
     });
-    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line), MAT.ghost));
+    g.add(thickLine(line, 0.8, MAT.drawPreview, false));
   }
   pts.forEach(function (q) {
     const m = new THREE.Mesh(GEO.sphere, MAT.measure);
@@ -2351,6 +2379,7 @@ if (typeof module !== 'undefined' && module.exports) {
     trianglesInRect: trianglesInRect,
     collectExportGeometry: collectExportGeometry,
     buildExportPreview: buildExportPreview,
+    thickLine: thickLine,
     frameRect: frameRect,
     ifcGuid: ifcGuid,
     buildIfc: buildIfc,

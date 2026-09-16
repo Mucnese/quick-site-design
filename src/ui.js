@@ -1320,8 +1320,7 @@ function updateRectDragPreview(a, b) {
     new THREE.Vector3(minX, y, minZ), new THREE.Vector3(maxX, y, minZ),
     new THREE.Vector3(maxX, y, maxZ), new THREE.Vector3(minX, y, maxZ)
   ];
-  rectPreviewGroup = new THREE.Group();
-  rectPreviewGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), MAT.ghost));
+  rectPreviewGroup = thickLine(pts, 1.5, MAT.drawPreview, true);
   scene.add(rectPreviewGroup);
 }
 

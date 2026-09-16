@@ -354,5 +354,27 @@ test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function (
   assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832); }, /Geometrie/);
 });
 
+/* ---------- Dicke Vorschaulinien (Rechteckauswahl, Baustraße zeichnen) ---------- */
+
+test('thickLine: eine Box je Segment, geschlossen eine mehr als offen', function () {
+  freshScene();
+  const pts = [
+    new THREE.Vector3(0, 0, 0), new THREE.Vector3(10, 0, 0),
+    new THREE.Vector3(10, 0, 10), new THREE.Vector3(0, 0, 10)
+  ];
+  const open = app.thickLine(pts, 1, {}, false);
+  assert.strictEqual(open.children.length, 3, 'offene Linie: eine Box weniger als Punkte');
+  const closed = app.thickLine(pts, 1, {}, true);
+  assert.strictEqual(closed.children.length, 4, 'geschlossene Linie: eine Box je Kante');
+});
+
+test('thickLine: Boxrichtung folgt dem Segment (kein linewidth-Trick, echte Geometrie)', function () {
+  const along = app.thickLine([new THREE.Vector3(0, 0, 0), new THREE.Vector3(5, 0, 0)], 1, {}, false);
+  assert.ok(Math.abs(along.children[0].rotation.y) < 1e-9, 'entlang +x: keine Drehung nötig');
+
+  const across = app.thickLine([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 5)], 1, {}, false);
+  assert.ok(Math.abs(across.children[0].rotation.y - (-Math.PI / 2)) < 1e-9, 'entlang +z: 90° gedreht');
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

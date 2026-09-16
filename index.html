@@ -360,13 +360,19 @@
   .btn-block.accent { border-color: var(--accent); color: var(--accent); }
 
   #rect-export-btn {
-    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 7;
-    background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text); font-family: inherit; font-size: 0.82em; padding: 8px 18px; cursor: pointer;
+    /* #status sitzt ebenfalls oben mittig (top:14px, z-index:20) - tiefer,
+       damit Statusmeldungen (z. B. der Hinweis beim Rechteck ziehen) den
+       Knopf nicht verdecken. */
+    position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 7;
+    background: var(--panel-bg); border: 2px solid var(--accent); border-radius: var(--radius);
+    color: var(--accent); font-family: inherit; font-weight: 600;
+    font-size: 1em; padding: 12px 28px; cursor: pointer;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
-  #rect-export-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #rect-export-btn:hover { background: var(--field); }
   #rect-export-btn.off { opacity: 0.35; cursor: not-allowed; }
+  #rect-export-btn.off:hover { background: var(--panel-bg); }
 
   /* Kleines Panel direkt über der Bausteinleiste (#dock, bottom: 56px) */
   #ifc-panel {
@@ -778,6 +784,12 @@ function initSharedResources() {
   MAT.exportHighlight = new THREE.MeshLambertMaterial({
     color: 0x5fd4c4, transparent: true, opacity: 0.55, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
+  });
+  // Rot wie --danger im CSS: Rechteckauswahl im IFC-Export und die
+  // Baustraßen-Vorschau beim Zeichnen. Echte Boxen statt LineBasicMaterial
+  // (siehe thickLine()), damit "dicker" auch tatsächlich sichtbar ist.
+  MAT.drawPreview = new THREE.MeshBasicMaterial({
+    color: 0xd9534f, transparent: true, opacity: 0.9, depthTest: false
   });
 }
 
@@ -1868,6 +1880,28 @@ function dropLines(radius, y, count) {
   return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), MAT.radiusMax);
 }
 
+/* Baut eine sichtbar dicke Linie aus schmalen Boxen entlang der Segmente.
+   LineBasicMaterial.linewidth wird von so gut wie jedem Browser ignoriert
+   (WebGL/ANGLE-Beschränkung) – deshalb echte Geometrie statt linewidth.
+   Nur um die Hochachse gedreht (kein vollständiges 3D-"look at"): für
+   flache Vorschaulinien auf sanft geneigtem Gelände reicht das, echte
+   Steigungen an einzelnen Segmenten werden dabei leicht unterschlagen. */
+function thickLine(points, width, material, closed) {
+  const g = new THREE.Group();
+  const n = closed ? points.length : points.length - 1;
+  for (let i = 0; i < n; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    if (len < 1e-6) continue;
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(len, width * 0.4, width), material);
+    seg.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    seg.rotation.y = -Math.atan2(dz, dx);
+    g.add(seg);
+  }
+  return g;
+}
+
 
 /* =========================================================
    Baustein: Baustraße
@@ -2093,7 +2127,7 @@ function setRoadPreview(pts, hover) {
     const line = all.map(function (q) {
       return new THREE.Vector3(q.x, getHeightAt(q.x, q.z) + 0.4, q.z);
     });
-    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line), MAT.ghost));
+    g.add(thickLine(line, 0.8, MAT.drawPreview, false));
   }
   pts.forEach(function (q) {
     const m = new THREE.Mesh(GEO.sphere, MAT.measure);
@@ -4208,8 +4242,7 @@ function updateRectDragPreview(a, b) {
     new THREE.Vector3(minX, y, minZ), new THREE.Vector3(maxX, y, minZ),
     new THREE.Vector3(maxX, y, maxZ), new THREE.Vector3(minX, y, maxZ)
   ];
-  rectPreviewGroup = new THREE.Group();
-  rectPreviewGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), MAT.ghost));
+  rectPreviewGroup = thickLine(pts, 1.5, MAT.drawPreview, true);
   scene.add(rectPreviewGroup);
 }
 

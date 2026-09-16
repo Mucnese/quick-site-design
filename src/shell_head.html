@@ -360,13 +360,19 @@
   .btn-block.accent { border-color: var(--accent); color: var(--accent); }
 
   #rect-export-btn {
-    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 7;
-    background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text); font-family: inherit; font-size: 0.82em; padding: 8px 18px; cursor: pointer;
+    /* #status sitzt ebenfalls oben mittig (top:14px, z-index:20) - tiefer,
+       damit Statusmeldungen (z. B. der Hinweis beim Rechteck ziehen) den
+       Knopf nicht verdecken. */
+    position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 7;
+    background: var(--panel-bg); border: 2px solid var(--accent); border-radius: var(--radius);
+    color: var(--accent); font-family: inherit; font-weight: 600;
+    font-size: 1em; padding: 12px 28px; cursor: pointer;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
-  #rect-export-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #rect-export-btn:hover { background: var(--field); }
   #rect-export-btn.off { opacity: 0.35; cursor: not-allowed; }
+  #rect-export-btn.off:hover { background: var(--panel-bg); }
 
   /* Kleines Panel direkt über der Bausteinleiste (#dock, bottom: 56px) */
   #ifc-panel {
