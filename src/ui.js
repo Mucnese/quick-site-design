@@ -966,6 +966,7 @@ function setNeedsData(on) {
   for (let i = 0; i < cards.length; i++) {
     if (cards[i].classList) cards[i].classList.toggle('off', on);
   }
+  document.getElementById('rect-export-btn').classList.toggle('off', on);
 }
 
 function updateInfoBar() {
