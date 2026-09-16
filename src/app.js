@@ -2268,9 +2268,17 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
     lines.push('#' + nextId + '=' + type + '(' + args + ');');
     return '#' + nextId;
   }
+  // IFC: Z ist oben, Y ist Norden (folgt aus IfcMapConversion unten:
+  // XAxisAbscissa=1/XAxisOrdinate=0, also IFC-X ohne Drehung = Osten).
+  // Im Szenengraphen ist es umgekehrt (+x=Ost, -z=Nord, y=Höhe) - beim
+  // Schreiben ins IFC deshalb Höhe und Nord/Süd vertauschen, sonst liegt
+  // das Modell auf der Seite.
   function localize(tri) {
     return [tri.a, tri.b, tri.c].map(function (p) {
-      return '(' + num(p[0] - rectMinX) + ',' + num(p[1]) + ',' + num(p[2] - rectMinZ) + ')';
+      const x = p[0] - rectMinX;
+      const y = -(p[2] - rectMinZ);
+      const z = p[1];
+      return '(' + num(x) + ',' + num(y) + ',' + num(z) + ')';
     }).join(',');
   }
 
@@ -2283,8 +2291,12 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
 
   const projectedCrs = add('IFCPROJECTEDCRS',
     str('EPSG:' + epsg) + ',$,$,$,$,$,' + lengthUnit);
+  // OrthogonalHeight: die reale Höhe, die lokal Z=0 entspricht. Lokal Z=0
+  // ist TERRAIN.zmin (dort setzt auch die Höhe im Szenengraphen auf 0),
+  // nicht 0 m ü. NHN.
   add('IFCMAPCONVERSION',
-    context + ',' + projectedCrs + ',' + num(target.e) + ',' + num(target.n) + ',0.,1.,0.,1.');
+    context + ',' + projectedCrs + ',' + num(target.e) + ',' + num(target.n) + ',' +
+    num(TERRAIN.zmin) + ',1.,0.,1.');
 
   const siteLocalPlacement = add('IFCLOCALPLACEMENT', '$,' + worldPlacement);
   const project = add('IFCPROJECT',

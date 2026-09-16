@@ -339,7 +339,7 @@ test('buildIfc: erzeugt ein strukturell gültiges STEP-Dokument (alle Referenzen
   assert.ok(check.definedCount > 0);
 });
 
-test('buildIfc: IfcMapConversion trägt die UTM-Koordinaten der Rechteck-Südwestecke', function () {
+test('buildIfc: IfcMapConversion trägt die UTM-Koordinaten der Rechteck-Nordwestecke (minZ = am weitesten nördlich)', function () {
   terrainForExportTests();
   const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
   const ifc = app.buildIfc(geo, -10, -10, 25832);
@@ -347,6 +347,26 @@ test('buildIfc: IfcMapConversion trägt die UTM-Koordinaten der Rechteck-Südwes
   // worldToUTM(-10,-10) bei originE=692000/originN=5336000
   assert.ok(line.indexOf('691990.') >= 0 && line.indexOf('5336010.') >= 0, line);
   assert.ok(ifc.indexOf('EPSG:25832') >= 0, 'IFCPROJECTEDCRS sollte den Quell-EPSG des Geländes tragen');
+});
+
+test('buildIfc: IfcMapConversion.OrthogonalHeight ist TERRAIN.zmin, nicht 0 (lokal Z=0 ist zmin, nicht 0 m ü. NHN)', function () {
+  const t = terrainForExportTests(); // zmin = 500
+  const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
+  const ifc = app.buildIfc(geo, -10, -10, 25832);
+  const line = ifc.split('\n').find(function (l) { return l.indexOf('IFCMAPCONVERSION') >= 0; });
+  assert.ok(line.indexOf(',' + t.zmin + '.,1.,0.,1.)') >= 0, line);
+});
+
+test('buildIfc: Achsen wie in IFC üblich - X=Ost, Y=Norden, Z=Höhe (im Szenengraphen: +x=Ost, -z=Nord, y=Höhe)', function () {
+  terrainForExportTests();
+  // ein einzelner Punkt reicht, um die Achszuordnung zu prüfen: 5 m Ost,
+  // 3 m Höhe, 2 m nördlich (z=-2, da im Szenengraphen -z=Nord)
+  const p = [5, 3, -2];
+  const geo = { terrain: [{ a: p, b: p, c: p }], buildings: [] };
+  const ifc = app.buildIfc(geo, 0, 0, 25832);
+  const line = ifc.split('\n').find(function (l) { return l.indexOf('IFCCARTESIANPOINTLIST3D') >= 0; });
+  assert.ok(line.indexOf('(5.,2.,3.)') >= 0,
+    'erwartet (Ost=5, Nord=2, Höhe=3): ' + line);
 });
 
 test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function () {
