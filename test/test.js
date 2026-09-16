@@ -376,5 +376,23 @@ test('thickLine: Boxrichtung folgt dem Segment (kein linewidth-Trick, echte Geom
   assert.ok(Math.abs(across.children[0].rotation.y - (-Math.PI / 2)) < 1e-9, 'entlang +z: 90° gedreht');
 });
 
+/* ---------- Draufsicht: keine Trägheitsdrehung ---------- */
+
+test('Draufsicht schaltet die OrbitControls-Trägheit aus, sonst dreht sich die Ansicht nach einer Drehgeste von selbst weiter', function () {
+  terrainForExportTests(); // frameTerrain() unten braucht ein geladenes Gelände
+  const controls = app.getControls();
+  assert.strictEqual(controls.enableDamping, true, 'zu Beginn wie gewohnt an');
+
+  app.setTopView();
+  app.updateControls();
+  assert.strictEqual(controls.enableDamping, false,
+    'in der Draufsicht liegt der Polarwinkel nahe 0 - dort ist die Kugelkoordinaten-Dämpfung instabil');
+
+  app.frameTerrain();
+  app.updateControls();
+  assert.strictEqual(app.isTopView(), false);
+  assert.strictEqual(controls.enableDamping, true, 'außerhalb der Draufsicht wieder wie gewohnt an');
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

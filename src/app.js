@@ -1769,6 +1769,11 @@ function updateControls() {
   updateMeasureScale();
   updateNodeScale();
   refreshTopView();
+  // In der Draufsicht liegt der Polarwinkel nahe 0 - dort ist OrbitControls'
+  // Kugelkoordinaten-Dämpfung numerisch instabil und lässt die Ansicht nach
+  // einer Drehgeste minutenlang von selbst weiterdrehen. Direktes Ziehen
+  // bleibt möglich, nur die Trägheit danach entfällt.
+  controls.enableDamping = !topView;
   if (camGoal) {
     camera.position.lerp(camGoal, 0.14);
     if (camera.position.distanceTo(camGoal) < 0.2) {
@@ -2336,6 +2341,11 @@ if (typeof module !== 'undefined' && module.exports) {
     initScene: initScene,
     initSharedResources: initSharedResources,
     getScene: function () { return scene; },
+    getControls: function () { return controls; },
+    setTopView: setTopView,
+    isTopView: isTopView,
+    frameTerrain: frameTerrain,
+    updateControls: updateControls,
 
     // Kranmodelle und Datenblätter
     CRANE_MODELS: CRANE_MODELS,
