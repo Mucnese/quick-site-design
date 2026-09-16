@@ -347,19 +347,22 @@ function dragRect(s, ax, az, bx, bz) {
   s.onCanvasPointerUp({ clientX: 0, clientY: 0, pointerId: 1 });
 }
 
-await test('Ausschnitt wählen: aktiviert den Rechteckmodus und sperrt die Kamerasteuerung', async function () {
+await test('Ausschnitt wählen: aktiviert den Rechteckmodus und sperrt Drehen/Verschieben, nicht das Zoomen', async function () {
   const s = await scopeWithTerrain();
   s.startRectExport();
   assert.strictEqual(s.isRectSelectActive(), true);
-  assert.strictEqual(s.__bridge.controls.enabled, false);
+  assert.strictEqual(s.__bridge.controls.enableRotate, false);
+  assert.strictEqual(s.__bridge.controls.enablePan, false);
+  assert.strictEqual(s.__bridge.controls.enableZoom, true, 'Zoomen muss beim Rechteck ziehen weiter möglich sein');
 });
 
-await test('Esc während des Ziehens bricht die Rechteckauswahl ab, Kamerasteuerung wieder frei', async function () {
+await test('Esc während des Ziehens bricht die Rechteckauswahl ab, Drehen/Verschieben wieder frei', async function () {
   const s = await scopeWithTerrain();
   s.startRectExport();
   s.onKeyDown({ key: 'Escape' });
   assert.strictEqual(s.isRectSelectActive(), false);
-  assert.strictEqual(s.__bridge.controls.enabled, true);
+  assert.strictEqual(s.__bridge.controls.enableRotate, true);
+  assert.strictEqual(s.__bridge.controls.enablePan, true);
 });
 
 await test('Rechteck ziehen: Panel zeigt Ausdehnung und den Koordinatenbezug des Geländes (keine EPSG-Wahl)', async function () {

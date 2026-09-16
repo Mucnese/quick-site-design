@@ -1273,13 +1273,21 @@ let exportPreviewGroup = null; // Vorschau des tatsächlich exportierten Ausschn
 let exportRect = null;         // { minX, minZ, maxX, maxZ } des zuletzt gezeichneten Rechtecks
 let exportGeometry = null;     // zuletzt eingesammelte {terrain, buildings}-Dreiecke
 
+/* Nur Drehen/Verschieben sperren, nicht das Zoomen - sonst kollidiert das
+   Ziehen des Rechtecks mit dem Kamera-Orbit, aber näher heranzoomen soll
+   beim genauen Setzen des Ausschnitts weiter möglich sein. */
+function setOrbitLocked(locked) {
+  controls.enableRotate = !locked;
+  controls.enablePan = !locked;
+}
+
 function startRectExport() {
   if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
   clearExportPreview();
   rectSelectActive = true;
   rectStart = null;
   setTopView();
-  controls.enabled = false; // sonst kollidiert das Ziehen mit dem Kamera-Orbit
+  setOrbitLocked(true);
   selectTool(null);
   setStatus(T('ifcExportHint'));
 }
@@ -1287,7 +1295,7 @@ function startRectExport() {
 function cancelRectExport() {
   rectSelectActive = false;
   rectStart = null;
-  controls.enabled = true;
+  setOrbitLocked(false);
   clearRectDragPreview();
   setStatus('');
 }
@@ -1327,7 +1335,7 @@ function updateRectDragPreview(a, b) {
 /* Ecke a kommt vom pointerdown, b vom pointerup. */
 function finishRectExport(a, b) {
   rectSelectActive = false;
-  controls.enabled = true;
+  setOrbitLocked(false);
   clearRectDragPreview();
 
   const minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x);

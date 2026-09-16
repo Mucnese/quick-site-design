@@ -280,6 +280,10 @@ class OrbitControls {
     this.camera = camera;
     this.domElement = domElement;
     this.target = new Vector3();
+    this.enabled = true;
+    this.enableRotate = true;
+    this.enablePan = true;
+    this.enableZoom = true;
     this.enableDamping = false;
     this.dampingFactor = 0;
     this.maxDistance = Infinity;
