@@ -11,7 +11,6 @@ const vm = require('vm');
 const assert = require('assert');
 const THREE = require('./three-stub.js');
 const DOMParser = require('./xml-stub.js').DOMParser;
-const proj4 = require('../lib/proj4.js');
 
 let pass = 0, fail = 0;
 async function test(name, fn) {
@@ -116,7 +115,6 @@ function newScope() {
     Date: Date, RegExp: RegExp, String: String, Number: Number, Boolean: Boolean,
     THREE: THREE,
     DOMParser: DOMParser,
-    proj4: proj4,
     GeoTIFF: fakeGeoTIFF(20, 20, 500, 692000, 5336020),
     Blob: function (parts, opts) { this.parts = parts; this.type = opts && opts.type; },
     URL: { createObjectURL: function () { return 'blob:fake'; }, revokeObjectURL: function () {} },
@@ -364,13 +362,13 @@ await test('Esc während des Ziehens bricht die Rechteckauswahl ab, Kamerasteuer
   assert.strictEqual(s.__bridge.controls.enabled, true);
 });
 
-await test('Rechteck ziehen: Panel zeigt Ausdehnung und schlägt den Quell-EPSG vor', async function () {
+await test('Rechteck ziehen: Panel zeigt Ausdehnung und den Koordinatenbezug des Geländes (keine EPSG-Wahl)', async function () {
   const s = await scopeWithTerrain();
   dragRect(s, -10, -10, 10, 10);
   assert.strictEqual(s.isRectSelectActive(), false);
   assert.strictEqual(s.isIfcPanelOpen(), true);
   assert.strictEqual(s.document.getElementById('ifc-extent').textContent, '20 × 20 m');
-  assert.strictEqual(s.document.getElementById('ifc-epsg').value, 25832);
+  assert.strictEqual(s.document.getElementById('ifc-crs').textContent, s.crsLabel(25832));
 });
 
 await test('Esc nach gezogenem Rechteck schließt das Panel und entfernt die Vorschau', async function () {
@@ -389,16 +387,7 @@ await test('"Abbrechen" schließt das Panel ebenso wie Esc', async function () {
   assert.strictEqual(s.isIfcPanelOpen(), false);
 });
 
-await test('Exportieren mit nicht unterstütztem EPSG-Code zeigt einen Fehler im Panel, ohne es zu schließen', async function () {
-  const s = await scopeWithTerrain();
-  dragRect(s, -10, -10, 10, 10);
-  s.document.getElementById('ifc-epsg').value = 999999;
-  s.runIfcExport();
-  assert.ok(s.document.getElementById('ifc-error').textContent.length > 0);
-  assert.strictEqual(s.isIfcPanelOpen(), true, 'Panel bleibt bei Fehler offen');
-});
-
-await test('Exportieren mit gültigem EPSG löst den Download aus und meldet Erfolg', async function () {
+await test('Exportieren löst den Download aus und meldet Erfolg', async function () {
   const s = await scopeWithTerrain();
   dragRect(s, -10, -10, 10, 10);
   s.runIfcExport();

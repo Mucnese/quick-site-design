@@ -435,39 +435,6 @@ function crsLabel(code) {
   return n ? 'EPSG:' + code + ' · ' + n : 'EPSG:' + code;
 }
 
-/* proj4-Definitionen für den IFC-Export (Ziel-EPSG-Wahl). Absichtlich nur
-   ETRS89-basierte Systeme: DHDN/Gauß-Krüger (31466–31469) bräuchte für eine
-   korrekte Umrechnung das BETA2007-Gitter, das hier nicht mitgeliefert
-   wird – ohne Gitter wäre die Umrechnung lautlos ungenau, deshalb lieber
-   gar nicht erst anbieten. */
-const EPSG_DEFS = {
-  25831: '+proj=utm +zone=31 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
-  25832: '+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
-  25833: '+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
-  5650: '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9996 +x_0=33500000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
-  4647: '+proj=tmerc +lat_0=0 +lon_0=9 +k=0.9996 +x_0=32500000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
-  4326: '+proj=longlat +datum=WGS84 +no_defs',
-  4258: '+proj=longlat +ellps=GRS80 +no_defs',
-  3857: '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs'
-};
-
-function epsgSupported(code) {
-  return Object.prototype.hasOwnProperty.call(EPSG_DEFS, code);
-}
-
-/* Wandelt [e, n] von einem unterstützten Quell- in ein Ziel-EPSG um.
-   Gleicher Code: unverändert (keine proj4-Rundung durch die Hin- und
-   Rückrechnung über eine Zwischenprojektion). */
-function reprojectEN(e, n, fromEpsg, toEpsg) {
-  if (fromEpsg === toEpsg) return { e: e, n: n };
-  if (!epsgSupported(fromEpsg)) throw new Error('EPSG:' + fromEpsg + ' wird nicht unterstützt.');
-  if (!epsgSupported(toEpsg)) throw new Error('EPSG:' + toEpsg + ' wird nicht unterstützt.');
-  if (!proj4.defs('EPSG:' + fromEpsg)) proj4.defs('EPSG:' + fromEpsg, EPSG_DEFS[fromEpsg]);
-  if (!proj4.defs('EPSG:' + toEpsg)) proj4.defs('EPSG:' + toEpsg, EPSG_DEFS[toEpsg]);
-  const r = proj4('EPSG:' + fromEpsg, 'EPSG:' + toEpsg, [e, n]);
-  return { e: r[0], n: r[1] };
-}
-
 /* Liest eine einzelne Kachel ein und liefert Raster samt Georeferenz */
 async function readTiffTile(arrayBuffer, fileName) {
   const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
@@ -2239,17 +2206,21 @@ function ifcGuid() {
 /* Schreibt ein minimales, gültiges IFC4-STEP-Dokument von Hand (der
    benötigte Entity-Umfang ist klein genug, dass sich eine externe
    IFC-Bibliothek dafür nicht lohnt). Georeferenz über IfcProjectedCRS +
-   IfcMapConversion; alle Geometrie-Koordinaten liegen relativ zur
-   Rechteck-Südwestecke (übliche IFC-Praxis, vermeidet Präzisionsverlust
-   durch große UTM-Werte direkt in der Geometrie). */
-function buildIfc(geo, rectMinX, rectMinZ, sourceEpsg, targetEpsg) {
+   IfcMapConversion, immer im EPSG-Code des geladenen Geländes – keine
+   Ziel-EPSG-Wahl (eine korrekte Umrechnung für alle in EPSG_NAMES
+   gelisteten Systeme bräuchte für die DHDN/Gauß-Krüger-Fälle ein
+   Umrechnungsgitter, das hier nicht mitgeliefert wird; lieber gar keine
+   Wahl anbieten als eine, die für einen Teil der Codes lautlos falsch
+   läge). Alle Geometrie-Koordinaten liegen relativ zur Rechteck-
+   Südwestecke (übliche IFC-Praxis, vermeidet Präzisionsverlust durch
+   große UTM-Werte direkt in der Geometrie). */
+function buildIfc(geo, rectMinX, rectMinZ, epsg) {
   if (!TERRAIN) throw new Error('Bitte zuerst ein Geländemodell laden.');
   if (!geo.terrain.length && !geo.buildings.length) {
     throw new Error('Der Ausschnitt enthält keine Geometrie.');
   }
 
-  const originUTM = worldToUTM(rectMinX, rectMinZ);
-  const target = reprojectEN(originUTM.e, originUTM.n, sourceEpsg, targetEpsg);
+  const target = worldToUTM(rectMinX, rectMinZ);
 
   const lines = [];
   let nextId = 0;
@@ -2278,7 +2249,7 @@ function buildIfc(geo, rectMinX, rectMinZ, sourceEpsg, targetEpsg) {
     '$,\'Model\',3,1.E-5,' + worldPlacement + ',$');
 
   const projectedCrs = add('IFCPROJECTEDCRS',
-    str('EPSG:' + targetEpsg) + ',$,$,$,$,$,' + lengthUnit);
+    str('EPSG:' + epsg) + ',$,$,$,$,$,' + lengthUnit);
   add('IFCMAPCONVERSION',
     context + ',' + projectedCrs + ',' + num(target.e) + ',' + num(target.n) + ',0.,1.,0.,1.');
 
@@ -2376,9 +2347,6 @@ if (typeof module !== 'undefined' && module.exports) {
     triangulateBuildingRings: triangulateBuildingRings,
 
     // IFC-Export
-    EPSG_DEFS: EPSG_DEFS,
-    epsgSupported: epsgSupported,
-    reprojectEN: reprojectEN,
     terrainGridInRect: terrainGridInRect,
     trianglesInRect: trianglesInRect,
     collectExportGeometry: collectExportGeometry,

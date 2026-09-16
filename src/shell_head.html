@@ -364,7 +364,7 @@
     background: var(--panel-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   }
-  #ifc-panel .field { margin-top: 9px; }
+  #ifc-panel .kv { flex-direction: column; align-items: flex-start; gap: 1px; }
   #ifc-panel #ifc-error:empty { display: none; }
   #ifc-actions { display: flex; gap: 8px; }
   #ifc-actions .btn-block { flex: 1 1 0; margin-top: 12px; }
@@ -556,10 +556,7 @@
   <div class="sec"><span data-i18n="ifcPanelTitle">IFC-Export</span></div>
   <div class="body">
     <div class="kv"><span class="k" data-i18n="ifcExtent">Ausdehnung</span><span class="v" id="ifc-extent">–</span></div>
-    <div class="field">
-      <div class="field-head"><label data-i18n="ifcTargetEpsg">Ziel-EPSG-Code</label></div>
-      <input type="number" id="ifc-epsg" step="1">
-    </div>
+    <div class="kv"><span class="k" data-i18n="ifcCrs">Koordinatenbezug</span><span class="v" id="ifc-crs">–</span></div>
     <div class="file-status err" id="ifc-error"></div>
     <div id="ifc-actions">
       <button class="btn-block" id="ifc-cancel-btn" data-i18n="cancel">Abbrechen</button>
@@ -572,6 +569,4 @@
      Server gehen. Siehe lib/LIESMICH.txt -->
 <script src="lib/three.min.js"></script>
 <script src="lib/OrbitControls.js"></script>
-<script src="lib/geotiff.js"></script>
-<script src="lib/proj4.js"></script>
-<script>
+<script src="lib/geotiff.js"></script><script>

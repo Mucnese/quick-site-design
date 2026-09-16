@@ -5,7 +5,6 @@
 global.window = { innerWidth: 1024, innerHeight: 768, devicePixelRatio: 1 };
 global.THREE = require('./three-stub.js');
 global.DOMParser = require('./xml-stub.js').DOMParser;
-global.proj4 = require('../lib/proj4.js');
 
 const assert = require('assert');
 const app = require('../src/app.js');
@@ -330,7 +329,7 @@ test('collectExportGeometry: Gelände immer dabei, Gebäude nur innerhalb des Re
 test('buildIfc: erzeugt ein strukturell gültiges STEP-Dokument (alle Referenzen lösen auf)', function () {
   terrainForExportTests();
   const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
-  const ifc = app.buildIfc(geo, -10, -10, 25832, 25832);
+  const ifc = app.buildIfc(geo, -10, -10, 25832);
   assert.ok(ifc.startsWith('ISO-10303-21;'));
   assert.ok(ifc.trim().endsWith('END-ISO-10303-21;'));
   assert.ok(ifc.indexOf('FILE_SCHEMA((\'IFC4\'))') >= 0);
@@ -340,40 +339,19 @@ test('buildIfc: erzeugt ein strukturell gültiges STEP-Dokument (alle Referenzen
   assert.ok(check.definedCount > 0);
 });
 
-test('buildIfc: gleicher Quell- und Ziel-EPSG ist eine Identität (kein proj4-Rundungsfehler)', function () {
+test('buildIfc: IfcMapConversion trägt die UTM-Koordinaten der Rechteck-Südwestecke', function () {
   terrainForExportTests();
   const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
-  const ifc = app.buildIfc(geo, -10, -10, 25832, 25832);
+  const ifc = app.buildIfc(geo, -10, -10, 25832);
   const line = ifc.split('\n').find(function (l) { return l.indexOf('IFCMAPCONVERSION') >= 0; });
   // worldToUTM(-10,-10) bei originE=692000/originN=5336000
   assert.ok(line.indexOf('691990.') >= 0 && line.indexOf('5336010.') >= 0, line);
-});
-
-test('buildIfc: echte Umrechnung nach EPSG:4326 stimmt mit proj4 direkt überein', function () {
-  terrainForExportTests();
-  const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
-  const ifc = app.buildIfc(geo, -10, -10, 25832, 4326);
-  const line = ifc.split('\n').find(function (l) { return l.indexOf('IFCMAPCONVERSION') >= 0; });
-  proj4.defs('EPSG:25832', app.EPSG_DEFS[25832]);
-  proj4.defs('EPSG:4326', app.EPSG_DEFS[4326]);
-  const expected = proj4('EPSG:25832', 'EPSG:4326', [691990, 5336010]);
-  assert.ok(line.indexOf(Math.round(expected[0] * 1000) / 1000 + ',') >= 0, line);
-});
-
-test('buildIfc: nicht unterstützter Ziel-EPSG-Code wirft eine verständliche Meldung', function () {
-  terrainForExportTests();
-  const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
-  assert.throws(function () { app.buildIfc(geo, -10, -10, 25832, 999999); }, /999999/);
+  assert.ok(ifc.indexOf('EPSG:25832') >= 0, 'IFCPROJECTEDCRS sollte den Quell-EPSG des Geländes tragen');
 });
 
 test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function () {
   terrainForExportTests();
-  assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832, 25832); }, /Geometrie/);
-});
-
-test('EPSG_DEFS: DHDN/Gauß-Krüger-Codes absichtlich nicht enthalten (kein Umrechnungsgitter gebündelt)', function () {
-  assert.strictEqual(app.epsgSupported(31467), false);
-  assert.strictEqual(app.epsgSupported(25832), true);
+  assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832); }, /Geometrie/);
 });
 
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');

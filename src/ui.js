@@ -49,7 +49,7 @@ const STRINGS = {
     radiusTooTight: 'Der Mindestradius passt nicht zwischen die Stützpunkte. Punkte weiter auseinander setzen oder Radius verkleinern.',
     noManufacturerValue: 'keine Herstellerangabe',
     ifcExportBtn: 'Ausschnitt wählen', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
-    ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcTargetEpsg: 'Ziel-EPSG-Code',
+    ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'Genauigkeit', unit: 'Einheit', unitMeter: 'Meter',
     hintClick: 'Klick', hintMeasure: 'Messpunkt', hintDrag: 'Ziehen',
@@ -114,7 +114,7 @@ const STRINGS = {
     radiusTooTight: 'The minimum radius does not fit between the nodes. Move the nodes further apart or reduce the radius.',
     noManufacturerValue: 'no manufacturer figure',
     ifcExportBtn: 'Select extent', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
-    ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcTargetEpsg: 'Target EPSG code',
+    ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'Accuracy', unit: 'Unit', unitMeter: 'Metre',
     hintClick: 'Click', hintMeasure: 'Measure point', hintDrag: 'Drag',
@@ -1353,7 +1353,7 @@ function showIfcPanel() {
   const r = exportRect;
   document.getElementById('ifc-extent').textContent =
     Math.round(r.maxX - r.minX) + ' × ' + Math.round(r.maxZ - r.minZ) + ' m';
-  document.getElementById('ifc-epsg').value = TERRAIN.epsg;
+  document.getElementById('ifc-crs').textContent = crsLabel(TERRAIN.epsg);
   document.getElementById('ifc-error').textContent = '';
   document.getElementById('ifc-panel').style.display = 'block';
 }
@@ -1371,10 +1371,9 @@ function getExportRect() { return exportRect; }
 function getExportGeometry() { return exportGeometry; }
 
 function runIfcExport() {
-  const epsg = parseInt(document.getElementById('ifc-epsg').value, 10);
   const errEl = document.getElementById('ifc-error');
   try {
-    const ifc = buildIfc(exportGeometry, exportRect.minX, exportRect.minZ, TERRAIN.epsg, epsg);
+    const ifc = buildIfc(exportGeometry, exportRect.minX, exportRect.minZ, TERRAIN.epsg);
     downloadText(ifc, 'quick-site-design-export.ifc');
     errEl.textContent = '';
     setStatus(T('msgIfcExported'));
