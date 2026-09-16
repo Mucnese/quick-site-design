@@ -48,6 +48,9 @@ const STRINGS = {
     demoAttribution: 'Beispieldaten:',
     radiusTooTight: 'Der Mindestradius passt nicht zwischen die Stützpunkte. Punkte weiter auseinander setzen oder Radius verkleinern.',
     noManufacturerValue: 'keine Herstellerangabe',
+    ifcExportBtn: 'Ausschnitt wählen', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
+    ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcTargetEpsg: 'Ziel-EPSG-Code',
+    ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'Genauigkeit', unit: 'Einheit', unitMeter: 'Meter',
     hintClick: 'Klick', hintMeasure: 'Messpunkt', hintDrag: 'Ziehen',
     hintRotate: 'Drehen', hintEsc: 'Esc', hintCancel: 'Abbrechen',
@@ -110,6 +113,9 @@ const STRINGS = {
     demoAttribution: 'Sample data:',
     radiusTooTight: 'The minimum radius does not fit between the nodes. Move the nodes further apart or reduce the radius.',
     noManufacturerValue: 'no manufacturer figure',
+    ifcExportBtn: 'Select extent', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
+    ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcTargetEpsg: 'Target EPSG code',
+    ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'Accuracy', unit: 'Unit', unitMeter: 'Metre',
     hintClick: 'Click', hintMeasure: 'Measure point', hintDrag: 'Drag',
     hintRotate: 'Orbit', hintEsc: 'Esc', hintCancel: 'Cancel',
@@ -1257,6 +1263,138 @@ function demoRequested() {
 }
 
 /* =========================================================
+   IFC-Export (Rechteckauswahl in der 2D-Ansicht)
+   ========================================================= */
+let rectSelectActive = false;
+let rectStart = null;          // Weltkoordinaten der ersten Ecke während des Ziehens
+let rectPreviewGroup = null;   // Rechteck-Vorschau während des Ziehens
+let exportPreviewGroup = null; // Vorschau des tatsächlich exportierten Ausschnitts
+let exportRect = null;         // { minX, minZ, maxX, maxZ } des zuletzt gezeichneten Rechtecks
+let exportGeometry = null;     // zuletzt eingesammelte {terrain, buildings}-Dreiecke
+
+function startRectExport() {
+  if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
+  clearExportPreview();
+  rectSelectActive = true;
+  rectStart = null;
+  setTopView();
+  controls.enabled = false; // sonst kollidiert das Ziehen mit dem Kamera-Orbit
+  selectTool(null);
+  setStatus(T('ifcExportHint'));
+}
+
+function cancelRectExport() {
+  rectSelectActive = false;
+  rectStart = null;
+  controls.enabled = true;
+  clearRectDragPreview();
+  setStatus('');
+}
+
+function clearRectDragPreview() {
+  if (rectPreviewGroup) {
+    scene.remove(rectPreviewGroup);
+    disposeGroup(rectPreviewGroup);
+    rectPreviewGroup = null;
+  }
+}
+
+function clearExportPreview() {
+  if (exportPreviewGroup) {
+    scene.remove(exportPreviewGroup);
+    disposeGroup(exportPreviewGroup);
+    exportPreviewGroup = null;
+  }
+  exportRect = null;
+  exportGeometry = null;
+  hideIfcPanel();
+}
+
+function updateRectDragPreview(a, b) {
+  clearRectDragPreview();
+  const minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x);
+  const minZ = Math.min(a.z, b.z), maxZ = Math.max(a.z, b.z);
+  const y = getHeightAt((minX + maxX) / 2, (minZ + maxZ) / 2) + 0.3;
+  const pts = [
+    new THREE.Vector3(minX, y, minZ), new THREE.Vector3(maxX, y, minZ),
+    new THREE.Vector3(maxX, y, maxZ), new THREE.Vector3(minX, y, maxZ)
+  ];
+  rectPreviewGroup = new THREE.Group();
+  rectPreviewGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), MAT.ghost));
+  scene.add(rectPreviewGroup);
+}
+
+/* Ecke a kommt vom pointerdown, b vom pointerup. */
+function finishRectExport(a, b) {
+  rectSelectActive = false;
+  controls.enabled = true;
+  clearRectDragPreview();
+
+  const minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x);
+  const minZ = Math.min(a.z, b.z), maxZ = Math.max(a.z, b.z);
+  if (maxX - minX < 1 || maxZ - minZ < 1) { setStatus(''); return; }
+
+  try {
+    exportGeometry = collectExportGeometry(lastGmlRings, minX, minZ, maxX, maxZ);
+  } catch (err) {
+    setStatus(err.message, true);
+    return;
+  }
+
+  exportRect = { minX: minX, minZ: minZ, maxX: maxX, maxZ: maxZ };
+  frameRect(minX, minZ, maxX, maxZ);
+  exportPreviewGroup = buildExportPreview(exportGeometry);
+  scene.add(exportPreviewGroup);
+  setStatus('');
+  showIfcPanel();
+}
+
+function showIfcPanel() {
+  const r = exportRect;
+  document.getElementById('ifc-extent').textContent =
+    Math.round(r.maxX - r.minX) + ' × ' + Math.round(r.maxZ - r.minZ) + ' m';
+  document.getElementById('ifc-epsg').value = TERRAIN.epsg;
+  document.getElementById('ifc-error').textContent = '';
+  document.getElementById('ifc-panel').style.display = 'block';
+}
+
+function hideIfcPanel() {
+  document.getElementById('ifc-panel').style.display = 'none';
+}
+
+function isIfcPanelOpen() {
+  return document.getElementById('ifc-panel').style.display === 'block';
+}
+
+function isRectSelectActive() { return rectSelectActive; }
+function getExportRect() { return exportRect; }
+function getExportGeometry() { return exportGeometry; }
+
+function runIfcExport() {
+  const epsg = parseInt(document.getElementById('ifc-epsg').value, 10);
+  const errEl = document.getElementById('ifc-error');
+  try {
+    const ifc = buildIfc(exportGeometry, exportRect.minX, exportRect.minZ, TERRAIN.epsg, epsg);
+    downloadText(ifc, 'quick-site-design-export.ifc');
+    errEl.textContent = '';
+    setStatus(T('msgIfcExported'));
+  } catch (err) {
+    errEl.textContent = err.message;
+  }
+}
+
+/* Löst einen Browser-Download aus, ohne dass ein Server beteiligt ist. */
+function downloadText(text, filename) {
+  const blob = new Blob([text], { type: 'application/x-step' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* =========================================================
    Zeigerereignisse
    ========================================================= */
 let pressInfo = null;
@@ -1266,10 +1404,25 @@ const REPEAT_GUARD = 250;
 
 function onCanvasPointerDown(event) {
   if (event.button !== undefined && event.button !== 0) { pressInfo = null; return; }
+  if (rectSelectActive) {
+    const pt = raycastTerrain(event);
+    rectStart = pt ? { x: pt.x, z: pt.z } : null;
+    return;
+  }
   pressInfo = { x: event.clientX, y: event.clientY, id: event.pointerId, t: Date.now() };
 }
 
 function onCanvasPointerUp(event) {
+  if (rectSelectActive) {
+    const start = rectStart;
+    rectStart = null;
+    if (start) {
+      const pt = raycastTerrain(event);
+      if (pt) finishRectExport(start, { x: pt.x, z: pt.z });
+      else cancelRectExport();
+    }
+    return;
+  }
   if (!pressInfo) return;
   if (event.pointerId !== undefined && event.pointerId !== pressInfo.id) { pressInfo = null; return; }
   const moved = Math.abs(event.clientX - pressInfo.x) + Math.abs(event.clientY - pressInfo.y);
@@ -1281,7 +1434,7 @@ function onCanvasPointerUp(event) {
   onCanvasClick(event);
 }
 
-function onCanvasPointerCancel() { pressInfo = null; }
+function onCanvasPointerCancel() { pressInfo = null; rectStart = null; }
 
 function onCanvasMove(event) {
   const pt = raycastTerrain(event);
@@ -1290,6 +1443,9 @@ function onCanvasMove(event) {
     document.getElementById('cursor-info').textContent =
       'R ' + Math.round(utm.e) + '   H ' + Math.round(utm.n) +
       '   Z ' + getAbsoluteHeightAt(pt.x, pt.z).toFixed(1);
+  }
+  if (rectSelectActive && rectStart && pt) {
+    updateRectDragPreview(rectStart, { x: pt.x, z: pt.z });
   }
   if (activeTool === 'road' && roadPoints.length) {
     if (pt) setRoadPreview(roadPoints, { x: pt.x, z: pt.z });
@@ -1385,6 +1541,8 @@ function onKeyDown(event) {
     return;
   }
   if (event.key === 'Escape') {
+    if (rectSelectActive) { cancelRectExport(); return; }
+    if (isIfcPanelOpen()) { clearExportPreview(); setStatus(''); return; }
     // Erst die Knotenauswahl lösen, die Objektauswahl bleibt bestehen
     if (activeRoadNode() !== null) { setActiveNode(null); setStatus(''); return; }
     moveMode = false;
@@ -1470,6 +1628,17 @@ function initUI() {
   document.getElementById('reset-view').addEventListener('click', function () {
     frameTerrain();
     setStatus(T('msgViewReset'));
+  });
+
+  document.getElementById('rect-export-btn').addEventListener('click', function () {
+    startRectExport();
+  });
+  document.getElementById('ifc-export-btn').addEventListener('click', function () {
+    runIfcExport();
+  });
+  document.getElementById('ifc-cancel-btn').addEventListener('click', function () {
+    clearExportPreview();
+    setStatus('');
   });
 
   document.getElementById('clear-all').addEventListener('click', function () {
@@ -1591,6 +1760,22 @@ if (typeof module !== 'undefined' && module.exports) {
     refreshAttribution: refreshAttribution,
     isAttributionShown: isAttributionShown,
 
+    // IFC-Export
+    startRectExport: startRectExport,
+    cancelRectExport: cancelRectExport,
+    finishRectExport: finishRectExport,
+    clearRectDragPreview: clearRectDragPreview,
+    clearExportPreview: clearExportPreview,
+    updateRectDragPreview: updateRectDragPreview,
+    showIfcPanel: showIfcPanel,
+    hideIfcPanel: hideIfcPanel,
+    isIfcPanelOpen: isIfcPanelOpen,
+    runIfcExport: runIfcExport,
+    downloadText: downloadText,
+    isRectSelectActive: isRectSelectActive,
+    getExportRect: getExportRect,
+    getExportGeometry: getExportGeometry,
+
     // Zeigerbedienung
     DRAG_TOLERANCE: DRAG_TOLERANCE,
     REPEAT_GUARD: REPEAT_GUARD,
@@ -1617,6 +1802,10 @@ if (typeof module !== 'undefined' && module.exports) {
       lastPlaceTime = 0;
       demoAttribDem = false;
       demoAttribGml = false;
+      rectSelectActive = false;
+      rectStart = null;
+      exportRect = null;
+      exportGeometry = null;
     }
   };
 }

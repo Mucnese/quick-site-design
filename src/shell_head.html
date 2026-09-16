@@ -349,6 +349,26 @@
   #tweak-body { padding: 10px 11px; }
   .tw-row { margin-bottom: 13px; }
   .tw-row:last-child { margin-bottom: 0; }
+
+  /* ---------- IFC-Export ---------- */
+  .btn-block {
+    display: block; width: 100%; margin-top: 8px; padding: 7px 10px;
+    background: var(--field); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: inherit; font-size: 0.82em; cursor: pointer; text-align: center;
+  }
+  .btn-block:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-block.accent { border-color: var(--accent); color: var(--accent); }
+  #ifc-panel {
+    display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 24; width: 280px;
+    background: var(--panel-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  #ifc-panel .field { margin-top: 9px; }
+  #ifc-panel #ifc-error:empty { display: none; }
+  #ifc-actions { display: flex; gap: 8px; }
+  #ifc-actions .btn-block { flex: 1 1 0; margin-top: 12px; }
+
   .tw-label {
     font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.12em;
     color: var(--text-dim2); margin-bottom: 5px;
@@ -452,6 +472,7 @@
         <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,text/xml">
         <div class="file-status" id="gml-status">Keine Datei</div>
       </div>
+      <button class="btn-block" id="rect-export-btn" data-i18n="ifcExportBtn">Ausschnitt wählen</button>
       <div id="data-note" data-i18n="loadFirst">Zum Starten ein Geländemodell laden</div>
     </div>
   </div>
@@ -531,9 +552,26 @@
   <div id="tweak-body"></div>
 </div>
 
+<div id="ifc-panel">
+  <div class="sec"><span data-i18n="ifcPanelTitle">IFC-Export</span></div>
+  <div class="body">
+    <div class="kv"><span class="k" data-i18n="ifcExtent">Ausdehnung</span><span class="v" id="ifc-extent">–</span></div>
+    <div class="field">
+      <div class="field-head"><label data-i18n="ifcTargetEpsg">Ziel-EPSG-Code</label></div>
+      <input type="number" id="ifc-epsg" step="1">
+    </div>
+    <div class="file-status err" id="ifc-error"></div>
+    <div id="ifc-actions">
+      <button class="btn-block" id="ifc-cancel-btn" data-i18n="cancel">Abbrechen</button>
+      <button class="btn-block accent" id="ifc-export-btn" data-i18n="ifcExportAction">Exportieren</button>
+    </div>
+  </div>
+</div>
+
 <!-- Bibliotheken liegen lokal bei, damit beim Aufruf keine Daten an fremde
      Server gehen. Siehe lib/LIESMICH.txt -->
 <script src="lib/three.min.js"></script>
 <script src="lib/OrbitControls.js"></script>
 <script src="lib/geotiff.js"></script>
+<script src="lib/proj4.js"></script>
 <script>

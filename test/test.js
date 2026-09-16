@@ -5,6 +5,7 @@
 global.window = { innerWidth: 1024, innerHeight: 768, devicePixelRatio: 1 };
 global.THREE = require('./three-stub.js');
 global.DOMParser = require('./xml-stub.js').DOMParser;
+global.proj4 = require('../lib/proj4.js');
 
 const assert = require('assert');
 const app = require('../src/app.js');
@@ -250,6 +251,129 @@ test('radiusConflicts: zwei Kräne mit sich überschneidenden Arbeitsradien werd
   const conflicts = app.radiusConflicts();
   assert.strictEqual(conflicts.length, 1);
   assert.deepStrictEqual([conflicts[0].a, conflicts[0].b].sort(), [a.id, b.id].sort());
+});
+
+/* ---------- IFC-Export: Rechteckauswahl, Georeferenz, STEP-Struktur ---------- */
+
+function terrainForExportTests() {
+  freshScene();
+  const t = app.terrainFromEmbedded({
+    n: 40, heights: new Array(1600).fill(1000), scale: 100,
+    zmin: 500, zmax: 520, width: 200, depth: 200,
+    originE: 692000, originN: 5336000, epsg: 25832
+  });
+  app.buildTerrain(t);
+  return t;
+}
+
+/* Sammelt alle in einem IFC-STEP-Text definierten #IDs und prüft, dass
+   jede Referenz (#123) auf eine davon zeigt – deckt kaputte Verweise
+   zuverlässig auf, ohne eine echte Schema-Validierung zu sein. */
+function checkStepReferencesResolve(ifcText) {
+  const defined = new Set();
+  ifcText.split('\n').forEach(function (line) {
+    const m = line.match(/^#(\d+)=/);
+    if (m) defined.add(parseInt(m[1], 10));
+  });
+  const refs = Array.from(ifcText.matchAll(/#(\d+)/g)).map(function (m) { return parseInt(m[1], 10); });
+  const missing = refs.filter(function (r) { return !defined.has(r); });
+  return { definedCount: defined.size, missing: missing };
+}
+
+test('terrainGridInRect: Punkte liegen innerhalb des angefragten Rechtecks', function () {
+  terrainForExportTests();
+  const tris = app.terrainGridInRect(-20, -15, 20, 15);
+  assert.ok(tris.length > 0);
+  tris.forEach(function (tri) {
+    [tri.a, tri.b, tri.c].forEach(function (p) {
+      assert.ok(p[0] >= -20.01 && p[0] <= 20.01, 'x außerhalb: ' + p[0]);
+      assert.ok(p[2] >= -15.01 && p[2] <= 15.01, 'z außerhalb: ' + p[2]);
+    });
+  });
+});
+
+test('terrainGridInRect: Rechteck außerhalb des Geländes wirft eine verständliche Meldung', function () {
+  terrainForExportTests();
+  assert.throws(function () { app.terrainGridInRect(1000, 1000, 1010, 1010); }, /außerhalb/);
+});
+
+test('trianglesInRect: Filterung über den Dreiecksschwerpunkt', function () {
+  const inside = { a: [1, 0, 1], b: [2, 0, 1], c: [1, 0, 2] };
+  const outside = { a: [100, 0, 100], b: [101, 0, 100], c: [100, 0, 101] };
+  const res = app.trianglesInRect([inside, outside], 0, 0, 10, 10);
+  assert.deepStrictEqual(res, [inside]);
+});
+
+test('triangulateBuildingRings: erkennt Dach (annähernd waagerecht) und Wand', function () {
+  terrainForExportTests();
+  const e0 = 692000, n0 = 5336000;
+  // Wand: senkrechte Fläche (zwei Höhen an derselben Position)
+  const wall = [e0, n0, 505, e0 + 5, n0, 505, e0 + 5, n0, 515];
+  // Dach: waagerechte Fläche
+  const roof = [e0, n0, 515, e0 + 5, n0, 515, e0, n0 + 5, 515];
+  const res = app.triangulateBuildingRings([wall, roof]);
+  assert.strictEqual(res.triangles.length, 2);
+  assert.strictEqual(res.triangles[0].isRoof, false);
+  assert.strictEqual(res.triangles[1].isRoof, true);
+});
+
+test('collectExportGeometry: Gelände immer dabei, Gebäude nur innerhalb des Rechtecks', function () {
+  terrainForExportTests();
+  const e0 = 692000, n0 = 5336000;
+  const near = [e0 - 3, n0 - 3, 505, e0 + 3, n0 - 3, 505, e0 + 3, n0 + 3, 505];
+  const far = [e0 + 90, n0 + 90, 505, e0 + 96, n0 + 90, 505, e0 + 96, n0 + 96, 505];
+  const geo = app.collectExportGeometry([near, far], -10, -10, 10, 10);
+  assert.ok(geo.terrain.length > 0);
+  assert.strictEqual(geo.buildings.length, 1, 'nur der nahe Ring sollte im Rechteck liegen');
+});
+
+test('buildIfc: erzeugt ein strukturell gültiges STEP-Dokument (alle Referenzen lösen auf)', function () {
+  terrainForExportTests();
+  const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
+  const ifc = app.buildIfc(geo, -10, -10, 25832, 25832);
+  assert.ok(ifc.startsWith('ISO-10303-21;'));
+  assert.ok(ifc.trim().endsWith('END-ISO-10303-21;'));
+  assert.ok(ifc.indexOf('FILE_SCHEMA((\'IFC4\'))') >= 0);
+  assert.ok(ifc.indexOf('IFCMAPCONVERSION') >= 0);
+  const check = checkStepReferencesResolve(ifc);
+  assert.deepStrictEqual(check.missing, [], 'nicht auflösbare Referenzen: ' + check.missing.join(','));
+  assert.ok(check.definedCount > 0);
+});
+
+test('buildIfc: gleicher Quell- und Ziel-EPSG ist eine Identität (kein proj4-Rundungsfehler)', function () {
+  terrainForExportTests();
+  const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
+  const ifc = app.buildIfc(geo, -10, -10, 25832, 25832);
+  const line = ifc.split('\n').find(function (l) { return l.indexOf('IFCMAPCONVERSION') >= 0; });
+  // worldToUTM(-10,-10) bei originE=692000/originN=5336000
+  assert.ok(line.indexOf('691990.') >= 0 && line.indexOf('5336010.') >= 0, line);
+});
+
+test('buildIfc: echte Umrechnung nach EPSG:4326 stimmt mit proj4 direkt überein', function () {
+  terrainForExportTests();
+  const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
+  const ifc = app.buildIfc(geo, -10, -10, 25832, 4326);
+  const line = ifc.split('\n').find(function (l) { return l.indexOf('IFCMAPCONVERSION') >= 0; });
+  proj4.defs('EPSG:25832', app.EPSG_DEFS[25832]);
+  proj4.defs('EPSG:4326', app.EPSG_DEFS[4326]);
+  const expected = proj4('EPSG:25832', 'EPSG:4326', [691990, 5336010]);
+  assert.ok(line.indexOf(Math.round(expected[0] * 1000) / 1000 + ',') >= 0, line);
+});
+
+test('buildIfc: nicht unterstützter Ziel-EPSG-Code wirft eine verständliche Meldung', function () {
+  terrainForExportTests();
+  const geo = app.collectExportGeometry(null, -10, -10, 10, 10);
+  assert.throws(function () { app.buildIfc(geo, -10, -10, 25832, 999999); }, /999999/);
+});
+
+test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function () {
+  terrainForExportTests();
+  assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832, 25832); }, /Geometrie/);
+});
+
+test('EPSG_DEFS: DHDN/Gauß-Krüger-Codes absichtlich nicht enthalten (kein Umrechnungsgitter gebündelt)', function () {
+  assert.strictEqual(app.epsgSupported(31467), false);
+  assert.strictEqual(app.epsgSupported(25832), true);
 });
 
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');

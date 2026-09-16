@@ -188,6 +188,13 @@ function initSharedResources() {
   MAT.measure     = new THREE.MeshBasicMaterial({ color: 0x6cff8a, depthTest: false });
   MAT.node        = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
   MAT.nodeActive  = new THREE.MeshBasicMaterial({ color: 0xff8a3c, depthTest: false });
+  // IFC-Export-Vorschau: liegt genau auf Gelände/Gebäuden, deshalb polygonOffset
+  // gegen Z-Fighting statt eines eigenen Höhenversatzes in der Geometrie –
+  // die Vorschau soll exakt dieselben Koordinaten zeigen, die exportiert werden.
+  MAT.exportHighlight = new THREE.MeshLambertMaterial({
+    color: 0x5fd4c4, transparent: true, opacity: 0.55, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
+  });
 }
 
 /* =========================================================
@@ -426,6 +433,39 @@ function crsLabel(code) {
   if (!code) return 'unbekannt';
   const n = EPSG_NAMES[code];
   return n ? 'EPSG:' + code + ' · ' + n : 'EPSG:' + code;
+}
+
+/* proj4-Definitionen für den IFC-Export (Ziel-EPSG-Wahl). Absichtlich nur
+   ETRS89-basierte Systeme: DHDN/Gauß-Krüger (31466–31469) bräuchte für eine
+   korrekte Umrechnung das BETA2007-Gitter, das hier nicht mitgeliefert
+   wird – ohne Gitter wäre die Umrechnung lautlos ungenau, deshalb lieber
+   gar nicht erst anbieten. */
+const EPSG_DEFS = {
+  25831: '+proj=utm +zone=31 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
+  25832: '+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
+  25833: '+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
+  5650: '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9996 +x_0=33500000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
+  4647: '+proj=tmerc +lat_0=0 +lon_0=9 +k=0.9996 +x_0=32500000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
+  4326: '+proj=longlat +datum=WGS84 +no_defs',
+  4258: '+proj=longlat +ellps=GRS80 +no_defs',
+  3857: '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs'
+};
+
+function epsgSupported(code) {
+  return Object.prototype.hasOwnProperty.call(EPSG_DEFS, code);
+}
+
+/* Wandelt [e, n] von einem unterstützten Quell- in ein Ziel-EPSG um.
+   Gleicher Code: unverändert (keine proj4-Rundung durch die Hin- und
+   Rückrechnung über eine Zwischenprojektion). */
+function reprojectEN(e, n, fromEpsg, toEpsg) {
+  if (fromEpsg === toEpsg) return { e: e, n: n };
+  if (!epsgSupported(fromEpsg)) throw new Error('EPSG:' + fromEpsg + ' wird nicht unterstützt.');
+  if (!epsgSupported(toEpsg)) throw new Error('EPSG:' + toEpsg + ' wird nicht unterstützt.');
+  if (!proj4.defs('EPSG:' + fromEpsg)) proj4.defs('EPSG:' + fromEpsg, EPSG_DEFS[fromEpsg]);
+  if (!proj4.defs('EPSG:' + toEpsg)) proj4.defs('EPSG:' + toEpsg, EPSG_DEFS[toEpsg]);
+  const r = proj4('EPSG:' + fromEpsg, 'EPSG:' + toEpsg, [e, n]);
+  return { e: r[0], n: r[1] };
 }
 
 /* Liest eine einzelne Kachel ein und liefert Raster samt Georeferenz */
@@ -737,20 +777,18 @@ function detectAxisOrder(rings, originE, originN) {
 }
 
 /* Baut aus den Ringen ein einzelnes Mesh (ein Draw-Call) */
-function buildBuildingsMesh(rings) {
+/* Zerlegt die CityGML-Ringe in Dreiecke in Lokalkoordinaten (+x=Ost,
+   -z=Nord, y=Höhe über TERRAIN.zmin) – von buildBuildingsMesh() (Darstellung)
+   und vom IFC-Export (collectExportGeometry()) gemeinsam genutzt, damit
+   beide garantiert dieselbe Geometrie sehen. */
+function triangulateBuildingRings(rings) {
   const t = TERRAIN;
   if (!t) throw new Error('Bitte zuerst ein Geländemodell laden.');
   const order = detectAxisOrder(rings, t.originE, t.originN);
   const marginX = t.w / 2 + t.w * 0.15;
   const marginZ = t.d / 2 + t.d * 0.15;
 
-  const positions = [];
-  const colors = [];
-  const baseY = [];
-
-  const wallCol = [0.82, 0.80, 0.76];
-  const roofCol = [0.64, 0.35, 0.28];
-
+  const triangles = [];
   let used = 0, skipped = 0;
 
   for (let r = 0; r < rings.length; r++) {
@@ -779,20 +817,35 @@ function buildBuildingsMesh(rings) {
     for (let i = 1; i + 1 < pts.length; i++) {
       const a = pts[0], b = pts[i], c = pts[i + 1];
       const nrm = triNormal(a, b, c);
-      const col = Math.abs(nrm[1]) > 0.55 ? roofCol : wallCol;
-      const tri = [a, b, c];
-      for (let k = 0; k < 3; k++) {
-        positions.push(tri[k][0], tri[k][1], tri[k][2]);
-        baseY.push(tri[k][1]);
-        colors.push(col[0], col[1], col[2]);
-      }
+      triangles.push({ a: a, b: b, c: c, isRoof: Math.abs(nrm[1]) > 0.55 });
     }
     used++;
   }
 
-  if (!positions.length) {
+  return { triangles: triangles, used: used, skipped: skipped };
+}
+
+function buildBuildingsMesh(rings) {
+  const res = triangulateBuildingRings(rings);
+  if (!res.triangles.length) {
     throw new Error('Die Gebäude liegen außerhalb der geladenen Geländekachel.');
   }
+
+  const wallCol = [0.82, 0.80, 0.76];
+  const roofCol = [0.64, 0.35, 0.28];
+  const positions = [];
+  const colors = [];
+  const baseY = [];
+
+  res.triangles.forEach(function (tri) {
+    const col = tri.isRoof ? roofCol : wallCol;
+    const pts = [tri.a, tri.b, tri.c];
+    for (let k = 0; k < 3; k++) {
+      positions.push(pts[k][0], pts[k][1], pts[k][2]);
+      baseY.push(pts[k][1]);
+      colors.push(col[0], col[1], col[2]);
+    }
+  });
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
@@ -804,8 +857,8 @@ function buildBuildingsMesh(rings) {
   mesh.receiveShadow = true;
   mesh.name = 'buildings';
   mesh.userData.baseY = new Float32Array(baseY);
-  mesh.userData.faces = used;
-  mesh.userData.skipped = skipped;
+  mesh.userData.faces = res.used;
+  mesh.userData.skipped = res.skipped;
   return mesh;
 }
 
@@ -2050,6 +2103,231 @@ function radiusConflicts() {
 }
 
 /* =========================================================
+   IFC-Export (Rechteckauswahl in der 2D-Ansicht)
+   ========================================================= */
+
+/* Tastet ein eigenes, regelmäßiges Raster über dem Rechteck ab –
+   unabhängig von der internen Vertex-Reihenfolge von THREE.PlaneGeometry,
+   die dafür nicht erneut nachgebildet werden muss – und liefert Dreiecke
+   in Lokalkoordinaten. Das Rechteck wird auf die geladene Kachel begrenzt;
+   die Zellgröße folgt der geladenen Geländeauflösung. */
+function terrainGridInRect(minX, minZ, maxX, maxZ) {
+  const t = TERRAIN;
+  if (!t) throw new Error('Bitte zuerst ein Geländemodell laden.');
+  const x0 = Math.max(minX, -t.w / 2), x1 = Math.min(maxX, t.w / 2);
+  const z0 = Math.max(minZ, -t.d / 2), z1 = Math.min(maxZ, t.d / 2);
+  if (!(x1 - x0 > 0.01) || !(z1 - z0 > 0.01)) {
+    throw new Error('Das Rechteck liegt außerhalb des geladenen Geländes.');
+  }
+
+  const cell = Math.max(t.cell || 1, 0.5);
+  const nx = Math.max(2, Math.min(400, Math.round((x1 - x0) / cell) + 1));
+  const nz = Math.max(2, Math.min(400, Math.round((z1 - z0) / cell) + 1));
+
+  const grid = [];
+  for (let iz = 0; iz < nz; iz++) {
+    const z = z0 + (z1 - z0) * (iz / (nz - 1));
+    const row = [];
+    for (let ix = 0; ix < nx; ix++) {
+      const x = x0 + (x1 - x0) * (ix / (nx - 1));
+      row.push([x, getHeightAt(x, z), z]);
+    }
+    grid.push(row);
+  }
+
+  const triangles = [];
+  for (let iz = 0; iz + 1 < nz; iz++) {
+    for (let ix = 0; ix + 1 < nx; ix++) {
+      const a = grid[iz][ix], b = grid[iz][ix + 1], c = grid[iz + 1][ix], d = grid[iz + 1][ix + 1];
+      triangles.push({ a: a, b: b, c: d });
+      triangles.push({ a: a, b: d, c: c });
+    }
+  }
+  return triangles;
+}
+
+/* Grobe, aber robuste Klassifikation über den Dreiecksschwerpunkt – wie
+   die bestehende Randprüfung in triangulateBuildingRings(), keine exakte
+   Kantenclippung. */
+function trianglesInRect(triangles, minX, minZ, maxX, maxZ) {
+  return triangles.filter(function (tri) {
+    const cx = (tri.a[0] + tri.b[0] + tri.c[0]) / 3;
+    const cz = (tri.a[2] + tri.b[2] + tri.c[2]) / 3;
+    return cx >= minX && cx <= maxX && cz >= minZ && cz <= maxZ;
+  });
+}
+
+/* Geländeraster + Gebäude-Dreiecke innerhalb des Rechtecks. rings kommt
+   vom Aufrufer (in ui.js liegt lastGmlRings), damit app.js wie überall
+   sonst auch hier keine Kenntnis vom Dateiimport-Zustand braucht. */
+function collectExportGeometry(rings, minX, minZ, maxX, maxZ) {
+  const terrain = terrainGridInRect(minX, minZ, maxX, maxZ);
+  let buildings = [];
+  if (rings && rings.length) {
+    buildings = trianglesInRect(triangulateBuildingRings(rings).triangles, minX, minZ, maxX, maxZ);
+  }
+  return { terrain: terrain, buildings: buildings };
+}
+
+function trianglesToGeometry(triangles) {
+  const positions = [];
+  triangles.forEach(function (tri) {
+    const pts = [tri.a, tri.b, tri.c];
+    for (let k = 0; k < 3; k++) positions.push(pts[k][0], pts[k][1], pts[k][2]);
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* Vorschau-Mesh aus genau den Dreiecken, die auch ins IFC wandern – "was
+   man sieht" und "was exportiert wird" sind damit garantiert identisch. */
+function buildExportPreview(geo) {
+  const group = new THREE.Group();
+  group.name = '__exportPreview';
+  if (geo.terrain.length) {
+    const m = new THREE.Mesh(trianglesToGeometry(geo.terrain), MAT.exportHighlight);
+    m.renderOrder = 5;
+    group.add(m);
+  }
+  if (geo.buildings.length) {
+    const m = new THREE.Mesh(trianglesToGeometry(geo.buildings), MAT.exportHighlight);
+    m.renderOrder = 5;
+    group.add(m);
+  }
+  return group;
+}
+
+/* Kamera auf das Rechteck einrahmen, fest mit 45° Neigung (anders als
+   frameObjects() wird die bisherige Blickrichtung NICHT beibehalten: aus
+   der Draufsicht kommend zeigte sie sonst weiter senkrecht nach unten). */
+function frameRect(minX, minZ, maxX, maxZ) {
+  const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+  let maxy = 0;
+  [[minX, minZ], [maxX, minZ], [minX, maxZ], [maxX, maxZ], [cx, cz]].forEach(function (p) {
+    const h = getHeightAt(p[0], p[1]);
+    if (h > maxy) maxy = h;
+  });
+  const radius = Math.max(Math.max(maxX - minX, maxZ - minZ) / 2, 20);
+  focusGoal = new THREE.Vector3(cx, maxy * 0.5, cz);
+
+  const fov = camera.fov * Math.PI / 180;
+  const dist = (radius / Math.tan(fov / 2)) * 1.45 + radius;
+
+  const tilt = Math.PI / 4;
+  const ux = 0.6, uz = 0.8; // feste, normierte Diagonalrichtung
+  camGoal = new THREE.Vector3(
+    cx + ux * Math.cos(tilt) * dist,
+    focusGoal.y + Math.sin(tilt) * dist,
+    cz + uz * Math.cos(tilt) * dist
+  );
+  topView = false;
+}
+
+/* IFC-GUIDs sind 22 Zeichen aus diesem Alphabet. Für den Export reicht
+   ein zufälliger, formal gültiger Bezeichner – die genaue Bit-Packung
+   einer echten UUID-Kompression ist hier nicht nötig (Attribuierung im
+   IFC ist laut Vorgabe zweitrangig, nur die Geometrie muss stimmen). */
+const IFC_GUID_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
+function ifcGuid() {
+  let s = '';
+  for (let i = 0; i < 22; i++) s += IFC_GUID_CHARS[Math.floor(Math.random() * 64)];
+  return s;
+}
+
+/* Schreibt ein minimales, gültiges IFC4-STEP-Dokument von Hand (der
+   benötigte Entity-Umfang ist klein genug, dass sich eine externe
+   IFC-Bibliothek dafür nicht lohnt). Georeferenz über IfcProjectedCRS +
+   IfcMapConversion; alle Geometrie-Koordinaten liegen relativ zur
+   Rechteck-Südwestecke (übliche IFC-Praxis, vermeidet Präzisionsverlust
+   durch große UTM-Werte direkt in der Geometrie). */
+function buildIfc(geo, rectMinX, rectMinZ, sourceEpsg, targetEpsg) {
+  if (!TERRAIN) throw new Error('Bitte zuerst ein Geländemodell laden.');
+  if (!geo.terrain.length && !geo.buildings.length) {
+    throw new Error('Der Ausschnitt enthält keine Geometrie.');
+  }
+
+  const originUTM = worldToUTM(rectMinX, rectMinZ);
+  const target = reprojectEN(originUTM.e, originUTM.n, sourceEpsg, targetEpsg);
+
+  const lines = [];
+  let nextId = 0;
+  function num(n) {
+    if (!isFinite(n)) return '0.';
+    const s = (Math.round(n * 1000) / 1000).toString();
+    return s.indexOf('.') === -1 ? s + '.' : s;
+  }
+  function str(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
+  function add(type, args) {
+    nextId++;
+    lines.push('#' + nextId + '=' + type + '(' + args + ');');
+    return '#' + nextId;
+  }
+  function localize(tri) {
+    return [tri.a, tri.b, tri.c].map(function (p) {
+      return '(' + num(p[0] - rectMinX) + ',' + num(p[1]) + ',' + num(p[2] - rectMinZ) + ')';
+    }).join(',');
+  }
+
+  const lengthUnit = add('IFCSIUNIT', '$,.LENGTHUNIT.,$,.METRE.');
+  const unitAssignment = add('IFCUNITASSIGNMENT', '(' + lengthUnit + ')');
+  const originPoint = add('IFCCARTESIANPOINT', '(0.,0.,0.)');
+  const worldPlacement = add('IFCAXIS2PLACEMENT3D', originPoint + ',$,$');
+  const context = add('IFCGEOMETRICREPRESENTATIONCONTEXT',
+    '$,\'Model\',3,1.E-5,' + worldPlacement + ',$');
+
+  const projectedCrs = add('IFCPROJECTEDCRS',
+    str('EPSG:' + targetEpsg) + ',$,$,$,$,$,' + lengthUnit);
+  add('IFCMAPCONVERSION',
+    context + ',' + projectedCrs + ',' + num(target.e) + ',' + num(target.n) + ',0.,1.,0.,1.');
+
+  const siteLocalPlacement = add('IFCLOCALPLACEMENT', '$,' + worldPlacement);
+  const project = add('IFCPROJECT',
+    str(ifcGuid()) + ',$,' + str('Quick-Site-Design Ausschnitt') + ',$,$,$,$,(' + context + '),' + unitAssignment);
+  const site = add('IFCSITE',
+    str(ifcGuid()) + ',$,' + str('Baustelle') + ',$,$,' + siteLocalPlacement + ',$,$,.ELEMENT.,$,$,$,$,$');
+  add('IFCRELAGGREGATES', str(ifcGuid()) + ',$,$,$,' + project + ',(' + site + ')');
+
+  const elements = [];
+
+  function addGroup(triangles, name, entityType, predefinedType) {
+    if (!triangles.length) return;
+    const coordList = add('IFCCARTESIANPOINTLIST3D',
+      '(' + triangles.map(localize).join(',') + ')');
+    const idx = [];
+    for (let i = 0; i < triangles.length; i++) idx.push('(' + (i * 3 + 1) + ',' + (i * 3 + 2) + ',' + (i * 3 + 3) + ')');
+    const faceSet = add('IFCTRIANGULATEDFACESET', coordList + ',$,.F.,(' + idx.join(',') + '),$');
+    const shapeRep = add('IFCSHAPEREPRESENTATION', context + ',' + str('Body') + ',' + str('Tessellation') + ',(' + faceSet + ')');
+    const productShape = add('IFCPRODUCTDEFINITIONSHAPE', '$,$,(' + shapeRep + ')');
+    const placement = add('IFCLOCALPLACEMENT', siteLocalPlacement + ',' + worldPlacement);
+    const el = add(entityType,
+      str(ifcGuid()) + ',$,' + str(name) + ',$,$,' + placement + ',' + productShape +
+      (entityType === 'IFCGEOGRAPHICELEMENT' ? ',' + predefinedType : ',$,' + predefinedType));
+    elements.push(el);
+  }
+
+  addGroup(geo.terrain, 'Gelände (Ausschnitt)', 'IFCGEOGRAPHICELEMENT', '.TERRAIN.');
+  addGroup(geo.buildings, 'Gebäude (Ausschnitt)', 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.');
+
+  if (elements.length) {
+    add('IFCRELCONTAINEDINSPATIALSTRUCTURE', str(ifcGuid()) + ',$,$,$,(' + elements.join(',') + '),' + site);
+  }
+
+  const header = [
+    'ISO-10303-21;',
+    'HEADER;',
+    'FILE_DESCRIPTION((\'Quick-Site-Design IFC-Export\'),\'2;1\');',
+    'FILE_NAME(\'export.ifc\',\'' + new Date().toISOString() + '\',(\'\'),(\'Quick-Site-Design\'),\'\',\'Quick-Site-Design\',\'\');',
+    'FILE_SCHEMA((\'IFC4\'));',
+    'ENDSEC;',
+    'DATA;'
+  ];
+  const footer = ['ENDSEC;', 'END-ISO-10303-21;'];
+  return header.concat(lines, footer).join('\n') + '\n';
+}
+
+/* =========================================================
    Export für Tests
    ========================================================= */
 
@@ -2095,6 +2373,19 @@ if (typeof module !== 'undefined' && module.exports) {
     detectAxisOrder: detectAxisOrder,
     buildBuildingsMesh: buildBuildingsMesh,
     triNormal: triNormal,
+    triangulateBuildingRings: triangulateBuildingRings,
+
+    // IFC-Export
+    EPSG_DEFS: EPSG_DEFS,
+    epsgSupported: epsgSupported,
+    reprojectEN: reprojectEN,
+    terrainGridInRect: terrainGridInRect,
+    trianglesInRect: trianglesInRect,
+    collectExportGeometry: collectExportGeometry,
+    buildExportPreview: buildExportPreview,
+    frameRect: frameRect,
+    ifcGuid: ifcGuid,
+    buildIfc: buildIfc,
 
     // Bausteine
     defaultContainerParams: defaultContainerParams,

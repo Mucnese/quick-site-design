@@ -11,6 +11,7 @@ const vm = require('vm');
 const assert = require('assert');
 const THREE = require('./three-stub.js');
 const DOMParser = require('./xml-stub.js').DOMParser;
+const proj4 = require('../lib/proj4.js');
 
 let pass = 0, fail = 0;
 async function test(name, fn) {
@@ -43,7 +44,8 @@ function makeElement() {
     appendChild: function (c) { this.children.push(c); return c; },
     addEventListener: function () {},
     removeEventListener: function () {},
-    getElementsByTagName: function () { return []; }
+    getElementsByTagName: function () { return []; },
+    click: function () {}
   };
   // Wie im echten DOM: textContent eines Elements mit Kindern ist die
   // Verkettung der Kind-textContent, nicht ein eigenes Feld.
@@ -114,7 +116,10 @@ function newScope() {
     Date: Date, RegExp: RegExp, String: String, Number: Number, Boolean: Boolean,
     THREE: THREE,
     DOMParser: DOMParser,
+    proj4: proj4,
     GeoTIFF: fakeGeoTIFF(20, 20, 500, 692000, 5336020),
+    Blob: function (parts, opts) { this.parts = parts; this.type = opts && opts.type; },
+    URL: { createObjectURL: function () { return 'blob:fake'; }, revokeObjectURL: function () {} },
     document: document,
     window: {
       innerWidth: 1024, innerHeight: 768, devicePixelRatio: 1,
@@ -132,20 +137,24 @@ function newScope() {
   vm.runInContext(appSrc, sandbox, { filename: 'app.js' });
   vm.runInContext(uiSrc, sandbox, { filename: 'ui.js' });
 
-  // const/let auf oberster Ebene hängen nicht am Sandbox-Objekt (Node-vm-
-  // Eigenheit) - deshalb hier gezielt herausreichen, was die Tests lesen
-  // müssen. Die Funktionen selbst (function-Deklarationen) sind bereits
-  // direkt als sandbox.<name> erreichbar.
-  vm.runInContext(
-    'var __bridge = { STRINGS: STRINGS, TOOL_INFO: TOOL_INFO, FIELD_ORDER: FIELD_ORDER, ' +
-    'DETAIL_STEPS: DETAIL_STEPS, SETTINGS: SETTINGS, DRAG_TOLERANCE: DRAG_TOLERANCE, ' +
-    'REPEAT_GUARD: REPEAT_GUARD, DEMO_ATTRIBUTION: DEMO_ATTRIBUTION };',
-    sandbox
-  );
-
   sandbox.initScene({ appendChild: function () {} });
   sandbox.initSharedResources();
   sandbox.document = document;
+
+  // const/let auf oberster Ebene hängen nicht am Sandbox-Objekt (Node-vm-
+  // Eigenheit) - deshalb hier gezielt herausreichen, was die Tests lesen
+  // müssen. Die Funktionen selbst (function-Deklarationen) sind bereits
+  // direkt als sandbox.<name> erreichbar. raycaster/controls erst NACH
+  // initScene() greifen, sonst wird nur der Ausgangswert "undefined"
+  // eingefangen statt der später zugewiesenen echten Objekte.
+  vm.runInContext(
+    'var __bridge = { STRINGS: STRINGS, TOOL_INFO: TOOL_INFO, FIELD_ORDER: FIELD_ORDER, ' +
+    'DETAIL_STEPS: DETAIL_STEPS, SETTINGS: SETTINGS, DRAG_TOLERANCE: DRAG_TOLERANCE, ' +
+    'REPEAT_GUARD: REPEAT_GUARD, DEMO_ATTRIBUTION: DEMO_ATTRIBUTION, raycaster: raycaster, ' +
+    'controls: controls };',
+    sandbox
+  );
+
   return sandbox;
 }
 
@@ -318,6 +327,83 @@ await test('Namensnennung wechselt mit der Sprache mit', async function () {
     s.document.getElementById('attribution').textContent.indexOf('Sample data:'), 0,
     'refreshTexts() muss refreshAttribution() aufrufen, sonst bleibt das Label in der alten Sprache stehen'
   );
+});
+
+/* ---------- IFC-Export: Rechteckwerkzeug ---------- */
+
+function setTerrainHit(s, x, y, z) {
+  s.__bridge.raycaster._results = [{ point: { x: x, y: y, z: z } }];
+}
+
+async function scopeWithTerrain() {
+  const s = newScope();
+  await s.handleDemFiles([fakeFile('t.tif')], true);
+  return s;
+}
+
+function dragRect(s, ax, az, bx, bz) {
+  s.startRectExport();
+  setTerrainHit(s, ax, 0, az);
+  s.onCanvasPointerDown({ button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+  setTerrainHit(s, bx, 0, bz);
+  s.onCanvasPointerUp({ clientX: 0, clientY: 0, pointerId: 1 });
+}
+
+await test('Ausschnitt wählen: aktiviert den Rechteckmodus und sperrt die Kamerasteuerung', async function () {
+  const s = await scopeWithTerrain();
+  s.startRectExport();
+  assert.strictEqual(s.isRectSelectActive(), true);
+  assert.strictEqual(s.__bridge.controls.enabled, false);
+});
+
+await test('Esc während des Ziehens bricht die Rechteckauswahl ab, Kamerasteuerung wieder frei', async function () {
+  const s = await scopeWithTerrain();
+  s.startRectExport();
+  s.onKeyDown({ key: 'Escape' });
+  assert.strictEqual(s.isRectSelectActive(), false);
+  assert.strictEqual(s.__bridge.controls.enabled, true);
+});
+
+await test('Rechteck ziehen: Panel zeigt Ausdehnung und schlägt den Quell-EPSG vor', async function () {
+  const s = await scopeWithTerrain();
+  dragRect(s, -10, -10, 10, 10);
+  assert.strictEqual(s.isRectSelectActive(), false);
+  assert.strictEqual(s.isIfcPanelOpen(), true);
+  assert.strictEqual(s.document.getElementById('ifc-extent').textContent, '20 × 20 m');
+  assert.strictEqual(s.document.getElementById('ifc-epsg').value, 25832);
+});
+
+await test('Esc nach gezogenem Rechteck schließt das Panel und entfernt die Vorschau', async function () {
+  const s = await scopeWithTerrain();
+  dragRect(s, -10, -10, 10, 10);
+  assert.strictEqual(s.isIfcPanelOpen(), true);
+  s.onKeyDown({ key: 'Escape' });
+  assert.strictEqual(s.isIfcPanelOpen(), false);
+  assert.strictEqual(s.getExportRect(), null);
+});
+
+await test('"Abbrechen" schließt das Panel ebenso wie Esc', async function () {
+  const s = await scopeWithTerrain();
+  dragRect(s, -10, -10, 10, 10);
+  s.clearExportPreview();
+  assert.strictEqual(s.isIfcPanelOpen(), false);
+});
+
+await test('Exportieren mit nicht unterstütztem EPSG-Code zeigt einen Fehler im Panel, ohne es zu schließen', async function () {
+  const s = await scopeWithTerrain();
+  dragRect(s, -10, -10, 10, 10);
+  s.document.getElementById('ifc-epsg').value = 999999;
+  s.runIfcExport();
+  assert.ok(s.document.getElementById('ifc-error').textContent.length > 0);
+  assert.strictEqual(s.isIfcPanelOpen(), true, 'Panel bleibt bei Fehler offen');
+});
+
+await test('Exportieren mit gültigem EPSG löst den Download aus und meldet Erfolg', async function () {
+  const s = await scopeWithTerrain();
+  dragRect(s, -10, -10, 10, 10);
+  s.runIfcExport();
+  assert.strictEqual(s.document.getElementById('ifc-error').textContent, '');
+  assert.strictEqual(s.document.getElementById('status').textContent, s.T('msgIfcExported'));
 });
 
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');

@@ -1,9 +1,10 @@
 Bibliotheken
 ============
 
-Diese drei Dateien muessen hier liegen, sonst startet die Anwendung nicht.
-Sie liegen bewusst lokal bei und werden nicht von einem CDN geladen: so
-gehen beim Aufruf der Seite keine Besucherdaten an fremde Server.
+Diese vier Dateien muessen hier liegen, sonst startet die Anwendung nicht
+bzw. der IFC-Export nicht. Sie liegen bewusst lokal bei und werden nicht
+von einem CDN geladen: so gehen beim Aufruf der Seite keine Besucherdaten
+an fremde Server.
 
 Herunterzuladen
 ---------------
@@ -20,6 +21,12 @@ Herunterzuladen
    https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js
    -> hier als  geotiff.js  speichern
 
+4. proj4.js
+   https://cdn.jsdelivr.net/npm/proj4@2.9.2/dist/proj4.js
+   -> hier als  proj4.js  speichern
+   (nur fuer den IFC-Export gebraucht, wandelt zwischen den in EPSG_DEFS
+   in app.js hinterlegten Koordinatenbezugssystemen um)
+
 Wichtig: Die Versionen nicht wechseln. Die Anwendung ist gegen three.js r128
 gebaut; neuere Fassungen haben eine andere Schnittstelle.
 
@@ -28,11 +35,12 @@ Im Browser: Link oeffnen, dann Ablage -> Sichern unter. Oder im Terminal:
   curl -o three.min.js     https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
   curl -o OrbitControls.js https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js
   curl -o geotiff.js       https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js
+  curl -o proj4.js         https://cdn.jsdelivr.net/npm/proj4@2.9.2/dist/proj4.js
 
 Lizenzen
 --------
 
-Alle drei stehen unter der MIT-Lizenz und sind mit der GPLv3 vertraeglich.
+Alle vier stehen unter der MIT-Lizenz und sind mit der GPLv3 vertraeglich.
 Die MIT-Lizenz verlangt, dass ihr Lizenztext mitgeliefert wird. Lade deshalb
 zusaetzlich die LICENSE-Datei des jeweiligen Projekts herunter und lege sie
 hier ab:
@@ -43,5 +51,8 @@ hier ab:
 
   geotiff.js https://github.com/geotiffjs/geotiff.js/blob/master/LICENSE
              -> LICENSE-geotiff.txt
+
+  proj4.js   https://github.com/proj4js/proj4js/blob/master/LICENSE.md
+             -> LICENSE-proj4.txt
 
 Diese Datei kann im Repository bleiben.
