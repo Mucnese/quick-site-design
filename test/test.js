@@ -149,12 +149,13 @@ test('Kranmodelle: 9 Mobilkrane, Turmdrehkran ist ein generisches Modell ohne Ka
   assert.strictEqual(app.TOWER_MODELS, undefined, 'kein Modellkatalog mehr für den Turmdrehkran');
 });
 
-test('TOWER_LIMITS: Radius/Hakenhöhe bis 0 herunterregelbar, Turmbreite 1–3,5 m (auf Wunsch angepasst)', function () {
-  // max stammt weiterhin aus den 34 früheren Herstellermodellen (siehe
-  // Git-Historie); min wurde auf ausdrücklichen Wunsch auf 0 bzw. bei
-  // mastWidth der ganze Bereich auf 1–3,5 m erweitert.
+test('TOWER_LIMITS: Radius/Hakenhöhe bis 0 herunterregelbar, Hakenhöhe bis 120 m, Turmbreite 1–3,5 m (auf Wunsch angepasst)', function () {
+  // radius.max stammt weiterhin aus den 34 früheren Herstellermodellen
+  // (siehe Git-Historie); die übrigen Grenzen wurden auf ausdrücklichen
+  // Wunsch erweitert (min auf 0, hookHeight.max auf 120, mastWidth auf
+  // den ganzen Bereich 1–3,5 m statt nur 1,6–1,8 m).
   assert.deepStrictEqual(app.TOWER_LIMITS.radius, { min: 0, max: 91.4, def: 69.7 });
-  assert.deepStrictEqual(app.TOWER_LIMITS.hookHeight, { min: 0, max: 97.1, def: 69.5 });
+  assert.deepStrictEqual(app.TOWER_LIMITS.hookHeight, { min: 0, max: 120, def: 69.5 });
   assert.deepStrictEqual(app.TOWER_LIMITS.mastWidth, { min: 1, max: 3.5, def: 1.7 });
   ['radius', 'hookHeight', 'mastWidth'].forEach(function (key) {
     const l = app.TOWER_LIMITS[key];
