@@ -144,8 +144,8 @@ test('containerLayout: eine Reihe hat keinen Verbindungsbau, zwei Reihen schon',
   assert.strictEqual(two.count, 2 * app.defaultContainerParams().cols * app.defaultContainerParams().levels);
 });
 
-test('Kranmodelle: 9 Mobilkrane, Turmdrehkran ist ein generisches Modell ohne Katalog', function () {
-  assert.strictEqual(app.CRANE_MODELS.length, 9);
+test('Kranmodelle: 24 Mobilkrane, Turmdrehkran ist ein generisches Modell ohne Katalog', function () {
+  assert.strictEqual(app.CRANE_MODELS.length, 24);
   assert.strictEqual(app.TOWER_MODELS, undefined, 'kein Modellkatalog mehr für den Turmdrehkran');
 });
 

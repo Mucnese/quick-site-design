@@ -103,7 +103,7 @@ Kurzschluss macht daraus 9. Deshalb `fieldRank()`.
 
 ## Daten
 
-**Krane.** Der Mobilkran hat weiterhin einen echten Modellkatalog: 9 Liebherr
+**Krane.** Der Mobilkran hat weiterhin einen echten Modellkatalog: 24 Liebherr
 LTM, alle Werte aus den Original-Datenblättern. Nicht belegte Felder stehen
 auf `null`; die Oberfläche lässt den Reglerbereich dann offen, statt einen
 Anschlag zu erfinden. **Keine Werte schätzen oder interpolieren.**
