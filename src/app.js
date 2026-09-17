@@ -23,21 +23,24 @@ const CRANE_MODELS = [
 
 /* ---------- Turmdrehkran ----------
    Ein einziges generisches Modell statt einer Herstellerliste; alle
-   Parameter bleiben frei einstellbar. Die Grenzen sind Minimum und
-   Maximum aus den 34 zuvor hier gepflegten Herstellermodellen
+   Parameter bleiben frei einstellbar. Ursprünglich waren die Grenzen
+   Minimum und Maximum aus den 34 zuvor hier gepflegten Herstellermodellen
    (18 Liebherr, 16 WOLFFKRAN, siehe Git-Historie vor dieser Änderung):
      radius (Auslegerlänge)  aus jibMax      48,0 – 91,4 m
      hookHeight (Hakenhöhe)  aus hookMax     41,9 – 97,1 m (nur die 18
        Modelle mit Angabe; bei WOLFFKRAN hing sie von der Turmkombination
        ab und stand deshalb auf null)
      mastWidth (Turmbreite)  aus mast        1,6 – 1,8 m
-   Vorgabewert ist jeweils die Mitte des Bereichs. kind bleibt fest auf
-   "flat" (spitzenloser Obendreher, kommt ohne Turmkopf aus) - das war mit
-   23 von 34 Modellen die häufigste Bauart. */
+   Auf ausdrücklichen Wunsch angepasst: radius und hookHeight lassen sich
+   jetzt bis auf 0 herunterregeln, mastWidth reicht von 1 bis 3,5 m statt
+   nur über die im Katalog vorgekommenen 1,6–1,8 m. Vorgabewert bleibt
+   jeweils der alte, weiterhin innerhalb des Bereichs liegende Wert. kind
+   bleibt fest auf "flat" (spitzenloser Obendreher, kommt ohne Turmkopf
+   aus) - das war mit 23 von 34 Modellen die häufigste Bauart. */
 const TOWER_LIMITS = {
-  radius:     { min: 48.0, max: 91.4, def: 69.7 },
-  hookHeight: { min: 41.9, max: 97.1, def: 69.5 },
-  mastWidth:  { min: 1.6,  max: 1.8,  def: 1.7 }
+  radius:     { min: 0,   max: 91.4, def: 69.7 },
+  hookHeight: { min: 0,   max: 97.1, def: 69.5 },
+  mastWidth:  { min: 1,   max: 3.5,  def: 1.7 }
 };
 
 /* Anlaufstelle für die Liebherr-Mobilkran-Übersicht (Original-Datenblätter) */
@@ -947,8 +950,12 @@ function defaultTowerParams() {
 
 function buildTowerCrane(p) {
   const g = new THREE.Group();
-  const HH = Math.max(p.hookHeight, 8);
-  const R  = Math.max(p.radius, 10);
+  // Nur ein winziger Sockel gegen entartete (Nullgrößen-)Geometrie - der
+  // Regler darf bis 0 herunter, die Krangeometrie soll ihm dabei sichtbar
+  // folgen statt heimlich auf einem alten Mindestwert (früher 8 bzw. 10 m)
+  // zu verharren.
+  const HH = Math.max(p.hookHeight, 0.1);
+  const R  = Math.max(p.radius, 0.1);
   const mw = p.mastWidth || TOWER_LIMITS.mastWidth.def;
 
   /* ---- feststehender Unterbau ---- */

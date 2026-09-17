@@ -149,25 +149,35 @@ test('Kranmodelle: 9 Mobilkrane, Turmdrehkran ist ein generisches Modell ohne Ka
   assert.strictEqual(app.TOWER_MODELS, undefined, 'kein Modellkatalog mehr für den Turmdrehkran');
 });
 
-test('TOWER_LIMITS: Minimum/Maximum aus den 34 früheren Herstellermodellen (18 Liebherr, 16 WOLFFKRAN)', function () {
-  // Werte per Hand nachgerechnet, bevor der Modellkatalog entfernt wurde -
-  // siehe Git-Historie (Commit vor dieser Änderung) für die Rohdaten.
-  assert.deepStrictEqual(app.TOWER_LIMITS.radius, { min: 48.0, max: 91.4, def: 69.7 }, 'aus jibMax');
-  assert.deepStrictEqual(app.TOWER_LIMITS.hookHeight, { min: 41.9, max: 97.1, def: 69.5 },
-    'aus hookMax der 18 Modelle mit Angabe (WOLFFKRAN stand auf null)');
-  assert.deepStrictEqual(app.TOWER_LIMITS.mastWidth, { min: 1.6, max: 1.8, def: 1.7 }, 'aus mast');
+test('TOWER_LIMITS: Radius/Hakenhöhe bis 0 herunterregelbar, Turmbreite 1–3,5 m (auf Wunsch angepasst)', function () {
+  // max stammt weiterhin aus den 34 früheren Herstellermodellen (siehe
+  // Git-Historie); min wurde auf ausdrücklichen Wunsch auf 0 bzw. bei
+  // mastWidth der ganze Bereich auf 1–3,5 m erweitert.
+  assert.deepStrictEqual(app.TOWER_LIMITS.radius, { min: 0, max: 91.4, def: 69.7 });
+  assert.deepStrictEqual(app.TOWER_LIMITS.hookHeight, { min: 0, max: 97.1, def: 69.5 });
+  assert.deepStrictEqual(app.TOWER_LIMITS.mastWidth, { min: 1, max: 3.5, def: 1.7 });
   ['radius', 'hookHeight', 'mastWidth'].forEach(function (key) {
     const l = app.TOWER_LIMITS[key];
-    assert.ok(l.min < l.def && l.def < l.max, key + ': def liegt nicht zwischen min und max');
+    assert.ok(l.min <= l.def && l.def <= l.max, key + ': def liegt nicht zwischen min und max');
   });
 });
 
-test('defaultTowerParams: keine Modellwahl mehr, Vorgabewerte in der Mitte von TOWER_LIMITS', function () {
+test('defaultTowerParams: keine Modellwahl mehr, Vorgabewerte kommen aus TOWER_LIMITS', function () {
   const p = app.defaultTowerParams();
   assert.strictEqual(p.model, undefined);
   assert.strictEqual(p.hookHeight, app.TOWER_LIMITS.hookHeight.def);
   assert.strictEqual(p.radius, app.TOWER_LIMITS.radius.def);
   assert.strictEqual(p.mastWidth, app.TOWER_LIMITS.mastWidth.def);
+});
+
+test('buildTowerCrane: Hakenhöhe und Ausladung folgen dem Regler bis nahe 0, statt heimlich bei einem alten Mindestwert zu bleiben', function () {
+  freshScene();
+  const p = app.defaultTowerParams();
+  p.hookHeight = 0;
+  p.radius = 0;
+  const g = app.buildTowerCrane(p);
+  assert.ok(g.userData.hookHeight < 1, 'Hakenhöhe sollte der Vorgabe 0 sichtbar folgen, nicht bei 8 m verharren');
+  assert.ok(g.userData.radius < 1, 'Ausladung sollte der Vorgabe 0 sichtbar folgen, nicht bei 10 m verharren');
 });
 
 test('Baustraße: filletPath rundet Ecken und meldet den engsten Radius', function () {
