@@ -261,7 +261,7 @@ const SETTINGS = {
   size: 12,
   accent: null,
   layout: 'links',
-  width: 300,
+  width: 250,
   detail: 1,
   language: 'de'
 };
