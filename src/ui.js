@@ -60,7 +60,7 @@ const STRINGS = {
     language: 'Sprache', toolsLeft: 'Werkzeuge links', toolsRight: 'Werkzeuge rechts',
     loading: 'Lade', reset: 'Zurücksetzen',
     tCont: 'Container', tContHint: 'Ab zwei Reihen liegt die zweite quer',
-    tTower: 'Turmdrehkran', tTowerHint: 'Liebherr und WOLFF, inkl. Schnellbaukrane',
+    tTower: 'Turmdrehkran', tTowerHint: 'Generisches Modell, Parameter frei einstellbar',
     tMobile: 'Mobilkran', tMobileHint: 'Liebherr LTM',
     tRoad: 'Baustraße', tRoadHint: 'Stützpunkte setzen, Leertaste schließt ab',
     fCols: 'Anzahl nebeneinander', fRows: 'Reihen hintereinander', fLevels: 'Stockwerke',
@@ -125,7 +125,7 @@ const STRINGS = {
     language: 'Language', toolsLeft: 'Tools left', toolsRight: 'Tools right',
     loading: 'Loading', reset: 'Reset',
     tCont: 'Containers', tContHint: 'From two rows the second lies crosswise',
-    tTower: 'Tower crane', tTowerHint: 'Liebherr and WOLFF, incl. self-erecting',
+    tTower: 'Tower crane', tTowerHint: 'Generic model, freely adjustable parameters',
     tMobile: 'Mobile crane', tMobileHint: 'Liebherr LTM',
     tRoad: 'Haul road', tRoadHint: 'Set points, space finishes',
     fCols: 'Units side by side', fRows: 'Rows behind each other', fLevels: 'Storeys',
@@ -174,10 +174,12 @@ const SCHEMAS = {
     { key: 'unitH',  label: 'fUnitH',   type: 'number', min: 2, max: 4,  step: 0.01, unit: 'm' }
   ],
   tower: [
-    { key: 'model',      label: 'fModel',    type: 'select', source: 'tower' },
-    { key: 'hookHeight', label: 'fHook',  type: 'range', min: 15, max: 130, step: 1, unit: 'm' },
-    { key: 'radius',     label: 'fRadius',  type: 'range', min: 15, max: 85,  step: 1, unit: 'm' },
-    { key: 'mastWidth',  label: 'fMast', type: 'range', min: 1.1, max: 3.5, step: 0.1, unit: 'm' },
+    // Generisches Modell, kein Hersteller-Katalog mehr - die Grenzen sind
+    // Minimum/Maximum aus den früher hier hinterlegten 34 Herstellermodellen
+    // (siehe TOWER_LIMITS in app.js).
+    { key: 'hookHeight', label: 'fHook',  type: 'range', min: TOWER_LIMITS.hookHeight.min, max: TOWER_LIMITS.hookHeight.max, step: 1, unit: 'm' },
+    { key: 'radius',     label: 'fRadius',  type: 'range', min: TOWER_LIMITS.radius.min, max: TOWER_LIMITS.radius.max, step: 1, unit: 'm' },
+    { key: 'mastWidth',  label: 'fMast', type: 'range', min: TOWER_LIMITS.mastWidth.min, max: TOWER_LIMITS.mastWidth.max, step: 0.1, unit: 'm' },
     { key: 'rot',        label: 'fJibRot',  type: 'range', min: 0, max: 355, step: 5, unit: '°' },
     { key: 'baseRot',    label: 'fBaseRot', type: 'range', min: 0, max: 355, step: 5, unit: '°' },
     { key: 'showRadius', label: 'fShowRadius', type: 'checkbox' }
@@ -456,7 +458,7 @@ function makeRow(field, value, onChange) {
   let input;
   if (field.type === 'select') {
     input = document.createElement('select');
-    const src = field.source === 'tower' ? TOWER_MODELS : CRANE_MODELS;
+    const src = CRANE_MODELS; // nur noch der Mobilkran hat eine Modellauswahl
     src.forEach(function (m) {
       const opt = document.createElement('option');
       opt.value = m.id;
@@ -542,12 +544,14 @@ function syncForm(refs, values) {
   });
 }
 
+/* Nur noch für den Mobilkran gebraucht - der Turmdrehkran hat seit dem
+   generischen Modell keine Modellauswahl mehr, die "model"-Taste in
+   buildForm() löst diese Funktion also nur noch für type "mobile" aus. */
 function applyModelDefaults(values, refs, type) {
-  const tower = type === 'tower';
-  const m = tower ? getTowerModel(values.model) : getModel(values.model);
+  const m = getModel(values.model);
 
   values.hookHeight = m.hookDef;
-  values.radius = tower ? m.jibDef : m.radiusDef;
+  values.radius = m.radiusDef;
   // Turmbreite bleibt frei einstellbar und wird vom Modellwechsel nicht überschrieben
 
   if (!refs) return;
@@ -557,7 +561,7 @@ function applyModelDefaults(values, refs, type) {
     ref.input.max = (v === null || v === undefined) ? ref.field.max : v;
   };
   setMax(refs.hookHeight, m.hookMax);
-  setMax(refs.radius, tower ? m.jibMax : m.radiusMax);
+  setMax(refs.radius, m.radiusMax);
   syncForm(refs, values);
 }
 
@@ -654,8 +658,11 @@ function showObjectEditor(id) {
       '   Z ' + getAbsoluteHeightAt(obj.x, obj.z).toFixed(2) + ' m';
   }
 
-  if (obj.type === 'tower' || obj.type === 'mobile') {
-    const m = obj.type === 'tower' ? getTowerModel(obj.params.model) : getModel(obj.params.model);
+  // Der Turmdrehkran ist seit dem generischen Modell kein Herstellerprodukt
+  // mehr - Richtwert-Hinweis und Datenblatt-Link gelten nur noch für den
+  // Mobilkran, der weiterhin einen echten Modellkatalog hat.
+  if (obj.type === 'mobile') {
+    const m = getModel(obj.params.model);
 
     const warn = document.createElement('div');
     warn.className = 'crane-warn';
@@ -831,7 +838,7 @@ function markRoadRadius(obj, refs) {
 function groupKeyFor(o) {
   if (o.type === 'container') return 'Containeranlage';
   if (o.type === 'road') return 'Baustraße';
-  if (o.type === 'tower') return getTowerModel(o.params.model).name;
+  if (o.type === 'tower') return 'Turmdrehkran';
   return getModel(o.params.model).name;
 }
 

@@ -37,9 +37,10 @@ browser.
 - Container blocks up to 25 side by side, 2 rows, 5 storeys. With two rows a
   walkway one container wide is left between them, filled by a plain connecting
   block.
-- 34 tower cranes from Liebherr and WOLFFKRAN, all figures taken from the
+- Tower crane as a generic model, jib length, hook height and mast width
+  freely adjustable within the range of real construction cranes.
+- 9 Liebherr mobile cranes from 50 t to 750 t, all figures taken from the
   manufacturers' original data sheets.
-- 9 Liebherr mobile cranes from 50 t to 750 t.
 - Haul roads as a polyline with filleted corners; the alignment drapes onto the
   terrain. Selecting a road reveals its nodes, which can be moved or deleted.
 

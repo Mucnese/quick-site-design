@@ -38,9 +38,10 @@ Browser.
 - Containeranlagen bis 25 nebeneinander, 2 Reihen, 5 Stockwerke. Bei zwei Reihen
   bleibt dazwischen ein Gang von einer Containerbreite, ausgefüllt von einem
   schlichten Verbindungsbau.
-- 34 Turmdrehkrane von Liebherr und WOLFFKRAN, sämtliche Kennwerte aus den
+- Turmdrehkran als generisches Modell, Auslegerlänge, Hakenhöhe und Turmbreite
+  frei einstellbar innerhalb der Bandbreite realer Baukrane.
+- 9 Liebherr-Mobilkrane von 50 t bis 750 t, sämtliche Kennwerte aus den
   Original-Datenblättern.
-- 9 Liebherr-Mobilkrane von 50 t bis 750 t.
 - Baustraßen als Polygonzug mit ausgerundeten Ecken; die Trasse legt sich auf
   das Gelände. Bei Auswahl erscheinen die Stützpunkte und lassen sich versetzen
   oder löschen.

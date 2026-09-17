@@ -215,7 +215,7 @@ await test('Esc mit aktivem Stützpunkt löst nur den Knoten, die Objektauswahl 
 
 /* ---------- Übersicht: Gruppierung über Kran- und Modellnamen (app.js) ---------- */
 
-await test('groupKeyFor/buildGroups gruppieren Turmdrehkrane nach Modellnamen aus app.js', function () {
+await test('groupKeyFor/buildGroups gruppieren Turmdrehkrane alle unter demselben generischen Namen', function () {
   const s = newScope();
   const p1 = s.defaultTowerParams();
   const p2 = s.defaultTowerParams();
@@ -223,7 +223,19 @@ await test('groupKeyFor/buildGroups gruppieren Turmdrehkrane nach Modellnamen au
   s.addObject('tower', 20, 0, p2);
   const groups = s.buildGroups();
   assert.strictEqual(groups.length, 1);
-  assert.strictEqual(groups[0].key, s.getTowerModel(p1.model).name);
+  assert.strictEqual(groups[0].key, 'Turmdrehkran');
+  assert.strictEqual(groups[0].ids.length, 2);
+});
+
+await test('groupKeyFor/buildGroups gruppieren Mobilkrane weiterhin nach echtem Modellnamen aus app.js', function () {
+  const s = newScope();
+  const p1 = s.defaultMobileParams();
+  const p2 = s.defaultMobileParams();
+  s.addObject('mobile', 0, 0, p1);
+  s.addObject('mobile', 20, 0, p2);
+  const groups = s.buildGroups();
+  assert.strictEqual(groups.length, 1);
+  assert.strictEqual(groups[0].key, s.getModel(p1.model).name);
   assert.strictEqual(groups[0].ids.length, 2);
 });
 

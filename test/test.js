@@ -144,24 +144,30 @@ test('containerLayout: eine Reihe hat keinen Verbindungsbau, zwei Reihen schon',
   assert.strictEqual(two.count, 2 * app.defaultContainerParams().cols * app.defaultContainerParams().levels);
 });
 
-test('Kranmodelle: 34 Turmdrehkrane (18 Liebherr, 16 WOLFFKRAN), 9 Mobilkrane', function () {
-  assert.strictEqual(app.TOWER_MODELS.length, 34);
-  const liebherr = app.TOWER_MODELS.filter(function (m) { return m.maker === 'Liebherr'; });
-  const wolff = app.TOWER_MODELS.filter(function (m) { return m.maker === 'WOLFFKRAN'; });
-  assert.strictEqual(liebherr.length, 18);
-  assert.strictEqual(wolff.length, 16);
+test('Kranmodelle: 9 Mobilkrane, Turmdrehkran ist ein generisches Modell ohne Katalog', function () {
   assert.strictEqual(app.CRANE_MODELS.length, 9);
+  assert.strictEqual(app.TOWER_MODELS, undefined, 'kein Modellkatalog mehr für den Turmdrehkran');
 });
 
-test('Kranmodelle: nicht belegte Felder stehen auf null, nicht auf einem erfundenen Wert', function () {
-  const wolffOhneHookMax = app.TOWER_MODELS.filter(function (m) {
-    return m.maker === 'WOLFFKRAN' && m.hookMax === null;
+test('TOWER_LIMITS: Minimum/Maximum aus den 34 früheren Herstellermodellen (18 Liebherr, 16 WOLFFKRAN)', function () {
+  // Werte per Hand nachgerechnet, bevor der Modellkatalog entfernt wurde -
+  // siehe Git-Historie (Commit vor dieser Änderung) für die Rohdaten.
+  assert.deepStrictEqual(app.TOWER_LIMITS.radius, { min: 48.0, max: 91.4, def: 69.7 }, 'aus jibMax');
+  assert.deepStrictEqual(app.TOWER_LIMITS.hookHeight, { min: 41.9, max: 97.1, def: 69.5 },
+    'aus hookMax der 18 Modelle mit Angabe (WOLFFKRAN stand auf null)');
+  assert.deepStrictEqual(app.TOWER_LIMITS.mastWidth, { min: 1.6, max: 1.8, def: 1.7 }, 'aus mast');
+  ['radius', 'hookHeight', 'mastWidth'].forEach(function (key) {
+    const l = app.TOWER_LIMITS[key];
+    assert.ok(l.min < l.def && l.def < l.max, key + ': def liegt nicht zwischen min und max');
   });
-  assert.ok(wolffOhneHookMax.length > 0, 'mindestens ein WOLFFKRAN-Modell sollte hookMax=null haben');
-  app.TOWER_MODELS.forEach(function (m) {
-    assert.ok(m.hookMax === null || (typeof m.hookMax === 'number' && isFinite(m.hookMax)),
-      m.id + ': hookMax ist weder null noch eine Zahl');
-  });
+});
+
+test('defaultTowerParams: keine Modellwahl mehr, Vorgabewerte in der Mitte von TOWER_LIMITS', function () {
+  const p = app.defaultTowerParams();
+  assert.strictEqual(p.model, undefined);
+  assert.strictEqual(p.hookHeight, app.TOWER_LIMITS.hookHeight.def);
+  assert.strictEqual(p.radius, app.TOWER_LIMITS.radius.def);
+  assert.strictEqual(p.mastWidth, app.TOWER_LIMITS.mastWidth.def);
 });
 
 test('Baustraße: filletPath rundet Ecken und meldet den engsten Radius', function () {

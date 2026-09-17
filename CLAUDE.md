@@ -103,10 +103,20 @@ Kurzschluss macht daraus 9. Deshalb `fieldRank()`.
 
 ## Daten
 
-**Krane.** Alle Werte aus den Original-Datenblättern. 34 Turmdrehkrane
-(18 Liebherr, 16 WOLFFKRAN), 9 Mobilkrane. Nicht belegte Felder stehen auf
-`null`; die Oberfläche lässt den Reglerbereich dann offen, statt einen Anschlag
-zu erfinden. **Keine Werte schätzen oder interpolieren.**
+**Krane.** Der Mobilkran hat weiterhin einen echten Modellkatalog: 9 Liebherr
+LTM, alle Werte aus den Original-Datenblättern. Nicht belegte Felder stehen
+auf `null`; die Oberfläche lässt den Reglerbereich dann offen, statt einen
+Anschlag zu erfinden. **Keine Werte schätzen oder interpolieren.**
+
+Der Turmdrehkran ist dagegen kein Herstellerkatalog mehr, sondern ein
+**einziges generisches Modell** (`TOWER_LIMITS` in `app.js`) mit frei
+einstellbaren Parametern. Die Grenzen sind Minimum und Maximum aus den 34
+Modellen, die früher hier standen (18 Liebherr, 16 WOLFFKRAN – die Rohdaten
+stehen in der Git-Historie vor dieser Änderung). `kind` ist fest auf „flat"
+(spitzenloser Obendreher), das war die unter den 34 Modellen häufigste
+Bauart. Deshalb hat der Turmdrehkran auch keinen Datenblatt-Link mehr im
+Objekt-Editor – nur noch der Mobilkran, der ein echtes Herstellerprodukt
+bleibt.
 
 **Beispieldaten** in `demo/` stehen unter CC BY 4.0. `showAttribution` blendet
 Herausgeber und Lizenz ein, solange sie geladen sind. Beim Austausch der Daten

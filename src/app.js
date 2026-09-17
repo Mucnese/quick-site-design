@@ -21,71 +21,33 @@ const CRANE_MODELS = [
   { id: 'ltm1750',  name: 'LTM 1750-9.1',  maker: 'Liebherr', cap: 750,  boomTele: 52,  hookMax: 154,  radiusMax: 116, hookDef: 90,  radiusDef: 50, outL: 12.0, outW: 12.0, chassisL: 20.2 }
 ];
 
-/* ---------- Turmdrehkrane ----------
-   Alle Werte aus den Original-Datenblättern der Hersteller.
-   kind: schnell = Schnellbaukran, flat = spitzenloser Obendreher,
-         head = Obendreher mit Turmkopf
-   hookMax ist die größte in der Hubhöhentabelle aufgeführte Höhe.
-   Bei WOLFFKRAN hängt sie von der Turmkombination ab und steht
-   deshalb auf null; der Regler bleibt dort offen.                 */
-const TOWER_MODELS = [
-  { id: 'lieb85ecb5', name: 'Liebherr 85 EC-B 5', maker: 'Liebherr', kind: 'flat', cap: 5, tip: 1.3, jibMax: 50.0, jibDef: 41, hookMax: 41.9, hookDef: 29, mast: 1.6 },
-  { id: 'lieb91k', name: 'Liebherr 91 K', maker: 'Liebherr', kind: 'schnell', cap: 6, tip: 1.13, jibMax: 48.0, jibDef: 39, hookMax: 57.2, hookDef: 40, mast: 1.6 },
-  { id: 'lieb125ecb6', name: 'Liebherr 125 EC-B 6', maker: 'Liebherr', kind: 'flat', cap: 6, tip: 1.4, jibMax: 58.0, jibDef: 48, hookMax: 59.5, hookDef: 42, mast: 1.6 },
-  { id: 'lieb125k', name: 'Liebherr 125 K', maker: 'Liebherr', kind: 'schnell', cap: 8, tip: 1.0, jibMax: 55.0, jibDef: 45, hookMax: 65.5, hookDef: 46, mast: 1.6 },
-  { id: 'lieb150ecb8', name: 'Liebherr 150 EC-B 8', maker: 'Liebherr', kind: 'flat', cap: 8, tip: 1.2, jibMax: 62.5, jibDef: 51, hookMax: 52.7, hookDef: 37, mast: 1.6 },
-  { id: 'lieb172ecb8', name: 'Liebherr 172 EC-B 8', maker: 'Liebherr', kind: 'flat', cap: 8, tip: 1.6, jibMax: 62.5, jibDef: 51, hookMax: 53.7, hookDef: 38, mast: 1.6 },
-  { id: 'lieb205ecb10', name: 'Liebherr 205 EC-B 10', maker: 'Liebherr', kind: 'flat', cap: 10, tip: 1.9, jibMax: 65.0, jibDef: 53, hookMax: 54.7, hookDef: 38, mast: 1.6 },
-  { id: 'lieb220ecb10', name: 'Liebherr 220 EC-B 10', maker: 'Liebherr', kind: 'flat', cap: 10, tip: 1.9, jibMax: 68.0, jibDef: 56, hookMax: 54.4, hookDef: 38, mast: 1.6 },
-  { id: 'lieb240ecb10', name: 'Liebherr 240 EC-B 10', maker: 'Liebherr', kind: 'flat', cap: 10, tip: 2.15, jibMax: 68.0, jibDef: 56, hookMax: 54.4, hookDef: 38, mast: 1.6 },
-  { id: 'lieb220ecb12', name: 'Liebherr 220 EC-B 12', maker: 'Liebherr', kind: 'flat', cap: 12, tip: 1.7, jibMax: 68.0, jibDef: 56, hookMax: 51.3, hookDef: 36, mast: 1.6 },
-  { id: 'lieb240ecb12', name: 'Liebherr 240 EC-B 12', maker: 'Liebherr', kind: 'flat', cap: 12, tip: 2.05, jibMax: 68.0, jibDef: 56, hookMax: 51.3, hookDef: 36, mast: 1.6 },
-  { id: 'lieb270ecb12', name: 'Liebherr 270 EC-B 12', maker: 'Liebherr', kind: 'flat', cap: 12, tip: 1.8, jibMax: 73.0, jibDef: 60, hookMax: 82.4, hookDef: 58, mast: 1.6 },
-  { id: 'lieb550ech20', name: 'Liebherr 550 EC-H 20', maker: 'Liebherr', kind: 'head', cap: 20, tip: 3.5, jibMax: 81.5, jibDef: 67, hookMax: 84.5, hookDef: 59, mast: 1.6 },
-  { id: 'lieb550ech40', name: 'Liebherr 550 EC-H 40', maker: 'Liebherr', kind: 'head', cap: 40, tip: 3.5, jibMax: 81.5, jibDef: 67, hookMax: 83.1, hookDef: 58, mast: 1.6 },
-  { id: 'lieb630ech40', name: 'Liebherr 630 EC-H 40', maker: 'Liebherr', kind: 'head', cap: 40, tip: 5.4, jibMax: 81.4, jibDef: 67, hookMax: 80.0, hookDef: 56, mast: 1.6 },
-  { id: 'lieb1000ech40', name: 'Liebherr 1000 EC-H 40', maker: 'Liebherr', kind: 'head', cap: 40, tip: 10.5, jibMax: 81.4, jibDef: 67, hookMax: 97.1, hookDef: 68, mast: 1.6 },
-  { id: 'lieb1188ech40', name: 'Liebherr 1188 EC-H 40', maker: 'Liebherr', kind: 'head', cap: 40, tip: 8.0, jibMax: 91.4, jibDef: 75, hookMax: 94.2, hookDef: 66, mast: 1.6 },
-  { id: 'lieb630ech50', name: 'Liebherr 630 EC-H 50', maker: 'Liebherr', kind: 'head', cap: 50, tip: 4.8, jibMax: 81.4, jibDef: 67, hookMax: 80.0, hookDef: 56, mast: 1.6 },
-  { id: 'wolff4518', name: 'WOLFF 4518', maker: 'WOLFFKRAN', kind: 'head', cap: 6.0, tip: 1.3, jibMax: 50.0, jibDef: 41, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff5014', name: 'WOLFF 5014', maker: 'WOLFFKRAN', kind: 'head', cap: 6.0, tip: 1.4, jibMax: 50.0, jibDef: 41, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff60236clear', name: 'WOLFF 6023.6 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 6.2, tip: null, jibMax: 60.0, jibDef: 49, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff50208clear', name: 'WOLFF 5020.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: null, jibMax: 55.0, jibDef: 45, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff60208clear', name: 'WOLFF 6020.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 1.7, jibMax: 60.0, jibDef: 49, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff60238clear', name: 'WOLFF 6023.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: null, jibMax: 60.0, jibDef: 49, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff60318clear', name: 'WOLFF 6031.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: null, jibMax: 65.0, jibDef: 53, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff65238clear', name: 'WOLFF 6523.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 2.3, jibMax: 65.0, jibDef: 53, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff70218clear', name: 'WOLFF 7021.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 2.1, jibMax: 70.0, jibDef: 57, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff70328clear', name: 'WOLFF 7032.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 3.2, jibMax: 70.0, jibDef: 57, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff75348clear', name: 'WOLFF 7534.8 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 8.5, tip: 3.4, jibMax: 75.0, jibDef: 61, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff702110clear', name: 'WOLFF 7021.10 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 10.5, tip: 2.1, jibMax: 70.0, jibDef: 57, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff652312clear', name: 'WOLFF 6523.12 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 12.0, tip: 1.9, jibMax: 65.0, jibDef: 53, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff703212clear', name: 'WOLFF 7032.12 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 12.0, tip: 2.8, jibMax: 70.0, jibDef: 57, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff224b', name: 'WOLFF 224 B', maker: 'WOLFFKRAN', kind: 'head', cap: 16.0, tip: null, jibMax: 60.0, jibDef: 49, hookMax: null, hookDef: 45, mast: 1.8 },
-  { id: 'wolff753416clear', name: 'WOLFF 7534.16 clear', maker: 'WOLFFKRAN', kind: 'flat', cap: 16.5, tip: 2.9, jibMax: 75.0, jibDef: 61, hookMax: null, hookDef: 45, mast: 1.8 }
-];
+/* ---------- Turmdrehkran ----------
+   Ein einziges generisches Modell statt einer Herstellerliste; alle
+   Parameter bleiben frei einstellbar. Die Grenzen sind Minimum und
+   Maximum aus den 34 zuvor hier gepflegten Herstellermodellen
+   (18 Liebherr, 16 WOLFFKRAN, siehe Git-Historie vor dieser Änderung):
+     radius (Auslegerlänge)  aus jibMax      48,0 – 91,4 m
+     hookHeight (Hakenhöhe)  aus hookMax     41,9 – 97,1 m (nur die 18
+       Modelle mit Angabe; bei WOLFFKRAN hing sie von der Turmkombination
+       ab und stand deshalb auf null)
+     mastWidth (Turmbreite)  aus mast        1,6 – 1,8 m
+   Vorgabewert ist jeweils die Mitte des Bereichs. kind bleibt fest auf
+   "flat" (spitzenloser Obendreher, kommt ohne Turmkopf aus) - das war mit
+   23 von 34 Modellen die häufigste Bauart. */
+const TOWER_LIMITS = {
+  radius:     { min: 48.0, max: 91.4, def: 69.7 },
+  hookHeight: { min: 41.9, max: 97.1, def: 69.5 },
+  mastWidth:  { min: 1.6,  max: 1.8,  def: 1.7 }
+};
 
-/* Anlaufstellen für die Originaldatenblätter */
+/* Anlaufstelle für die Liebherr-Mobilkran-Übersicht (Original-Datenblätter) */
 const SHEET_URLS = {
-  liebherrK:   'https://www.liebherr.com/de-de/turmdrehkrane/produkte/schnelleinsatzkrane/k-krane-3815559',
-  liebherrLTM: 'https://www.liebherr.com',
-  liebherrTower: 'https://www.liebherr.com/de-de/turmdrehkrane/turmdrehkrane-3808172',
-  wolff:       'https://www.wolffkran.com'
+  liebherrLTM: 'https://www.liebherr.com'
 };
 
 function sheetUrlFor(m) {
   if (!m) return null;
-  if (m.maker === 'WOLFFKRAN') return SHEET_URLS.wolff;
-  if (m.kind === 'schnell') return SHEET_URLS.liebherrK;
-  if (m.maker === 'Liebherr' && m.jibMax !== undefined && m.mast !== undefined
-      && m.kind !== 'schnell' && m.cap !== undefined && m.tip !== undefined
-      && String(m.name).indexOf('EC-') > 0) return SHEET_URLS.liebherrTower;
   return SHEET_URLS.liebherrLTM;
-}
-
-function getTowerModel(id) {
-  for (let i = 0; i < TOWER_MODELS.length; i++) if (TOWER_MODELS[i].id === id) return TOWER_MODELS[i];
-  return TOWER_MODELS[0];
 }
 
 const MAT = {};
@@ -975,18 +937,19 @@ function buildContainer(p) {
    Fundament und Turm stehen fest; nur der Oberbau dreht sich.
    ========================================================= */
 function defaultTowerParams() {
-  const m = getTowerModel('lieb150ecb8');
-  return { model: m.id, hookHeight: m.hookDef, radius: m.jibDef,
-           mastWidth: m.mast, rot: 0, baseRot: 0, showRadius: true };
+  return {
+    hookHeight: TOWER_LIMITS.hookHeight.def,
+    radius: TOWER_LIMITS.radius.def,
+    mastWidth: TOWER_LIMITS.mastWidth.def,
+    rot: 0, baseRot: 0, showRadius: true
+  };
 }
 
 function buildTowerCrane(p) {
   const g = new THREE.Group();
-  const m = getTowerModel(p.model);
   const HH = Math.max(p.hookHeight, 8);
   const R  = Math.max(p.radius, 10);
-  const mw = p.mastWidth || m.mast || 1.8;
-  const wipp = m.kind === 'wipp';
+  const mw = p.mastWidth || TOWER_LIMITS.mastWidth.def;
 
   /* ---- feststehender Unterbau ---- */
   const base = new THREE.Mesh(GEO.box, MAT.steelDark);
@@ -1034,17 +997,8 @@ function buildTowerCrane(p) {
   slew.add(cab);
 
   const jib = new THREE.Mesh(GEO.box, MAT.craneYellow);
-  if (wipp) {
-    // Wippausleger: Fußpunkt am Drehkranz, Spitze über der Ausladung
-    const lift = Math.max(HH * 0.28, 6);
-    const len = Math.sqrt(R * R + lift * lift);
-    jib.scale.set(len, 1.5, 1.4);
-    jib.position.set(R / 2, topY + lift / 2, 0);
-    jib.rotation.z = Math.atan2(lift, R);
-  } else {
-    jib.scale.set(R, 1.3, 1.2);
-    jib.position.set(R / 2, topY + 1.0, 0);
-  }
+  jib.scale.set(R, 1.3, 1.2);
+  jib.position.set(R / 2, topY + 1.0, 0);
   jib.castShadow = true;
   slew.add(jib);
 
@@ -1061,34 +1015,16 @@ function buildTowerCrane(p) {
   bal.castShadow = true;
   slew.add(bal);
 
-  // Spitzenloser Obendreher braucht keinen Turmkopf
-  if (m.kind !== 'flat') {
-    const tip = new THREE.Mesh(GEO.box, MAT.craneYellow);
-    tip.scale.set(0.6, 6.0, 0.6);
-    tip.position.set(0, topY + 4.5, 0);
-    tip.castShadow = true;
-    slew.add(tip);
+  // kind ist immer "flat" (spitzenloser Obendreher) - kein Turmkopf nötig
 
-    slew.add(new THREE.LineSegments(
-      new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, topY + 7.5, 0), new THREE.Vector3(R * 0.95, topY + 1.6, 0),
-        new THREE.Vector3(0, topY + 7.5, 0), new THREE.Vector3(-cLen * 0.9, topY + 1.6, 0)
-      ]),
-      MAT.hookLine
-    ));
-  }
-
-  const hookTopY = wipp ? topY + Math.max(HH * 0.28, 6) : topY;
-  if (!wipp) {
-    const trolley = new THREE.Mesh(GEO.box, MAT.craneRed);
-    trolley.scale.set(1.4, 0.7, 1.4);
-    trolley.position.set(R, topY + 0.1, 0);
-    slew.add(trolley);
-  }
+  const trolley = new THREE.Mesh(GEO.box, MAT.craneRed);
+  trolley.scale.set(1.4, 0.7, 1.4);
+  trolley.position.set(R, topY + 0.1, 0);
+  slew.add(trolley);
 
   slew.add(new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(R, hookTopY - 0.4, 0),
+      new THREE.Vector3(R, topY - 0.4, 0),
       new THREE.Vector3(R, 1.5, 0)
     ]),
     MAT.hookLine
@@ -1114,7 +1050,6 @@ function buildTowerCrane(p) {
   g.userData.topY = topY;
   g.userData.slewDeg = p.rot || 0;
   g.userData.baseDeg = baseDeg;
-  g.userData.model = m;
   return g;
 }
 
@@ -1584,7 +1519,7 @@ function labelFor(type, params) {
     return 'Container ' + lay.count + '× · ' + params.cols + ' neben, ' +
            params.rows + ' Reihe(n), ' + params.levels + ' Eb.';
   }
-  if (type === 'tower') return getTowerModel(params.model).name;
+  if (type === 'tower') return 'Turmdrehkran';
   if (type === 'mobile') return getModel(params.model).name;
   if (type === 'road') {
     return 'Baustraße ' + Math.round(roadInfo(params).length) + ' m · ' + params.width.toFixed(1) + ' m';
@@ -2361,9 +2296,8 @@ if (typeof module !== 'undefined' && module.exports) {
 
     // Kranmodelle und Datenblätter
     CRANE_MODELS: CRANE_MODELS,
-    TOWER_MODELS: TOWER_MODELS,
+    TOWER_LIMITS: TOWER_LIMITS,
     sheetUrlFor: sheetUrlFor,
-    getTowerModel: getTowerModel,
     getModel: getModel,
 
     // Gelände: Achsen, Höhen, Raster
