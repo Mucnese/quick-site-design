@@ -149,6 +149,26 @@ test('Kranmodelle: 9 Mobilkrane, Turmdrehkran ist ein generisches Modell ohne Ka
   assert.strictEqual(app.TOWER_MODELS, undefined, 'kein Modellkatalog mehr für den Turmdrehkran');
 });
 
+test('CRANE_MODELS: axles stimmt mit der Achszahl aus der Modellbezeichnung überein (z. B. "-9.1" = 9 Achsen)', function () {
+  app.CRANE_MODELS.forEach(function (m) {
+    const match = m.name.match(/-(\d+)\.\d+$/);
+    assert.ok(match, m.name + ': keine "-N.M"-Achsbezeichnung gefunden');
+    assert.strictEqual(m.axles, parseInt(match[1], 10), m.name + ': axles passt nicht zur Bezeichnung');
+  });
+});
+
+test('buildMobileCrane: Anzahl der Räder folgt der echten Achszahl, nicht der alten chassisL/3,2-Schätzung', function () {
+  freshScene();
+  // Die alte Schätzformel ergab für LTM 1750-9.1 (chassisL≈21,75) nur 7
+  // Achsen statt der echten 9 - genau der vom Nutzer gemeldete Fehler.
+  const m = app.CRANE_MODELS.find(function (x) { return x.id === 'ltm1750'; });
+  const p = app.defaultMobileParams();
+  p.model = m.id;
+  const g = app.buildMobileCrane(p);
+  const wheels = g.children.find(function (c) { return c.count === m.axles * 2; });
+  assert.ok(wheels, 'InstancedMesh mit ' + (m.axles * 2) + ' Rädern (9 Achsen) nicht gefunden');
+});
+
 test('TOWER_LIMITS: Radius/Hakenhöhe bis 0 herunterregelbar, Hakenhöhe bis 120 m, Turmbreite 1–3,5 m (auf Wunsch angepasst)', function () {
   // radius.max stammt weiterhin aus den 34 früheren Herstellermodellen
   // (siehe Git-Historie); die übrigen Grenzen wurden auf ausdrücklichen

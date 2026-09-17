@@ -7,18 +7,30 @@
 /* ---------- Mobilkrane (Liebherr LTM) ----------
    Aufgenommen sind nur Modelle, für die Hersteller- oder Vermieterangaben
    vorliegen. Nicht belegte Felder stehen auf null; die Oberfläche gibt
-   dann keinen Höchstwert vor. Abstützmaße und Fahrzeuglängen dienen
-   ausschließlich der Darstellung und sind schematisch.                */
+   dann keinen Höchstwert vor. Abstützmaße dienen ausschließlich der
+   Darstellung und sind schematisch.
+
+   axles kommt aus der Modellbezeichnung selbst (z. B. "-9.1" = 9 Achsen)
+   und wird nicht mehr aus chassisL geschätzt – die alte Schätzformel
+   (chassisL / 3,2 m) lag bei den größeren Modellen daneben (z. B. 1750-9.1
+   kam als 6-achsig statt 9-achsig heraus).
+
+   chassisL/chassisW sind von der "Maße"-Seite der Original-Datenblätter
+   (Ordner 2016_Technische Daten_Mobilkrane): jeweils die größte dort
+   dokumentierte Längs- bzw. Querabmessung (bei chassisW meist die voll
+   ausgefahrene Abstützbreite). Zwei Modellbezeichnungen dabei korrigiert,
+   die nicht mit den Datenblättern übereinstimmten: LTM 1090-4.2 → 4.1,
+   LTM 1250-6.1 → 5.1 (beide tatsächlich mit einer Achse weniger). */
 const CRANE_MODELS = [
-  { id: 'ltm1050',  name: 'LTM 1050-3.1',  maker: 'Liebherr', cap: 50,   boomTele: 38,  hookMax: 54,   radiusMax: 44,  hookDef: 36,  radiusDef: 18, outL: 6.3,  outW: 6.0,  chassisL: 10.9 },
-  { id: 'ltm1090',  name: 'LTM 1090-4.2',  maker: 'Liebherr', cap: 90,   boomTele: 60,  hookMax: 76,   radiusMax: 62,  hookDef: 56,  radiusDef: 26, outL: 7.4,  outW: 6.8,  chassisL: 13.1 },
-  { id: 'ltm1150',  name: 'LTM 1150-5.3',  maker: 'Liebherr', cap: 150,  boomTele: 66,  hookMax: 92,   radiusMax: 72,  hookDef: 60,  radiusDef: 30, outL: 8.07, outW: 7.90, chassisL: 14.9 },
-  { id: 'ltm1250',  name: 'LTM 1250-6.1',  maker: 'Liebherr', cap: 250,  boomTele: 72,  hookMax: 108,  radiusMax: 92,  hookDef: 66,  radiusDef: 34, outL: 8.9,  outW: 8.2,  chassisL: 16.5 },
-  { id: 'ltm1350',  name: 'LTM 1350-6.1',  maker: 'Liebherr', cap: 350,  boomTele: 70,  hookMax: 108,  radiusMax: 96,  hookDef: 66,  radiusDef: 36, outL: 9.4,  outW: 8.8,  chassisL: 17.4 },
-  { id: 'ltm1450',  name: 'LTM 1450-8.1',  maker: 'Liebherr', cap: 450,  boomTele: 85,  hookMax: 145,  radiusMax: 108, hookDef: 80,  radiusDef: 40, outL: 10.0, outW: 9.5,  chassisL: 18.5 },
-  { id: 'ltm1500',  name: 'LTM 1500-8.1',  maker: 'Liebherr', cap: 500,  boomTele: 84,  hookMax: 145,  radiusMax: 108, hookDef: 80,  radiusDef: 42, outL: 10.6, outW: 9.6,  chassisL: 18.8 },
-  { id: 'ltm1650',  name: 'LTM 1650-8.1',  maker: 'Liebherr', cap: 700,  boomTele: 80,  hookMax: 152,  radiusMax: 112, hookDef: 85,  radiusDef: 46, outL: 10.6, outW: 9.6,  chassisL: 19.5 },
-  { id: 'ltm1750',  name: 'LTM 1750-9.1',  maker: 'Liebherr', cap: 750,  boomTele: 52,  hookMax: 154,  radiusMax: 116, hookDef: 90,  radiusDef: 50, outL: 12.0, outW: 12.0, chassisL: 20.2 }
+  { id: 'ltm1050',  name: 'LTM 1050-3.1',  maker: 'Liebherr', cap: 50,   boomTele: 38,  hookMax: 54,   radiusMax: 44,  hookDef: 36,  radiusDef: 18, outL: 6.3,  outW: 6.0,  chassisL: 11.613, chassisW: 6.4,   axles: 3 },
+  { id: 'ltm1090',  name: 'LTM 1090-4.1',  maker: 'Liebherr', cap: 90,   boomTele: 60,  hookMax: 76,   radiusMax: 62,  hookDef: 56,  radiusDef: 26, outL: 7.4,  outW: 6.8,  chassisL: 12.739, chassisW: 7.009, axles: 4 },
+  { id: 'ltm1150',  name: 'LTM 1150-5.3',  maker: 'Liebherr', cap: 150,  boomTele: 66,  hookMax: 92,   radiusMax: 72,  hookDef: 60,  radiusDef: 30, outL: 8.07, outW: 7.90, chassisL: 14.48,  chassisW: 6.518, axles: 5 },
+  { id: 'ltm1250',  name: 'LTM 1250-5.1',  maker: 'Liebherr', cap: 250,  boomTele: 72,  hookMax: 108,  radiusMax: 92,  hookDef: 66,  radiusDef: 34, outL: 8.9,  outW: 8.2,  chassisL: 15.965, chassisW: 6.894, axles: 5 },
+  { id: 'ltm1350',  name: 'LTM 1350-6.1',  maker: 'Liebherr', cap: 350,  boomTele: 70,  hookMax: 108,  radiusMax: 96,  hookDef: 66,  radiusDef: 36, outL: 9.4,  outW: 8.8,  chassisL: 17.743, chassisW: 8.53,  axles: 6 },
+  { id: 'ltm1450',  name: 'LTM 1450-8.1',  maker: 'Liebherr', cap: 450,  boomTele: 85,  hookMax: 145,  radiusMax: 108, hookDef: 80,  radiusDef: 40, outL: 10.0, outW: 9.5,  chassisL: 19.995, chassisW: 9.6,   axles: 8 },
+  { id: 'ltm1500',  name: 'LTM 1500-8.1',  maker: 'Liebherr', cap: 500,  boomTele: 84,  hookMax: 145,  radiusMax: 108, hookDef: 80,  radiusDef: 42, outL: 10.6, outW: 9.6,  chassisL: 20.48,  chassisW: 9.6,   axles: 8 },
+  { id: 'ltm1650',  name: 'LTM 1650-8.1',  maker: 'Liebherr', cap: 700,  boomTele: 80,  hookMax: 152,  radiusMax: 112, hookDef: 85,  radiusDef: 46, outL: 10.6, outW: 9.6,  chassisL: 20.717, chassisW: 9.578, axles: 8 },
+  { id: 'ltm1750',  name: 'LTM 1750-9.1',  maker: 'Liebherr', cap: 750,  boomTele: 52,  hookMax: 154,  radiusMax: 116, hookDef: 90,  radiusDef: 50, outL: 12.0, outW: 12.0, chassisL: 21.75,  chassisW: 12.009, axles: 9 }
 ];
 
 /* ---------- Turmdrehkran ----------
@@ -1083,6 +1095,10 @@ function buildMobileCrane(p) {
   const R  = Math.max(p.radius, 3);
 
   const chassisL = m.chassisL;
+  // Schmale, generische Fahrerhausbreite für die Darstellung - bewusst
+  // NICHT m.chassisW: das ist von der Maße-Seite die größte dokumentierte
+  // Querabmessung und damit praktisch immer die voll ausgefahrene
+  // Abstützbreite, nicht die schmale Fahrzeugbreite selbst.
   const chassisW = 3.0;
   const slewX = -2.0;
   const slewY = 3.4;
@@ -1118,7 +1134,10 @@ function buildMobileCrane(p) {
   chassis.castShadow = true;
   g.add(chassis);
 
-  const axles = Math.max(2, Math.round(m.chassisL / 3.2));
+  // Echte Achszahl aus der Modellbezeichnung (m.axles), nicht mehr aus
+  // chassisL geschätzt - die Schätzformel lag bei den großen Modellen
+  // daneben (z. B. 1750-9.1 kam als 6-achsig statt 9-achsig heraus).
+  const axles = m.axles || Math.max(2, Math.round(m.chassisL / 3.2));
   const wheels = new THREE.InstancedMesh(GEO.cyl, MAT.rubber, axles * 2);
   let wi = 0;
   for (let a = 0; a < axles; a++) {
