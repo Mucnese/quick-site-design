@@ -38,32 +38,35 @@
    radiusDef sind reine Vorgabewerte für den Regler (kein Datenblattwert) im
    selben Verhältnis wie bei den ursprünglichen 9 Modellen. Die LTM 1120-4.1
    fehlt bewusst: von ihr lag nur eine einzelne Traglasttabellen-Seite vor,
-   ohne Maße, Auslegerlängen-Angabe oder Hubhöhen-Tafel. */
+   ohne Maße, Auslegerlängen-Angabe oder Hubhöhen-Tafel.
+
+   Liste nach cap aufsteigend sortiert, weil die Modellauswahl im UI genau
+   in dieser Reihenfolge erscheint (kein eigener Sortierschritt in ui.js). */
 const CRANE_MODELS = [
-  { id: 'ltm1030',     name: 'LTM 1030-2.1',   maker: 'Liebherr', cap: 35,  boomTele: 30,  hookMax: 40,  radiusMax: 26, hookDef: 24, radiusDef: 10, outL: 6.3,  outW: 6.0,  chassisL: 10.158, chassisW: 6.028,  axles: 2 },
-  { id: 'ltm1040',     name: 'LTM 1040-2.1',   maker: 'Liebherr', cap: 40,  boomTele: 35,  hookMax: 39,  radiusMax: 31, hookDef: 24, radiusDef: 12, outL: 6.3,  outW: 6.0,  chassisL: 10.605, chassisW: 6.028,  axles: 2 },
-  { id: 'ltm1055',     name: 'LTM 1055-3.2',   maker: 'Liebherr', cap: 55,  boomTele: 40,  hookMax: 44,  radiusMax: 36, hookDef: 26, radiusDef: 14, outL: 7.3,  outW: 6.3,  chassisL: 11.042, chassisW: 6.3,    axles: 3 },
-  { id: 'ltm1060',     name: 'LTM 1060-3.1',   maker: 'Liebherr', cap: 60,  boomTele: 48,  hookMax: 50,  radiusMax: 40, hookDef: 30, radiusDef: 16, outL: 7.3,  outW: 6.3,  chassisL: 11.175, chassisW: 6.3,    axles: 3 },
-  { id: 'ltm1070',     name: 'LTM 1070-4.2',   maker: 'Liebherr', cap: 70,  boomTele: 50,  hookMax: 52,  radiusMax: 40, hookDef: 32, radiusDef: 16, outL: 8.0,  outW: 6.3,  chassisL: 12.392, chassisW: 6.3,    axles: 4 },
-  { id: 'ltm1095',     name: 'LTM 1095-5.1',   maker: 'Liebherr', cap: 95,  boomTele: 58,  hookMax: 60,  radiusMax: 54, hookDef: 36, radiusDef: 22, outL: 7.3,  outW: 6.8,  chassisL: 13.776, chassisW: 7.0,    axles: 5 },
-  { id: 'ltm1100_42',  name: 'LTM 1100-4.2',   maker: 'Liebherr', cap: 100, boomTele: 60,  hookMax: 62,  radiusMax: 44, hookDef: 38, radiusDef: 18, outL: 8.5,  outW: 6.8,  chassisL: 12.949, chassisW: 7.0,    axles: 4 },
-  { id: 'ltm1100_52',  name: 'LTM 1100-5.2',   maker: 'Liebherr', cap: 100, boomTele: 52,  hookMax: 54,  radiusMax: 50, hookDef: 32, radiusDef: 20, outL: 7.4,  outW: 6.8,  chassisL: 13.340, chassisW: 7.0,    axles: 5 },
-  { id: 'ltm1130',     name: 'LTM 1130-5.1',   maker: 'Liebherr', cap: 130, boomTele: 60,  hookMax: 63,  radiusMax: 56, hookDef: 38, radiusDef: 22, outL: 8.0,  outW: 7.2,  chassisL: 14.500, chassisW: 7.5,    axles: 5 },
-  { id: 'ltm1160',     name: 'LTM 1160-5.2',   maker: 'Liebherr', cap: 160, boomTele: 62,  hookMax: 65,  radiusMax: 60, hookDef: 40, radiusDef: 24, outL: 9.2,  outW: 8.0,  chassisL: 15.668, chassisW: 8.306,  axles: 5 },
-  { id: 'ltm1200',     name: 'LTM 1200-5.1',   maker: 'Liebherr', cap: 200, boomTele: 72,  hookMax: 74,  radiusMax: 66, hookDef: 44, radiusDef: 26, outL: 8.9,  outW: 7.8,  chassisL: 15.370, chassisW: 8.3,    axles: 5 },
-  { id: 'ltm11200',    name: 'LTM 11200-9.1',  maker: 'Liebherr', cap: 213, boomTele: 100, hookMax: 102, radiusMax: 74, hookDef: 62, radiusDef: 30, outL: 13.016, outW: 13.010, chassisL: 19.945, chassisW: 13.030, axles: 9 },
-  { id: 'ltm1220',     name: 'LTM 1220-5.2',   maker: 'Liebherr', cap: 220, boomTele: 60,  hookMax: 62,  radiusMax: 56, hookDef: 38, radiusDef: 22, outL: 8.9,  outW: 7.8,  chassisL: 15.600, chassisW: 8.3,    axles: 5 },
-  { id: 'ltm1300',     name: 'LTM 1300-6.2',   maker: 'Liebherr', cap: 300, boomTele: 78,  hookMax: 80,  radiusMax: 74, hookDef: 48, radiusDef: 30, outL: 8.9,  outW: 8.0,  chassisL: 17.298, chassisW: 8.532,  axles: 6 },
-  { id: 'ltm1400',     name: 'LTM 1400-7.1',   maker: 'Liebherr', cap: 400, boomTele: 60,  hookMax: 63,  radiusMax: 58, hookDef: 38, radiusDef: 24, outL: 10.0, outW: 9.0,  chassisL: 18.533, chassisW: 9.510,  axles: 7 },
-  { id: 'ltm1050',  name: 'LTM 1050-3.1',  maker: 'Liebherr', cap: 50,   boomTele: 38,  hookMax: 54,   radiusMax: 44,  hookDef: 36,  radiusDef: 18, outL: 6.3,  outW: 6.0,  chassisL: 11.613, chassisW: 6.4,   axles: 3 },
-  { id: 'ltm1090',  name: 'LTM 1090-4.1',  maker: 'Liebherr', cap: 90,   boomTele: 50,  hookMax: 76,   radiusMax: 62,  hookDef: 56,  radiusDef: 26, outL: 7.4,  outW: 6.8,  chassisL: 12.739, chassisW: 7.009, axles: 4 },
-  { id: 'ltm1150',  name: 'LTM 1150-5.3',  maker: 'Liebherr', cap: 150,  boomTele: 66,  hookMax: 92,   radiusMax: 72,  hookDef: 60,  radiusDef: 30, outL: 8.07, outW: 7.90, chassisL: 14.48,  chassisW: 6.518, axles: 5 },
-  { id: 'ltm1250',  name: 'LTM 1250-5.1',  maker: 'Liebherr', cap: 250,  boomTele: 60,  hookMax: 108,  radiusMax: 92,  hookDef: 66,  radiusDef: 34, outL: 8.9,  outW: 8.2,  chassisL: 15.965, chassisW: 6.894, axles: 5 },
-  { id: 'ltm1350',  name: 'LTM 1350-6.1',  maker: 'Liebherr', cap: 350,  boomTele: 70,  hookMax: 108,  radiusMax: 96,  hookDef: 66,  radiusDef: 36, outL: 9.4,  outW: 8.8,  chassisL: 17.743, chassisW: 8.53,  axles: 6 },
-  { id: 'ltm1450',  name: 'LTM 1450-8.1',  maker: 'Liebherr', cap: 450,  boomTele: 85,  hookMax: 145,  radiusMax: 108, hookDef: 80,  radiusDef: 40, outL: 10.0, outW: 9.5,  chassisL: 19.995, chassisW: 9.6,   axles: 8 },
-  { id: 'ltm1500',  name: 'LTM 1500-8.1',  maker: 'Liebherr', cap: 500,  boomTele: 84,  hookMax: 145,  radiusMax: 108, hookDef: 80,  radiusDef: 42, outL: 10.6, outW: 9.6,  chassisL: 20.48,  chassisW: 9.6,   axles: 8 },
-  { id: 'ltm1650',  name: 'LTM 1650-8.1',  maker: 'Liebherr', cap: 700,  boomTele: 80,  hookMax: 152,  radiusMax: 112, hookDef: 85,  radiusDef: 46, outL: 10.6, outW: 9.6,  chassisL: 20.717, chassisW: 9.578, axles: 8 },
-  { id: 'ltm1750',  name: 'LTM 1750-9.1',  maker: 'Liebherr', cap: 750,  boomTele: 52,  hookMax: 154,  radiusMax: 116, hookDef: 90,  radiusDef: 50, outL: 12.0, outW: 12.0, chassisL: 21.75,  chassisW: 12.009, axles: 9 }
+  { id: 'ltm1030',    name: 'LTM 1030-2.1',  maker: 'Liebherr', cap: 35,  boomTele: 30,  hookMax: 40,  radiusMax: 26,  hookDef: 24, radiusDef: 10, outL: 6.3,    outW: 6.0,    chassisL: 10.158, chassisW: 6.028,  axles: 2 },
+  { id: 'ltm1040',    name: 'LTM 1040-2.1',  maker: 'Liebherr', cap: 40,  boomTele: 35,  hookMax: 39,  radiusMax: 31,  hookDef: 24, radiusDef: 12, outL: 6.3,    outW: 6.0,    chassisL: 10.605, chassisW: 6.028,  axles: 2 },
+  { id: 'ltm1050',    name: 'LTM 1050-3.1',  maker: 'Liebherr', cap: 50,  boomTele: 38,  hookMax: 54,  radiusMax: 44,  hookDef: 36, radiusDef: 18, outL: 6.3,    outW: 6.0,    chassisL: 11.613, chassisW: 6.4,    axles: 3 },
+  { id: 'ltm1055',    name: 'LTM 1055-3.2',  maker: 'Liebherr', cap: 55,  boomTele: 40,  hookMax: 44,  radiusMax: 36,  hookDef: 26, radiusDef: 14, outL: 7.3,    outW: 6.3,    chassisL: 11.042, chassisW: 6.3,    axles: 3 },
+  { id: 'ltm1060',    name: 'LTM 1060-3.1',  maker: 'Liebherr', cap: 60,  boomTele: 48,  hookMax: 50,  radiusMax: 40,  hookDef: 30, radiusDef: 16, outL: 7.3,    outW: 6.3,    chassisL: 11.175, chassisW: 6.3,    axles: 3 },
+  { id: 'ltm1070',    name: 'LTM 1070-4.2',  maker: 'Liebherr', cap: 70,  boomTele: 50,  hookMax: 52,  radiusMax: 40,  hookDef: 32, radiusDef: 16, outL: 8.0,    outW: 6.3,    chassisL: 12.392, chassisW: 6.3,    axles: 4 },
+  { id: 'ltm1090',    name: 'LTM 1090-4.1',  maker: 'Liebherr', cap: 90,  boomTele: 50,  hookMax: 76,  radiusMax: 62,  hookDef: 56, radiusDef: 26, outL: 7.4,    outW: 6.8,    chassisL: 12.739, chassisW: 7.009,  axles: 4 },
+  { id: 'ltm1095',    name: 'LTM 1095-5.1',  maker: 'Liebherr', cap: 95,  boomTele: 58,  hookMax: 60,  radiusMax: 54,  hookDef: 36, radiusDef: 22, outL: 7.3,    outW: 6.8,    chassisL: 13.776, chassisW: 7.0,    axles: 5 },
+  { id: 'ltm1100_42', name: 'LTM 1100-4.2',  maker: 'Liebherr', cap: 100, boomTele: 60,  hookMax: 62,  radiusMax: 44,  hookDef: 38, radiusDef: 18, outL: 8.5,    outW: 6.8,    chassisL: 12.949, chassisW: 7.0,    axles: 4 },
+  { id: 'ltm1100_52', name: 'LTM 1100-5.2',  maker: 'Liebherr', cap: 100, boomTele: 52,  hookMax: 54,  radiusMax: 50,  hookDef: 32, radiusDef: 20, outL: 7.4,    outW: 6.8,    chassisL: 13.340, chassisW: 7.0,    axles: 5 },
+  { id: 'ltm1130',    name: 'LTM 1130-5.1',  maker: 'Liebherr', cap: 130, boomTele: 60,  hookMax: 63,  radiusMax: 56,  hookDef: 38, radiusDef: 22, outL: 8.0,    outW: 7.2,    chassisL: 14.500, chassisW: 7.5,    axles: 5 },
+  { id: 'ltm1150',    name: 'LTM 1150-5.3',  maker: 'Liebherr', cap: 150, boomTele: 66,  hookMax: 92,  radiusMax: 72,  hookDef: 60, radiusDef: 30, outL: 8.07,   outW: 7.90,   chassisL: 14.48,  chassisW: 6.518,  axles: 5 },
+  { id: 'ltm1160',    name: 'LTM 1160-5.2',  maker: 'Liebherr', cap: 160, boomTele: 62,  hookMax: 65,  radiusMax: 60,  hookDef: 40, radiusDef: 24, outL: 9.2,    outW: 8.0,    chassisL: 15.668, chassisW: 8.306,  axles: 5 },
+  { id: 'ltm1200',    name: 'LTM 1200-5.1',  maker: 'Liebherr', cap: 200, boomTele: 72,  hookMax: 74,  radiusMax: 66,  hookDef: 44, radiusDef: 26, outL: 8.9,    outW: 7.8,    chassisL: 15.370, chassisW: 8.3,    axles: 5 },
+  { id: 'ltm11200',   name: 'LTM 11200-9.1', maker: 'Liebherr', cap: 213, boomTele: 100, hookMax: 102, radiusMax: 74,  hookDef: 62, radiusDef: 30, outL: 13.016, outW: 13.010, chassisL: 19.945, chassisW: 13.030, axles: 9 },
+  { id: 'ltm1220',    name: 'LTM 1220-5.2',  maker: 'Liebherr', cap: 220, boomTele: 60,  hookMax: 62,  radiusMax: 56,  hookDef: 38, radiusDef: 22, outL: 8.9,    outW: 7.8,    chassisL: 15.600, chassisW: 8.3,    axles: 5 },
+  { id: 'ltm1250',    name: 'LTM 1250-5.1',  maker: 'Liebherr', cap: 250, boomTele: 60,  hookMax: 108, radiusMax: 92,  hookDef: 66, radiusDef: 34, outL: 8.9,    outW: 8.2,    chassisL: 15.965, chassisW: 6.894,  axles: 5 },
+  { id: 'ltm1300',    name: 'LTM 1300-6.2',  maker: 'Liebherr', cap: 300, boomTele: 78,  hookMax: 80,  radiusMax: 74,  hookDef: 48, radiusDef: 30, outL: 8.9,    outW: 8.0,    chassisL: 17.298, chassisW: 8.532,  axles: 6 },
+  { id: 'ltm1350',    name: 'LTM 1350-6.1',  maker: 'Liebherr', cap: 350, boomTele: 70,  hookMax: 108, radiusMax: 96,  hookDef: 66, radiusDef: 36, outL: 9.4,    outW: 8.8,    chassisL: 17.743, chassisW: 8.53,   axles: 6 },
+  { id: 'ltm1400',    name: 'LTM 1400-7.1',  maker: 'Liebherr', cap: 400, boomTele: 60,  hookMax: 63,  radiusMax: 58,  hookDef: 38, radiusDef: 24, outL: 10.0,   outW: 9.0,    chassisL: 18.533, chassisW: 9.510,  axles: 7 },
+  { id: 'ltm1450',    name: 'LTM 1450-8.1',  maker: 'Liebherr', cap: 450, boomTele: 85,  hookMax: 145, radiusMax: 108, hookDef: 80, radiusDef: 40, outL: 10.0,   outW: 9.5,    chassisL: 19.995, chassisW: 9.6,    axles: 8 },
+  { id: 'ltm1500',    name: 'LTM 1500-8.1',  maker: 'Liebherr', cap: 500, boomTele: 84,  hookMax: 145, radiusMax: 108, hookDef: 80, radiusDef: 42, outL: 10.6,   outW: 9.6,    chassisL: 20.48,  chassisW: 9.6,    axles: 8 },
+  { id: 'ltm1650',    name: 'LTM 1650-8.1',  maker: 'Liebherr', cap: 700, boomTele: 80,  hookMax: 152, radiusMax: 112, hookDef: 85, radiusDef: 46, outL: 10.6,   outW: 9.6,    chassisL: 20.717, chassisW: 9.578,  axles: 8 },
+  { id: 'ltm1750',    name: 'LTM 1750-9.1',  maker: 'Liebherr', cap: 750, boomTele: 52,  hookMax: 154, radiusMax: 116, hookDef: 90, radiusDef: 50, outL: 12.0,   outW: 12.0,   chassisL: 21.75,  chassisW: 12.009, axles: 9 }
 ];
 
 /* ---------- Turmdrehkran ----------
