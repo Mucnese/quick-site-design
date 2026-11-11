@@ -112,6 +112,8 @@ app.js
   containerLayout / buildContainer    Containeranlage samt Verbindungsbau
   buildTowerCrane / buildMobileCrane  Krane
   filletPath / buildRoad / roadInfo   Baustraße
+  computeRoad / autoRoadSlope         Längsneigung, Böschung 1:1, Auftrag/Abtrag
+  raycastPivot / orbitAround          Drehen um den angeklickten Punkt
   showRoadNodes / moveRoadNode        Stützpunkte bearbeiten
   addObject / rebuildObject / moveObject / removeObject
   selectObjects / frameObjects / focusOnPoint / updateControls

@@ -289,6 +289,8 @@ class OrbitControls {
     this.maxDistance = Infinity;
     this.minDistance = 0;
     this.maxPolarAngle = Math.PI;
+    this.minPolarAngle = 0;
+    this.mouseButtons = { LEFT: 0, MIDDLE: 1, RIGHT: 2 };
   }
   update() {}
 }
@@ -302,6 +304,7 @@ module.exports = {
   HemisphereLight, DirectionalLight,
   FogExp2, Scene, PerspectiveCamera, Raycaster, WebGLRenderer, OrbitControls,
   DoubleSide: 'DoubleSide', FrontSide: 'FrontSide', BackSide: 'BackSide',
+  MOUSE: { ROTATE: 0, DOLLY: 1, PAN: 2 },
   DynamicDrawUsage: 'DynamicDrawUsage',
   PCFSoftShadowMap: 'PCFSoftShadowMap'
 };

@@ -152,6 +152,9 @@ function initScene(container) {
   controls.maxDistance = 6000;
   controls.minDistance = 12;
   controls.maxPolarAngle = Math.PI * 0.492;   // knapp unter die Horizontale, Draufsicht bleibt erlaubt
+  // Links drehen, rechts UND Mitte verschieben, Rad zoomt. (Standard von
+  // OrbitControls ist Mitte = Zoomen; das Rad macht das ohnehin.)
+  controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
 
   raycaster = new THREE.Raycaster();
   pointer = new THREE.Vector2();
@@ -198,6 +201,9 @@ function initSharedResources() {
   MAT.roadEdge    = new THREE.LineBasicMaterial({ color: 0xf2e6c8, transparent: true, opacity: 0.7 });
   MAT.road        = new THREE.MeshLambertMaterial({ color: 0x6f6a60, side: THREE.DoubleSide });
   MAT.roadEdge    = new THREE.LineBasicMaterial({ color: 0xe8e2d2, transparent: true, opacity: 0.75 });
+  // Böschungen: Auftrag hell (aufgeschüttet), Abtrag dunkel (angeschnitten)
+  MAT.roadFill    = new THREE.MeshLambertMaterial({ color: 0xc9a45c, side: THREE.DoubleSide });
+  MAT.roadCut     = new THREE.MeshLambertMaterial({ color: 0x9a5a44, side: THREE.DoubleSide });
   // Immer sichtbar, damit der Punkt nicht im Gelände verschwindet
   MAT.measure     = new THREE.MeshBasicMaterial({ color: 0x6cff8a, depthTest: false });
   MAT.node        = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
@@ -1319,7 +1325,7 @@ function thickLine(points, width, material, closed) {
    wie nötig und das Ergebnis gemeldet.
    ========================================================= */
 function defaultRoadParams() {
-  return { points: [], width: 6.0, radius: 15, showEdge: true };
+  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null };
 }
 
 function dist2d(a, b) {
@@ -1419,31 +1425,138 @@ function pathLength(path) {
   return l;
 }
 
-/* Erzeugt das Band der Baustraße; Höhen kommen aus dem Gelände */
-function roadGeometry(path, width) {
-  const half = width / 2;
-  const pos = [];
-  const idx = [];
+/* ---------- Längsneigung, Böschung, Auftrag/Abtrag ----------
+   Die Straße hat eine konstante Längsneigung (in %, positiv = steigt vom
+   ersten zum letzten Punkt) und keine Querneigung. Sie beginnt auf der
+   Geländehöhe des ersten Punkts; liegt die Fahrbahn über oder unter dem
+   Gelände, schließt eine Böschung mit 1:1 (45°) vom Fahrbahnrand bis zum
+   Gelände an - Auftrag, wenn die Straße darüber liegt, Abtrag darunter.
+   Die Mengen sind das Mittel der Querschnittsflächen mal Abstand
+   (Mittelflächenverfahren); in engen Kurven weicht der Innenrand davon ab. */
+const ROAD_SLOPE_MAX = 30;      // einstellbare Längsneigung, ± Prozent
+const EMBANKMENT_RATIO = 1;     // Böschung 1:1 = 1 m Höhe je 1 m Breite
+const EMBANKMENT_REACH = 80;    // weiter sucht die Böschung nicht nach dem Gelände
+const EMBANKMENT_STEP = 0.5;    // Suchschritt quer zur Straße
+const ROAD_LIFT = 0.05;         // gegen Flimmern auf dem Gelände
 
+function roadPathOf(p) {
+  const fil = filletPath(p.points || [], Math.max(p.radius || 15, 1));
+  return { fil: fil, path: densifyPath(fil.path, 2.5) };
+}
+
+/* Stationierung samt Querrichtung je Punkt des Wegs */
+function roadFrames(path) {
+  const out = [];
+  let s = 0;
   for (let i = 0; i < path.length; i++) {
+    if (i > 0) s += dist2d(path[i - 1], path[i]);
     const prev = path[Math.max(i - 1, 0)];
     const next = path[Math.min(i + 1, path.length - 1)];
     let tx = next.x - prev.x, tz = next.z - prev.z;
     const tl = Math.sqrt(tx * tx + tz * tz) || 1;
     tx /= tl; tz /= tl;
-    const nx = -tz, nz = tx;                    // Querrichtung
-
-    const lx = path[i].x + nx * half, lz = path[i].z + nz * half;
-    const rx = path[i].x - nx * half, rz = path[i].z - nz * half;
-    pos.push(lx, getHeightAt(lx, lz) + 0.12, lz);
-    pos.push(rx, getHeightAt(rx, rz) + 0.12, rz);
-
-    if (i > 0) {
-      const a = (i - 1) * 2, b = a + 1, c = i * 2, d = c + 1;
-      idx.push(a, c, b, b, c, d);
-    }
+    out.push({ x: path[i].x, z: path[i].z, nx: -tz, nz: tx, s: s });
   }
-  return { positions: pos, indices: idx };
+  return out;
+}
+
+/* Neigung, mit der die Straße Anfangs- und Endpunkt auf dem Gelände verbindet */
+function autoRoadSlope(p) {
+  if (!p || !p.points || p.points.length < 2) return 0;
+  const path = roadPathOf(p).path;
+  const L = pathLength(path);
+  if (!(L > 0.5)) return 0;
+  const a = path[0], b = path[path.length - 1];
+  const pct = (getHeightAt(b.x, b.z) - getHeightAt(a.x, a.z)) / L * 100;
+  return Math.round(Math.max(-ROAD_SLOPE_MAX, Math.min(ROAD_SLOPE_MAX, pct)) * 10) / 10;
+}
+
+/* Böschung einer Seite: sucht vom Fahrbahnrand nach außen den ersten
+   Schnitt der 1:1-Linie mit dem Gelände. */
+function embankmentSide(f, sign, hr, half) {
+  const ex = f.x + sign * f.nx * half, ez = f.z + sign * f.nz * half;
+  const diff0 = hr - getHeightAt(ex, ez);
+  const side = { type: 'none', ex: ex, ez: ez, ox: ex, oz: ez, oh: hr, reach: 0, area: 0, reached: true };
+  if (Math.abs(diff0) < 0.01) return side;
+
+  const fill = diff0 > 0;
+  const dir = fill ? -1 : 1;                       // Auftrag fällt, Abtrag steigt nach außen
+  side.type = fill ? 'fill' : 'cut';
+  let prevD = 0, prevDiff = diff0, area = 0;
+  side.reached = false;
+  for (let d = EMBANKMENT_STEP; d <= EMBANKMENT_REACH + 1e-9; d += EMBANKMENT_STEP) {
+    const qx = ex + sign * f.nx * d, qz = ez + sign * f.nz * d;
+    const hs = hr + dir * d * EMBANKMENT_RATIO;
+    const diff = hs - getHeightAt(qx, qz);
+    const crossed = fill ? diff <= 0 : diff >= 0;
+    if (crossed) {
+      const t = prevDiff / (prevDiff - diff);      // Schnittpunkt im Schritt, linear
+      const dEnd = prevD + t * (d - prevD);
+      area += 0.5 * Math.abs(prevDiff) * (dEnd - prevD);
+      side.reach = dEnd;
+      side.reached = true;
+      break;
+    }
+    area += 0.5 * (Math.abs(prevDiff) + Math.abs(diff)) * (d - prevD);
+    prevD = d; prevDiff = diff;
+    side.reach = d;
+  }
+  side.area = area;
+  side.ox = ex + sign * f.nx * side.reach;
+  side.oz = ez + sign * f.nz * side.reach;
+  side.oh = hr + dir * side.reach * EMBANKMENT_RATIO;
+  return side;
+}
+
+/* Alles Geometrische einer Baustraße in einem Durchgang: Fahrbahnhöhen,
+   Böschungen und Mengen. */
+function computeRoad(p) {
+  const width = Math.max(p.width, 1), half = width / 2;
+  const rp = roadPathOf(p);
+  const frames = roadFrames(rp.path);
+  const length = frames.length ? frames[frames.length - 1].s : 0;
+  const slope = (typeof p.slope === 'number' && isFinite(p.slope)) ? p.slope : autoRoadSlope(p);
+  const h0 = getHeightAt(rp.path[0].x, rp.path[0].z);
+
+  const sections = frames.map(function (f) {
+    const hr = h0 + slope / 100 * f.s;
+    const left = embankmentSide(f, 1, hr, half);
+    const right = embankmentSide(f, -1, hr, half);
+
+    // Fahrbahnstreifen: Über-/Unterschuss gegenüber dem Gelände quer abtasten
+    const n = Math.max(2, Math.ceil(width / 0.5));
+    let roadFill = 0, roadCut = 0, prev = null;
+    for (let j = 0; j <= n; j++) {
+      const u = -half + width * j / n;
+      const diff = hr - getHeightAt(f.x + f.nx * u, f.z + f.nz * u);
+      if (prev !== null) {
+        roadFill += 0.5 * (Math.max(prev, 0) + Math.max(diff, 0)) * (width / n);
+        roadCut += 0.5 * (Math.max(-prev, 0) + Math.max(-diff, 0)) * (width / n);
+      }
+      prev = diff;
+    }
+    const fillArea = roadFill + (left.type === 'fill' ? left.area : 0) + (right.type === 'fill' ? right.area : 0);
+    const cutArea = roadCut + (left.type === 'cut' ? left.area : 0) + (right.type === 'cut' ? right.area : 0);
+    return { f: f, hr: hr, left: left, right: right, fillArea: fillArea, cutArea: cutArea };
+  });
+
+  let fill = 0, cut = 0, maxReach = 0, unreached = 0;
+  for (let i = 0; i < sections.length; i++) {
+    [sections[i].left, sections[i].right].forEach(function (sd) {
+      if (sd.reach > maxReach) maxReach = sd.reach;
+      if (!sd.reached) unreached++;
+    });
+    if (i === 0) continue;
+    const ds = sections[i].f.s - sections[i - 1].f.s;
+    fill += 0.5 * (sections[i].fillArea + sections[i - 1].fillArea) * ds;
+    cut += 0.5 * (sections[i].cutArea + sections[i - 1].cutArea) * ds;
+  }
+
+  return {
+    fil: rp.fil, path: rp.path, width: width, half: half, length: length,
+    area: length * width, slope: slope, h0: h0, sections: sections,
+    earthworks: { fill: fill, cut: cut, maxReach: maxReach, unreached: unreached }
+  };
 }
 
 function buildRoad(p) {
@@ -1458,61 +1571,100 @@ function buildRoad(p) {
     return g;
   }
 
-  const fil = filletPath(pts, Math.max(p.radius, 1));
-  const path = densifyPath(fil.path, 2.5);
-  const rg = roadGeometry(path, Math.max(p.width, 1));
+  const rd = computeRoad(p);
+  const secs = rd.sections;
 
+  // Fahrbahn: flach quer, Höhe aus der konstanten Längsneigung
+  const pos = [], idx = [];
+  secs.forEach(function (sc, i) {
+    pos.push(sc.left.ex, sc.hr + ROAD_LIFT, sc.left.ez);
+    pos.push(sc.right.ex, sc.hr + ROAD_LIFT, sc.right.ez);
+    if (i > 0) {
+      const a = (i - 1) * 2, b = a + 1, c = i * 2, d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+  });
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(rg.positions), 3));
-  geo.setIndex(rg.indices);
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geo.setIndex(idx);
   geo.computeVertexNormals();
-
   const mesh = new THREE.Mesh(geo, MAT.road);
   mesh.receiveShadow = true;
   g.add(mesh);
 
+  // Böschungen: je Seite ein Band vom Fahrbahnrand zur Geländekante, getrennt
+  // nach Auftrag und Abtrag (zwei Materialien)
+  const ePos = [], fillIdx = [], cutIdx = [];
+  [['left', 1], ['right', -1]].forEach(function (sideDef) {
+    const base = ePos.length / 3;
+    secs.forEach(function (sc, i) {
+      const sd = sc[sideDef[0]];
+      ePos.push(sd.ex, sc.hr + ROAD_LIFT, sd.ez);
+      ePos.push(sd.ox, sd.oh + 0.02, sd.oz);
+      if (i === 0) return;
+      const prev = secs[i - 1][sideDef[0]];
+      const type = sd.type !== 'none' ? sd.type : prev.type;
+      if (type === 'none') return;
+      const a = base + (i - 1) * 2, b = a + 1, c = base + i * 2, d = c + 1;
+      (type === 'fill' ? fillIdx : cutIdx).push(a, c, b, b, c, d);
+    });
+  });
+  [[fillIdx, MAT.roadFill], [cutIdx, MAT.roadCut]].forEach(function (e) {
+    if (!e[0].length) return;
+    const eg = new THREE.BufferGeometry();
+    eg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ePos), 3));
+    eg.setIndex(e[0]);
+    eg.computeVertexNormals();
+    const em = new THREE.Mesh(eg, e[1]);
+    em.receiveShadow = true;
+    g.add(em);
+  });
+
   if (p.showEdge !== false) {
     const left = [], right = [];
-    for (let i = 0; i < path.length; i++) {
-      const o = i * 6;
-      left.push(new THREE.Vector3(rg.positions[o], rg.positions[o + 1] + 0.02, rg.positions[o + 2]));
-      right.push(new THREE.Vector3(rg.positions[o + 3], rg.positions[o + 4] + 0.02, rg.positions[o + 5]));
-    }
+    secs.forEach(function (sc) {
+      left.push(new THREE.Vector3(sc.left.ex, sc.hr + ROAD_LIFT + 0.02, sc.left.ez));
+      right.push(new THREE.Vector3(sc.right.ex, sc.hr + ROAD_LIFT + 0.02, sc.right.ez));
+    });
     g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(left), MAT.roadEdge));
     g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(right), MAT.roadEdge));
   }
 
   let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
-  path.forEach(function (q) {
+  rd.path.forEach(function (q) {
     if (q.x < minx) minx = q.x;
     if (q.x > maxx) maxx = q.x;
     if (q.z < minz) minz = q.z;
     if (q.z > maxz) maxz = q.z;
   });
-  const half = Math.max(p.width, 1) / 2;
+  const margin = rd.half + rd.earthworks.maxReach;
 
-  g.userData.bbox = { w: maxx - minx + width0(half), d: maxz - minz + width0(half), h: 1 };
+  g.userData.bbox = { w: maxx - minx + margin * 2, d: maxz - minz + margin * 2, h: 1 };
   g.userData.selBox = {
-    w: maxx - minx + width0(half) + 2, d: maxz - minz + width0(half) + 2, h: 2,
+    w: maxx - minx + margin * 2 + 2, d: maxz - minz + margin * 2 + 2, h: 2,
     cy: 1, cx: (minx + maxx) / 2, cz: (minz + maxz) / 2
   };
-  g.userData.length = pathLength(path);
-  g.userData.reduced = fil.reduced;
-  g.userData.minRadius = fil.minRadius;
-  g.userData.path = path;
+  g.userData.length = rd.length;
+  g.userData.area = rd.area;
+  g.userData.slope = rd.slope;
+  g.userData.earthworks = rd.earthworks;
+  g.userData.reduced = rd.fil.reduced;
+  g.userData.minRadius = rd.fil.minRadius;
+  g.userData.path = rd.path;
   return g;
 }
 
-function width0(h) { return h * 2; }
-
-/* Mittelpunkt der gesetzten Stützpunkte */
-/* Kennzahlen einer Baustraße ohne Mesh-Aufbau */
+/* Kennzahlen einer Baustraße ohne Mesh-Aufbau. Auftrag/Abtrag stehen nach
+   dem Aufbau in group.userData.earthworks (computeRoad ist dafür zu teuer). */
 function roadInfo(p) {
   const pts = (p && p.points) || [];
-  if (pts.length < 2) return { length: 0, minRadius: (p && p.radius) || 0, reduced: 0 };
-  const fil = filletPath(pts, p.radius);
-  const path = densifyPath(fil.path, 2);
-  return { length: pathLength(path), minRadius: fil.minRadius, reduced: fil.reduced };
+  if (pts.length < 2) return { length: 0, area: 0, minRadius: (p && p.radius) || 0, reduced: 0 };
+  const rp = roadPathOf(p);
+  const length = pathLength(rp.path);
+  return {
+    length: length, area: length * Math.max(p.width || 0, 1),
+    minRadius: rp.fil.minRadius, reduced: rp.fil.reduced
+  };
 }
 
 function roadCentroid(pts) {
@@ -1608,6 +1760,9 @@ function placeGroup(obj) {
 
 function addObject(type, x, z, params) {
   const p = params || defaultsFor(type);
+  // Konstante Längsneigung der Straße: zunächst die, mit der sie die
+  // Geländehöhen von Anfangs- und Endpunkt verbindet; der Regler stellt sie danach ein.
+  if (type === 'road' && (p.slope === null || p.slope === undefined)) p.slope = autoRoadSlope(p);
   const group = builderFor(type)(p);
   scene.add(group);
 
@@ -1634,6 +1789,7 @@ function moveObject(obj, x, z) {
     obj.params.points = (obj.params.points || []).map(function (q) {
       return { x: q.x + dx, z: q.z + dz };
     });
+    obj.params.slope = autoRoadSlope(obj.params);    // anderes Gelände, neue Anfangs-/Endhöhe
     rebuildObject(obj);
     if (isSelected(obj.id)) focusOnObject(obj);
     return;
@@ -1955,6 +2111,7 @@ function moveRoadNode(obj, index, x, z) {
   pts[index] = { x: x, z: z };
   const c = roadCentroid(pts);
   obj.x = c.x; obj.z = c.z;
+  obj.params.slope = autoRoadSlope(obj.params);
   rebuildObject(obj);
   refreshRoadNodes();
   return true;
@@ -1968,6 +2125,7 @@ function removeRoadNode(obj, index) {
   pts.splice(index, 1);
   const c = roadCentroid(pts);
   obj.x = c.x; obj.z = c.z;
+  obj.params.slope = autoRoadSlope(obj.params);
   activeNode = null;
   rebuildObject(obj);
   refreshRoadNodes();
@@ -2016,6 +2174,61 @@ function raycastObjects(event) {
   let node = hits[0].object;
   while (node && !node.userData.__objId) node = node.parent;
   return node ? findObject(node.userData.__objId) : null;
+}
+
+/* Punkt unter dem Mauszeiger auf Gelände, Gebäuden oder platzierten
+   Bausteinen (der nächstliegende Treffer), oder null bei Hintergrund. Das
+   ist der Drehpunkt für "um den angeklickten Punkt umkreisen". */
+function raycastPivot(event) {
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const roots = objects.map(function (o) { return o.group; });
+  if (terrainMesh) roots.push(terrainMesh);
+  if (buildingsMesh) roots.push(buildingsMesh);
+  if (!roots.length) return null;
+  const hits = raycaster.intersectObjects(roots, true);
+  if (!hits.length) return null;
+  const p = hits[0].point;
+  return { x: p.x, y: p.y, z: p.z };
+}
+
+/* Dreht die Kamera samt Drehzentrum starr um einen beliebigen Punkt (Rodrigues).
+   Anders als OrbitControls, das nur um sein eigenes Ziel dreht, bleibt der
+   Punkt dabei an derselben Stelle im Bild - die Ansicht springt beim Anklicken
+   nicht, und der Punkt unter dem Zeiger bleibt unter dem Zeiger. dAzimuth
+   dreht um die Hochachse, dPolar kippt; der Kippwinkel wird wie in
+   OrbitControls auf [minPolarAngle, maxPolarAngle] begrenzt. */
+function rotateAround(v, pivot, ax, ay, az, angle) {
+  const rx = v.x - pivot.x, ry = v.y - pivot.y, rz = v.z - pivot.z;
+  const c = Math.cos(angle), s = Math.sin(angle);
+  const dot = ax * rx + ay * ry + az * rz;
+  const cx = ay * rz - az * ry, cy = az * rx - ax * rz, cz = ax * ry - ay * rx;
+  v.set(
+    pivot.x + rx * c + cx * s + ax * dot * (1 - c),
+    pivot.y + ry * c + cy * s + ay * dot * (1 - c),
+    pivot.z + rz * c + cz * s + az * dot * (1 - c)
+  );
+}
+
+function orbitAround(pivot, dAzimuth, dPolar) {
+  camGoal = null;
+  focusGoal = null;
+  const c = camera.position, t = controls.target;
+  const ox = c.x - t.x, oy = c.y - t.y, oz = c.z - t.z;
+  const r = Math.sqrt(ox * ox + oy * oy + oz * oz);
+  if (r < 1e-6) return;
+  const phi = Math.acos(Math.max(-1, Math.min(1, oy / r)));
+  const theta = Math.atan2(ox, oz);
+  const lo = Math.max(controls.minPolarAngle || 0, 1e-4);
+  const hi = Math.min(controls.maxPolarAngle === undefined ? Math.PI : controls.maxPolarAngle, Math.PI - 1e-4);
+  const dp = Math.max(lo, Math.min(hi, phi + dPolar)) - phi;
+
+  // Kippen um die waagerechte Achse, die zum aktuellen Azimut gehört
+  const kx = Math.cos(theta), kz = -Math.sin(theta);
+  rotateAround(c, pivot, kx, 0, kz, dp);
+  rotateAround(t, pivot, kx, 0, kz, dp);
+  rotateAround(c, pivot, 0, 1, 0, dAzimuth);
+  rotateAround(t, pivot, 0, 1, 0, dAzimuth);
 }
 
 /* =========================================================
@@ -2137,8 +2350,11 @@ function terrainGridInRect(minX, minZ, maxX, maxZ) {
   for (let iz = 0; iz + 1 < nz; iz++) {
     for (let ix = 0; ix + 1 < nx; ix++) {
       const a = grid[iz][ix], b = grid[iz][ix + 1], c = grid[iz + 1][ix], d = grid[iz + 1][ix + 1];
-      triangles.push({ a: a, b: b, c: d });
-      triangles.push({ a: a, b: d, c: c });
+      // Von oben gesehen (Nord oben) gegen den Uhrzeigersinn, damit die
+      // Flächennormalen nach oben zeigen. Mit der umgekehrten Reihenfolge
+      // blenden IFC-Betrachter mit Rückseitenausblendung das Gelände aus.
+      triangles.push({ a: a, b: c, c: d });
+      triangles.push({ a: a, b: d, c: b });
     }
   }
   return triangles;
@@ -2223,15 +2439,44 @@ function frameRect(minX, minZ, maxX, maxZ) {
   topView = false;
 }
 
-/* IFC-GUIDs sind 22 Zeichen aus diesem Alphabet. Für den Export reicht
-   ein zufälliger, formal gültiger Bezeichner – die genaue Bit-Packung
-   einer echten UUID-Kompression ist hier nicht nötig (Attribuierung im
-   IFC ist laut Vorgabe zweitrangig, nur die Geometrie muss stimmen). */
+/* IFC-GUIDs sind 128 Bit in 22 Zeichen: das erste Zeichen trägt nur 2 Bit
+   (also '0'..'3'), die restlichen 21 je 6 Bit. Zufällige Zeichen aus dem
+   ganzen Alphabet sind formal ungültig, strengere Programme lehnen die
+   Datei dann als beschädigt ab. */
 const IFC_GUID_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
 function ifcGuid() {
-  let s = '';
-  for (let i = 0; i < 22; i++) s += IFC_GUID_CHARS[Math.floor(Math.random() * 64)];
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) crypto.getRandomValues(bytes);
+  else for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+  let bits = '';
+  for (let i = 0; i < 16; i++) bits += ('00000000' + bytes[i].toString(2)).slice(-8);
+  let s = IFC_GUID_CHARS[parseInt(bits.slice(0, 2), 2)];
+  for (let i = 2; i < 128; i += 6) s += IFC_GUID_CHARS[parseInt(bits.slice(i, i + 6), 2)];
   return s;
+}
+
+/* STEP-Text (ISO 10303-21): nur ASCII; alles andere als \X2\...\X0\
+   (UTF-16-Einheiten). Rohe UTF-8-Bytes wie bei "Gelände" machen die Datei
+   für viele Leser ungültig. */
+function ifcString(s) {
+  let out = '';
+  let run = '';
+  function flush() {
+    if (run) { out += '\\X2\\' + run + '\\X0\\'; run = ''; }
+  }
+  const str = String(s);
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (c >= 32 && c <= 126) {
+      flush();
+      const ch = str[i];
+      out += ch === "'" ? "''" : (ch === '\\' ? '\\\\' : ch);
+    } else {
+      run += ('0000' + c.toString(16).toUpperCase()).slice(-4);
+    }
+  }
+  flush();
+  return "'" + out + "'";
 }
 
 /* Schreibt ein minimales, gültiges IFC4-STEP-Dokument von Hand (der
@@ -2260,7 +2505,7 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
     const s = (Math.round(n * 1000) / 1000).toString();
     return s.indexOf('.') === -1 ? s + '.' : s;
   }
-  function str(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
+  const str = ifcString;
   function add(type, args) {
     nextId++;
     lines.push('#' + nextId + '=' + type + '(' + args + ');');
@@ -2270,22 +2515,30 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
   // XAxisAbscissa=1/XAxisOrdinate=0, also IFC-X ohne Drehung = Osten).
   // Im Szenengraphen ist es umgekehrt (+x=Ost, -z=Nord, y=Höhe) - beim
   // Schreiben ins IFC deshalb Höhe und Nord/Süd vertauschen, sonst liegt
-  // das Modell auf der Seite.
-  function localize(tri) {
-    return [tri.a, tri.b, tri.c].map(function (p) {
-      const x = p[0] - rectMinX;
-      const y = -(p[2] - rectMinZ);
-      const z = p[1];
-      return '(' + num(x) + ',' + num(y) + ',' + num(z) + ')';
-    }).join(',');
+  // das Modell auf der Seite. (x, y, z) -> (x, -z, y) ist eine echte
+  // Drehung, die Dreiecksreihenfolge bleibt also erhalten.
+  function localize(p) {
+    return [p[0] - rectMinX, -(p[2] - rectMinZ), p[1]];
   }
 
-  const lengthUnit = add('IFCSIUNIT', '$,.LENGTHUNIT.,$,.METRE.');
+  // Der Besitzernachweis ist in IFC4 formal optional, die Referenz-
+  // Anforderungen der gängigen Betrachter erwarten ihn aber.
+  const organization = add('IFCORGANIZATION', "$," + str('Quick-Site-Design') + ',$,$,$');
+  const person = add('IFCPERSON', '$,' + str('Quick-Site-Design') + ',$,$,$,$,$,$');
+  const personOrg = add('IFCPERSONANDORGANIZATION', person + ',' + organization + ',$');
+  const application = add('IFCAPPLICATION',
+    organization + ',' + str('1.0') + ',' + str('Quick-Site-Design') + ',' + str('QSD'));
+  const owner = add('IFCOWNERHISTORY',
+    personOrg + ',' + application + ',$,.ADDED.,$,$,$,' + Math.floor(Date.now() / 1000));
+
+  const lengthUnit = add('IFCSIUNIT', '*,.LENGTHUNIT.,$,.METRE.');
   const unitAssignment = add('IFCUNITASSIGNMENT', '(' + lengthUnit + ')');
   const originPoint = add('IFCCARTESIANPOINT', '(0.,0.,0.)');
   const worldPlacement = add('IFCAXIS2PLACEMENT3D', originPoint + ',$,$');
   const context = add('IFCGEOMETRICREPRESENTATIONCONTEXT',
-    '$,\'Model\',3,1.E-5,' + worldPlacement + ',$');
+    '$,' + str('Model') + ',3,1.E-5,' + worldPlacement + ',$');
+  const bodyContext = add('IFCGEOMETRICREPRESENTATIONSUBCONTEXT',
+    str('Body') + ',' + str('Model') + ',*,*,*,*,' + context + ',$,.MODEL_VIEW.,$');
 
   const projectedCrs = add('IFCPROJECTEDCRS',
     str('EPSG:' + epsg) + ',$,$,$,$,$,' + lengthUnit);
@@ -2298,26 +2551,48 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
 
   const siteLocalPlacement = add('IFCLOCALPLACEMENT', '$,' + worldPlacement);
   const project = add('IFCPROJECT',
-    str(ifcGuid()) + ',$,' + str('Quick-Site-Design Ausschnitt') + ',$,$,$,$,(' + context + '),' + unitAssignment);
+    str(ifcGuid()) + ',' + owner + ',' + str('Quick-Site-Design Ausschnitt') + ',$,$,$,$,(' + context + '),' + unitAssignment);
   const site = add('IFCSITE',
-    str(ifcGuid()) + ',$,' + str('Baustelle') + ',$,$,' + siteLocalPlacement + ',$,$,.ELEMENT.,$,$,$,$,$');
-  add('IFCRELAGGREGATES', str(ifcGuid()) + ',$,$,$,' + project + ',(' + site + ')');
+    str(ifcGuid()) + ',' + owner + ',' + str('Baustelle') + ',$,$,' + siteLocalPlacement + ',$,$,.ELEMENT.,$,$,$,$,$');
+  add('IFCRELAGGREGATES', str(ifcGuid()) + ',' + owner + ',$,$,' + project + ',(' + site + ')');
 
   const elements = [];
 
+  // Gleiche Eckpunkte nur einmal schreiben: das Geländeraster teilt jeden
+  // Punkt zwischen bis zu sechs Dreiecken, ohne Zusammenfassen wird die
+  // Datei viermal so groß und die eine Zeile mit der Punktliste sprengt
+  // manche Leser.
   function addGroup(triangles, name, entityType, predefinedType) {
     if (!triangles.length) return;
-    const coordList = add('IFCCARTESIANPOINTLIST3D',
-      '(' + triangles.map(localize).join(',') + ')');
-    const idx = [];
-    for (let i = 0; i < triangles.length; i++) idx.push('(' + (i * 3 + 1) + ',' + (i * 3 + 2) + ',' + (i * 3 + 3) + ')');
-    const faceSet = add('IFCTRIANGULATEDFACESET', coordList + ',$,.F.,(' + idx.join(',') + '),$');
-    const shapeRep = add('IFCSHAPEREPRESENTATION', context + ',' + str('Body') + ',' + str('Tessellation') + ',(' + faceSet + ')');
+    const index = new Map();
+    const pts = [];
+    const faces = [];
+    triangles.forEach(function (tri) {
+      const f = [];
+      [tri.a, tri.b, tri.c].forEach(function (p) {
+        const q = localize(p).map(function (v) { return num(v); });
+        const key = q.join(',');
+        let i = index.get(key);
+        if (i === undefined) {
+          pts.push('(' + key + ')');
+          i = pts.length;
+          index.set(key, i);
+        }
+        f.push(i);
+      });
+      if (f[0] !== f[1] && f[1] !== f[2] && f[0] !== f[2]) faces.push('(' + f.join(',') + ')');
+    });
+    if (!faces.length) return;
+    const coordList = add('IFCCARTESIANPOINTLIST3D', '(' + pts.join(',') + ')');
+    const faceSet = add('IFCTRIANGULATEDFACESET', coordList + ',$,.F.,(' + faces.join(',') + '),$');
+    const shapeRep = add('IFCSHAPEREPRESENTATION', bodyContext + ',' + str('Body') + ',' + str('Tessellation') + ',(' + faceSet + ')');
     const productShape = add('IFCPRODUCTDEFINITIONSHAPE', '$,$,(' + shapeRep + ')');
     const placement = add('IFCLOCALPLACEMENT', siteLocalPlacement + ',' + worldPlacement);
+    // Beide Elementarten haben neun Attribute; das Tag steht vor dem
+    // PredefinedType (beim Gelände fehlte es früher, der Typ verrutschte).
     const el = add(entityType,
-      str(ifcGuid()) + ',$,' + str(name) + ',$,$,' + placement + ',' + productShape +
-      (entityType === 'IFCGEOGRAPHICELEMENT' ? ',' + predefinedType : ',$,' + predefinedType));
+      str(ifcGuid()) + ',' + owner + ',' + str(name) + ',$,$,' + placement + ',' + productShape +
+      ',$,' + predefinedType);
     elements.push(el);
   }
 
@@ -2325,15 +2600,15 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
   addGroup(geo.buildings, 'Gebäude (Ausschnitt)', 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.');
 
   if (elements.length) {
-    add('IFCRELCONTAINEDINSPATIALSTRUCTURE', str(ifcGuid()) + ',$,$,$,(' + elements.join(',') + '),' + site);
+    add('IFCRELCONTAINEDINSPATIALSTRUCTURE', str(ifcGuid()) + ',' + owner + ',$,$,(' + elements.join(',') + '),' + site);
   }
 
   const header = [
     'ISO-10303-21;',
     'HEADER;',
-    'FILE_DESCRIPTION((\'Quick-Site-Design IFC-Export\'),\'2;1\');',
-    'FILE_NAME(\'export.ifc\',\'' + new Date().toISOString() + '\',(\'\'),(\'Quick-Site-Design\'),\'\',\'Quick-Site-Design\',\'\');',
-    'FILE_SCHEMA((\'IFC4\'));',
+    "FILE_DESCRIPTION(('ViewDefinition [ReferenceView_V1.2]'),'2;1');",
+    "FILE_NAME('export.ifc','" + new Date().toISOString().slice(0, 19) + "',(''),('Quick-Site-Design'),'Quick-Site-Design','Quick-Site-Design','');",
+    "FILE_SCHEMA(('IFC4'));",
     'ENDSEC;',
     'DATA;'
   ];
@@ -2352,7 +2627,10 @@ if (typeof module !== 'undefined' && module.exports) {
     initSharedResources: initSharedResources,
     getScene: function () { return scene; },
     getControls: function () { return controls; },
+    getCamera: function () { return camera; },
     setTopView: setTopView,
+    raycastPivot: raycastPivot,
+    orbitAround: orbitAround,
     isTopView: isTopView,
     frameTerrain: frameTerrain,
     updateControls: updateControls,
@@ -2418,9 +2696,10 @@ if (typeof module !== 'undefined' && module.exports) {
     filletPath: filletPath,
     densifyPath: densifyPath,
     pathLength: pathLength,
-    roadGeometry: roadGeometry,
+    computeRoad: computeRoad,
+    autoRoadSlope: autoRoadSlope,
+    ROAD_SLOPE_MAX: ROAD_SLOPE_MAX,
     buildRoad: buildRoad,
-    width0: width0,
     roadInfo: roadInfo,
     roadCentroid: roadCentroid,
 

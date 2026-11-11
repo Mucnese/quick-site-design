@@ -77,6 +77,8 @@ const STRINGS = {
     roadDrawing: 'Baustraße: Punkte im Gelände setzen',
     roadSet: 'gesetzt', roadFinish: 'Leertaste beendet, Esc bricht ab',
     long: 'lang', tightest: 'engster Radius', curvesTight: 'Kurve(n) enger als gewünscht',
+    fSlope: 'Längsneigung', area: 'Fläche', fill: 'Auftrag', cut: 'Abtrag',
+    embankment: 'Böschung 1:1 bis zum Gelände', embankFar: 'Böschung erreicht das Gelände nicht (Grenze 80 m)',
     conflict1: 'Kranradien überschneiden sich um', conflictN: 'Überschneidungen von Kranradien',
     nodeHint: 'Stützpunkt anklicken, dann neue Position im Gelände wählen.', nodePicked: 'Stützpunkt gewählt. Neue Position anklicken.', nodeMoved: 'Stützpunkt verschoben.', nodePickFirst: 'Zuerst einen Stützpunkt anklicken.', nodeMinTwo: 'Eine Baustraße braucht mindestens zwei Stützpunkte.', delNode: 'Punkt löschen'
   },
@@ -142,6 +144,8 @@ const STRINGS = {
     roadDrawing: 'Haul road: set points on the terrain',
     roadSet: 'set', roadFinish: 'space finishes, Esc cancels',
     long: 'long', tightest: 'tightest radius', curvesTight: 'curve(s) tighter than requested',
+    fSlope: 'Longitudinal slope', area: 'area', fill: 'Fill', cut: 'Cut',
+    embankment: 'Embankment 1:1 to the ground', embankFar: 'Embankment does not reach the ground (80 m limit)',
     conflict1: 'Crane radii overlap by', conflictN: 'overlapping crane radii',
     nodeHint: 'Click a node, then pick its new position on the terrain.', nodePicked: 'Node selected. Click the new position.', nodeMoved: 'Node moved.', nodePickFirst: 'Select a node first.', nodeMinTwo: 'A haul road needs at least two nodes.', delNode: 'Delete node'
   }
@@ -195,6 +199,8 @@ const SCHEMAS = {
   road: [
     { key: 'width',    label: 'fWidth',       type: 'range', min: 3, max: 14, step: 0.5, unit: 'm' },
     { key: 'radius',   label: 'fMinRadius', type: 'range', min: 5, max: 60, step: 1, unit: 'm' },
+    // Nur im Editor: vor dem Setzen gibt es noch keine Punkte, aus denen die Neigung folgt
+    { key: 'slope',    label: 'fSlope',     type: 'range', min: -30, max: 30, step: 0.1, unit: '%', signed: true, editorOnly: true },
     { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' }
   ]
 };
@@ -477,11 +483,11 @@ function makeRow(field, value, onChange) {
     input.type = field.type === 'number' ? 'number' : 'range';
     input.min = field.min; input.max = field.max; input.step = field.step;
     input.value = value;
-    out.textContent = formatVal(value, field.unit);
+    out.textContent = formatVal(value, field.unit, field.signed);
     input.addEventListener('input', function () {
       const v = parseFloat(input.value);
       if (!isFinite(v)) return;
-      out.textContent = formatVal(v, field.unit);
+      out.textContent = formatVal(v, field.unit, field.signed);
       onChange(field.key, v);
     });
   }
@@ -490,8 +496,9 @@ function makeRow(field, value, onChange) {
   return { row: row, input: input, out: out, field: field };
 }
 
-function formatVal(v, unit) {
-  const s = (Math.round(v * 100) / 100).toString();
+function formatVal(v, unit, signed) {
+  let s = (Math.round(v * 100) / 100).toString();
+  if (signed && v > 0) s = '+' + s;
   return unit ? s + ' ' + unit : s;
 }
 
@@ -513,12 +520,12 @@ function sortFields(fields) {
     .map(function (x) { return x.f; });
 }
 
-function buildForm(type, values, onChange) {
+function buildForm(type, values, onChange, editor) {
   const wrap = document.createElement('div');
   wrap.className = 'form';
   const refs = {};
   let lastGroup = null;
-  sortFields(SCHEMAS[type]).forEach(function (f) {
+  sortFields(SCHEMAS[type].filter(function (f) { return editor || !f.editorOnly; })).forEach(function (f) {
     const grp = fieldRank(f.type);
     if (lastGroup !== null && grp !== lastGroup) {
       const sep = document.createElement('div');
@@ -696,11 +703,20 @@ function showObjectEditor(id) {
     if (obj.type === 'road') {
       markRoadRadius(obj, form.refs);
       document.getElementById('param-hint').textContent = roadHintText(obj);
+      renderRoadEarth(obj, earthEl);
     }
-  });
+  }, true);
   formRefs = form.refs;
   panel.appendChild(form.element);
   if (obj.type === 'road') markRoadRadius(obj, form.refs);
+
+  let earthEl = null;
+  if (obj.type === 'road') {
+    earthEl = document.createElement('div');
+    earthEl.className = 'earth';
+    renderRoadEarth(obj, earthEl);
+    panel.appendChild(earthEl);
+  }
 
   if (obj.type === 'road') {
     const note = document.createElement('div');
@@ -815,9 +831,41 @@ function showGroupEditor(ids, title) {
 function roadHintText(obj) {
   const info = roadInfo(obj.params);
   let txt = Math.round(info.length) + ' m ' + T('long') + ' · ' +
+            T('area') + ' ' + Math.round(info.area) + ' m² · ' +
             T('tightest') + ' ' + info.minRadius.toFixed(1) + ' m';
   if (info.reduced) txt += ' · ' + info.reduced + ' ' + T('curvesTight');
   return txt;
+}
+
+/* Auftrag und Abtrag der Baustraße samt Hinweis zur Böschung. Die Mengen
+   stehen nach jedem Neuaufbau in group.userData.earthworks. */
+function formatVolume(v) {
+  return (v < 10 ? (Math.round(v * 10) / 10).toString() : Math.round(v).toString()) + ' m³';
+}
+
+function renderRoadEarth(obj, el) {
+  if (!el) return;
+  el.textContent = '';
+  const ew = obj.group && obj.group.userData ? obj.group.userData.earthworks : null;
+  if (!ew) return;
+  [['fill', ew.fill], ['cut', ew.cut]].forEach(function (r) {
+    const row = document.createElement('div');
+    row.className = 'earth-row';
+    const sw = document.createElement('i');
+    sw.className = 'earth-sw earth-' + r[0];
+    row.appendChild(sw);
+    const lab = document.createElement('span');
+    lab.textContent = T(r[0]);
+    row.appendChild(lab);
+    const val = document.createElement('b');
+    val.textContent = formatVolume(r[1]);
+    row.appendChild(val);
+    el.appendChild(row);
+  });
+  const note = document.createElement('div');
+  note.className = 'earth-note';
+  note.textContent = T('embankment') + (ew.unreached ? ' · ' + T('embankFar') : '');
+  el.appendChild(note);
 }
 
 /* Färbt den Radiusregler, sobald der Wunschradius nicht gehalten werden kann.
@@ -1448,6 +1496,51 @@ function onCanvasPointerUp(event) {
   onCanvasClick(event);
 }
 
+/* ---------- Kamera: Umkreisen um den angeklickten Punkt ----------
+   Linke Taste auf Gelände, Gebäude oder Baustein: um genau diesen Punkt
+   drehen (er bleibt dabei an derselben Stelle im Bild). Linke Taste auf den
+   Hintergrund: die ganze Szene wie bisher um das Drehzentrum umkreisen -
+   das erledigt OrbitControls. Verschieben (rechts/Mitte) und Zoom (Rad)
+   bleiben ebenfalls bei OrbitControls. Der Handler hängt in der
+   Capture-Phase am Fenster, damit er vor OrbitControls entscheidet. */
+let pivotDrag = null;
+
+function onOrbitPointerDown(event) {
+  if (event.target !== renderer.domElement) return;
+  if (event.button !== 0 || event.ctrlKey || event.shiftKey || event.metaKey || event.altKey) return;
+  if (event.pointerType && event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
+  if (rectSelectActive) return;               // Rechteck ziehen sperrt das Drehen
+  const p = raycastPivot(event);
+  if (!p) return;
+  pivotDrag = { pivot: p, x: event.clientX, y: event.clientY };
+  controls.enabled = false;                    // OrbitControls aussetzen
+  if (event.preventDefault) event.preventDefault();
+  window.addEventListener('pointermove', onOrbitPointerMove);
+  window.addEventListener('pointerup', endOrbitDrag);
+  window.addEventListener('pointercancel', endOrbitDrag);
+}
+
+function onOrbitPointerMove(event) {
+  if (!pivotDrag) return;
+  const h = renderer.domElement.clientHeight || window.innerHeight || 1;
+  const dx = event.clientX - pivotDrag.x, dy = event.clientY - pivotDrag.y;
+  pivotDrag.x = event.clientX;
+  pivotDrag.y = event.clientY;
+  // Gleiche Empfindlichkeit und Richtung wie OrbitControls
+  orbitAround(pivotDrag.pivot, -2 * Math.PI * dx / h, -2 * Math.PI * dy / h);
+}
+
+function endOrbitDrag() {
+  if (!pivotDrag) return;
+  pivotDrag = null;
+  controls.enabled = true;
+  window.removeEventListener('pointermove', onOrbitPointerMove);
+  window.removeEventListener('pointerup', endOrbitDrag);
+  window.removeEventListener('pointercancel', endOrbitDrag);
+}
+
+function isPivotDragging() { return pivotDrag !== null; }
+
 function onCanvasPointerCancel() { pressInfo = null; rectStart = null; }
 
 function onCanvasMove(event) {
@@ -1685,6 +1778,7 @@ function initUI() {
   dom.addEventListener('pointerdown', onCanvasPointerDown);
   dom.addEventListener('pointerup', onCanvasPointerUp);
   dom.addEventListener('pointercancel', onCanvasPointerCancel);
+  window.addEventListener('pointerdown', onOrbitPointerDown, true);
   dom.addEventListener('pointerleave', onCanvasPointerCancel);
   window.addEventListener('keydown', onKeyDown);
 
@@ -1742,6 +1836,8 @@ if (typeof module !== 'undefined' && module.exports) {
     showGroupEditor: showGroupEditor,
     roadHintText: roadHintText,
     markRoadRadius: markRoadRadius,
+    renderRoadEarth: renderRoadEarth,
+    formatVolume: formatVolume,
     groupKeyFor: groupKeyFor,
     buildGroups: buildGroups,
     renderOverview: renderOverview,
@@ -1796,6 +1892,10 @@ if (typeof module !== 'undefined' && module.exports) {
     onCanvasPointerDown: onCanvasPointerDown,
     onCanvasPointerUp: onCanvasPointerUp,
     onCanvasPointerCancel: onCanvasPointerCancel,
+    onOrbitPointerDown: onOrbitPointerDown,
+    onOrbitPointerMove: onOrbitPointerMove,
+    endOrbitDrag: endOrbitDrag,
+    isPivotDragging: isPivotDragging,
     onCanvasMove: onCanvasMove,
     onCanvasClick: onCanvasClick,
     onKeyDown: onKeyDown,
@@ -1813,6 +1913,7 @@ if (typeof module !== 'undefined' && module.exports) {
       gridLimit = MAX_GRID;
       roadPoints = [];
       pressInfo = null;
+      pivotDrag = null;
       lastPlaceTime = 0;
       demoAttribDem = false;
       demoAttribGml = false;

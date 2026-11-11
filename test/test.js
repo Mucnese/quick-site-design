@@ -399,16 +399,282 @@ test('buildIfc: Achsen wie in IFC üblich - X=Ost, Y=Norden, Z=Höhe (im Szeneng
   // ein einzelner Punkt reicht, um die Achszuordnung zu prüfen: 5 m Ost,
   // 3 m Höhe, 2 m nördlich (z=-2, da im Szenengraphen -z=Nord)
   const p = [5, 3, -2];
-  const geo = { terrain: [{ a: p, b: p, c: p }], buildings: [] };
+  const geo = { terrain: [{ a: p, b: [6, 3, -2], c: [5, 3, -3] }], buildings: [] };
   const ifc = app.buildIfc(geo, 0, 0, 25832);
   const line = ifc.split('\n').find(function (l) { return l.indexOf('IFCCARTESIANPOINTLIST3D') >= 0; });
   assert.ok(line.indexOf('(5.,2.,3.)') >= 0,
     'erwartet (Ost=5, Nord=2, Höhe=3): ' + line);
 });
 
+/* Zerlegt die Argumentliste einer STEP-Zeile auf oberster Ebene (Klammern
+   und Zeichenketten werden respektiert). */
+function stepArgs(line) {
+  const body = line.slice(line.indexOf('(') + 1, line.lastIndexOf(')'));
+  const args = [];
+  let depth = 0, inStr = false, cur = '';
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i];
+    if (inStr) {
+      cur += c;
+      if (c === "'") { if (body[i + 1] === "'") { cur += "'"; i++; } else inStr = false; }
+      continue;
+    }
+    if (c === "'") { inStr = true; cur += c; continue; }
+    if (c === '(') depth++;
+    if (c === ')') depth--;
+    if (c === ',' && depth === 0) { args.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  args.push(cur);
+  return args;
+}
+
+function ifcForFormatTests() {
+  terrainForExportTests();
+  const e0 = 692000, n0 = 5336000;
+  const ring = [e0 - 3, n0 - 3, 505, e0 + 3, n0 - 3, 505, e0 + 3, n0 + 3, 512, e0 - 3, n0 + 3, 512];
+  const geo = app.collectExportGeometry([ring], -10, -10, 10, 10);
+  return { geo: geo, ifc: app.buildIfc(geo, -10, -10, 25832) };
+}
+
+test('buildIfc: Datei ist reines ASCII, Umlaute stehen als \\X2\\-Escape (sonst gilt die Datei vielen Lesern als beschädigt)', function () {
+  const ifc = ifcForFormatTests().ifc;
+  for (let i = 0; i < ifc.length; i++) {
+    assert.ok(ifc.charCodeAt(i) < 128, 'Nicht-ASCII-Zeichen an Stelle ' + i + ': ' + ifc.slice(Math.max(0, i - 20), i + 5));
+  }
+  assert.ok(ifc.indexOf('\\X2\\00E4\\X0\\') >= 0, 'ä muss als \\X2\\00E4\\X0\\ geschrieben sein');
+});
+
+test('buildIfc: GUIDs sind gültige 22-Zeichen-Kompressionen (erstes Zeichen 0-3) und eindeutig', function () {
+  const ifc = ifcForFormatTests().ifc;
+  const alphabet = /^[0-9A-Za-z_$]{22}$/;
+  const guids = [];
+  ifc.split('\n').forEach(function (l) {
+    if (!/^#\d+=IFC(PROJECT|SITE|RELAGGREGATES|RELCONTAINEDINSPATIALSTRUCTURE|GEOGRAPHICELEMENT|BUILDINGELEMENTPROXY)\(/.test(l)) return;
+    guids.push(stepArgs(l)[0].replace(/'/g, ''));
+  });
+  assert.ok(guids.length >= 6);
+  guids.forEach(function (g) {
+    assert.ok(alphabet.test(g), 'ungültiges Zeichen/Länge: ' + g);
+    assert.ok('0123'.indexOf(g[0]) >= 0, 'erstes Zeichen muss 0-3 sein: ' + g);
+  });
+  assert.strictEqual(new Set(guids).size, guids.length, 'GUIDs müssen eindeutig sein');
+});
+
+test('buildIfc: Attributanzahl der Entitäten passt zum IFC4-Schema (IfcGeographicElement fehlte das Tag)', function () {
+  const ifc = ifcForFormatTests().ifc;
+  const expected = {
+    IFCGEOGRAPHICELEMENT: 9, IFCBUILDINGELEMENTPROXY: 9, IFCSITE: 14, IFCPROJECT: 9,
+    IFCRELAGGREGATES: 6, IFCRELCONTAINEDINSPATIALSTRUCTURE: 6, IFCMAPCONVERSION: 8,
+    IFCPROJECTEDCRS: 7, IFCTRIANGULATEDFACESET: 5, IFCOWNERHISTORY: 8,
+    IFCGEOMETRICREPRESENTATIONSUBCONTEXT: 10
+  };
+  const seen = {};
+  ifc.split('\n').forEach(function (l) {
+    const m = l.match(/^#\d+=([A-Z0-9]+)\(/);
+    if (!m || !expected[m[1]]) return;
+    seen[m[1]] = true;
+    assert.strictEqual(stepArgs(l).length, expected[m[1]], m[1] + ' hat ' + stepArgs(l).length + ' statt ' + expected[m[1]] + ' Attributen');
+  });
+  Object.keys(expected).forEach(function (k) { assert.ok(seen[k], k + ' fehlt in der Datei'); });
+});
+
+test('buildIfc: Eckpunkte werden zusammengefasst, nicht je Dreieck wiederholt', function () {
+  const r = ifcForFormatTests();
+  const line = r.ifc.split('\n').find(function (l) { return l.indexOf('IFCCARTESIANPOINTLIST3D') >= 0; });
+  const pointCount = (line.match(/\),\(|\(\(/g) || []).length;
+  assert.ok(pointCount < r.geo.terrain.length * 3 * 0.6, 'zu viele Punkte: ' + pointCount + ' für ' + r.geo.terrain.length + ' Dreiecke');
+});
+
+test('terrainGridInRect: Dreiecke zeigen nach oben (sonst blenden IFC-Betrachter das Gelände aus)', function () {
+  terrainForExportTests();
+  const tris = app.terrainGridInRect(-20, -15, 20, 15);
+  tris.forEach(function (t) {
+    const ux = t.b[0] - t.a[0], uy = t.b[1] - t.a[1], uz = t.b[2] - t.a[2];
+    const vx = t.c[0] - t.a[0], vy = t.c[1] - t.a[1], vz = t.c[2] - t.a[2];
+    const ny = uz * vx - ux * vz;   // y-Komponente von u x v
+    assert.ok(ny > 0, 'Normale zeigt nicht nach oben: ' + ny);
+  });
+});
+
 test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function () {
   terrainForExportTests();
   assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832); }, /Geometrie/);
+});
+
+/* ---------- Baustraße: Längsneigung, Böschung 1:1, Auftrag/Abtrag ---------- */
+
+function roadTerrain(ramp) {
+  // 200 x 200 m, 21 x 21 Punkte; ramp = Anstieg in m je m in +x (0 = eben)
+  freshScene();
+  const n = 21, h = [];
+  for (let iz = 0; iz < n; iz++) for (let ix = 0; ix < n; ix++) h.push(ix * 10 * ramp * 100 + 1000);
+  const t = app.terrainFromEmbedded({
+    n: n, heights: h, scale: 100, zmin: 500, zmax: 520, width: 200, depth: 200,
+    originE: 692000, originN: 5336000, epsg: 25832
+  });
+  app.buildTerrain(t);
+}
+
+function roadAlongX(slope) {
+  const p = app.defaultRoadParams();
+  p.points = [{ x: -50, z: 0 }, { x: 50, z: 0 }];
+  p.width = 6;
+  if (slope !== undefined) p.slope = slope;
+  return p;
+}
+
+test('autoRoadSlope: Straße entlang einer 10-%-Rampe bekommt 10 % (Anfangs- und Endhöhe auf dem Gelände)', function () {
+  roadTerrain(0.1);
+  assert.ok(Math.abs(app.autoRoadSlope(roadAlongX()) - 10) < 0.2, String(app.autoRoadSlope(roadAlongX())));
+});
+
+test('autoRoadSlope: eben = 0, gegen die Rampe = negativ, begrenzt auf ±ROAD_SLOPE_MAX', function () {
+  roadTerrain(0);
+  assert.strictEqual(app.autoRoadSlope(roadAlongX()), 0);
+  roadTerrain(0.1);
+  const p = roadAlongX();
+  p.points.reverse();
+  assert.ok(app.autoRoadSlope(p) < -9.5);
+  roadTerrain(1);                                    // 100 %
+  assert.strictEqual(app.autoRoadSlope(roadAlongX()), app.ROAD_SLOPE_MAX);
+});
+
+test('addObject(road): die Neigung wird automatisch eingetragen, nicht dem Zufall überlassen', function () {
+  roadTerrain(0.1);
+  const obj = app.addObject('road', 0, 0, roadAlongX());
+  assert.ok(Math.abs(obj.params.slope - 10) < 0.2);
+  assert.ok(Math.abs(obj.group.userData.slope - obj.params.slope) < 1e-9);
+});
+
+test('Baustraße folgt der Rampe mit passender Neigung: kein Auftrag, kein Abtrag', function () {
+  roadTerrain(0.1);
+  const rd = app.computeRoad(Object.assign(roadAlongX(), { slope: app.autoRoadSlope(roadAlongX()) }));
+  assert.ok(rd.earthworks.fill < 5 && rd.earthworks.cut < 5,
+    'Auftrag ' + rd.earthworks.fill + ', Abtrag ' + rd.earthworks.cut);
+});
+
+test('Baustraße: Fläche = Länge × Breite', function () {
+  roadTerrain(0);
+  const rd = app.computeRoad(roadAlongX(0));
+  assert.ok(Math.abs(rd.length - 100) < 1e-6);
+  assert.ok(Math.abs(rd.area - 600) < 1e-6);
+  assert.ok(Math.abs(app.roadInfo(roadAlongX(0)).area - 600) < 1e-6);
+});
+
+test('Auftrag: +5 % auf ebenem Gelände ergibt genau das erwartete Volumen mit Böschung 1:1', function () {
+  roadTerrain(0);
+  const rd = app.computeRoad(roadAlongX(5));
+  // Höhe über Gelände H(s) = 0,05 s; Querschnitt = Breite*H + 2 * H²/2 (zwei 1:1-Dreiecke)
+  const L = 100, w = 6;
+  const expected = w * 0.05 * L * L / 2 + 0.0025 * L * L * L / 3;
+  assert.ok(Math.abs(rd.earthworks.fill - expected) / expected < 0.01,
+    'Auftrag ' + rd.earthworks.fill.toFixed(1) + ' statt ' + expected.toFixed(1));
+  assert.ok(rd.earthworks.cut < 1e-6, 'kein Abtrag erwartet: ' + rd.earthworks.cut);
+});
+
+test('Abtrag: -5 % auf ebenem Gelände spiegelt den Auftrag (gleiche Menge, anderes Material)', function () {
+  roadTerrain(0);
+  const up = app.computeRoad(roadAlongX(5)), down = app.computeRoad(roadAlongX(-5));
+  assert.ok(Math.abs(down.earthworks.cut - up.earthworks.fill) / up.earthworks.fill < 0.01);
+  assert.ok(down.earthworks.fill < 1e-6);
+});
+
+test('Böschung 1:1: die Böschungsbreite am Streckenende entspricht der Höhe über dem Gelände', function () {
+  roadTerrain(0);
+  const rd = app.computeRoad(roadAlongX(5));
+  const H = 0.05 * 100;
+  assert.ok(Math.abs(rd.earthworks.maxReach - H) < 0.3, 'Reichweite ' + rd.earthworks.maxReach + ' statt ' + H);
+  assert.strictEqual(rd.earthworks.unreached, 0);
+});
+
+test('Straße genau auf dem Gelände: keine Böschung, Mengen null', function () {
+  roadTerrain(0);
+  const g = app.buildRoad(roadAlongX(0));
+  assert.ok(g.userData.earthworks.fill < 1e-9 && g.userData.earthworks.cut < 1e-9);
+  assert.strictEqual(g.userData.earthworks.maxReach, 0);
+});
+
+test('Neigungsregler: stärkere Neigung -> mehr Auftrag (monoton)', function () {
+  roadTerrain(0);
+  const a = app.computeRoad(roadAlongX(2)).earthworks.fill;
+  const b = app.computeRoad(roadAlongX(4)).earthworks.fill;
+  const c = app.computeRoad(roadAlongX(8)).earthworks.fill;
+  assert.ok(a < b && b < c);
+});
+
+test('Straße am Hang quer zur Fahrtrichtung: Auftrag auf der Talseite, Abtrag auf der Bergseite', function () {
+  // Gelände steigt nach +x; Straße läuft in z-Richtung auf Höhe des Hangs, eben
+  roadTerrain(0.1);
+  const p = app.defaultRoadParams();
+  p.points = [{ x: 0, z: -50 }, { x: 0, z: 50 }];
+  p.width = 6;
+  p.slope = 0;
+  const rd = app.computeRoad(p);
+  assert.ok(rd.earthworks.fill > 10, 'Auftrag fehlt: ' + rd.earthworks.fill);
+  assert.ok(rd.earthworks.cut > 10, 'Abtrag fehlt: ' + rd.earthworks.cut);
+});
+
+test('Straße verschieben oder Stützpunkt ändern: Neigung wird neu aus dem Gelände abgeleitet', function () {
+  roadTerrain(0.1);
+  const obj = app.addObject('road', 0, 0, roadAlongX());
+  obj.params.slope = 0;
+  app.moveRoadNode(obj, 1, 0, 0);          // Endpunkt 50 m zurück -> kürzer, aber auch bergauf
+  assert.ok(obj.params.slope > 8, 'Neigung nicht neu eingepasst: ' + obj.params.slope);
+});
+
+/* ---------- Kamera: Drehen um einen angeklickten Punkt ---------- */
+
+function camSetup(pos, tgt) {
+  freshScene();
+  const cam = app.getCamera();
+  cam.position.set(pos[0], pos[1], pos[2]);
+  app.getControls().target.set(tgt[0], tgt[1], tgt[2]);
+  app.getControls().maxPolarAngle = Math.PI * 0.492;
+  return { cam: cam, ctl: app.getControls() };
+}
+
+function angleBetween(a, b) {
+  const d = a.x * b.x + a.y * b.y + a.z * b.z;
+  return Math.acos(d / Math.sqrt((a.x * a.x + a.y * a.y + a.z * a.z) * (b.x * b.x + b.y * b.y + b.z * b.z)));
+}
+
+test('orbitAround: Abstand zum Drehpunkt und zum Drehzentrum bleiben, der Punkt bleibt an seiner Stelle im Bild', function () {
+  const k = camSetup([0, 120, 140], [0, 10, 0]);
+  const pivot = { x: 40, y: 6, z: -25 };
+  const dir = function (p) { return { x: p.x - k.cam.position.x, y: p.y - k.cam.position.y, z: p.z - k.cam.position.z }; };
+  const angBefore = angleBetween(dir(k.ctl.target), dir(pivot));
+  const dPivot = k.cam.position.distanceTo(new THREE.Vector3(pivot.x, pivot.y, pivot.z));
+  const dTarget = k.cam.position.distanceTo(k.ctl.target);
+
+  app.orbitAround(pivot, 0.7, -0.2);
+
+  const dPivot2 = k.cam.position.distanceTo(new THREE.Vector3(pivot.x, pivot.y, pivot.z));
+  assert.ok(Math.abs(dPivot - dPivot2) < 1e-6, 'Abstand zum Pivot geändert');
+  assert.ok(Math.abs(dTarget - k.cam.position.distanceTo(k.ctl.target)) < 1e-6, 'Abstand zum Ziel geändert');
+  assert.ok(Math.abs(angBefore - angleBetween(dir(k.ctl.target), dir(pivot))) < 1e-9,
+    'der Pivot ist im Bild verrutscht (Ansicht würde springen)');
+});
+
+test('orbitAround: reine Azimutdrehung ändert die Kamerahöhe nicht, der Pivot selbst bleibt unverändert', function () {
+  const k = camSetup([0, 80, 100], [0, 0, 0]);
+  const y0 = k.cam.position.y;
+  app.orbitAround({ x: 10, y: 0, z: 10 }, Math.PI / 2, 0);
+  assert.ok(Math.abs(k.cam.position.y - y0) < 1e-9);
+  // Relativ zum Pivot (-10, 80, 90) -> nach +90° um Y (90, 80, 10), absolut (100, 80, 20)
+  assert.ok(Math.abs(k.cam.position.x - 100) < 1e-6 && Math.abs(k.cam.position.z - 20) < 1e-6,
+    'erwartet (100, 20), war (' + k.cam.position.x + ', ' + k.cam.position.z + ')');
+});
+
+test('orbitAround: Kippen wird wie in OrbitControls auf maxPolarAngle begrenzt', function () {
+  const k = camSetup([0, 50, 50], [0, 0, 0]);
+  app.orbitAround({ x: 0, y: 0, z: 0 }, 0, 10);          // weit unter die Horizontale
+  const o = { x: k.cam.position.x, y: k.cam.position.y, z: k.cam.position.z };
+  const phi = Math.acos(o.y / Math.sqrt(o.x * o.x + o.y * o.y + o.z * o.z));
+  assert.ok(phi <= Math.PI * 0.492 + 1e-9, 'Kippwinkel über Grenze: ' + phi);
+  assert.ok(k.cam.position.y > 0, 'Kamera darf nicht unter den Pivot tauchen');
+  app.orbitAround({ x: 0, y: 0, z: 0 }, 0, -10);         // weit über die Senkrechte
+  assert.ok(k.cam.position.y > 0);
 });
 
 /* ---------- Dicke Vorschaulinien (Rechteckauswahl, Baustraße zeichnen) ---------- */

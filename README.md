@@ -40,13 +40,20 @@ Browser.
   schlichten Verbindungsbau.
 - Turmdrehkran als generisches Modell, Auslegerlänge, Hakenhöhe und Turmbreite
   frei einstellbar innerhalb der Bandbreite realer Baukrane.
-- 9 Liebherr-Mobilkrane von 50 t bis 750 t, sämtliche Kennwerte aus den
-  Original-Datenblättern.
-- Baustraßen als Polygonzug mit ausgerundeten Ecken; die Trasse legt sich auf
-  das Gelände. Bei Auswahl erscheinen die Stützpunkte und lassen sich versetzen
-  oder löschen.
+- 24 Liebherr-Mobilkrane von 35 t bis 750 t, sämtliche Kennwerte aus den
+  Original-Datenblättern, mit der echten Achszahl aus der Modellbezeichnung.
+- Baustraßen als Polygonzug mit ausgerundeten Ecken und konstanter Längsneigung
+  (Regler in %, vorbelegt aus Anfangs- und Endhöhe im Gelände). Länge und Fläche
+  stehen im Eigenschaftsfenster. Wo die Fahrbahn über oder unter dem Gelände
+  liegt, schließt eine Böschung 1:1 an; Auftrag und Abtrag erscheinen in m³
+  (Mittelflächenverfahren). Bei Auswahl erscheinen die Stützpunkte und lassen
+  sich versetzen oder löschen.
 
 **Bedienung**
+- Maus: linke Taste ziehen = umkreisen, rechte oder mittlere Taste ziehen =
+  verschieben, Mausrad = zoomen. Wer links auf Gelände, Gebäude oder einen
+  Baustein klickt und zieht, dreht um genau diesen Punkt; wer auf den Hintergrund
+  klickt, kreist die ganze Szene um das Drehzentrum.
 - Linksklick auf Gelände oder Gebäude setzt einen Messpunkt, zeigt Rechtswert,
   Hochwert und Höhe direkt am Punkt und macht ihn zum Dreh- und Zoomzentrum.
 - **2D**-Knopf setzt die Ansicht senkrecht von oben; ein Ziehen kippt sie wieder

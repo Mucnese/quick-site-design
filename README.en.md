@@ -39,12 +39,20 @@ browser.
   block.
 - Tower crane as a generic model, jib length, hook height and mast width
   freely adjustable within the range of real construction cranes.
-- 9 Liebherr mobile cranes from 50 t to 750 t, all figures taken from the
-  manufacturers' original data sheets.
-- Haul roads as a polyline with filleted corners; the alignment drapes onto the
-  terrain. Selecting a road reveals its nodes, which can be moved or deleted.
+- 24 Liebherr mobile cranes from 35 t to 750 t, all figures taken from the
+  manufacturers' original data sheets, with the real axle count from the model name.
+- Haul roads as a polyline with filleted corners and a constant longitudinal
+  slope (slider in %, preset from the start and end elevation on the terrain).
+  Length and area are shown in the properties window. Where the carriageway
+  lies above or below the terrain, a 1:1 embankment joins it; fill and cut are
+  listed in m³ (average end area method). Selecting a road reveals its nodes,
+  which can be moved or deleted.
 
 **Interaction**
+- Mouse: drag with the left button = orbit, right or middle button = pan,
+  wheel = zoom. Left-dragging from terrain, a building or a placed element
+  orbits around exactly that point; dragging from the background orbits the whole
+  scene around the view centre.
 - Left-click on terrain or buildings sets a measure point, shows easting,
   northing and elevation right at the point, and makes it the orbit and zoom
   centre.

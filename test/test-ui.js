@@ -122,7 +122,8 @@ function newScope() {
     window: {
       innerWidth: 1024, innerHeight: 768, devicePixelRatio: 1,
       location: { search: '' },
-      addEventListener: function () {}
+      addEventListener: function () {},
+      removeEventListener: function () {}
     },
     setTimeout: function () { return 0; },
     clearTimeout: function () {},
@@ -149,7 +150,7 @@ function newScope() {
     'var __bridge = { STRINGS: STRINGS, TOOL_INFO: TOOL_INFO, FIELD_ORDER: FIELD_ORDER, ' +
     'DETAIL_STEPS: DETAIL_STEPS, SETTINGS: SETTINGS, DRAG_TOLERANCE: DRAG_TOLERANCE, ' +
     'REPEAT_GUARD: REPEAT_GUARD, DEMO_ATTRIBUTION: DEMO_ATTRIBUTION, raycaster: raycaster, ' +
-    'controls: controls };',
+    'controls: controls, renderer: renderer, camera: camera };',
     sandbox
   );
 
@@ -408,6 +409,113 @@ await test('Exportieren löst den Download aus und meldet Erfolg', async functio
   s.runIfcExport();
   assert.strictEqual(s.document.getElementById('ifc-error').textContent, '');
   assert.strictEqual(s.document.getElementById('status').textContent, s.T('msgIfcExported'));
+});
+
+/* ---------- Baustraße: Eigenschaftsfenster ---------- */
+
+function roadObject(s, slope) {
+  const p = s.defaultRoadParams();
+  p.points = [{ x: -25, z: 0 }, { x: 25, z: 0 }];
+  p.width = 6;
+  p.slope = slope;
+  return s.addObject('road', 0, 0, p);
+}
+
+await test('Baustraße: Längsneigung nur im Eigenschaftsfenster, in % und mit Vorzeichen', function () {
+  const s = newScope();
+  const p = s.defaultRoadParams();
+  assert.strictEqual(s.buildForm('road', p, function () {}, false).refs.slope, undefined,
+    'vor dem Setzen gibt es keine Neigung zum Einstellen');
+  p.slope = 5;
+  assert.strictEqual(s.buildForm('road', p, function () {}, true).refs.slope.out.textContent, '+5 %');
+  p.slope = -2.5;
+  const ref = s.buildForm('road', p, function () {}, true).refs.slope;
+  assert.strictEqual(ref.out.textContent, '-2.5 %');
+  assert.strictEqual(ref.input.min, -30);
+  assert.strictEqual(ref.input.max, 30);
+});
+
+await test('Baustraße: der Hinweis nennt neben der Länge auch die Fläche', function () {
+  const s = newScope();
+  const obj = roadObject(s, 0);
+  const hint = s.roadHintText(obj);
+  assert.ok(hint.indexOf('50 m ') === 0, hint);
+  assert.ok(hint.indexOf(s.T('area') + ' 300 m²') > 0, hint);
+});
+
+await test('Baustraße: Auftrag und Abtrag samt Böschungshinweis stehen im Eigenschaftsfenster', function () {
+  const s = newScope();
+  const obj = roadObject(s, 5);
+  const el = s.document.createElement('div');
+  s.renderRoadEarth(obj, el);
+  const txt = el.textContent;
+  assert.ok(txt.indexOf(s.T('fill')) >= 0 && txt.indexOf(s.T('cut')) >= 0, txt);
+  assert.ok(txt.indexOf('m³') > 0, txt);
+  assert.ok(txt.indexOf(s.T('embankment')) >= 0, txt);
+  assert.ok(obj.group.userData.earthworks.fill > 0, 'bei +5 % auf ebenem Gelände muss Auftrag entstehen');
+});
+
+await test('formatVolume: unter 10 m³ eine Nachkommastelle, darüber ganze Kubikmeter', function () {
+  const s = newScope();
+  assert.strictEqual(s.formatVolume(4.26), '4.3 m³');
+  assert.strictEqual(s.formatVolume(1234.6), '1235 m³');
+});
+
+/* ---------- Kamera: Umkreisen um den angeklickten Punkt ---------- */
+
+function orbitEvent(s, over) {
+  return Object.assign({ target: s.__bridge.renderer.domElement, button: 0, clientX: 100, clientY: 100, pointerType: 'mouse' }, over || {});
+}
+
+await test('Maussteuerung: links drehen, rechts und Mitte verschieben, Rad zoomt', async function () {
+  const s = newScope();
+  const mb = s.__bridge.controls.mouseButtons;
+  assert.strictEqual(mb.LEFT, THREE.MOUSE.ROTATE);
+  assert.strictEqual(mb.MIDDLE, THREE.MOUSE.PAN);
+  assert.strictEqual(mb.RIGHT, THREE.MOUSE.PAN);
+  assert.strictEqual(s.__bridge.controls.enableZoom, true);
+});
+
+await test('Linke Taste auf einen Punkt: OrbitControls pausiert, die Kamera dreht um genau diesen Punkt', async function () {
+  const s = await scopeWithTerrain();
+  const cam = s.__bridge.camera;
+  s.__bridge.controls.target.set(0, 0, 0);
+  cam.position.set(0, 100, 100);
+  setTerrainHit(s, 30, 5, -20);
+  const dBefore = cam.position.distanceTo(new THREE.Vector3(30, 5, -20));
+
+  s.onOrbitPointerDown(orbitEvent(s));
+  assert.strictEqual(s.isPivotDragging(), true);
+  assert.strictEqual(s.__bridge.controls.enabled, false, 'OrbitControls muss pausieren, sonst drehen beide');
+
+  s.onOrbitPointerMove({ clientX: 160, clientY: 100 });
+  const dAfter = cam.position.distanceTo(new THREE.Vector3(30, 5, -20));
+  assert.ok(Math.abs(dBefore - dAfter) < 1e-6, 'Abstand zum Drehpunkt muss gleich bleiben');
+  assert.ok(Math.abs(cam.position.x) > 1e-3 || Math.abs(cam.position.z - 100) > 1e-3, 'Kamera hat sich nicht bewegt');
+
+  s.endOrbitDrag();
+  assert.strictEqual(s.isPivotDragging(), false);
+  assert.strictEqual(s.__bridge.controls.enabled, true);
+});
+
+await test('Linke Taste auf den Hintergrund: keine eigene Drehung, OrbitControls dreht das Ganze um sein Zentrum', async function () {
+  const s = await scopeWithTerrain();
+  s.__bridge.raycaster._results = [];
+  s.onOrbitPointerDown(orbitEvent(s));
+  assert.strictEqual(s.isPivotDragging(), false);
+  assert.strictEqual(s.__bridge.controls.enabled, true);
+});
+
+await test('Rechte/mittlere Taste, Strg/Umschalt und Rechteckauswahl lösen keine Pivot-Drehung aus', async function () {
+  const s = await scopeWithTerrain();
+  setTerrainHit(s, 1, 1, 1);
+  [{ button: 2 }, { button: 1 }, { ctrlKey: true }, { shiftKey: true }].forEach(function (o) {
+    s.onOrbitPointerDown(orbitEvent(s, o));
+    assert.strictEqual(s.isPivotDragging(), false, JSON.stringify(o));
+  });
+  s.startRectExport();
+  s.onOrbitPointerDown(orbitEvent(s));
+  assert.strictEqual(s.isPivotDragging(), false, 'beim Rechteckziehen bleibt das Drehen gesperrt');
 });
 
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');

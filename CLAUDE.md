@@ -77,6 +77,13 @@ unrichtig machen.
 **Krandrehung:** `g.rotation.y = baseRot`, `slew.rotation.y = rot - baseRot`.
 So bleibt der Auslegerwinkel absolut, unabhängig vom Fundament.
 
+**Maussteuerung:** links drehen, rechts und Mitte verschieben, Rad zoomt. Linke
+Taste auf einem Treffer (Gelände, Gebäude, Baustein) dreht über `orbitAround`
+um genau diesen Punkt – ein Capture-Handler am Fenster entscheidet vor
+OrbitControls und schaltet es für die Geste mit `controls.enabled = false` ab.
+OrbitControls selbst würde nur um sein Ziel drehen und die Ansicht springen
+lassen. Auf dem Hintergrund übernimmt OrbitControls das Umkreisen.
+
 **Platzierung** über `pointerdown`/`pointerup`, nicht `click`. Mit
 Bewegungstoleranz 5 px, Wiederholungssperre 250 ms, nur linke Maustaste. Sonst
 entstehen doppelte Objekte.
@@ -117,6 +124,18 @@ stehen in der Git-Historie vor dieser Änderung). `kind` ist fest auf „flat"
 Bauart. Deshalb hat der Turmdrehkran auch keinen Datenblatt-Link mehr im
 Objekt-Editor – nur noch der Mobilkran, der ein echtes Herstellerprodukt
 bleibt.
+
+**Baustraße.** Konstante Längsneigung (`params.slope`, in %), keine Querneigung,
+Start auf der Geländehöhe des ersten Punkts. Die Neigung wird beim Setzen und
+bei jeder Punktänderung neu aus dem Gelände abgeleitet (`autoRoadSlope`), der
+Regler überschreibt sie danach. Böschung fest 1:1; Auftrag und Abtrag aus dem
+Mittelflächenverfahren in `computeRoad`. Alles Volumen stammt aus dieser einen
+Funktion – nicht in der Oberfläche nachrechnen.
+
+**IFC-Export** muss strenge Leser bestehen: reines ASCII (Umlaute als `\X2\`),
+GUIDs mit erstem Zeichen 0–3, genaue Attributzahl je Entität, Gelände-Dreiecke
+nach oben gewickelt. Nach Änderungen an `buildIfc` einmal mit ifcopenshell
+gegenprüfen (nicht Teil des Projekts).
 
 **Beispieldaten** in `demo/` stehen unter CC BY 4.0. `showAttribution` blendet
 Herausgeber und Lizenz ein, solange sie geladen sind. Beim Austausch der Daten
