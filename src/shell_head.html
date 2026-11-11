@@ -114,8 +114,8 @@
 
   /* Beschriftung direkt am Messpunkt */
   #point-label {
-    display: none; position: fixed; z-index: 6; pointer-events: none;
-    transform: translate(14px, -50%);
+    display: none; position: fixed; left: 0; top: 0; z-index: 6; pointer-events: none;
+    will-change: transform;
     background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
     padding: 5px 9px; font-size: 0.8em; line-height: 1.5;
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);

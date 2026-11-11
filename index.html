@@ -114,8 +114,8 @@
 
   /* Beschriftung direkt am Messpunkt */
   #point-label {
-    display: none; position: fixed; z-index: 6; pointer-events: none;
-    transform: translate(14px, -50%);
+    display: none; position: fixed; left: 0; top: 0; z-index: 6; pointer-events: none;
+    will-change: transform;
     background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
     padding: 5px 9px; font-size: 0.8em; line-height: 1.5;
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -2681,6 +2681,10 @@ function clearMeasureMarker() {
    Liefert null, wenn er hinter der Kamera liegt. */
 function measureScreenPos() {
   if (!measurePoint) return null;
+  // Der Renderer aktualisiert die Kameramatrizen erst beim Zeichnen. Ohne das
+  // hier projiziert die Beschriftung mit denen des vorigen Bildes und hinkt
+  // dem Punkt bei jeder Kamerabewegung ein Bild hinterher (sichtbares Zittern).
+  camera.updateMatrixWorld();
   const v = measurePoint.clone();
   v.project(camera);
   if (v.z > 1) return null;
@@ -4434,8 +4438,10 @@ function updatePointLabel() {
   const p = measureScreenPos();
   if (!p) { el.style.display = 'none'; return; }
   el.style.display = 'block';
-  el.style.left = Math.round(p.x) + 'px';
-  el.style.top = Math.round(p.y) + 'px';
+  // transform statt left/top: kein Layout pro Bild, und die 14 px Abstand zum
+  // Punkt stehen gleich mit drin (früher im CSS)
+  const t = 'translate(' + (Math.round(p.x) + 14) + 'px, ' + Math.round(p.y) + 'px) translateY(-50%)';
+  if (el.style.transform !== t) el.style.transform = t;
 }
 
 /* ---------- Dateiimport ---------- */

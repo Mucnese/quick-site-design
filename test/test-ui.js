@@ -463,6 +463,21 @@ await test('formatVolume: unter 10 m³ eine Nachkommastelle, darüber ganze Kubi
   assert.strictEqual(s.formatVolume(1234.6), '1235 m³');
 });
 
+/* ---------- Punktkoordinaten-Fenster ---------- */
+
+await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {
+  const s = newScope();
+  s.setMeasureMarker(0, 0, 0);
+  s.updatePointLabel();
+  const el = s.document.getElementById('point-label');
+  assert.strictEqual(el.style.display, 'block');
+  assert.strictEqual(el.style.transform, 'translate(526px, 384px) translateY(-50%)');
+  assert.strictEqual(el.style.left, undefined, 'left darf nicht mehr pro Bild gesetzt werden');
+  s.clearMeasureMarker();
+  s.updatePointLabel();
+  assert.strictEqual(el.style.display, 'none');
+});
+
 /* ---------- Zahlenfeld neben jedem Schieberegler ---------- */
 
 function widthRow(s, calls) {

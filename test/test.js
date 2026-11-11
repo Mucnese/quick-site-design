@@ -639,6 +639,18 @@ test('Auftrag und ebene Straße brauchen keine Überlagerung (liegen über dem G
   assert.deepStrictEqual(overlayKinds(app.buildRoad(roadAlongX(0))), []);
 });
 
+test('measureScreenPos: Kameramatrizen werden VOR dem Projizieren aktualisiert (sonst hinkt die Beschriftung ein Bild hinterher)', function () {
+  freshScene();
+  app.setMeasureMarker(1, 2, 3);
+  const cam = app.getCamera();
+  const order = [];
+  cam.updateMatrixWorld = function () { order.push('matrix'); };
+  const origProject = THREE.Vector3.prototype.project;
+  THREE.Vector3.prototype.project = function () { order.push('project'); return this; };
+  try { app.measureScreenPos(); } finally { THREE.Vector3.prototype.project = origProject; }
+  assert.deepStrictEqual(order, ['matrix', 'project']);
+});
+
 /* ---------- Kamera: Drehen um einen angeklickten Punkt ---------- */
 
 function camSetup(pos, tgt) {

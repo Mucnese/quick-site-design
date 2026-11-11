@@ -1150,8 +1150,10 @@ function updatePointLabel() {
   const p = measureScreenPos();
   if (!p) { el.style.display = 'none'; return; }
   el.style.display = 'block';
-  el.style.left = Math.round(p.x) + 'px';
-  el.style.top = Math.round(p.y) + 'px';
+  // transform statt left/top: kein Layout pro Bild, und die 14 px Abstand zum
+  // Punkt stehen gleich mit drin (früher im CSS)
+  const t = 'translate(' + (Math.round(p.x) + 14) + 'px, ' + Math.round(p.y) + 'px) translateY(-50%)';
+  if (el.style.transform !== t) el.style.transform = t;
 }
 
 /* ---------- Dateiimport ---------- */

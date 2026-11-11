@@ -2080,6 +2080,10 @@ function clearMeasureMarker() {
    Liefert null, wenn er hinter der Kamera liegt. */
 function measureScreenPos() {
   if (!measurePoint) return null;
+  // Der Renderer aktualisiert die Kameramatrizen erst beim Zeichnen. Ohne das
+  // hier projiziert die Beschriftung mit denen des vorigen Bildes und hinkt
+  // dem Punkt bei jeder Kamerabewegung ein Bild hinterher (sichtbares Zittern).
+  camera.updateMatrixWorld();
   const v = measurePoint.clone();
   v.project(camera);
   if (v.z > 1) return null;
@@ -2691,6 +2695,8 @@ if (typeof module !== 'undefined' && module.exports) {
     getCamera: function () { return camera; },
     setTopView: setTopView,
     raycastPivot: raycastPivot,
+    setMeasureMarker: setMeasureMarker,
+    measureScreenPos: measureScreenPos,
     orbitAround: orbitAround,
     isTopView: isTopView,
     frameTerrain: frameTerrain,

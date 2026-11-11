@@ -241,6 +241,7 @@ class PerspectiveCamera extends Object3D {
     this.fov = num(fov); this.aspect = num(aspect); this.near = num(near); this.far = num(far);
   }
   updateProjectionMatrix() {}
+  updateMatrixWorld() {}
 }
 
 class Raycaster {
