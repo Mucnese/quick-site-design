@@ -1700,7 +1700,18 @@ function onCanvasClick(event) {
   }
 }
 
+/* Tippt der Nutzer gerade in ein Formularfeld, sind Leertaste, Entf und
+   Backspace keine Befehle: sonst löscht Backspace beim Korrigieren einer Zahl
+   das ganze ausgewählte Objekt. Esc bleibt überall gültig. */
+function isTypingTarget(event) {
+  const t = event && event.target;
+  if (!t) return false;
+  const tag = String(t.tagName || '').toUpperCase();
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable === true;
+}
+
 function onKeyDown(event) {
+  if (event.key !== 'Escape' && isTypingTarget(event)) return;
   if (event.key === ' ' || event.code === 'Space') {
     if (activeTool === 'road') {
       if (event.preventDefault) event.preventDefault();

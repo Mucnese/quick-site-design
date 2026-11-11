@@ -619,6 +619,51 @@ await test('Editor aller Bausteintypen baut sich auf, auch Zahlenfelder ohne Reg
   assert.strictEqual(s.formatVal(2.456, 'm'), '2.46 m');
 });
 
+/* ---------- Tastenbefehle gelten nicht beim Tippen in Feldern ---------- */
+
+function selectedRoadScope() {
+  const s = newScope();
+  const p = s.defaultRoadParams();
+  p.points = [{ x: 0, z: 0 }, { x: 30, z: 0 }];
+  const obj = s.addObject('road', 0, 0, p);
+  s.selectObjects([obj.id], false);
+  return { s: s, obj: obj };
+}
+
+await test('Backspace/Entf im Eingabefeld löscht das Objekt nicht (Zahl im Parameterfenster korrigieren)', function () {
+  ['INPUT', 'TEXTAREA', 'SELECT'].forEach(function (tag) {
+    ['Backspace', 'Delete'].forEach(function (key) {
+      const k = selectedRoadScope();
+      k.s.onKeyDown({ key: key, target: { tagName: tag } });
+      assert.ok(k.s.findObject(k.obj.id), key + ' in ' + tag + ' hat das Objekt gelöscht');
+      assert.ok(k.s.isSelected(k.obj.id), 'Auswahl darf nicht verloren gehen');
+    });
+  });
+  const k = selectedRoadScope();
+  k.s.onKeyDown({ key: 'Backspace', target: { tagName: 'DIV', isContentEditable: true } });
+  assert.ok(k.s.findObject(k.obj.id), 'auch in contenteditable darf nichts gelöscht werden');
+});
+
+await test('Backspace/Entf außerhalb von Feldern löscht das ausgewählte Objekt weiterhin', function () {
+  [{ key: 'Backspace', target: { tagName: 'BODY' } }, { key: 'Delete', target: { tagName: 'CANVAS' } }, { key: 'Delete' }].forEach(function (ev) {
+    const k = selectedRoadScope();
+    k.s.onKeyDown(ev);
+    assert.strictEqual(k.s.findObject(k.obj.id), null, JSON.stringify(ev));
+  });
+});
+
+await test('Leertaste im Feld schließt die Baustraße nicht ab, Esc im Feld wirkt weiter', function () {
+  const s = newScope();
+  s.selectTool('road');
+  let prevented = false;
+  s.onKeyDown({ key: ' ', code: 'Space', target: { tagName: 'INPUT' }, preventDefault: function () { prevented = true; } });
+  assert.strictEqual(prevented, false, 'Leertaste im Feld darf nicht abgefangen werden (Abstand tippen)');
+  const k = selectedRoadScope();
+  k.s.setActiveNode(1);
+  k.s.onKeyDown({ key: 'Escape', target: { tagName: 'INPUT' } });
+  assert.strictEqual(k.s.activeRoadNode(), null, 'Esc soll auch im Feld den Knoten lösen');
+});
+
 /* ---------- Zahlenfeld neben jedem Schieberegler ---------- */
 
 function widthRow(s, calls) {
