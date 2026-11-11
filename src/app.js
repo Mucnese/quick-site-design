@@ -204,6 +204,10 @@ function initSharedResources() {
   // Böschungen: Auftrag hell (aufgeschüttet), Abtrag dunkel (angeschnitten)
   MAT.roadFill    = new THREE.MeshLambertMaterial({ color: 0xc9a45c, side: THREE.DoubleSide });
   MAT.roadCut     = new THREE.MeshLambertMaterial({ color: 0x9a5a44, side: THREE.DoubleSide });
+  // Abtrag liegt unter dem Gelände: Überlagerung ohne Tiefentest, damit man ihn sieht
+  MAT.cutOverlay  = new THREE.MeshBasicMaterial({ color: 0x9a5a44, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  MAT.roadOverlay = new THREE.MeshBasicMaterial({ color: 0x6f6a60, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  MAT.cutCrest    = new THREE.LineBasicMaterial({ color: 0xffd24a, depthTest: false });
   // Immer sichtbar, damit der Punkt nicht im Gelände verschwindet
   MAT.measure     = new THREE.MeshBasicMaterial({ color: 0x6cff8a, depthTest: false });
   MAT.node        = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
@@ -1559,6 +1563,61 @@ function computeRoad(p) {
   };
 }
 
+/* Im Abtrag liegen Böschung und Fahrbahn unter dem Gelände und wären nicht
+   zu sehen. Deshalb zusätzlich: Böschung und eingegrabene Fahrbahn als
+   halbtransparente Fläche ohne Tiefentest über dem Gelände, dazu eine helle
+   Linie an der Böschungsoberkante (dort, wo die 1:1-Linie das Gelände
+   schneidet). Das ist eine Darstellungshilfe - die Mengen bleiben unberührt. */
+function addCutOverlay(g, secs, ePos, cutIdx) {
+  if (cutIdx.length) {
+    const og = new THREE.BufferGeometry();
+    og.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ePos), 3));
+    og.setIndex(cutIdx);
+    const om = new THREE.Mesh(og, MAT.cutOverlay);
+    om.renderOrder = 6;
+    om.userData.kind = 'cutOverlay';
+    g.add(om);
+  }
+
+  // Fahrbahnstücke, bei denen das Gelände in der Mitte über der Fahrbahn liegt
+  const buried = secs.map(function (sc) {
+    return getHeightAt(sc.f.x, sc.f.z) > sc.hr + ROAD_LIFT;
+  });
+  const rPos = [], rIdx = [];
+  secs.forEach(function (sc, i) {
+    rPos.push(sc.left.ex, sc.hr + ROAD_LIFT, sc.left.ez, sc.right.ex, sc.hr + ROAD_LIFT, sc.right.ez);
+    if (i > 0 && buried[i] && buried[i - 1]) {
+      const a = (i - 1) * 2, b = a + 1, c = i * 2, d = c + 1;
+      rIdx.push(a, c, b, b, c, d);
+    }
+  });
+  if (rIdx.length) {
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(rPos), 3));
+    rg.setIndex(rIdx);
+    const rm = new THREE.Mesh(rg, MAT.roadOverlay);
+    rm.renderOrder = 6;
+    rm.userData.kind = 'roadOverlay';
+    g.add(rm);
+  }
+
+  const seg = [];
+  ['left', 'right'].forEach(function (side) {
+    for (let i = 1; i < secs.length; i++) {
+      const a = secs[i - 1][side], b = secs[i][side];
+      if (a.type !== 'cut' || b.type !== 'cut') continue;
+      seg.push(new THREE.Vector3(a.ox, a.oh + 0.1, a.oz), new THREE.Vector3(b.ox, b.oh + 0.1, b.oz));
+    }
+  });
+  if (seg.length) {
+    const lg = new THREE.BufferGeometry().setFromPoints(seg);
+    const lm = new THREE.LineSegments(lg, MAT.cutCrest);
+    lm.renderOrder = 7;
+    lm.userData.kind = 'cutCrest';
+    g.add(lm);
+  }
+}
+
 function buildRoad(p) {
   const g = new THREE.Group();
   const pts = p.points || [];
@@ -1619,6 +1678,8 @@ function buildRoad(p) {
     em.receiveShadow = true;
     g.add(em);
   });
+
+  addCutOverlay(g, secs, ePos, cutIdx);
 
   if (p.showEdge !== false) {
     const left = [], right = [];

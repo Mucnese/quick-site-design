@@ -623,6 +623,22 @@ test('Straße verschieben oder Stützpunkt ändern: Neigung wird neu aus dem Gel
   assert.ok(obj.params.slope > 8, 'Neigung nicht neu eingepasst: ' + obj.params.slope);
 });
 
+function overlayKinds(g) {
+  return g.children.map(function (c) { return c.userData && c.userData.kind; }).filter(Boolean).sort();
+}
+
+test('Abtrag: Böschung, eingegrabene Fahrbahn und Oberkante werden über dem Gelände sichtbar gemacht', function () {
+  roadTerrain(0);
+  const g = app.buildRoad(roadAlongX(-5));                  // sinkt unter das Gelände
+  assert.deepStrictEqual(overlayKinds(g), ['cutCrest', 'cutOverlay', 'roadOverlay']);
+});
+
+test('Auftrag und ebene Straße brauchen keine Überlagerung (liegen über dem Gelände)', function () {
+  roadTerrain(0);
+  assert.deepStrictEqual(overlayKinds(app.buildRoad(roadAlongX(5))), []);
+  assert.deepStrictEqual(overlayKinds(app.buildRoad(roadAlongX(0))), []);
+});
+
 /* ---------- Kamera: Drehen um einen angeklickten Punkt ---------- */
 
 function camSetup(pos, tgt) {
