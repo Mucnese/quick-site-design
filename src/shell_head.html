@@ -65,6 +65,8 @@
   }
   .sec .act { color: var(--accent); cursor: pointer; letter-spacing: 0.08em; }
   .sec .act:hover { text-decoration: underline; }
+  .sec a.act { text-decoration: none; }
+  .sec a.act:hover { text-decoration: underline; }
   .body { padding: 9px 11px; }
 
   /* ---------- Spalten ---------- */
@@ -487,7 +489,7 @@
   </div>
 
   <div id="data" class="panel">
-    <div class="sec"><span data-i18n="data">Daten</span></div>
+    <div class="sec"><span data-i18n="data">Daten</span><a class="act" id="geoportal-link" href="https://github.com/Mucnese/quick-site-design#datenquellen" target="_blank" rel="noopener noreferrer" data-i18n="geoportals">Geoportale</a></div>
     <div class="body">
       <div class="file-row">
         <div class="file-head"><span data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="hintx">mehrere möglich</span></div>

@@ -526,6 +526,19 @@ await test('Detailstufe: kein Regler und kein Schalter mehr, das Gelände nutzt 
   assert.strictEqual(s.detailLimit, undefined);
 });
 
+/* ---------- Geoportale-Link im Datenfenster ---------- */
+
+await test('Geoportale: Link neben "Daten" führt auf die Tabelle im README der jeweiligen Sprache', function () {
+  const s = newScope();
+  s.applyLanguage();
+  const a = s.document.getElementById('geoportal-link');
+  assert.strictEqual(a.href, 'https://github.com/Mucnese/quick-site-design#datenquellen');
+  assert.strictEqual(a.title, s.T('geoportalsTip'));
+  s.__bridge.SETTINGS.language = 'en';
+  s.applyLanguage();
+  assert.strictEqual(a.href, 'https://github.com/Mucnese/quick-site-design/blob/main/README.en.md#where-to-get-the-data');
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {

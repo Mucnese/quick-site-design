@@ -47,6 +47,8 @@ const STRINGS = {
     demoAttribution: 'Beispieldaten:',
     radiusTooTight: 'Der Mindestradius passt nicht zwischen die Stützpunkte. Punkte weiter auseinander setzen oder Radius verkleinern.',
     noManufacturerValue: 'keine Herstellerangabe',
+    geoportals: 'Geoportale', geoportalsTip: 'Tabelle der Geoportale der Bundesländer (GitHub)',
+    geoportalUrl: 'https://github.com/Mucnese/quick-site-design#datenquellen',
     tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände und Gebäude als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
@@ -114,6 +116,8 @@ const STRINGS = {
     demoAttribution: 'Sample data:',
     radiusTooTight: 'The minimum radius does not fit between the nodes. Move the nodes further apart or reduce the radius.',
     noManufacturerValue: 'no manufacturer figure',
+    geoportals: 'Geoportals', geoportalsTip: 'Table of the German state geoportals (GitHub)',
+    geoportalUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/README.en.md#where-to-get-the-data',
     tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain and buildings as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
@@ -164,6 +168,10 @@ function applyLanguage() {
     if (k) nodes[i].textContent = T(k);
   }
   document.documentElement.lang = SETTINGS.language;
+  // Die Tabelle steht in beiden READMEs; der Link folgt der Sprache
+  const geo = document.getElementById('geoportal-link');
+  geo.href = T('geoportalUrl');
+  geo.title = T('geoportalsTip');
 }
 
 /* ---------- Parameterschemata ---------- */
