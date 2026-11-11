@@ -319,6 +319,34 @@ function optionRow(label, options, current, onPick) {
   return row;
 }
 
+/* Zahlenfeld neben einem Schieberegler: man kann den Wert auch tippen.
+   Eine gültige Eingabe innerhalb des Reglerbereichs wirkt sofort; beim
+   Verlassen oder mit Enter wird auf den Bereich begrenzt, eine ungültige
+   Eingabe fällt auf den Reglerwert zurück. Der Reglerbereich wird erst beim
+   Prüfen gelesen, weil er sich (Kranmodell) nachträglich ändern kann. Der
+   getippte Wert wird nicht auf die Reglerschritte gerundet. */
+function makeNumberBox(slider, className, apply) {
+  const num = document.createElement('input');
+  num.type = 'number';
+  num.className = className;
+  num.min = slider.min; num.max = slider.max; num.step = 'any';
+  num.value = slider.value;
+  num.addEventListener('input', function () {
+    const v = parseFloat(num.value);
+    if (!isFinite(v) || v < parseFloat(slider.min) || v > parseFloat(slider.max)) return;
+    apply(v);
+  });
+  num.addEventListener('change', function () {
+    let v = parseFloat(num.value);
+    if (!isFinite(v)) { num.value = slider.value; return; }
+    v = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), v));
+    v = Math.round(v * 1000) / 1000;
+    num.value = v;
+    apply(v);
+  });
+  return num;
+}
+
 function sliderRow(label, min, max, step, value, unit, onChange) {
   const row = document.createElement('div');
   row.className = 'tw-row';
@@ -331,18 +359,29 @@ function sliderRow(label, min, max, step, value, unit, onChange) {
   head.appendChild(val);
   row.appendChild(head);
 
+  const line = document.createElement('div');
+  line.className = 'slider-line';
   const input = document.createElement('input');
   input.type = 'range';
   input.min = min; input.max = max; input.step = step; input.value = value;
   input.className = 'tw-slider';
-  input.addEventListener('input', function () {
-    const v = parseFloat(input.value);
-    if (!isFinite(v)) return;
+  const num = makeNumberBox(input, 'tw-num', function (v) {
+    input.value = v;
     val.textContent = v + unit;
     onChange(v);
     applySettings();
   });
-  row.appendChild(input);
+  input.addEventListener('input', function () {
+    const v = parseFloat(input.value);
+    if (!isFinite(v)) return;
+    val.textContent = v + unit;
+    num.value = v;
+    onChange(v);
+    applySettings();
+  });
+  line.appendChild(input);
+  line.appendChild(num);
+  row.appendChild(line);
   return row;
 }
 
@@ -462,6 +501,7 @@ function makeRow(field, value, onChange) {
   row.appendChild(head);
 
   let input;
+  let num = null;
   if (field.type === 'select') {
     input = document.createElement('select');
     const src = CRANE_MODELS; // nur noch der Mobilkran hat eine Modellauswahl
@@ -484,16 +524,32 @@ function makeRow(field, value, onChange) {
     input.min = field.min; input.max = field.max; input.step = field.step;
     input.value = value;
     out.textContent = formatVal(value, field.unit, field.signed);
+    if (input.type === 'range') {
+      num = makeNumberBox(input, 'field-num', function (v) {
+        input.value = v;
+        out.textContent = formatVal(v, field.unit, field.signed);
+        onChange(field.key, v);
+      });
+    }
     input.addEventListener('input', function () {
       const v = parseFloat(input.value);
       if (!isFinite(v)) return;
       out.textContent = formatVal(v, field.unit, field.signed);
+      if (num) num.value = v;
       onChange(field.key, v);
     });
   }
   input.className = 'field-input';
-  row.appendChild(input);
-  return { row: row, input: input, out: out, field: field };
+  if (num) {
+    const line = document.createElement('div');
+    line.className = 'slider-line';
+    line.appendChild(input);
+    line.appendChild(num);
+    row.appendChild(line);
+  } else {
+    row.appendChild(input);
+  }
+  return { row: row, input: input, out: out, field: field, num: num };
 }
 
 function formatVal(v, unit, signed) {
@@ -547,7 +603,11 @@ function syncForm(refs, values) {
     const v = values[k];
     if (r.field.type === 'checkbox') r.input.checked = v !== false;
     else if (r.field.type === 'select') r.input.value = v;
-    else { r.input.value = v; r.out.textContent = formatVal(v, r.field.unit); }
+    else {
+      r.input.value = v;
+      r.out.textContent = formatVal(v, r.field.unit, r.field.signed);
+      if (r.num) { r.num.value = v; r.num.min = r.input.min; r.num.max = r.input.max; }
+    }
   });
 }
 

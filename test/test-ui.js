@@ -41,8 +41,10 @@ function makeElement() {
       contains: function () { return false; }
     },
     appendChild: function (c) { this.children.push(c); return c; },
-    addEventListener: function () {},
+    _listeners: {},
+    addEventListener: function (type, fn) { (this._listeners[type] = this._listeners[type] || []).push(fn); },
     removeEventListener: function () {},
+    fire: function (type) { (this._listeners[type] || []).forEach(function (fn) { fn({ target: el }); }); },
     getElementsByTagName: function () { return []; },
     click: function () {}
   };
@@ -459,6 +461,74 @@ await test('formatVolume: unter 10 m³ eine Nachkommastelle, darüber ganze Kubi
   const s = newScope();
   assert.strictEqual(s.formatVolume(4.26), '4.3 m³');
   assert.strictEqual(s.formatVolume(1234.6), '1235 m³');
+});
+
+/* ---------- Zahlenfeld neben jedem Schieberegler ---------- */
+
+function widthRow(s, calls) {
+  const p = s.defaultRoadParams();
+  return s.buildForm('road', p, function (k, v) { calls.push([k, v]); }, true).refs.width;
+}
+
+await test('Zahlenfeld: Schieberegler bekommen ein Eingabefeld mit Reglerbereich, Checkbox und Auswahl nicht', function () {
+  const s = newScope();
+  const refs = s.buildForm('road', s.defaultRoadParams(), function () {}, true).refs;
+  ['width', 'radius', 'slope'].forEach(function (k) {
+    assert.ok(refs[k].num, k + ' hat kein Zahlenfeld');
+    assert.strictEqual(refs[k].num.type, 'number');
+    assert.strictEqual(refs[k].num.min, refs[k].input.min);
+  });
+  assert.strictEqual(refs.showEdge.num, null);
+});
+
+await test('Zahlenfeld: Tippen und Bestätigen setzt Wert, Regler und Anzeige', function () {
+  const s = newScope(), calls = [];
+  const r = widthRow(s, calls);
+  r.num.value = '9';
+  r.num.fire('change');
+  assert.deepStrictEqual(calls, [['width', 9]]);
+  assert.strictEqual(r.input.value, 9);
+  assert.strictEqual(r.out.textContent, '9 m');
+});
+
+await test('Zahlenfeld: Werte außerhalb des Bereichs werden begrenzt, Unsinn fällt auf den Reglerwert zurück', function () {
+  const s = newScope(), calls = [];
+  const r = widthRow(s, calls);
+  r.num.value = '99'; r.num.fire('change');
+  assert.deepStrictEqual(calls[0], ['width', 14]);
+  assert.strictEqual(r.num.value, 14);
+  r.num.value = '-3'; r.num.fire('change');
+  assert.deepStrictEqual(calls[1], ['width', 3]);
+  const before = calls.length;
+  r.num.value = ''; r.num.fire('change');
+  assert.strictEqual(calls.length, before, 'leere Eingabe darf nichts setzen');
+  assert.strictEqual(r.num.value, r.input.value);
+});
+
+await test('Zahlenfeld: Tippen wirkt schon während der Eingabe, aber nur innerhalb des Bereichs; Kommawerte bleiben erhalten', function () {
+  const s = newScope(), calls = [];
+  const r = widthRow(s, calls);
+  r.num.value = '1'; r.num.fire('input');       // unter dem Minimum 3: noch nichts
+  assert.strictEqual(calls.length, 0);
+  r.num.value = '7.25'; r.num.fire('input');
+  assert.deepStrictEqual(calls, [['width', 7.25]]);
+});
+
+await test('Zahlenfeld: Bewegen des Reglers aktualisiert das Zahlenfeld', function () {
+  const s = newScope(), calls = [];
+  const r = widthRow(s, calls);
+  r.input.value = '11';
+  r.input.fire('input');
+  assert.strictEqual(r.num.value, 11);
+});
+
+await test('Zahlenfeld: syncForm führt Zahlenfeld und Reglerbereich mit (Kranmodellwechsel)', function () {
+  const s = newScope();
+  const refs = s.buildForm('road', s.defaultRoadParams(), function () {}, true).refs;
+  refs.width.input.max = 10;
+  s.syncForm(refs, { width: 8, radius: 15, slope: 0, showEdge: true });
+  assert.strictEqual(refs.width.num.value, 8);
+  assert.strictEqual(refs.width.num.max, 10);
 });
 
 /* ---------- Kamera: Umkreisen um den angeklickten Punkt ---------- */
