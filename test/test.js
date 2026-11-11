@@ -502,6 +502,131 @@ test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function (
   assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832); }, /Geometrie/);
 });
 
+/* ---------- Gelände: Kacheln mit Detailstufe nach Zoom ---------- */
+
+function lodTerrain(cells) {
+  freshScene();
+  const n = (cells || 200) + 1, h = [];                       // 200 x 200 Zellen -> 4 x 4 Kacheln (64, 64, 64, 8)
+  for (let iz = 0; iz < n; iz++) for (let ix = 0; ix < n; ix++) h.push((Math.sin(ix / 9) * 3 + Math.cos(iz / 7) * 2 + ix * 0.05) * 100 + 1000);
+  const t = app.terrainFromEmbedded({
+    n: n, heights: h, scale: 100, zmin: 500, zmax: 520, width: 2000, depth: 2000,
+    originE: 692000, originN: 5336000, epsg: 25832
+  });
+  app.buildTerrain(t);
+  return t;
+}
+
+function levels() { return app.getTerrainChunks().map(function (c) { return c.level; }); }
+
+test('Gelände-LOD: Kacheln decken das Raster lückenlos ab (64er-Kacheln, Rest in der letzten)', function () {
+  lodTerrain();
+  const ch = app.getTerrainChunks();
+  assert.strictEqual(ch.length, 16);
+  assert.strictEqual(ch.filter(function (c) { return c.z0 === 0; }).reduce(function (a, c) { return a + c.cx; }, 0), 200);
+  assert.strictEqual(ch.filter(function (c) { return c.x0 === 0; }).reduce(function (a, c) { return a + c.cz; }, 0), 200);
+});
+
+test('Gelände-LOD: nah volle Auflösung, weit weg gröber, bei ausgeschaltetem Automatikmodus überall voll', function () {
+  lodTerrain();
+  const cam = app.getCamera();
+  cam.position.set(0, 20, 0);
+  app.updateTerrainLod(true);
+  const near = levels();
+  cam.position.set(0, 4000, 0);
+  app.updateTerrainLod(true);
+  const far = levels();
+  assert.ok(near.some(function (l) { return l === 0; }), 'in Bodennähe muss es Kacheln mit voller Auflösung geben');
+  assert.ok(far.every(function (l, i) { return l >= near[i]; }), 'weiter weg darf nie feiner werden');
+  assert.ok(Math.max.apply(null, far) > 0, 'weit weg muss gröber werden: ' + far);
+  app.setTerrainLodAuto(false);
+  assert.ok(levels().every(function (l) { return l === 0; }));
+  app.setTerrainLodAuto(true);
+  assert.ok(Math.max.apply(null, levels()) > 0);
+});
+
+test('Gelände-LOD: nahe Kacheln sind feiner als ferne (Abstand zur Kamera)', function () {
+  lodTerrain(600);                                    // 3,3 m Zellen: die ferne Ecke wird merklich gröber
+  const cam = app.getCamera();
+  cam.position.set(-900, 60, -900);                  // über der Nordwest-Ecke
+  app.updateTerrainLod(true);
+  const ch = app.getTerrainChunks();
+  const first = ch[0], last = ch[ch.length - 1];
+  assert.ok(first.level < last.level, 'NW-Kachel ' + first.level + ' sollte feiner sein als SO-Kachel ' + last.level);
+});
+
+test('Gelände-LOD: Hysterese - kleine Kamerabewegungen lassen die Stufen unverändert (kein Flackern)', function () {
+  lodTerrain();
+  const cam = app.getCamera();
+  cam.position.set(300, 500, 300);
+  app.updateTerrainLod(true);
+  const before = levels();
+  cam.position.set(300.8, 500.4, 300.6);
+  app.updateTerrainLod(false);
+  assert.deepStrictEqual(levels(), before);
+});
+
+test('Gelände-LOD: Höhenabfragen hängen nicht von der Stufe ab, die Eckpunkte liegen auf dem Datenraster', function () {
+  const t = lodTerrain();
+  const cam = app.getCamera();
+  const h0 = app.getHeightAt(123.4, -456.7);
+  cam.position.set(0, 6000, 0);
+  app.updateTerrainLod(true);
+  assert.strictEqual(app.getHeightAt(123.4, -456.7), h0);
+  const c = app.getTerrainChunks()[5];
+  const g = c.mesh.geometry, pos = g.attributes.position.array;
+  const seg = t.w / (t.nx - 1);
+  for (let i = 0; i < 20; i++) {                               // erste Eckpunkte der Kachel
+    const gx = Math.round((pos[i * 3] + t.w / 2) / seg), gz = Math.round((pos[i * 3 + 2] + t.d / 2) / seg);
+    if (i >= (g.attributes.position.array.length / 3) - 1) break;
+    assert.ok(Math.abs(pos[i * 3 + 1] - t.rel[gz * t.nx + gx]) < 1e-4 || pos[i * 3 + 1] < t.rel[gz * t.nx + gx], 'Eckpunkt weicht vom Datenraster ab');
+  }
+});
+
+test('Gelände-LOD: jede Stufe liefert gültige Indizes, keine NaN, Gelände zeigt nach oben', function () {
+  lodTerrain();
+  const cam = app.getCamera();
+  [20, 300, 1500, 8000].forEach(function (y) {
+    cam.position.set(0, y, 0);
+    app.updateTerrainLod(true);
+    app.getTerrainChunks().forEach(function (c) {
+      const g = c.mesh.geometry, pos = g.attributes.position.array, nv = pos.length / 3, idx = g.indices;
+      for (let i = 0; i < pos.length; i++) assert.ok(isFinite(pos[i]), 'NaN in Kachel');
+      idx.forEach(function (k) { assert.ok(k >= 0 && k < nv, 'Index außerhalb: ' + k + ' von ' + nv); });
+      // Gitterdreiecke (vor den Schürzen) zeigen nach oben
+      for (let k = 0; k + 2 < idx.length; k += 3) {
+        const a = idx[k] * 3, b = idx[k + 1] * 3, d = idx[k + 2] * 3;
+        const ny = (pos[b + 2] - pos[a + 2]) * (pos[d] - pos[a]) - (pos[b] - pos[a]) * (pos[d + 2] - pos[a + 2]);
+        if (Math.abs(pos[a + 1] - pos[b + 1]) < 1e5 && ny < -1e-6 && Math.abs(pos[a] - pos[b]) + Math.abs(pos[a + 2] - pos[b + 2]) > 0) {
+          // Schürzen stehen senkrecht (ny ~ 0); alles mit deutlich negativem ny wäre ein nach unten gewendetes Gelände
+          assert.ok(false, 'Dreieck zeigt nach unten (' + ny + ') bei Kamerahöhe ' + y);
+        }
+      }
+    });
+  });
+});
+
+test('Gelände-LOD: Randschürzen liegen unter der Oberfläche (verdecken Spalten zwischen Stufen)', function () {
+  lodTerrain();
+  app.getCamera().position.set(0, 20, 0);
+  app.updateTerrainLod(true);
+  const g = app.getTerrainChunks()[0].mesh.geometry, pos = g.attributes.position.array;
+  const nSurface = (65) * (65);
+  let lowered = 0;
+  for (let i = nSurface; i < pos.length / 3; i++) {
+    const hSurf = pos[i * 3 + 1];
+    assert.ok(hSurf < 25, 'Schürze müsste abgesenkt sein');
+    lowered++;
+  }
+  assert.strictEqual(lowered, 4 * 65);
+});
+
+test('Gelände-LOD: buildTerrain räumt die alten Kachelgeometrien auf', function () {
+  lodTerrain();
+  const old = app.getTerrainChunks().map(function (c) { return c.mesh.geometry; });
+  lodTerrain();
+  assert.ok(old.every(function (g) { return g.disposed === true; }));
+});
+
 /* ---------- Baustraße: Längsneigung, Böschung 1:1, Auftrag/Abtrag ---------- */
 
 function roadTerrain(ramp) {

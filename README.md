@@ -31,7 +31,10 @@ Browser.
   Überlappungen sind daher unkritisch.
 - CityGML LOD2, ebenfalls als Stapel. Die Achsenreihenfolge wird erkannt,
   Gebäude außerhalb der Kachel verworfen.
-- Detailstufe von 140 Stützpunkten bis zur unveränderten Quellauflösung.
+- Detailstufe von 140 Stützpunkten bis zur unveränderten Quellauflösung. Nach
+  Voreinstellung passt sich die gezeichnete Auflösung dem Zoom an: nahe
+  Geländeteile in der gewählten Stufe, ferne gröber (Kacheln zu 64 × 64 Zellen).
+  Höhenabfragen, Objekte und IFC-Export nutzen weiter dieselben Daten.
 - Koordinatenbezugssystem wird aus den GeoKeys gelesen.
 
 **Bausteine**

@@ -77,6 +77,13 @@ unrichtig machen.
 **Krandrehung:** `g.rotation.y = baseRot`, `slew.rotation.y = rot - baseRot`.
 So bleibt der Auslegerwinkel absolut, unabhängig vom Fundament.
 
+**Gelände in Kacheln.** `terrainMesh` ist eine Gruppe aus 64×64-Zellen-Kacheln,
+keine einzelne Ebene mehr. Die Höhendaten (`TERRAIN.rel`) bleiben in der
+gewählten Detailstufe; nur das gezeichnete Mesh wird je Kachel gröber, je weiter
+sie weg ist (`updateTerrainLod`). Höhenabfragen, Objekte und IFC dürfen nie am
+Mesh hängen, sondern an `getHeightAt`. Raycasts gegen das Gelände immer
+rekursiv (`intersectObject(terrainMesh, true)`).
+
 **Maussteuerung:** links drehen, rechts und Mitte verschieben, Rad zoomt. Linke
 Taste auf einem Treffer (Gelände, Gebäude, Baustein) dreht über `orbitAround`
 um genau diesen Punkt – ein Capture-Handler am Fenster entscheidet vor

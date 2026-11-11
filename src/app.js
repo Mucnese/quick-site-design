@@ -106,7 +106,7 @@ const MAT = {};
 const GEO = {};
 
 let scene, camera, renderer, controls, raycaster, pointer;
-let terrainMesh, terrainGeo, plinthMesh;
+let terrainMesh, plinthMesh;
 let buildingsMesh = null;
 
 /* Geländezustand – wird beim Laden einer Datei ersetzt */
@@ -255,12 +255,176 @@ function terrainFromEmbedded(d) {
 
 function hasTerrain() { return TERRAIN !== null; }
 
+/* ---------- Gelände in Kacheln mit Detailstufe nach Bildschirmgröße ----------
+   Die Höhendaten (TERRAIN.rel) bleiben unverändert in der gewählten
+   Detailstufe - Höhenabfragen, Objekte, Messpunkte und IFC-Export sehen
+   immer dieselben Werte, nichts springt beim Zoomen. Nur das gezeichnete
+   Mesh wird in Kacheln zu je LOD_CHUNK Zellen zerlegt, und jede Kachel
+   wird mit Schrittweite 1, 2, 4, ... über dem Datenraster gezeichnet: so
+   grob, wie es ihre Zellen auf dem Bildschirm erlauben (LOD_TARGET_PX).
+   Nahe Kacheln zeigen alle Daten, ferne weniger. Die Normalen kommen aus dem
+   feinen Raster, deshalb ändert sich die Schattierung beim Wechsel kaum.
+   Zwischen Kacheln unterschiedlicher Stufe entstehen Spalten; sie werden von
+   Randschürzen (nach unten gezogene Wände) verdeckt. */
+const LOD_CHUNK = 64;          // Zellen je Kachelkante bei voller Auflösung
+const LOD_TARGET_PX = 6;       // gröbste Zelle, die auf dem Bildschirm noch erlaubt ist
+const LOD_MAX_REBUILDS = 16;   // Kacheln, die pro Bild neu aufgebaut werden dürfen
+let terrainChunks = [];        // { x0, z0, cx, cz, minY, maxY, level, mesh }
+let terrainMat = null;
+let lodAuto = true;
+let lodStamp = '';
+
+function lodAxis(count, step) {
+  const out = [];
+  for (let i = 0; i < count; i += step) out.push(i);
+  out.push(count);
+  return out;
+}
+
+function chunkGeometry(c, level) {
+  const t = TERRAIN;
+  const step = Math.pow(2, level);
+  const xs = lodAxis(c.cx, step), zs = lodAxis(c.cz, step);
+  const nxv = xs.length, nzv = zs.length;
+  const segX = t.w / (t.nx - 1), segZ = t.d / (t.nz - 1);
+  const span = Math.max(t.zmax - t.zmin, 0.0001);
+  const skirt = step * Math.max(segX, segZ) + 0.5;
+  const total = nxv * nzv + 2 * (nxv + nzv);
+
+  const pos = new Float32Array(total * 3);
+  const nor = new Float32Array(total * 3);
+  const col = new Float32Array(total * 3);
+  function h(gx, gz) {
+    gx = Math.max(0, Math.min(t.nx - 1, gx));
+    gz = Math.max(0, Math.min(t.nz - 1, gz));
+    return t.rel[gz * t.nx + gx];
+  }
+
+  for (let jz = 0; jz < nzv; jz++) {
+    for (let jx = 0; jx < nxv; jx++) {
+      const gx = c.x0 + xs[jx], gz = c.z0 + zs[jz];
+      const i = (jz * nxv + jx) * 3;
+      const y = h(gx, gz);
+      pos[i] = -t.w / 2 + gx * segX; pos[i + 1] = y; pos[i + 2] = -t.d / 2 + gz * segZ;
+      // Normale aus dem feinen Raster (zentrale Differenzen)
+      let nx = (h(gx - 1, gz) - h(gx + 1, gz)) / (2 * segX);
+      let nz = (h(gx, gz - 1) - h(gx, gz + 1)) / (2 * segZ);
+      const nl = Math.sqrt(nx * nx + 1 + nz * nz);
+      nor[i] = nx / nl; nor[i + 1] = 1 / nl; nor[i + 2] = nz / nl;
+      const cc = colorAt((y) / span);
+      col[i] = cc[0]; col[i + 1] = cc[1]; col[i + 2] = cc[2];
+    }
+  }
+
+  const idx = [];
+  for (let jz = 0; jz + 1 < nzv; jz++) {
+    for (let jx = 0; jx + 1 < nxv; jx++) {
+      const a = jz * nxv + jx, b = a + 1, d = a + nxv + 1, cI = a + nxv;
+      idx.push(a, cI, d, a, d, b);          // von oben gegen den Uhrzeigersinn: Normale zeigt nach oben
+    }
+  }
+
+  // Randschürzen: Rand-Eckpunkte noch einmal, um skirt abgesenkt
+  let o = nxv * nzv;
+  function addEdge(surfaceIdx, reverse) {
+    const low = [];
+    surfaceIdx.forEach(function (si) {
+      for (let k = 0; k < 3; k++) {
+        pos[o * 3 + k] = pos[si * 3 + k]; nor[o * 3 + k] = nor[si * 3 + k]; col[o * 3 + k] = col[si * 3 + k];
+      }
+      pos[o * 3 + 1] -= skirt;
+      low.push(o++);
+    });
+    for (let k = 0; k + 1 < surfaceIdx.length; k++) {
+      const p0 = surfaceIdx[k], p1 = surfaceIdx[k + 1], q0 = low[k], q1 = low[k + 1];
+      if (reverse) idx.push(p1, p0, q0, p1, q0, q1);
+      else idx.push(p0, p1, q1, p0, q1, q0);
+    }
+  }
+  const north = [], south = [], west = [], east = [];
+  for (let jx = 0; jx < nxv; jx++) { north.push(jx); south.push((nzv - 1) * nxv + jx); }
+  for (let jz = 0; jz < nzv; jz++) { west.push(jz * nxv); east.push(jz * nxv + nxv - 1); }
+  addEdge(north, false);
+  addEdge(south, true);
+  addEdge(west, true);
+  addEdge(east, false);
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setIndex(idx);
+  return g;
+}
+
+/* Kürzester Abstand der Kamera zum Quader der Kachel */
+function chunkDistance(c) {
+  const t = TERRAIN, p = camera.position;
+  const segX = t.w / (t.nx - 1), segZ = t.d / (t.nz - 1);
+  const x0 = -t.w / 2 + c.x0 * segX, x1 = x0 + c.cx * segX;
+  const z0 = -t.d / 2 + c.z0 * segZ, z1 = z0 + c.cz * segZ;
+  const dx = Math.max(x0 - p.x, 0, p.x - x1);
+  const dy = Math.max(c.minY - p.y, 0, p.y - c.maxY);
+  const dz = Math.max(z0 - p.z, 0, p.z - z1);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function setTerrainLodAuto(on) {
+  lodAuto = !!on;
+  updateTerrainLod(true);
+}
+
+function isTerrainLodAuto() { return lodAuto; }
+
+/* Pro Bild aufgerufen, rechnet aber nur nach, wenn sich die Kamera bewegt hat.
+   Eine Kachel wechselt die Stufe erst mit etwas Abstand zur Schwelle
+   (Hysterese), sonst flackert sie an der Grenze hin und her. */
+function updateTerrainLod(force) {
+  if (!terrainChunks.length || !camera || !TERRAIN) return;
+  const p = camera.position;
+  const key = p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ',' + (lodAuto ? 1 : 0) + ',' + window.innerHeight;
+  if (!force && key === lodStamp) return;
+  lodStamp = key;
+
+  const t = TERRAIN;
+  const focal = (window.innerHeight / 2) / Math.tan(camera.fov * Math.PI / 360);
+  const cell = Math.min(t.w / (t.nx - 1), t.d / (t.nz - 1));
+  let rebuilt = 0;
+  for (let i = 0; i < terrainChunks.length; i++) {
+    const c = terrainChunks[i];
+    const maxLevel = Math.floor(Math.log2(Math.max(c.cx, c.cz)));
+    let want = 0;
+    if (lodAuto) {
+      const L = Math.log2(LOD_TARGET_PX * Math.max(chunkDistance(c), 1) / (cell * focal));
+      if (c.level < 0) want = Math.floor(L);
+      else if (L >= c.level + 1.25) want = Math.floor(L);
+      else if (L < c.level - 0.25) want = Math.floor(L);
+      else want = c.level;
+      want = Math.max(0, Math.min(maxLevel, want));
+    }
+    if (want === c.level) continue;
+    if (!force && rebuilt >= LOD_MAX_REBUILDS) { lodStamp = ''; continue; }
+    const old = c.mesh.geometry;
+    c.mesh.geometry = chunkGeometry(c, want);
+    if (old && old.dispose) old.dispose();
+    c.level = want;
+    rebuilt++;
+  }
+}
+
+function disposeTerrainChunks() {
+  terrainChunks.forEach(function (c) { if (c.mesh.geometry && c.mesh.geometry.dispose) c.mesh.geometry.dispose(); });
+  terrainChunks = [];
+  if (terrainMat && terrainMat.dispose) terrainMat.dispose();
+  terrainMat = null;
+}
+
 function buildTerrain(t) {
   TERRAIN = t;
 
   if (terrainMesh) {
     scene.remove(terrainMesh);
-    terrainGeo.dispose();
+    disposeTerrainChunks();
     terrainMesh = null;
   }
   if (plinthMesh) {
@@ -269,18 +433,30 @@ function buildTerrain(t) {
     plinthMesh = null;
   }
 
-  terrainGeo = new THREE.PlaneGeometry(t.w, t.d, t.nx - 1, t.nz - 1);
-  terrainGeo.rotateX(-Math.PI / 2);
-  terrainGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(t.nx * t.nz * 3), 3));
-
-  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  terrainMesh = new THREE.Mesh(terrainGeo, mat);
-  terrainMesh.receiveShadow = true;
-  terrainMesh.castShadow = true;
+  terrainMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  terrainMesh = new THREE.Group();
   terrainMesh.name = 'terrain';
+  const segX = t.w / (t.nx - 1), segZ = t.d / (t.nz - 1);
+  for (let z0 = 0; z0 < t.nz - 1; z0 += LOD_CHUNK) {
+    for (let x0 = 0; x0 < t.nx - 1; x0 += LOD_CHUNK) {
+      const c = { x0: x0, z0: z0, cx: Math.min(LOD_CHUNK, t.nx - 1 - x0), cz: Math.min(LOD_CHUNK, t.nz - 1 - z0),
+                  minY: Infinity, maxY: -Infinity, level: -1, mesh: null };
+      for (let gz = z0; gz <= z0 + c.cz; gz++) {
+        for (let gx = x0; gx <= x0 + c.cx; gx++) {
+          const v = t.rel[gz * t.nx + gx];
+          if (v < c.minY) c.minY = v;
+          if (v > c.maxY) c.maxY = v;
+        }
+      }
+      c.mesh = new THREE.Mesh(new THREE.BufferGeometry(), terrainMat);
+      c.mesh.receiveShadow = true;
+      c.mesh.castShadow = true;
+      terrainMesh.add(c.mesh);
+      terrainChunks.push(c);
+    }
+  }
   scene.add(terrainMesh);
-
-  applyTerrainHeights();
+  updateTerrainLod(true);
 
   const plinthH = Math.max((t.zmax - t.zmin) * 0.6, 12);
   plinthMesh = new THREE.Mesh(
@@ -301,7 +477,7 @@ function buildTerrain(t) {
   controls.maxDistance = span * 3;
   scene.fog.density = 0.35 / span;
 
-  return { mesh: terrainMesh, material: mat };
+  return { mesh: terrainMesh, material: terrainMat };
 }
 
 let topView = false;
@@ -393,23 +569,6 @@ function colorAt(t) {
   return COLOR_STOPS[COLOR_STOPS.length - 1].c;
 }
 
-function applyTerrainHeights() {
-  const pos = terrainGeo.attributes.position;
-  const col = terrainGeo.attributes.color;
-  const span = Math.max(TERRAIN.zmax - TERRAIN.zmin, 0.0001);
-  const count = TERRAIN.nx * TERRAIN.nz;
-  for (let i = 0; i < count; i++) {
-    const h = TERRAIN.rel[i];
-    pos.setY(i, h);
-    const c = colorAt(h / span);
-    col.setXYZ(i, c[0], c[1], c[2]);
-  }
-  pos.needsUpdate = true;
-  col.needsUpdate = true;
-  terrainGeo.computeVertexNormals();
-}
-
-/* Bilineare Höheninterpolation in Weltkoordinaten */
 function getHeightAt(x, z) {
   const t = TERRAIN;
   if (!t) return 0;
@@ -1997,6 +2156,7 @@ function updateControls() {
     }
   }
   controls.update();
+  updateTerrainLod(false);
 }
 
 function updateSelectionBoxes() {
@@ -2210,7 +2370,7 @@ function raycastTerrain(event) {
   if (!terrainMesh) return null;
   pointerToNDC(event);
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObject(terrainMesh, false);
+  const hits = raycaster.intersectObject(terrainMesh, true);
   return hits.length ? hits[0].point : null;
 }
 
@@ -2221,7 +2381,7 @@ function raycastGround(event) {
   raycaster.setFromCamera(pointer, camera);
   const targets = [terrainMesh];
   if (buildingsMesh) targets.push(buildingsMesh);
-  const hits = raycaster.intersectObjects(targets, false);
+  const hits = raycaster.intersectObjects(targets, true);
   if (!hits.length) return null;
   return {
     point: hits[0].point,
@@ -2695,6 +2855,11 @@ if (typeof module !== 'undefined' && module.exports) {
     getCamera: function () { return camera; },
     setTopView: setTopView,
     raycastPivot: raycastPivot,
+    setTerrainLodAuto: setTerrainLodAuto,
+    isTerrainLodAuto: isTerrainLodAuto,
+    updateTerrainLod: updateTerrainLod,
+    getTerrainChunks: function () { return terrainChunks; },
+    LOD_CHUNK: LOD_CHUNK,
     setMeasureMarker: setMeasureMarker,
     measureScreenPos: measureScreenPos,
     orbitAround: orbitAround,

@@ -30,7 +30,7 @@ async function test(name, fn) {
 function makeElement() {
   let ownText = '';
   const el = {
-    style: {},
+    style: { setProperty: function () {}, removeProperty: function () {} },
     dataset: {},
     className: '',
     value: '',
@@ -70,6 +70,7 @@ function makeDocument() {
     createElement: function () { return makeElement(); },
     querySelectorAll: function () { return []; },
     documentElement: makeElement(),
+    body: makeElement(),
     _byId: byId
   };
 }
@@ -461,6 +462,28 @@ await test('formatVolume: unter 10 m³ eine Nachkommastelle, darüber ganze Kubi
   const s = newScope();
   assert.strictEqual(s.formatVolume(4.26), '4.3 m³');
   assert.strictEqual(s.formatVolume(1234.6), '1235 m³');
+});
+
+/* ---------- Detailstufe nach Zoom ---------- */
+
+await test('Detailstufe nach Zoom: standardmäßig an, Schalter reicht an das Gelände-LOD durch', async function () {
+  const s = newScope();
+  s.initUI();
+  assert.strictEqual(s.__bridge.SETTINGS.autoDetail, true);
+  assert.strictEqual(s.isTerrainLodAuto(), true);
+  const box = s.document.getElementById('auto-detail');
+  box.checked = false;
+  box.fire('change');
+  assert.strictEqual(s.__bridge.SETTINGS.autoDetail, false);
+  assert.strictEqual(s.isTerrainLodAuto(), false);
+  box.checked = true;
+  box.fire('change');
+  assert.strictEqual(s.isTerrainLodAuto(), true);
+});
+
+await test('Detailstufe: Standard ist die höchste Stufe unterhalb von "Original" (900 Punkte), weil ferne Kacheln ohnehin gröber werden', function () {
+  const s = newScope();
+  assert.strictEqual(s.detailLimit(), 900);
 });
 
 /* ---------- Punktkoordinaten-Fenster ---------- */

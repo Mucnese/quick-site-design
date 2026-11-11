@@ -147,6 +147,7 @@
 
   .detail-row { margin-top: 8px; }
   .detail-row .det { color: var(--accent); font-size: 0.9em; }
+  .auto-row { display: flex; align-items: center; gap: 7px; margin-top: 6px; font-size: 0.8em; color: var(--text-dim); cursor: pointer; }
   #data.needs { border-color: var(--accent); }
   #data.needs .sec { color: var(--accent); }
   #data-note {
@@ -494,7 +495,8 @@
         <div class="file-status" id="dem-status">Keine Datei</div>
         <div class="detail-row">
           <div class="file-head"><span data-i18n="detail">Detailstufe</span><span class="det" id="detail-val">260 Punkte</span></div>
-          <input type="range" id="detail-slider" min="0" max="4" step="1" value="1">
+          <input type="range" id="detail-slider" min="0" max="4" step="1" value="3">
+          <label class="auto-row"><input type="checkbox" id="auto-detail" checked><span data-i18n="autoDetail">Nach Zoom anpassen (Stufe = Maximum)</span></label>
         </div>
       </div>
       <div class="file-row">

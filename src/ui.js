@@ -23,6 +23,7 @@ const STRINGS = {
     loadFirst: 'Zum Starten ein Geländemodell laden',
     terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
     detail: 'Detailstufe', original: 'Original', points: 'Punkte',
+    autoDetail: 'Nach Zoom anpassen (Stufe = Maximum)',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', area: 'Stellfläche', road: 'Baustraße',
@@ -90,6 +91,7 @@ const STRINGS = {
     loadFirst: 'Load a terrain model to begin',
     terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
     detail: 'Detail level', original: 'Original', points: 'points',
+    autoDetail: 'Adapt to zoom (level = maximum)',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', area: 'Footprint', road: 'Haul road',
@@ -268,7 +270,8 @@ const SETTINGS = {
   accent: null,
   layout: 'links',
   width: 250,
-  detail: 1,
+  detail: 3,           // höchste Detailstufe (900 Punkte); mit autoDetail nur bei Nähe
+  autoDetail: true,
   language: 'de'
 };
 
@@ -1783,6 +1786,16 @@ function initUI() {
     if (!isFinite(v)) return;
     SETTINGS.detail = v;
     document.getElementById('detail-val').textContent = detailLabel();
+  });
+
+  // Automatische Detailstufe nach Zoom: die Stufe oben ist dann das Maximum,
+  // das nur nahe Geländeteile bekommen
+  const auto = document.getElementById('auto-detail');
+  auto.checked = SETTINGS.autoDetail;
+  setTerrainLodAuto(SETTINGS.autoDetail);
+  auto.addEventListener('change', function () {
+    SETTINGS.autoDetail = auto.checked;
+    setTerrainLodAuto(auto.checked);
   });
 
   document.getElementById('gml-clear').addEventListener('click', function () {

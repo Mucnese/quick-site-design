@@ -114,6 +114,7 @@ app.js
   filletPath / buildRoad / roadInfo   Baustraße
   computeRoad / autoRoadSlope         Längsneigung, Böschung 1:1, Auftrag/Abtrag
   raycastPivot / orbitAround          Drehen um den angeklickten Punkt
+  chunkGeometry / updateTerrainLod    Gelände-Kacheln mit Detailstufe nach Zoom
   showRoadNodes / moveRoadNode        Stützpunkte bearbeiten
   addObject / rebuildObject / moveObject / removeObject
   selectObjects / frameObjects / focusOnPoint / updateControls
