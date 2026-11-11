@@ -476,7 +476,6 @@
     <div class="kv"><span class="k" data-i18n="objects">Objekte</span><span class="v" id="stat-objects">0</span></div>
     <div class="kv"><span class="k" data-i18n="containers">Container</span><span class="v" id="stat-containers">0</span></div>
     <div class="kv"><span class="k" data-i18n="cranes">Krane</span><span class="v" id="stat-cranes">0</span></div>
-    <div class="kv"><span class="k" data-i18n="area">Stellfläche</span><span class="v" id="stat-area">0 m2</span></div>
     <div class="kv"><span class="k" data-i18n="road">Baustraße</span><span class="v" id="stat-road">0 m</span></div>
     <div id="warning"></div>
     <div id="overview-list"></div>
@@ -3092,18 +3091,17 @@ function clearGhost() {
    Kennzahlen
    ========================================================= */
 function computeStats() {
-  let containers = 0, towers = 0, mobiles = 0, area = 0, roadLength = 0;
+  let containers = 0, towers = 0, mobiles = 0, roadLength = 0;
   for (let i = 0; i < objects.length; i++) {
     const o = objects[i];
     if (o.type === 'container') {
       const lay = containerLayout(o.params);
       containers += lay.count;
-      area += lay.w * lay.d;
     } else if (o.type === 'tower') towers++;
     else if (o.type === 'mobile') mobiles++;
     else if (o.type === 'road') roadLength += roadInfo(o.params).length;
   }
-  return { containers: containers, towers: towers, mobiles: mobiles, area: area,
+  return { containers: containers, towers: towers, mobiles: mobiles,
            roadLength: roadLength, total: objects.length };
 }
 
@@ -3455,7 +3453,7 @@ const STRINGS = {
     terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
-    cranes: 'Krane', area: 'Stellfläche', road: 'Baustraße',
+    cranes: 'Krane', road: 'Baustraße',
     nothingPlaced: 'Noch nichts platziert',
     nothingSelected: 'Kein Baustein gewählt',
     pickHint: 'Baustein unten wählen oder ein platziertes Objekt anklicken.',
@@ -3521,7 +3519,7 @@ const STRINGS = {
     terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
-    cranes: 'Cranes', area: 'Footprint', road: 'Haul road',
+    cranes: 'Cranes', road: 'Haul road',
     nothingPlaced: 'Nothing placed yet',
     nothingSelected: 'No item selected',
     pickHint: 'Pick an item below or click a placed object.',
@@ -4396,7 +4394,6 @@ function renderOverview() {
   document.getElementById('stat-objects').textContent = s.total;
   document.getElementById('stat-containers').textContent = s.containers;
   document.getElementById('stat-cranes').textContent = (s.towers + s.mobiles);
-  document.getElementById('stat-area').textContent = Math.round(s.area) + ' m2';
   document.getElementById('stat-road').textContent = Math.round(s.roadLength) + ' m';
 
   const list = document.getElementById('overview-list');

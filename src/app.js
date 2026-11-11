@@ -2498,18 +2498,17 @@ function clearGhost() {
    Kennzahlen
    ========================================================= */
 function computeStats() {
-  let containers = 0, towers = 0, mobiles = 0, area = 0, roadLength = 0;
+  let containers = 0, towers = 0, mobiles = 0, roadLength = 0;
   for (let i = 0; i < objects.length; i++) {
     const o = objects[i];
     if (o.type === 'container') {
       const lay = containerLayout(o.params);
       containers += lay.count;
-      area += lay.w * lay.d;
     } else if (o.type === 'tower') towers++;
     else if (o.type === 'mobile') mobiles++;
     else if (o.type === 'road') roadLength += roadInfo(o.params).length;
   }
-  return { containers: containers, towers: towers, mobiles: mobiles, area: area,
+  return { containers: containers, towers: towers, mobiles: mobiles,
            roadLength: roadLength, total: objects.length };
 }
 

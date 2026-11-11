@@ -24,7 +24,7 @@ const STRINGS = {
     terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
-    cranes: 'Krane', area: 'Stellfläche', road: 'Baustraße',
+    cranes: 'Krane', road: 'Baustraße',
     nothingPlaced: 'Noch nichts platziert',
     nothingSelected: 'Kein Baustein gewählt',
     pickHint: 'Baustein unten wählen oder ein platziertes Objekt anklicken.',
@@ -90,7 +90,7 @@ const STRINGS = {
     terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
-    cranes: 'Cranes', area: 'Footprint', road: 'Haul road',
+    cranes: 'Cranes', road: 'Haul road',
     nothingPlaced: 'Nothing placed yet',
     nothingSelected: 'No item selected',
     pickHint: 'Pick an item below or click a placed object.',
@@ -965,7 +965,6 @@ function renderOverview() {
   document.getElementById('stat-objects').textContent = s.total;
   document.getElementById('stat-containers').textContent = s.containers;
   document.getElementById('stat-cranes').textContent = (s.towers + s.mobiles);
-  document.getElementById('stat-area').textContent = Math.round(s.area) + ' m2';
   document.getElementById('stat-road').textContent = Math.round(s.roadLength) + ' m';
 
   const list = document.getElementById('overview-list');
