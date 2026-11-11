@@ -237,7 +237,17 @@
     color: var(--text); font-size: 0.9em; font-family: inherit; outline: none;
   }
   input[type=number]:focus, select:focus { border-color: var(--accent); }
-  input.field-num, input.tw-num { flex: 0 0 62px; width: 62px; padding: 3px 5px; text-align: right; font-variant-numeric: tabular-nums; }
+  /* Zahlenfeld neben dem Regler: nur eine Linie, ohne Kasten und Pfeile */
+  input.field-num, input.tw-num {
+    flex: 0 0 50px; width: 50px; padding: 2px 1px; text-align: right;
+    background: transparent; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0;
+    color: var(--text); font-size: 0.9em; font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield; appearance: textfield; transition: border-color 0.15s, color 0.15s;
+  }
+  input.field-num::-webkit-inner-spin-button, input.field-num::-webkit-outer-spin-button,
+  input.tw-num::-webkit-inner-spin-button, input.tw-num::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input.field-num:hover, input.tw-num:hover { border-bottom-color: var(--text-dim); }
+  input.field-num:focus, input.tw-num:focus { border-bottom-color: var(--accent); color: var(--accent); background: transparent; }
   select option { background: #1a1d20; color: #e6e9ea; }
   input[type=checkbox] { width: 13px; height: 13px; accent-color: var(--accent); cursor: pointer; }
 
@@ -314,9 +324,10 @@
   #hints b { color: var(--text); font-weight: normal; }
 
   #road-hint {
-    display: none; position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    display: none; position: fixed; top: max(170px, 18vh); left: 50%; transform: translateX(-50%);
     background: var(--panel-bg); border: 1px dashed var(--accent); border-radius: var(--radius);
-    padding: 6px 14px; font-size: 0.84em; color: var(--accent); z-index: 8; white-space: nowrap;
+    padding: 11px 24px; font-size: 1.12em; letter-spacing: 0.01em; color: var(--accent); z-index: 8; white-space: nowrap;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
 
