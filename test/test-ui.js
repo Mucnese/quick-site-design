@@ -526,6 +526,26 @@ await test('Detailstufe: kein Regler und kein Schalter mehr, das Gelände nutzt 
   assert.strictEqual(s.detailLimit, undefined);
 });
 
+/* ---------- Darstellung: Fensterbreite ab 150 px, keine Anordnungswahl ---------- */
+
+function allInputs(el, out) {
+  (el.children || []).forEach(function (c) { if (c.type) out.push(c); allInputs(c, out); });
+  return out;
+}
+
+await test('Darstellung: Fensterbreite reicht von 150 bis 400 px, die Anordnung (Werkzeuge links/rechts) gibt es nicht mehr', function () {
+  const s = newScope();
+  s.toggleTweak(true);
+  const body = s.document.getElementById('tweak-body');
+  const ranges = allInputs(body, []).filter(function (i) { return i.type === 'range'; });
+  const width = ranges.filter(function (i) { return i.className === 'tw-slider' && i.max === 400; })[0];
+  assert.ok(width, 'Regler für die Fensterbreite fehlt');
+  assert.strictEqual(width.min, 150);
+  assert.strictEqual(s.__bridge.SETTINGS.layout, undefined);
+  const txt = body.textContent;
+  assert.ok(txt.indexOf('Werkzeuge links') < 0 && txt.indexOf('Anordnung') < 0, txt);
+});
+
 /* ---------- Geoportale-Link im Datenfenster ---------- */
 
 await test('Geoportale: Link neben "Daten" führt auf die Tabelle im README der jeweiligen Sprache', function () {

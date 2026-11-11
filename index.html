@@ -62,8 +62,9 @@
     color: var(--text-dim2); padding: 7px 11px;
     border-bottom: 1px solid var(--border);
     display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 4px 8px;   /* schmale Fenster (ab 150 px): Aktion rutscht in die nächste Zeile */
   }
-  .sec .act { color: var(--accent); cursor: pointer; letter-spacing: 0.08em; }
+  .sec .act { color: var(--accent); cursor: pointer; letter-spacing: 0.08em; white-space: nowrap; }
   .sec .act:hover { text-decoration: underline; }
   /* Link nach außen als Knopf: Rahmen und Pfeil, damit er sich vom Beschriftungstext abhebt */
   .sec a.act {
@@ -83,8 +84,6 @@
   }
   #col-left { left: 14px; }
   #col-right { right: 14px; display: none; }
-  body.swapped #col-left { left: auto; right: 14px; }
-  body.swapped #col-right { right: auto; left: 14px; }
   #col-left > *, #col-right > * { pointer-events: auto; }
 
   #overview { flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; }
@@ -94,9 +93,9 @@
   }
   #tile-sub { font-size: 0.8em; color: var(--text-dim2); padding: 2px 11px 8px; }
 
-  .kv { display: flex; justify-content: space-between; padding: 3px 11px; font-size: 0.88em; }
+  .kv { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0 8px; padding: 3px 11px; font-size: 0.88em; }
   .kv .k { color: var(--text-dim); }
-  .kv .v { font-variant-numeric: tabular-nums; }
+  .kv .v { font-variant-numeric: tabular-nums; margin-left: auto; text-align: right; }
 
   #overview-list { overflow-y: auto; border-top: 1px solid var(--border); margin-top: 7px; }
   .grp-row {
@@ -137,7 +136,7 @@
   .file-row { margin-bottom: 9px; }
   .file-row:last-child { margin-bottom: 0; }
   .file-head {
-    display: flex; justify-content: space-between; align-items: baseline;
+    display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0 8px;
     font-size: 0.86em; color: var(--text-dim); margin-bottom: 4px;
   }
   .file-head .act { color: var(--accent); cursor: pointer; font-size: 0.9em; }
@@ -326,7 +325,6 @@
     position: fixed; bottom: 14px; left: 14px;
     display: flex; gap: 8px; pointer-events: none; z-index: 4;
   }
-  body.swapped #footer { left: auto; right: 14px; }
   #cursor-info, #hints, #crs-info, #acc-info, #unit-info {
     background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 6px 11px; font-size: 0.84em; color: var(--text-dim);
@@ -359,7 +357,6 @@
     position: fixed; right: 14px; bottom: 14px; z-index: 21;
     display: flex; gap: 5px; align-items: stretch;
   }
-  body.swapped #btnbar { right: auto; left: 14px; }
   .lang-btn {
     background: var(--panel-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
     color: var(--text-dim); font-family: inherit; font-size: 0.8em;
@@ -383,7 +380,6 @@
     background: var(--panel-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   }
-  body.swapped #tweak-panel { right: auto; left: 14px; }
   #tweak-body { padding: 10px 11px; }
   .tw-row { margin-bottom: 13px; }
   .tw-row:last-child { margin-bottom: 0; }
@@ -441,7 +437,6 @@
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
   }
   #compass:hover { opacity: 1; color: var(--text); }
-  body.swapped #compass { right: auto; left: 14px; }
   #compass svg { width: 100%; height: 100%; display: block; }
 
   #about {
@@ -3513,8 +3508,8 @@ const STRINGS = {
     hintWheel: 'Mausrad', hintZoom: 'Zoom', hintEsc: 'Esc', hintCancel: 'Abbrechen',
     measureOn: 'Messpunkt auf', ground: 'Gelände', building: 'Gebäude',
     design: 'Design', font: 'Schriftart', fontSize: 'Schriftgröße',
-    accent: 'Akzentfarbe', layout: 'Anordnung', panelWidth: 'Fensterbreite',
-    language: 'Sprache', toolsLeft: 'Werkzeuge links', toolsRight: 'Werkzeuge rechts',
+    accent: 'Akzentfarbe', panelWidth: 'Fensterbreite',
+    language: 'Sprache',
     loading: 'Lade', reset: 'Zurücksetzen',
     tCont: 'Container', tContHint: 'Ab zwei Reihen liegt die zweite quer',
     tTower: 'Turmdrehkran', tTowerHint: 'Generisches Modell, Parameter frei einstellbar',
@@ -3582,8 +3577,8 @@ const STRINGS = {
     hintWheel: 'Wheel', hintZoom: 'Zoom', hintEsc: 'Esc', hintCancel: 'Cancel',
     measureOn: 'Measure point on', ground: 'terrain', building: 'building',
     design: 'Design', font: 'Typeface', fontSize: 'Text size',
-    accent: 'Accent colour', layout: 'Layout', panelWidth: 'Panel width',
-    language: 'Language', toolsLeft: 'Tools left', toolsRight: 'Tools right',
+    accent: 'Accent colour', panelWidth: 'Panel width',
+    language: 'Language',
     loading: 'Loading', reset: 'Reset',
     tCont: 'Containers', tContHint: 'From two rows the second lies crosswise',
     tTower: 'Tower crane', tTowerHint: 'Generic model, freely adjustable parameters',
@@ -3730,7 +3725,6 @@ const SETTINGS = {
   font: 'system',
   size: 12,
   accent: null,
-  layout: 'links',
   width: 250,
   language: 'de'
 };
@@ -3746,8 +3740,6 @@ function applySettings() {
   root.style.setProperty('--ui-font', f.stack);
   root.style.setProperty('--ui-size', SETTINGS.size + 'px');
   root.style.setProperty('--panel-w', SETTINGS.width + 'px');
-
-  document.body.className = SETTINGS.layout === 'rechts' ? 'swapped' : '';
 
   // Szenenhintergrund an das Design angleichen
   const sceneHex = parseInt((th.vars['--scene'] || '#0c2438').slice(1), 16);
@@ -3895,11 +3887,7 @@ function buildTweakPanel() {
     ACCENTS.map(function (c) { return { value: c, label: '', color: c }; }),
     SETTINGS.accent, function (v) { SETTINGS.accent = v; }));
 
-  body.appendChild(optionRow(T('layout'),
-    [{ value: 'links', label: T('toolsLeft') }, { value: 'rechts', label: T('toolsRight') }],
-    SETTINGS.layout, function (v) { SETTINGS.layout = v; }));
-
-  body.appendChild(sliderRow(T('panelWidth'), 250, 400, 10, SETTINGS.width, ' px',
+  body.appendChild(sliderRow(T('panelWidth'), 150, 400, 10, SETTINGS.width, ' px',
     function (v) { SETTINGS.width = v; }));
 }
 

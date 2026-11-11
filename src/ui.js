@@ -58,8 +58,8 @@ const STRINGS = {
     hintWheel: 'Mausrad', hintZoom: 'Zoom', hintEsc: 'Esc', hintCancel: 'Abbrechen',
     measureOn: 'Messpunkt auf', ground: 'Gelände', building: 'Gebäude',
     design: 'Design', font: 'Schriftart', fontSize: 'Schriftgröße',
-    accent: 'Akzentfarbe', layout: 'Anordnung', panelWidth: 'Fensterbreite',
-    language: 'Sprache', toolsLeft: 'Werkzeuge links', toolsRight: 'Werkzeuge rechts',
+    accent: 'Akzentfarbe', panelWidth: 'Fensterbreite',
+    language: 'Sprache',
     loading: 'Lade', reset: 'Zurücksetzen',
     tCont: 'Container', tContHint: 'Ab zwei Reihen liegt die zweite quer',
     tTower: 'Turmdrehkran', tTowerHint: 'Generisches Modell, Parameter frei einstellbar',
@@ -127,8 +127,8 @@ const STRINGS = {
     hintWheel: 'Wheel', hintZoom: 'Zoom', hintEsc: 'Esc', hintCancel: 'Cancel',
     measureOn: 'Measure point on', ground: 'terrain', building: 'building',
     design: 'Design', font: 'Typeface', fontSize: 'Text size',
-    accent: 'Accent colour', layout: 'Layout', panelWidth: 'Panel width',
-    language: 'Language', toolsLeft: 'Tools left', toolsRight: 'Tools right',
+    accent: 'Accent colour', panelWidth: 'Panel width',
+    language: 'Language',
     loading: 'Loading', reset: 'Reset',
     tCont: 'Containers', tContHint: 'From two rows the second lies crosswise',
     tTower: 'Tower crane', tTowerHint: 'Generic model, freely adjustable parameters',
@@ -275,7 +275,6 @@ const SETTINGS = {
   font: 'system',
   size: 12,
   accent: null,
-  layout: 'links',
   width: 250,
   language: 'de'
 };
@@ -291,8 +290,6 @@ function applySettings() {
   root.style.setProperty('--ui-font', f.stack);
   root.style.setProperty('--ui-size', SETTINGS.size + 'px');
   root.style.setProperty('--panel-w', SETTINGS.width + 'px');
-
-  document.body.className = SETTINGS.layout === 'rechts' ? 'swapped' : '';
 
   // Szenenhintergrund an das Design angleichen
   const sceneHex = parseInt((th.vars['--scene'] || '#0c2438').slice(1), 16);
@@ -440,11 +437,7 @@ function buildTweakPanel() {
     ACCENTS.map(function (c) { return { value: c, label: '', color: c }; }),
     SETTINGS.accent, function (v) { SETTINGS.accent = v; }));
 
-  body.appendChild(optionRow(T('layout'),
-    [{ value: 'links', label: T('toolsLeft') }, { value: 'rechts', label: T('toolsRight') }],
-    SETTINGS.layout, function (v) { SETTINGS.layout = v; }));
-
-  body.appendChild(sliderRow(T('panelWidth'), 250, 400, 10, SETTINGS.width, ' px',
+  body.appendChild(sliderRow(T('panelWidth'), 150, 400, 10, SETTINGS.width, ' px',
     function (v) { SETTINGS.width = v; }));
 }
 
