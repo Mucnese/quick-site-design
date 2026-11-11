@@ -709,6 +709,44 @@ test('Böschung 1:1: die Böschungsbreite am Streckenende entspricht der Höhe �
   assert.strictEqual(rd.earthworks.unreached, 0);
 });
 
+test('Böschung wählbar: 1:1, 1:1.5 und 1:2 ergeben das nachgerechnete Volumen (Querschnitt = Breite*H + n*H²)', function () {
+  roadTerrain(0);
+  assert.deepStrictEqual(app.EMBANKMENT_CHOICES, [1, 1.5, 2]);
+  const L = 100, w = 6;
+  [1, 1.5, 2].forEach(function (n) {
+    const p = roadAlongX(5); p.embank = n;
+    const rd = app.computeRoad(p);
+    const expected = w * 0.05 * L * L / 2 + n * 0.0025 * L * L * L / 3;
+    assert.ok(Math.abs(rd.earthworks.fill - expected) / expected < 0.01,
+      '1:' + n + ': Auftrag ' + rd.earthworks.fill.toFixed(1) + ' statt ' + expected.toFixed(1));
+    assert.ok(Math.abs(rd.earthworks.maxReach - n * 5) < 0.4, '1:' + n + ': Reichweite ' + rd.earthworks.maxReach);
+    assert.strictEqual(rd.earthworks.embank, n);
+  });
+});
+
+test('Böschung: flachere Neigung braucht mehr Material und reicht weiter (Auftrag und Abtrag)', function () {
+  roadTerrain(0);
+  [5, -5].forEach(function (slope) {
+    const vol = [1, 1.5, 2].map(function (n) {
+      const p = roadAlongX(slope); p.embank = n;
+      const ew = app.computeRoad(p).earthworks;
+      return { v: slope > 0 ? ew.fill : ew.cut, reach: ew.maxReach };
+    });
+    assert.ok(vol[0].v < vol[1].v && vol[1].v < vol[2].v, 'Menge nicht monoton bei ' + slope + ' %: ' + JSON.stringify(vol));
+    assert.ok(vol[0].reach < vol[1].reach && vol[1].reach < vol[2].reach);
+  });
+});
+
+test('Böschung: ohne oder mit ungültigem Wert gilt 1:1 (alte Straßen, kaputte Eingaben)', function () {
+  roadTerrain(0);
+  assert.strictEqual(app.defaultRoadParams().embank, 1);
+  const ref = app.computeRoad(roadAlongX(5)).earthworks.fill;
+  [undefined, null, 0, -2, 'x', NaN].forEach(function (bad) {
+    const p = roadAlongX(5); p.embank = bad;
+    assert.strictEqual(app.computeRoad(p).earthworks.fill, ref, String(bad));
+  });
+});
+
 test('Straße genau auf dem Gelände: keine Böschung, Mengen null', function () {
   roadTerrain(0);
   const g = app.buildRoad(roadAlongX(0));

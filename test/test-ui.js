@@ -464,8 +464,34 @@ await test('Baustraße: Auftrag und Abtrag samt Böschungshinweis stehen im Eige
   const txt = el.textContent;
   assert.ok(txt.indexOf(s.T('fill')) >= 0 && txt.indexOf(s.T('cut')) >= 0, txt);
   assert.ok(txt.indexOf('m³') > 0, txt);
-  assert.ok(txt.indexOf(s.T('embankment')) >= 0, txt);
+  assert.ok(txt.indexOf(s.T('embankment').replace('{r}', '1:1')) >= 0, txt);
   assert.ok(obj.group.userData.earthworks.fill > 0, 'bei +5 % auf ebenem Gelände muss Auftrag entstehen');
+});
+
+await test('Böschung: Auswahlliste 1:1, 1:1.5, 1:2 im Straßen-Editor, liefert Zahlen und steht hinter den Reglern', function () {
+  const s = newScope(), calls = [];
+  const p = s.defaultRoadParams();
+  const form = s.buildForm('road', p, function (k, v) { calls.push([k, v]); }, true);
+  const r = form.refs.embank;
+  assert.ok(r, 'Feld "embank" fehlt');
+  assert.deepStrictEqual(r.input.children.map(function (o) { return o.textContent; }), ['1 : 1', '1 : 1.5', '1 : 2']);
+  r.input.value = '1.5';
+  r.input.fire('change');
+  assert.deepStrictEqual(calls, [['embank', 1.5]]);
+  const kids = form.element.children;
+  assert.ok(kids.indexOf(r.row) > kids.indexOf(form.refs.slope.row), 'Auswahl gehört hinter die Regler, nicht davor');
+  // auch im Werkzeugfenster vor dem Setzen
+  assert.ok(s.buildForm('road', p, function () {}, false).refs.embank);
+});
+
+await test('Böschung: der Hinweis im Eigenschaftsfenster nennt die gewählte Neigung', function () {
+  const s = newScope();
+  const obj = roadObject(s, 5);
+  obj.params.embank = 2;
+  s.rebuildObject(obj);
+  const el = s.document.createElement('div');
+  s.renderRoadEarth(obj, el);
+  assert.ok(el.textContent.indexOf(s.T('embankment').replace('{r}', '1:2')) >= 0, el.textContent);
 });
 
 await test('formatVolume: unter 10 m³ eine Nachkommastelle, darüber ganze Kubikmeter', function () {

@@ -48,7 +48,7 @@ Browser.
 - Baustraßen als Polygonzug mit ausgerundeten Ecken und konstanter Längsneigung
   (Regler in %, vorbelegt aus Anfangs- und Endhöhe im Gelände). Länge und Fläche
   stehen im Eigenschaftsfenster. Wo die Fahrbahn über oder unter dem Gelände
-  liegt, schließt eine Böschung 1:1 an; Auftrag und Abtrag erscheinen in m³
+  liegt, schließt eine Böschung an (1:1, 1:1,5 oder 1:2 wählbar); Auftrag und Abtrag erscheinen in m³
   (Mittelflächenverfahren). Bei Auswahl erscheinen die Stützpunkte und lassen
   sich versetzen oder löschen.
 

@@ -112,7 +112,7 @@ app.js
   containerLayout / buildContainer    Containeranlage samt Verbindungsbau
   buildTowerCrane / buildMobileCrane  Krane
   filletPath / buildRoad / roadInfo   Baustraße
-  computeRoad / autoRoadSlope         Längsneigung, Böschung 1:1, Auftrag/Abtrag
+  computeRoad / autoRoadSlope         Längsneigung, Böschung (1:n), Auftrag/Abtrag
   raycastPivot / orbitAround          Drehen um den angeklickten Punkt
   chunkGeometry / updateTerrainLod    Gelände-Kacheln mit Detailstufe nach Zoom
   showRoadNodes / moveRoadNode        Stützpunkte bearbeiten

@@ -135,7 +135,8 @@ bleibt.
 **Baustraße.** Konstante Längsneigung (`params.slope`, in %), keine Querneigung,
 Start auf der Geländehöhe des ersten Punkts. Die Neigung wird beim Setzen und
 bei jeder Punktänderung neu aus dem Gelände abgeleitet (`autoRoadSlope`), der
-Regler überschreibt sie danach. Böschung fest 1:1; Auftrag und Abtrag aus dem
+Regler überschreibt sie danach. Böschung wählbar 1:1, 1:1,5 oder 1:2
+(`params.embank` = n m Breite je 1 m Höhe, Standard und Rückfall 1:1); Auftrag und Abtrag aus dem
 Mittelflächenverfahren in `computeRoad`. Alles Volumen stammt aus dieser einen
 Funktion – nicht in der Oberfläche nachrechnen.
 

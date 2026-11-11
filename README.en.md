@@ -47,7 +47,7 @@ browser.
 - Haul roads as a polyline with filleted corners and a constant longitudinal
   slope (slider in %, preset from the start and end elevation on the terrain).
   Length and area are shown in the properties window. Where the carriageway
-  lies above or below the terrain, a 1:1 embankment joins it; fill and cut are
+  lies above or below the terrain, an embankment joins it (1:1, 1:1.5 or 1:2, selectable); fill and cut are
   listed in m³ (average end area method). Selecting a road reveals its nodes,
   which can be moved or deleted.
 

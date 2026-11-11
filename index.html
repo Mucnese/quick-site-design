@@ -2079,7 +2079,7 @@ function thickLine(points, width, material, closed) {
    wie nötig und das Ergebnis gemeldet.
    ========================================================= */
 function defaultRoadParams() {
-  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null };
+  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null, embank: 1 };
 }
 
 function dist2d(a, b) {
@@ -2183,12 +2183,17 @@ function pathLength(path) {
    Die Straße hat eine konstante Längsneigung (in %, positiv = steigt vom
    ersten zum letzten Punkt) und keine Querneigung. Sie beginnt auf der
    Geländehöhe des ersten Punkts; liegt die Fahrbahn über oder unter dem
-   Gelände, schließt eine Böschung mit 1:1 (45°) vom Fahrbahnrand bis zum
-   Gelände an - Auftrag, wenn die Straße darüber liegt, Abtrag darunter.
+   Gelände, schließt eine Böschung (1:1, 1:1,5 oder 1:2 - Höhe zu Breite,
+   Standard 1:1 = 45°) vom Fahrbahnrand bis zum Gelände an - Auftrag, wenn
+   die Straße darüber liegt, Abtrag darunter.
    Die Mengen sind das Mittel der Querschnittsflächen mal Abstand
    (Mittelflächenverfahren); in engen Kurven weicht der Innenrand davon ab. */
 const ROAD_SLOPE_MAX = 30;      // einstellbare Längsneigung, ± Prozent
-const EMBANKMENT_RATIO = 1;     // Böschung 1:1 = 1 m Höhe je 1 m Breite
+const EMBANKMENT_CHOICES = [1, 1.5, 2];   // Böschung 1:n: n m Breite je 1 m Höhe
+function embankmentOf(p) {
+  const n = p && p.embank;
+  return (typeof n === 'number' && isFinite(n) && n > 0) ? n : 1;
+}
 const EMBANKMENT_REACH = 80;    // weiter sucht die Böschung nicht nach dem Gelände
 const EMBANKMENT_STEP = 0.5;    // Suchschritt quer zur Straße
 const ROAD_LIFT = 0.05;         // gegen Flimmern auf dem Gelände
@@ -2226,8 +2231,8 @@ function autoRoadSlope(p) {
 }
 
 /* Böschung einer Seite: sucht vom Fahrbahnrand nach außen den ersten
-   Schnitt der 1:1-Linie mit dem Gelände. */
-function embankmentSide(f, sign, hr, half) {
+   Schnitt der 1:n-Linie mit dem Gelände (n m Breite je 1 m Höhe). */
+function embankmentSide(f, sign, hr, half, n) {
   const ex = f.x + sign * f.nx * half, ez = f.z + sign * f.nz * half;
   const diff0 = hr - getHeightAt(ex, ez);
   const side = { type: 'none', ex: ex, ez: ez, ox: ex, oz: ez, oh: hr, reach: 0, area: 0, reached: true };
@@ -2240,7 +2245,7 @@ function embankmentSide(f, sign, hr, half) {
   side.reached = false;
   for (let d = EMBANKMENT_STEP; d <= EMBANKMENT_REACH + 1e-9; d += EMBANKMENT_STEP) {
     const qx = ex + sign * f.nx * d, qz = ez + sign * f.nz * d;
-    const hs = hr + dir * d * EMBANKMENT_RATIO;
+    const hs = hr + dir * d / n;
     const diff = hs - getHeightAt(qx, qz);
     const crossed = fill ? diff <= 0 : diff >= 0;
     if (crossed) {
@@ -2258,7 +2263,7 @@ function embankmentSide(f, sign, hr, half) {
   side.area = area;
   side.ox = ex + sign * f.nx * side.reach;
   side.oz = ez + sign * f.nz * side.reach;
-  side.oh = hr + dir * side.reach * EMBANKMENT_RATIO;
+  side.oh = hr + dir * side.reach / n;
   return side;
 }
 
@@ -2271,11 +2276,12 @@ function computeRoad(p) {
   const length = frames.length ? frames[frames.length - 1].s : 0;
   const slope = (typeof p.slope === 'number' && isFinite(p.slope)) ? p.slope : autoRoadSlope(p);
   const h0 = getHeightAt(rp.path[0].x, rp.path[0].z);
+  const embN = embankmentOf(p);
 
   const sections = frames.map(function (f) {
     const hr = h0 + slope / 100 * f.s;
-    const left = embankmentSide(f, 1, hr, half);
-    const right = embankmentSide(f, -1, hr, half);
+    const left = embankmentSide(f, 1, hr, half, embN);
+    const right = embankmentSide(f, -1, hr, half, embN);
 
     // Fahrbahnstreifen: Über-/Unterschuss gegenüber dem Gelände quer abtasten
     const n = Math.max(2, Math.ceil(width / 0.5));
@@ -2309,14 +2315,14 @@ function computeRoad(p) {
   return {
     fil: rp.fil, path: rp.path, width: width, half: half, length: length,
     area: length * width, slope: slope, h0: h0, sections: sections,
-    earthworks: { fill: fill, cut: cut, maxReach: maxReach, unreached: unreached }
+    earthworks: { fill: fill, cut: cut, maxReach: maxReach, unreached: unreached, embank: embN }
   };
 }
 
 /* Im Abtrag liegen Böschung und Fahrbahn unter dem Gelände und wären nicht
    zu sehen. Deshalb zusätzlich: Böschung und eingegrabene Fahrbahn als
    halbtransparente Fläche ohne Tiefentest über dem Gelände, dazu eine helle
-   Linie an der Böschungsoberkante (dort, wo die 1:1-Linie das Gelände
+   Linie an der Böschungsoberkante (dort, wo die Böschungslinie das Gelände
    schneidet). Das ist eine Darstellungshilfe - die Mengen bleiben unberührt. */
 function addCutOverlay(g, secs, ePos, cutIdx) {
   if (cutIdx.length) {
@@ -3530,7 +3536,7 @@ const STRINGS = {
     roadSet: 'gesetzt', roadFinish: 'Leertaste beendet, Esc bricht ab',
     long: 'lang', tightest: 'engster Radius', curvesTight: 'Kurve(n) enger als gewünscht',
     fSlope: 'Längsneigung', area: 'Fläche', fill: 'Auftrag', cut: 'Abtrag',
-    embankment: 'Böschung 1:1 bis zum Gelände', embankFar: 'Böschung erreicht das Gelände nicht (Grenze 80 m)',
+    fEmbank: 'Böschung', embankment: 'Böschung {r} bis zum Gelände', embankFar: 'Böschung erreicht das Gelände nicht (Grenze 80 m)',
     conflict1: 'Kranradien überschneiden sich um', conflictN: 'Überschneidungen von Kranradien',
     nodeHint: 'Stützpunkt anklicken, dann neue Position im Gelände wählen.', nodePicked: 'Stützpunkt gewählt. Neue Position anklicken.', nodeMoved: 'Stützpunkt verschoben.', nodePickFirst: 'Zuerst einen Stützpunkt anklicken.', nodeMinTwo: 'Eine Baustraße braucht mindestens zwei Stützpunkte.', delNode: 'Punkt löschen'
   },
@@ -3599,7 +3605,7 @@ const STRINGS = {
     roadSet: 'set', roadFinish: 'space finishes, Esc cancels',
     long: 'long', tightest: 'tightest radius', curvesTight: 'curve(s) tighter than requested',
     fSlope: 'Longitudinal slope', area: 'area', fill: 'Fill', cut: 'Cut',
-    embankment: 'Embankment 1:1 to the ground', embankFar: 'Embankment does not reach the ground (80 m limit)',
+    fEmbank: 'Embankment', embankment: 'Embankment {r} to the ground', embankFar: 'Embankment does not reach the ground (80 m limit)',
     conflict1: 'Crane radii overlap by', conflictN: 'overlapping crane radii',
     nodeHint: 'Click a node, then pick its new position on the terrain.', nodePicked: 'Node selected. Click the new position.', nodeMoved: 'Node moved.', nodePickFirst: 'Select a node first.', nodeMinTwo: 'A haul road needs at least two nodes.', delNode: 'Delete node'
   }
@@ -3659,6 +3665,8 @@ const SCHEMAS = {
     { key: 'radius',   label: 'fMinRadius', type: 'range', min: 5, max: 60, step: 1, unit: 'm' },
     // Nur im Editor: vor dem Setzen gibt es noch keine Punkte, aus denen die Neigung folgt
     { key: 'slope',    label: 'fSlope',     type: 'range', min: -30, max: 30, step: 0.1, unit: '%', editorOnly: true },
+    { key: 'embank',   label: 'fEmbank',    type: 'choice', options: [
+      { value: 1, label: '1 : 1' }, { value: 1.5, label: '1 : 1.5' }, { value: 2, label: '1 : 2' }] },
     { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' }
   ]
 };
@@ -3967,6 +3975,17 @@ function makeRow(field, value, onChange) {
     });
     input.value = value;
     input.addEventListener('change', function () { onChange(field.key, input.value); });
+  } else if (field.type === 'choice') {
+    // Feste Zahlenwerte als Auswahlliste (z. B. Böschung 1:1, 1:1,5, 1:2)
+    input = document.createElement('select');
+    field.options.forEach(function (o) {
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.label;
+      input.appendChild(opt);
+    });
+    input.value = value;
+    input.addEventListener('change', function () { onChange(field.key, parseFloat(input.value)); });
   } else if (field.type === 'checkbox') {
     input = document.createElement('input');
     input.type = 'checkbox';
@@ -4012,7 +4031,7 @@ function formatVal(v, unit) {
 }
 
 /* Reihenfolge im Formular: Auswahl, Schieberegler, Zahlenfelder, Schalter */
-const FIELD_ORDER = { select: 0, range: 1, number: 2, checkbox: 3 };
+const FIELD_ORDER = { select: 0, range: 1, number: 2, choice: 2, checkbox: 3 };
 
 function fieldRank(type) {
   // Achtung: select hat den Rang 0, deshalb kein ||-Kurzschluss
@@ -4055,7 +4074,7 @@ function syncForm(refs, values) {
     if (!r) return;
     const v = values[k];
     if (r.field.type === 'checkbox') r.input.checked = v !== false;
-    else if (r.field.type === 'select') r.input.value = v;
+    else if (r.field.type === 'select' || r.field.type === 'choice') r.input.value = v;
     else {
       r.input.value = v;
       if (r.num) { r.num.value = v; r.num.min = r.input.min; r.num.max = r.input.max; }
@@ -4377,7 +4396,7 @@ function renderRoadEarth(obj, el) {
   });
   const note = document.createElement('div');
   note.className = 'earth-note';
-  note.textContent = T('embankment') + (ew.unreached ? ' · ' + T('embankFar') : '');
+  note.textContent = T('embankment').replace('{r}', '1:' + ew.embank) + (ew.unreached ? ' · ' + T('embankFar') : '');
   el.appendChild(note);
 }
 

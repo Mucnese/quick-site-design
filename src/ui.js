@@ -80,7 +80,7 @@ const STRINGS = {
     roadSet: 'gesetzt', roadFinish: 'Leertaste beendet, Esc bricht ab',
     long: 'lang', tightest: 'engster Radius', curvesTight: 'Kurve(n) enger als gewünscht',
     fSlope: 'Längsneigung', area: 'Fläche', fill: 'Auftrag', cut: 'Abtrag',
-    embankment: 'Böschung 1:1 bis zum Gelände', embankFar: 'Böschung erreicht das Gelände nicht (Grenze 80 m)',
+    fEmbank: 'Böschung', embankment: 'Böschung {r} bis zum Gelände', embankFar: 'Böschung erreicht das Gelände nicht (Grenze 80 m)',
     conflict1: 'Kranradien überschneiden sich um', conflictN: 'Überschneidungen von Kranradien',
     nodeHint: 'Stützpunkt anklicken, dann neue Position im Gelände wählen.', nodePicked: 'Stützpunkt gewählt. Neue Position anklicken.', nodeMoved: 'Stützpunkt verschoben.', nodePickFirst: 'Zuerst einen Stützpunkt anklicken.', nodeMinTwo: 'Eine Baustraße braucht mindestens zwei Stützpunkte.', delNode: 'Punkt löschen'
   },
@@ -149,7 +149,7 @@ const STRINGS = {
     roadSet: 'set', roadFinish: 'space finishes, Esc cancels',
     long: 'long', tightest: 'tightest radius', curvesTight: 'curve(s) tighter than requested',
     fSlope: 'Longitudinal slope', area: 'area', fill: 'Fill', cut: 'Cut',
-    embankment: 'Embankment 1:1 to the ground', embankFar: 'Embankment does not reach the ground (80 m limit)',
+    fEmbank: 'Embankment', embankment: 'Embankment {r} to the ground', embankFar: 'Embankment does not reach the ground (80 m limit)',
     conflict1: 'Crane radii overlap by', conflictN: 'overlapping crane radii',
     nodeHint: 'Click a node, then pick its new position on the terrain.', nodePicked: 'Node selected. Click the new position.', nodeMoved: 'Node moved.', nodePickFirst: 'Select a node first.', nodeMinTwo: 'A haul road needs at least two nodes.', delNode: 'Delete node'
   }
@@ -209,6 +209,8 @@ const SCHEMAS = {
     { key: 'radius',   label: 'fMinRadius', type: 'range', min: 5, max: 60, step: 1, unit: 'm' },
     // Nur im Editor: vor dem Setzen gibt es noch keine Punkte, aus denen die Neigung folgt
     { key: 'slope',    label: 'fSlope',     type: 'range', min: -30, max: 30, step: 0.1, unit: '%', editorOnly: true },
+    { key: 'embank',   label: 'fEmbank',    type: 'choice', options: [
+      { value: 1, label: '1 : 1' }, { value: 1.5, label: '1 : 1.5' }, { value: 2, label: '1 : 2' }] },
     { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' }
   ]
 };
@@ -517,6 +519,17 @@ function makeRow(field, value, onChange) {
     });
     input.value = value;
     input.addEventListener('change', function () { onChange(field.key, input.value); });
+  } else if (field.type === 'choice') {
+    // Feste Zahlenwerte als Auswahlliste (z. B. Böschung 1:1, 1:1,5, 1:2)
+    input = document.createElement('select');
+    field.options.forEach(function (o) {
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.label;
+      input.appendChild(opt);
+    });
+    input.value = value;
+    input.addEventListener('change', function () { onChange(field.key, parseFloat(input.value)); });
   } else if (field.type === 'checkbox') {
     input = document.createElement('input');
     input.type = 'checkbox';
@@ -562,7 +575,7 @@ function formatVal(v, unit) {
 }
 
 /* Reihenfolge im Formular: Auswahl, Schieberegler, Zahlenfelder, Schalter */
-const FIELD_ORDER = { select: 0, range: 1, number: 2, checkbox: 3 };
+const FIELD_ORDER = { select: 0, range: 1, number: 2, choice: 2, checkbox: 3 };
 
 function fieldRank(type) {
   // Achtung: select hat den Rang 0, deshalb kein ||-Kurzschluss
@@ -605,7 +618,7 @@ function syncForm(refs, values) {
     if (!r) return;
     const v = values[k];
     if (r.field.type === 'checkbox') r.input.checked = v !== false;
-    else if (r.field.type === 'select') r.input.value = v;
+    else if (r.field.type === 'select' || r.field.type === 'choice') r.input.value = v;
     else {
       r.input.value = v;
       if (r.num) { r.num.value = v; r.num.min = r.input.min; r.num.max = r.input.max; }
@@ -927,7 +940,7 @@ function renderRoadEarth(obj, el) {
   });
   const note = document.createElement('div');
   note.className = 'earth-note';
-  note.textContent = T('embankment') + (ew.unreached ? ' · ' + T('embankFar') : '');
+  note.textContent = T('embankment').replace('{r}', '1:' + ew.embank) + (ew.unreached ? ' · ' + T('embankFar') : '');
   el.appendChild(note);
 }
 

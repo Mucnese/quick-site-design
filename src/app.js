@@ -1478,7 +1478,7 @@ function thickLine(points, width, material, closed) {
    wie nötig und das Ergebnis gemeldet.
    ========================================================= */
 function defaultRoadParams() {
-  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null };
+  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null, embank: 1 };
 }
 
 function dist2d(a, b) {
@@ -1582,12 +1582,17 @@ function pathLength(path) {
    Die Straße hat eine konstante Längsneigung (in %, positiv = steigt vom
    ersten zum letzten Punkt) und keine Querneigung. Sie beginnt auf der
    Geländehöhe des ersten Punkts; liegt die Fahrbahn über oder unter dem
-   Gelände, schließt eine Böschung mit 1:1 (45°) vom Fahrbahnrand bis zum
-   Gelände an - Auftrag, wenn die Straße darüber liegt, Abtrag darunter.
+   Gelände, schließt eine Böschung (1:1, 1:1,5 oder 1:2 - Höhe zu Breite,
+   Standard 1:1 = 45°) vom Fahrbahnrand bis zum Gelände an - Auftrag, wenn
+   die Straße darüber liegt, Abtrag darunter.
    Die Mengen sind das Mittel der Querschnittsflächen mal Abstand
    (Mittelflächenverfahren); in engen Kurven weicht der Innenrand davon ab. */
 const ROAD_SLOPE_MAX = 30;      // einstellbare Längsneigung, ± Prozent
-const EMBANKMENT_RATIO = 1;     // Böschung 1:1 = 1 m Höhe je 1 m Breite
+const EMBANKMENT_CHOICES = [1, 1.5, 2];   // Böschung 1:n: n m Breite je 1 m Höhe
+function embankmentOf(p) {
+  const n = p && p.embank;
+  return (typeof n === 'number' && isFinite(n) && n > 0) ? n : 1;
+}
 const EMBANKMENT_REACH = 80;    // weiter sucht die Böschung nicht nach dem Gelände
 const EMBANKMENT_STEP = 0.5;    // Suchschritt quer zur Straße
 const ROAD_LIFT = 0.05;         // gegen Flimmern auf dem Gelände
@@ -1625,8 +1630,8 @@ function autoRoadSlope(p) {
 }
 
 /* Böschung einer Seite: sucht vom Fahrbahnrand nach außen den ersten
-   Schnitt der 1:1-Linie mit dem Gelände. */
-function embankmentSide(f, sign, hr, half) {
+   Schnitt der 1:n-Linie mit dem Gelände (n m Breite je 1 m Höhe). */
+function embankmentSide(f, sign, hr, half, n) {
   const ex = f.x + sign * f.nx * half, ez = f.z + sign * f.nz * half;
   const diff0 = hr - getHeightAt(ex, ez);
   const side = { type: 'none', ex: ex, ez: ez, ox: ex, oz: ez, oh: hr, reach: 0, area: 0, reached: true };
@@ -1639,7 +1644,7 @@ function embankmentSide(f, sign, hr, half) {
   side.reached = false;
   for (let d = EMBANKMENT_STEP; d <= EMBANKMENT_REACH + 1e-9; d += EMBANKMENT_STEP) {
     const qx = ex + sign * f.nx * d, qz = ez + sign * f.nz * d;
-    const hs = hr + dir * d * EMBANKMENT_RATIO;
+    const hs = hr + dir * d / n;
     const diff = hs - getHeightAt(qx, qz);
     const crossed = fill ? diff <= 0 : diff >= 0;
     if (crossed) {
@@ -1657,7 +1662,7 @@ function embankmentSide(f, sign, hr, half) {
   side.area = area;
   side.ox = ex + sign * f.nx * side.reach;
   side.oz = ez + sign * f.nz * side.reach;
-  side.oh = hr + dir * side.reach * EMBANKMENT_RATIO;
+  side.oh = hr + dir * side.reach / n;
   return side;
 }
 
@@ -1670,11 +1675,12 @@ function computeRoad(p) {
   const length = frames.length ? frames[frames.length - 1].s : 0;
   const slope = (typeof p.slope === 'number' && isFinite(p.slope)) ? p.slope : autoRoadSlope(p);
   const h0 = getHeightAt(rp.path[0].x, rp.path[0].z);
+  const embN = embankmentOf(p);
 
   const sections = frames.map(function (f) {
     const hr = h0 + slope / 100 * f.s;
-    const left = embankmentSide(f, 1, hr, half);
-    const right = embankmentSide(f, -1, hr, half);
+    const left = embankmentSide(f, 1, hr, half, embN);
+    const right = embankmentSide(f, -1, hr, half, embN);
 
     // Fahrbahnstreifen: Über-/Unterschuss gegenüber dem Gelände quer abtasten
     const n = Math.max(2, Math.ceil(width / 0.5));
@@ -1708,14 +1714,14 @@ function computeRoad(p) {
   return {
     fil: rp.fil, path: rp.path, width: width, half: half, length: length,
     area: length * width, slope: slope, h0: h0, sections: sections,
-    earthworks: { fill: fill, cut: cut, maxReach: maxReach, unreached: unreached }
+    earthworks: { fill: fill, cut: cut, maxReach: maxReach, unreached: unreached, embank: embN }
   };
 }
 
 /* Im Abtrag liegen Böschung und Fahrbahn unter dem Gelände und wären nicht
    zu sehen. Deshalb zusätzlich: Böschung und eingegrabene Fahrbahn als
    halbtransparente Fläche ohne Tiefentest über dem Gelände, dazu eine helle
-   Linie an der Böschungsoberkante (dort, wo die 1:1-Linie das Gelände
+   Linie an der Böschungsoberkante (dort, wo die Böschungslinie das Gelände
    schneidet). Das ist eine Darstellungshilfe - die Mengen bleiben unberührt. */
 function addCutOverlay(g, secs, ePos, cutIdx) {
   if (cutIdx.length) {
@@ -2931,6 +2937,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pathLength: pathLength,
     computeRoad: computeRoad,
     autoRoadSlope: autoRoadSlope,
+    EMBANKMENT_CHOICES: EMBANKMENT_CHOICES,
     ROAD_SLOPE_MAX: ROAD_SLOPE_MAX,
     buildRoad: buildRoad,
     roadInfo: roadInfo,
