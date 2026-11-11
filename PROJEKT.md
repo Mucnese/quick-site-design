@@ -159,8 +159,8 @@ Abstützmaße und Fahrzeuglängen sind schematisch und dienen der Darstellung.
 - Löcher in Flächen (Innenhöfe) werden ignoriert, nur der äußere Ring zählt
 - Fächertriangulierung kann bei stark konkaven Dachflächen unsauber aussehen;
   Ear-Clipping wäre der nächste Schritt
-- Originalauflösung bis etwa 500×500 flüssig; oberhalb `GRID_CELL_CAP`
-  (2,5 Mio. Punkte) wird sie mit Meldung abgelehnt
+- Das Gelände wird auf höchstens `GRID_MAX` (1400) Stützpunkte je Achse gerastert;
+  gezeichnet wird je nach Zoom gröber (Kachel-LOD, `updateTerrainLod`)
 - Einstellungen überleben kein Neuladen
 - Die 2D-Ansicht ist eine perspektivische Kamera von oben, keine echte
   Orthogonalprojektion. Sie ist eine Rücksetzung, kein Modus: `refreshTopView`

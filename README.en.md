@@ -30,10 +30,10 @@ browser.
   problem.
 - CityGML LOD2, also as a batch. Axis order is detected automatically, buildings
   outside the tile are discarded.
-- Detail level from 140 grid points up to the untouched source resolution. By
-  default the drawn resolution adapts to zoom: nearby terrain in the chosen
-  level, distant terrain coarser (tiles of 64 × 64 cells). Height lookups,
-  objects and the IFC export keep using the same data.
+- Terrain resolution adapts to zoom automatically: nearby parts at full data
+  resolution (up to 1400 grid points per axis), distant parts coarser (tiles of
+  64 × 64 cells). There is no slider for it. Height lookups, objects and the IFC
+  export always use the same data.
 - The coordinate reference system is read from the GeoKeys.
 
 **Site elements**

@@ -145,9 +145,6 @@
   .file-status.err { color: var(--danger); }
   .file-status.busy { color: var(--text-dim); }
 
-  .detail-row { margin-top: 8px; }
-  .detail-row .det { color: var(--accent); font-size: 0.9em; }
-  .auto-row { display: flex; align-items: center; gap: 7px; margin-top: 6px; font-size: 0.8em; color: var(--text-dim); cursor: pointer; }
   #data.needs { border-color: var(--accent); }
   #data.needs .sec { color: var(--accent); }
   #data-note {
@@ -492,11 +489,6 @@
         <div class="file-head"><span data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="hintx">mehrere möglich</span></div>
         <input type="file" id="dem-input" multiple accept=".tif,.tiff,image/tiff">
         <div class="file-status" id="dem-status">Keine Datei</div>
-        <div class="detail-row">
-          <div class="file-head"><span data-i18n="detail">Detailstufe</span><span class="det" id="detail-val">260 Punkte</span></div>
-          <input type="range" id="detail-slider" min="0" max="4" step="1" value="3">
-          <label class="auto-row"><input type="checkbox" id="auto-detail" checked><span data-i18n="autoDetail">Nach Zoom anpassen (Stufe = Maximum)</span></label>
-        </div>
       </div>
       <div class="file-row">
         <div class="file-head"><span data-i18n="buildingFile">Gebäude · CityGML</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>
@@ -873,7 +865,6 @@ const LOD_TARGET_PX = 6;       // gröbste Zelle, die auf dem Bildschirm noch er
 const LOD_MAX_REBUILDS = 16;   // Kacheln, die pro Bild neu aufgebaut werden dürfen
 let terrainChunks = [];        // { x0, z0, cx, cz, minY, maxY, level, mesh }
 let terrainMat = null;
-let lodAuto = true;
 let lodStamp = '';
 
 function lodAxis(count, step) {
@@ -971,20 +962,13 @@ function chunkDistance(c) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-function setTerrainLodAuto(on) {
-  lodAuto = !!on;
-  updateTerrainLod(true);
-}
-
-function isTerrainLodAuto() { return lodAuto; }
-
 /* Pro Bild aufgerufen, rechnet aber nur nach, wenn sich die Kamera bewegt hat.
    Eine Kachel wechselt die Stufe erst mit etwas Abstand zur Schwelle
    (Hysterese), sonst flackert sie an der Grenze hin und her. */
 function updateTerrainLod(force) {
   if (!terrainChunks.length || !camera || !TERRAIN) return;
   const p = camera.position;
-  const key = p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ',' + (lodAuto ? 1 : 0) + ',' + window.innerHeight;
+  const key = p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ',' + window.innerHeight;
   if (!force && key === lodStamp) return;
   lodStamp = key;
 
@@ -995,15 +979,13 @@ function updateTerrainLod(force) {
   for (let i = 0; i < terrainChunks.length; i++) {
     const c = terrainChunks[i];
     const maxLevel = Math.floor(Math.log2(Math.max(c.cx, c.cz)));
-    let want = 0;
-    if (lodAuto) {
-      const L = Math.log2(LOD_TARGET_PX * Math.max(chunkDistance(c), 1) / (cell * focal));
-      if (c.level < 0) want = Math.floor(L);
-      else if (L >= c.level + 1.25) want = Math.floor(L);
-      else if (L < c.level - 0.25) want = Math.floor(L);
-      else want = c.level;
-      want = Math.max(0, Math.min(maxLevel, want));
-    }
+    const L = Math.log2(LOD_TARGET_PX * Math.max(chunkDistance(c), 1) / (cell * focal));
+    let want;
+    if (c.level < 0) want = Math.floor(L);
+    else if (L >= c.level + 1.25) want = Math.floor(L);
+    else if (L < c.level - 0.25) want = Math.floor(L);
+    else want = c.level;
+    want = Math.max(0, Math.min(maxLevel, want));
     if (want === c.level) continue;
     if (!force && rebuilt >= LOD_MAX_REBUILDS) { lodStamp = ''; continue; }
     const old = c.mesh.geometry;
@@ -3471,8 +3453,6 @@ const STRINGS = {
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
     terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
-    detail: 'Detailstufe', original: 'Original', points: 'Punkte',
-    autoDetail: 'Nach Zoom anpassen (Stufe = Maximum)',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', area: 'Stellfläche', road: 'Baustraße',
@@ -3539,8 +3519,6 @@ const STRINGS = {
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
     terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
-    detail: 'Detail level', original: 'Original', points: 'points',
-    autoDetail: 'Adapt to zoom (level = maximum)',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', area: 'Footprint', road: 'Haul road',
@@ -3720,8 +3698,6 @@ const SETTINGS = {
   accent: null,
   layout: 'links',
   width: 250,
-  detail: 3,           // höchste Detailstufe (900 Punkte); mit autoDetail nur bei Nähe
-  autoDetail: true,
   language: 'de'
 };
 
@@ -3918,7 +3894,6 @@ function refreshTexts() {
     const nm = pal[i].children[1];
     if (nm) nm.textContent = T(TOOL_INFO[type].name);
   }
-  document.getElementById('detail-val').textContent = detailLabel();
   updateInfoBar();
   updateTerrainInfo();
   renderOverview();
@@ -4615,36 +4590,6 @@ function setFileStatus(which, msg, kind) {
   el.className = 'file-status' + (kind ? ' ' + kind : '');
 }
 
-const DETAIL_STEPS = [140, 260, 500, 900, 0];   // 0 = ohne Vereinfachung
-
-function detailLimit() {
-  const i = Math.max(0, Math.min(DETAIL_STEPS.length - 1, Math.round(SETTINGS.detail)));
-  return DETAIL_STEPS[i];
-}
-
-function detailLabel() {
-  const v = detailLimit();
-  return v === 0 ? T('original') : v + ' ' + T('points');
-}
-
-async function rebuildTerrainDetail() {
-  if (!lastDemTiles) return;
-  setFileStatus('dem', 'Rechne neu', 'busy');
-  try {
-    const t = gridTiles(lastDemTiles, detailLimit());
-    buildTerrain(t);
-    reseatAllObjects();
-    updateTerrainInfo();
-    renderOverview();
-    if (lastGmlRings) {
-      try { setBuildings(buildBuildingsMesh(lastGmlRings)); } catch (e) { clearBuildings(); }
-    }
-    setFileStatus('dem', demStatusText(t), 'ok');
-  } catch (err) {
-    setFileStatus('dem', err.message, 'err');
-  }
-}
-
 function demStatusText(t) {
   let st = lastDemNames.length > 1
     ? lastDemNames.length + ' Kacheln verbunden'
@@ -4665,7 +4610,7 @@ async function handleDemFiles(files, isDemo) {
     }
     lastDemTiles = await readTiffTiles(items);
     lastDemNames = items.map(function (x) { return x.name; });
-    const t = gridTiles(lastDemTiles, detailLimit());
+    const t = gridTiles(lastDemTiles, GRID_MAX);
 
     hideMeasure();
     buildTerrain(t);
@@ -5234,35 +5179,6 @@ function initUI() {
   const gmlInput = document.getElementById('gml-input');
   gmlInput.addEventListener('change', function () {
     if (gmlInput.files && gmlInput.files.length) handleGmlFiles(gmlInput.files);
-  });
-
-  const detail = document.getElementById('detail-slider');
-  detail.value = SETTINGS.detail;
-  document.getElementById('detail-val').textContent = detailLabel();
-  detail.addEventListener('change', function () {
-    const v = parseFloat(detail.value);
-    if (!isFinite(v)) return;
-    SETTINGS.detail = v;
-    document.getElementById('detail-val').textContent = detailLabel();
-    if (!lastDemTiles) return;
-    if (detailLimit() === 0) setStatus('Volle Auflösung kann bei großen Kacheln spürbar bremsen.', true);
-    rebuildTerrainDetail();
-  });
-  detail.addEventListener('input', function () {
-    const v = parseFloat(detail.value);
-    if (!isFinite(v)) return;
-    SETTINGS.detail = v;
-    document.getElementById('detail-val').textContent = detailLabel();
-  });
-
-  // Automatische Detailstufe nach Zoom: die Stufe oben ist dann das Maximum,
-  // das nur nahe Geländeteile bekommen
-  const auto = document.getElementById('auto-detail');
-  auto.checked = SETTINGS.autoDetail;
-  setTerrainLodAuto(SETTINGS.autoDetail);
-  auto.addEventListener('change', function () {
-    SETTINGS.autoDetail = auto.checked;
-    setTerrainLodAuto(auto.checked);
   });
 
   document.getElementById('gml-clear').addEventListener('click', function () {

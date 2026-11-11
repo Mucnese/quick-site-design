@@ -271,7 +271,6 @@ const LOD_TARGET_PX = 6;       // gröbste Zelle, die auf dem Bildschirm noch er
 const LOD_MAX_REBUILDS = 16;   // Kacheln, die pro Bild neu aufgebaut werden dürfen
 let terrainChunks = [];        // { x0, z0, cx, cz, minY, maxY, level, mesh }
 let terrainMat = null;
-let lodAuto = true;
 let lodStamp = '';
 
 function lodAxis(count, step) {
@@ -369,20 +368,13 @@ function chunkDistance(c) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-function setTerrainLodAuto(on) {
-  lodAuto = !!on;
-  updateTerrainLod(true);
-}
-
-function isTerrainLodAuto() { return lodAuto; }
-
 /* Pro Bild aufgerufen, rechnet aber nur nach, wenn sich die Kamera bewegt hat.
    Eine Kachel wechselt die Stufe erst mit etwas Abstand zur Schwelle
    (Hysterese), sonst flackert sie an der Grenze hin und her. */
 function updateTerrainLod(force) {
   if (!terrainChunks.length || !camera || !TERRAIN) return;
   const p = camera.position;
-  const key = p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ',' + (lodAuto ? 1 : 0) + ',' + window.innerHeight;
+  const key = p.x.toFixed(1) + ',' + p.y.toFixed(1) + ',' + p.z.toFixed(1) + ',' + window.innerHeight;
   if (!force && key === lodStamp) return;
   lodStamp = key;
 
@@ -393,15 +385,13 @@ function updateTerrainLod(force) {
   for (let i = 0; i < terrainChunks.length; i++) {
     const c = terrainChunks[i];
     const maxLevel = Math.floor(Math.log2(Math.max(c.cx, c.cz)));
-    let want = 0;
-    if (lodAuto) {
-      const L = Math.log2(LOD_TARGET_PX * Math.max(chunkDistance(c), 1) / (cell * focal));
-      if (c.level < 0) want = Math.floor(L);
-      else if (L >= c.level + 1.25) want = Math.floor(L);
-      else if (L < c.level - 0.25) want = Math.floor(L);
-      else want = c.level;
-      want = Math.max(0, Math.min(maxLevel, want));
-    }
+    const L = Math.log2(LOD_TARGET_PX * Math.max(chunkDistance(c), 1) / (cell * focal));
+    let want;
+    if (c.level < 0) want = Math.floor(L);
+    else if (L >= c.level + 1.25) want = Math.floor(L);
+    else if (L < c.level - 0.25) want = Math.floor(L);
+    else want = c.level;
+    want = Math.max(0, Math.min(maxLevel, want));
     if (want === c.level) continue;
     if (!force && rebuilt >= LOD_MAX_REBUILDS) { lodStamp = ''; continue; }
     const old = c.mesh.geometry;
@@ -2855,8 +2845,6 @@ if (typeof module !== 'undefined' && module.exports) {
     getCamera: function () { return camera; },
     setTopView: setTopView,
     raycastPivot: raycastPivot,
-    setTerrainLodAuto: setTerrainLodAuto,
-    isTerrainLodAuto: isTerrainLodAuto,
     updateTerrainLod: updateTerrainLod,
     getTerrainChunks: function () { return terrainChunks; },
     LOD_CHUNK: LOD_CHUNK,

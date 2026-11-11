@@ -151,7 +151,7 @@ function newScope() {
   // eingefangen statt der später zugewiesenen echten Objekte.
   vm.runInContext(
     'var __bridge = { STRINGS: STRINGS, TOOL_INFO: TOOL_INFO, FIELD_ORDER: FIELD_ORDER, ' +
-    'DETAIL_STEPS: DETAIL_STEPS, SETTINGS: SETTINGS, DRAG_TOLERANCE: DRAG_TOLERANCE, ' +
+    'SETTINGS: SETTINGS, DRAG_TOLERANCE: DRAG_TOLERANCE, ' +
     'REPEAT_GUARD: REPEAT_GUARD, DEMO_ATTRIBUTION: DEMO_ATTRIBUTION, raycaster: raycaster, ' +
     'controls: controls, renderer: renderer, camera: camera };',
     sandbox
@@ -193,13 +193,6 @@ await test('sortFields: sortiert nach fieldRank, select vor allem anderen', func
 });
 
 /* ---------- Detailstufe "Original" ---------- */
-
-await test('detailLimit: die letzte Stufe ist maxGrid=0 ("Original"), kein Fallback auf die Voreinstellung', function () {
-  const s = newScope();
-  s.__bridge.SETTINGS.detail = s.__bridge.DETAIL_STEPS.length - 1;
-  assert.strictEqual(s.detailLimit(), 0);
-  assert.strictEqual(s.detailLabel(), s.T('original'));
-});
 
 /* ---------- Esc: erst der Stützpunkt, dann erst die Objektauswahl ---------- */
 
@@ -505,26 +498,15 @@ await test('IFC Export: ohne Gelände meldet die Karte den Datenmangel statt zu 
   assert.strictEqual(s.document.getElementById('status').textContent, s.T('msgNeedTerrain'));
 });
 
-/* ---------- Detailstufe nach Zoom ---------- */
+/* ---------- Gelände-Detailstufe: automatisch, kein Regler mehr ---------- */
 
-await test('Detailstufe nach Zoom: standardmäßig an, Schalter reicht an das Gelände-LOD durch', async function () {
+await test('Detailstufe: kein Regler und kein Schalter mehr, das Gelände nutzt die höchste Rasterstufe (GRID_MAX)', async function () {
   const s = newScope();
   s.initUI();
-  assert.strictEqual(s.__bridge.SETTINGS.autoDetail, true);
-  assert.strictEqual(s.isTerrainLodAuto(), true);
-  const box = s.document.getElementById('auto-detail');
-  box.checked = false;
-  box.fire('change');
-  assert.strictEqual(s.__bridge.SETTINGS.autoDetail, false);
-  assert.strictEqual(s.isTerrainLodAuto(), false);
-  box.checked = true;
-  box.fire('change');
-  assert.strictEqual(s.isTerrainLodAuto(), true);
-});
-
-await test('Detailstufe: Standard ist die höchste Stufe unterhalb von "Original" (900 Punkte), weil ferne Kacheln ohnehin gröber werden', function () {
-  const s = newScope();
-  assert.strictEqual(s.detailLimit(), 900);
+  assert.strictEqual(s.document._byId['detail-slider'], undefined);
+  assert.strictEqual(s.document._byId['auto-detail'], undefined);
+  assert.strictEqual(s.__bridge.SETTINGS.detail, undefined);
+  assert.strictEqual(s.detailLimit, undefined);
 });
 
 /* ---------- Punktkoordinaten-Fenster ---------- */

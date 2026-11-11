@@ -526,7 +526,7 @@ test('Gelände-LOD: Kacheln decken das Raster lückenlos ab (64er-Kacheln, Rest 
   assert.strictEqual(ch.filter(function (c) { return c.x0 === 0; }).reduce(function (a, c) { return a + c.cz; }, 0), 200);
 });
 
-test('Gelände-LOD: nah volle Auflösung, weit weg gröber, bei ausgeschaltetem Automatikmodus überall voll', function () {
+test('Gelände-LOD: nah volle Auflösung, weit weg gröber', function () {
   lodTerrain();
   const cam = app.getCamera();
   cam.position.set(0, 20, 0);
@@ -538,10 +538,6 @@ test('Gelände-LOD: nah volle Auflösung, weit weg gröber, bei ausgeschaltetem 
   assert.ok(near.some(function (l) { return l === 0; }), 'in Bodennähe muss es Kacheln mit voller Auflösung geben');
   assert.ok(far.every(function (l, i) { return l >= near[i]; }), 'weiter weg darf nie feiner werden');
   assert.ok(Math.max.apply(null, far) > 0, 'weit weg muss gröber werden: ' + far);
-  app.setTerrainLodAuto(false);
-  assert.ok(levels().every(function (l) { return l === 0; }));
-  app.setTerrainLodAuto(true);
-  assert.ok(Math.max.apply(null, levels()) > 0);
 });
 
 test('Gelände-LOD: nahe Kacheln sind feiner als ferne (Abstand zur Kamera)', function () {

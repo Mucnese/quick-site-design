@@ -22,8 +22,6 @@ const STRINGS = {
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
     terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
-    detail: 'Detailstufe', original: 'Original', points: 'Punkte',
-    autoDetail: 'Nach Zoom anpassen (Stufe = Maximum)',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', area: 'Stellfläche', road: 'Baustraße',
@@ -90,8 +88,6 @@ const STRINGS = {
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
     terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
-    detail: 'Detail level', original: 'Original', points: 'points',
-    autoDetail: 'Adapt to zoom (level = maximum)',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', area: 'Footprint', road: 'Haul road',
@@ -271,8 +267,6 @@ const SETTINGS = {
   accent: null,
   layout: 'links',
   width: 250,
-  detail: 3,           // höchste Detailstufe (900 Punkte); mit autoDetail nur bei Nähe
-  autoDetail: true,
   language: 'de'
 };
 
@@ -469,7 +463,6 @@ function refreshTexts() {
     const nm = pal[i].children[1];
     if (nm) nm.textContent = T(TOOL_INFO[type].name);
   }
-  document.getElementById('detail-val').textContent = detailLabel();
   updateInfoBar();
   updateTerrainInfo();
   renderOverview();
@@ -1166,36 +1159,6 @@ function setFileStatus(which, msg, kind) {
   el.className = 'file-status' + (kind ? ' ' + kind : '');
 }
 
-const DETAIL_STEPS = [140, 260, 500, 900, 0];   // 0 = ohne Vereinfachung
-
-function detailLimit() {
-  const i = Math.max(0, Math.min(DETAIL_STEPS.length - 1, Math.round(SETTINGS.detail)));
-  return DETAIL_STEPS[i];
-}
-
-function detailLabel() {
-  const v = detailLimit();
-  return v === 0 ? T('original') : v + ' ' + T('points');
-}
-
-async function rebuildTerrainDetail() {
-  if (!lastDemTiles) return;
-  setFileStatus('dem', 'Rechne neu', 'busy');
-  try {
-    const t = gridTiles(lastDemTiles, detailLimit());
-    buildTerrain(t);
-    reseatAllObjects();
-    updateTerrainInfo();
-    renderOverview();
-    if (lastGmlRings) {
-      try { setBuildings(buildBuildingsMesh(lastGmlRings)); } catch (e) { clearBuildings(); }
-    }
-    setFileStatus('dem', demStatusText(t), 'ok');
-  } catch (err) {
-    setFileStatus('dem', err.message, 'err');
-  }
-}
-
 function demStatusText(t) {
   let st = lastDemNames.length > 1
     ? lastDemNames.length + ' Kacheln verbunden'
@@ -1216,7 +1179,7 @@ async function handleDemFiles(files, isDemo) {
     }
     lastDemTiles = await readTiffTiles(items);
     lastDemNames = items.map(function (x) { return x.name; });
-    const t = gridTiles(lastDemTiles, detailLimit());
+    const t = gridTiles(lastDemTiles, GRID_MAX);
 
     hideMeasure();
     buildTerrain(t);
@@ -1787,35 +1750,6 @@ function initUI() {
     if (gmlInput.files && gmlInput.files.length) handleGmlFiles(gmlInput.files);
   });
 
-  const detail = document.getElementById('detail-slider');
-  detail.value = SETTINGS.detail;
-  document.getElementById('detail-val').textContent = detailLabel();
-  detail.addEventListener('change', function () {
-    const v = parseFloat(detail.value);
-    if (!isFinite(v)) return;
-    SETTINGS.detail = v;
-    document.getElementById('detail-val').textContent = detailLabel();
-    if (!lastDemTiles) return;
-    if (detailLimit() === 0) setStatus('Volle Auflösung kann bei großen Kacheln spürbar bremsen.', true);
-    rebuildTerrainDetail();
-  });
-  detail.addEventListener('input', function () {
-    const v = parseFloat(detail.value);
-    if (!isFinite(v)) return;
-    SETTINGS.detail = v;
-    document.getElementById('detail-val').textContent = detailLabel();
-  });
-
-  // Automatische Detailstufe nach Zoom: die Stufe oben ist dann das Maximum,
-  // das nur nahe Geländeteile bekommen
-  const auto = document.getElementById('auto-detail');
-  auto.checked = SETTINGS.autoDetail;
-  setTerrainLodAuto(SETTINGS.autoDetail);
-  auto.addEventListener('change', function () {
-    SETTINGS.autoDetail = auto.checked;
-    setTerrainLodAuto(auto.checked);
-  });
-
   document.getElementById('gml-clear').addEventListener('click', function () {
     clearBuildings();
     lastGmlRings = null;
@@ -1946,10 +1880,6 @@ if (typeof module !== 'undefined' && module.exports) {
 
     // Dateiimport
     setFileStatus: setFileStatus,
-    DETAIL_STEPS: DETAIL_STEPS,
-    detailLimit: detailLimit,
-    detailLabel: detailLabel,
-    rebuildTerrainDetail: rebuildTerrainDetail,
     demStatusText: demStatusText,
     handleDemFiles: handleDemFiles,
     handleGmlFiles: handleGmlFiles,
