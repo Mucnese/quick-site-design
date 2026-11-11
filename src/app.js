@@ -2001,12 +2001,12 @@ function moveObject(obj, x, z) {
     });
     obj.params.slope = autoRoadSlope(obj.params);    // anderes Gelände, neue Anfangs-/Endhöhe
     rebuildObject(obj);
-    if (isSelected(obj.id)) focusOnObject(obj);
     return;
   }
   obj.x = x; obj.z = z;
   obj.group.position.set(x, getHeightAt(x, z), z);
-  if (isSelected(obj.id)) { updateSelectionBoxes(); focusOnObject(obj); }
+  // Keine Kamerafahrt: die Stelle wurde eben angeklickt und ist im Bild
+  if (isSelected(obj.id)) updateSelectionBoxes();
 }
 
 function removeObject(id) {
@@ -2062,11 +2062,15 @@ function selectObject(id) {
 
 /* Mehrere Objekte gleichzeitig auswählen und einrahmen */
 function selectObjects(ids, frame) {
+  const before = selectedIds;
   selectedIds = (ids || []).filter(function (i) { return findObject(i) !== null; });
   updateSelectionBoxes();
   if (!selectedIds.length) return;
   const objs = selectedIds.map(findObject);
   if (frame === false) return;
+  // Wird der Editor nur neu aufgebaut (nach Verschieben, Parameteränderung), bleibt
+  // die Kamera, wo sie ist - sonst dreht sich die Ansicht ungefragt zum Objekt
+  if (before.length === selectedIds.length && before.every(function (i, k) { return i === selectedIds[k]; })) return;
   if (objs.length === 1) focusOnObject(objs[0]);
   else frameObjects(objs);
 }
@@ -2087,9 +2091,17 @@ function focusOnObject(obj) {
   camGoal = null;
 }
 
+/* Kamera und Drehzentrum, wie sie nach einer laufenden Fahrt stehen werden. Wer
+   daraus eine Blickrichtung ableitet, bekommt keine verzerrte Richtung aus einem
+   Zwischenstand (Kamera und Zentrum laufen mit unterschiedlicher Geschwindigkeit). */
+function settledView() {
+  return { pos: camGoal || camera.position, target: focusGoal || controls.target };
+}
+
 /* Kamera so setzen, dass alle übergebenen Objekte ins Bild passen */
 function frameObjects(objs) {
   if (!objs || !objs.length) return;
+  const sv = settledView();                 // vor dem Setzen der neuen Ziele lesen
   let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity, maxy = 0;
   objs.forEach(function (o) {
     const bb = o.group.userData.bbox || { w: 20, d: 20, h: 10 };
@@ -2110,9 +2122,9 @@ function frameObjects(objs) {
   const dist = (radius / Math.tan(fov / 2)) * 1.45 + radius;
 
   // Blickrichtung beibehalten, nur den Abstand anpassen
-  let dx = camera.position.x - controls.target.x;
-  let dy = camera.position.y - controls.target.y;
-  let dz = camera.position.z - controls.target.z;
+  let dx = sv.pos.x - sv.target.x;
+  let dy = sv.pos.y - sv.target.y;
+  let dz = sv.pos.z - sv.target.z;
   let len = Math.sqrt(dx * dx + dy * dy + dz * dz);
   if (!(len > 0.001)) { dx = 0.6; dy = 0.55; dz = 0.6; len = Math.sqrt(0.36 + 0.3025 + 0.36); }
   dx /= len; dy /= len; dz /= len;
@@ -2183,11 +2195,12 @@ const MEASURE_PIXELS = 9;   // Durchmesser der Kugel auf dem Bildschirm
 
 /* Setzt den Messpunkt und macht ihn zum Dreh- und Zoomzentrum */
 function focusOnPoint(x, y, z, zoom) {
+  const sv = settledView();
   focusGoal = new THREE.Vector3(x, y, z);
   if (zoom === false) { camGoal = null; return; }
-  let dx = camera.position.x - controls.target.x;
-  let dy = camera.position.y - controls.target.y;
-  let dz = camera.position.z - controls.target.z;
+  let dx = sv.pos.x - sv.target.x;
+  let dy = sv.pos.y - sv.target.y;
+  let dz = sv.pos.z - sv.target.z;
   let len = Math.sqrt(dx * dx + dy * dy + dz * dz);
   if (!(len > 0.001)) return;
   // Blickrichtung beibehalten, Abstand auf einen nahen Arbeitsabstand ziehen
@@ -2844,6 +2857,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getCamera: function () { return camera; },
     setTopView: setTopView,
     raycastPivot: raycastPivot,
+    frameObjects: frameObjects,
     updateTerrainLod: updateTerrainLod,
     getTerrainChunks: function () { return terrainChunks; },
     LOD_CHUNK: LOD_CHUNK,

@@ -553,6 +553,11 @@ function makeRow(field, value, onChange) {
   return { row: row, input: input, out: out, field: field, num: num, eff: eff };
 }
 
+function formatVal(v, unit) {
+  const s = (Math.round(v * 100) / 100).toString();
+  return unit ? s + ' ' + unit : s;
+}
+
 /* Reihenfolge im Formular: Auswahl, Schieberegler, Zahlenfelder, Schalter */
 const FIELD_ORDER = { select: 0, range: 1, number: 2, checkbox: 3 };
 
@@ -1559,6 +1564,9 @@ function onOrbitPointerDown(event) {
 
 function onOrbitPointerMove(event) {
   if (!pivotDrag) return;
+  // Ging das Loslassen verloren (außerhalb des Fensters, Fensterwechsel), würde jede
+  // weitere Mausbewegung die Ansicht drehen: ohne gedrückte linke Taste Geste beenden
+  if (event.buttons !== undefined && !(event.buttons & 1)) { endOrbitDrag(); return; }
   const h = renderer.domElement.clientHeight || window.innerHeight || 1;
   const dx = event.clientX - pivotDrag.x, dy = event.clientY - pivotDrag.y;
   pivotDrag.x = event.clientX;
@@ -1799,6 +1807,7 @@ function initUI() {
   dom.addEventListener('pointerup', onCanvasPointerUp);
   dom.addEventListener('pointercancel', onCanvasPointerCancel);
   window.addEventListener('pointerdown', onOrbitPointerDown, true);
+  window.addEventListener('blur', endOrbitDrag);
   dom.addEventListener('pointerleave', onCanvasPointerCancel);
   window.addEventListener('keydown', onKeyDown);
 

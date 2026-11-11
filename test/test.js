@@ -772,6 +772,79 @@ test('measureScreenPos: Kameramatrizen werden VOR dem Projizieren aktualisiert (
   assert.deepStrictEqual(order, ['matrix', 'project']);
 });
 
+/* ---------- Kamera bleibt stehen, wo der Nutzer sie hingedreht hat ---------- */
+
+function settle(n) { for (let i = 0; i < (n || 200); i++) app.updateControls(); }
+function viewState() {
+  const c = app.getCamera().position, t = app.getControls().target;
+  return [c.x, c.y, c.z, t.x, t.y, t.z].map(function (v) { return +v.toFixed(6); });
+}
+function viewDir() {
+  const c = app.getCamera().position, t = app.getControls().target;
+  const dx = c.x - t.x, dy = c.y - t.y, dz = c.z - t.z, l = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  return [dx / l, dy / l, dz / l];
+}
+
+test('Verschieben: Kamera und Drehzentrum bleiben stehen (kein Anfahren, keine Drehung der Ansicht)', function () {
+  roadTerrain(0);
+  const obj = app.addObject('container', 10, 10, app.defaultContainerParams());
+  app.selectObject(obj.id);
+  settle();
+  const cam = app.getCamera();
+  cam.position.set(180, 90, 220);
+  app.getControls().target.set(10, 5, 10);
+  const before = viewState();
+  app.moveObject(obj, -60, 40);
+  settle();
+  assert.deepStrictEqual(viewState(), before);
+});
+
+test('Straße verschieben und Stützpunkt versetzen: Ansicht bleibt, auch wenn der Editor danach neu aufgebaut wird', function () {
+  roadTerrain(0);
+  const obj = app.addObject('road', 0, 0, roadAlongX(0));
+  app.selectObject(obj.id);
+  settle();
+  app.getCamera().position.set(-150, 80, 160);
+  app.getControls().target.set(0, 3, 0);
+  const before = viewState();
+  app.moveRoadNode(obj, 1, 60, 30);
+  app.selectObject(obj.id);                 // so ruft showObjectEditor() auf
+  app.moveObject(obj, 5, 5);
+  app.selectObject(obj.id);
+  settle();
+  assert.deepStrictEqual(viewState(), before);
+});
+
+test('Neue Auswahl fährt weiterhin an, dieselbe Auswahl erneut nicht', function () {
+  roadTerrain(0);
+  const a = app.addObject('container', 0, 0, app.defaultContainerParams());
+  const b = app.addObject('container', 80, 80, app.defaultContainerParams());
+  app.selectObject(a.id); settle();
+  const atA = viewState();
+  app.selectObject(b.id); settle();
+  assert.notDeepStrictEqual(viewState(), atA, 'anderes Objekt muss angefahren werden');
+  const atB = viewState();
+  app.selectObject(b.id); settle();
+  assert.deepStrictEqual(viewState(), atB);
+});
+
+test('frameObjects mitten in einer Kamerafahrt: Blickrichtung bleibt die des Ziels, nicht die eines Zwischenstands', function () {
+  roadTerrain(0);
+  const pa = roadAlongX(0); pa.points = [{ x: 300, z: 300 }, { x: 400, z: 300 }];   // weit vom Zentrum entfernt
+  const a = app.addObject('road', 0, 0, pa);
+  const p2 = roadAlongX(0); p2.points = [{ x: -250, z: -200 }, { x: -200, z: -260 }];
+  const b = app.addObject('road', 0, 0, p2);
+  app.getCamera().position.set(300, 200, 100);
+  app.getControls().target.set(0, 0, 0);
+  const dir0 = viewDir();
+  app.frameObjects([a]);
+  settle(3);                                 // Fahrt läuft noch
+  app.frameObjects([b]);
+  settle(400);
+  const d = viewDir();
+  assert.ok(Math.abs(d[0] - dir0[0]) < 1e-3 && Math.abs(d[2] - dir0[2]) < 1e-3, 'Blickrichtung hat sich gedreht: ' + dir0 + ' -> ' + d);
+});
+
 /* ---------- Kamera: Drehen um einen angeklickten Punkt ---------- */
 
 function camSetup(pos, tgt) {

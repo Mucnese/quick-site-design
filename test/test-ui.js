@@ -541,6 +541,23 @@ await test('Punktfenster: Position per transform (kein left/top), 14 px neben de
   assert.strictEqual(el.style.display, 'none');
 });
 
+/* ---------- Alle Editoren lassen sich aufbauen (Fehler beim Umbau der Regler-Köpfe) ---------- */
+
+await test('Editor aller Bausteintypen baut sich auf, auch Zahlenfelder ohne Regler (Container)', function () {
+  const s = newScope();
+  const defaults = {
+    container: s.defaultContainerParams(), tower: s.defaultTowerParams(), mobile: s.defaultMobileParams(),
+    road: (function () { const p = s.defaultRoadParams(); p.points = [{ x: 0, z: 0 }, { x: 30, z: 0 }]; return p; })()
+  };
+  Object.keys(defaults).forEach(function (type) {
+    const obj = s.addObject(type, 0, 0, defaults[type]);
+    s.showObjectEditor(obj.id);                      // wirft, wenn ein Feldtyp nicht darstellbar ist
+    const form = s.buildForm(type, obj.params, function () {}, true);
+    assert.ok(Object.keys(form.refs).length > 0, type);
+  });
+  assert.strictEqual(s.formatVal(2.456, 'm'), '2.46 m');
+});
+
 /* ---------- Zahlenfeld neben jedem Schieberegler ---------- */
 
 function widthRow(s, calls) {
@@ -645,6 +662,21 @@ await test('Linke Taste auf einen Punkt: OrbitControls pausiert, die Kamera dreh
   s.endOrbitDrag();
   assert.strictEqual(s.isPivotDragging(), false);
   assert.strictEqual(s.__bridge.controls.enabled, true);
+});
+
+await test('Verlorenes Loslassen: ohne gedrückte linke Taste beendet die nächste Mausbewegung die Drehung, statt weiterzudrehen', async function () {
+  const s = await scopeWithTerrain();
+  const cam = s.__bridge.camera;
+  cam.position.set(0, 100, 100);
+  s.__bridge.controls.target.set(0, 0, 0);
+  setTerrainHit(s, 30, 5, -20);
+  s.onOrbitPointerDown(orbitEvent(s));
+  assert.strictEqual(s.isPivotDragging(), true);
+  const before = cam.position.x;
+  s.onOrbitPointerMove({ clientX: 160, clientY: 100, buttons: 0 });
+  assert.strictEqual(s.isPivotDragging(), false);
+  assert.strictEqual(s.__bridge.controls.enabled, true);
+  assert.strictEqual(cam.position.x, before, 'die Kamera darf sich ohne gedrückte Taste nicht mehr bewegen');
 });
 
 await test('Linke Taste auf den Hintergrund: keine eigene Drehung, OrbitControls dreht das Ganze um sein Zentrum', async function () {
