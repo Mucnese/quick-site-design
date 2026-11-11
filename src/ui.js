@@ -18,7 +18,7 @@ const STRINGS = {
   de: {
     lang: 'Deutsch',
     overview: 'Übersicht', data: 'Daten', view: 'Ansicht', site: 'Baustelle',
-    clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Ansicht',
+    clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
     terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
@@ -87,7 +87,7 @@ const STRINGS = {
   en: {
     lang: 'English',
     overview: 'Overview', data: 'Data', view: 'View', site: 'Site',
-    clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'View',
+    clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
     terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
@@ -241,7 +241,7 @@ const THEMES = {
     name: 'light',
     vars: {
       '--bg': '#cfd5db', '--scene': '#dde2e7',
-      '--panel-bg': 'rgba(250, 251, 252, 0.80)',
+      '--panel-bg': 'rgba(250, 251, 252, 0.62)',
       '--border': '#ccd2d8', '--border-strong': '#98a1aa',
       '--text': '#1b1f23', '--text-dim': '#515a63', '--text-dim2': '#7d868f',
       '--accent': '#1f6feb', '--danger': '#c4362c',
@@ -275,7 +275,7 @@ const SETTINGS = {
   font: 'system',
   size: 12,
   accent: null,
-  width: 250,
+  width: 200,
   language: 'de'
 };
 
@@ -437,7 +437,7 @@ function buildTweakPanel() {
     ACCENTS.map(function (c) { return { value: c, label: '', color: c }; }),
     SETTINGS.accent, function (v) { SETTINGS.accent = v; }));
 
-  body.appendChild(sliderRow(T('panelWidth'), 150, 400, 10, SETTINGS.width, ' px',
+  body.appendChild(sliderRow(T('panelWidth'), 200, 400, 10, SETTINGS.width, ' px',
     function (v) { SETTINGS.width = v; }));
 }
 
