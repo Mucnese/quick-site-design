@@ -417,18 +417,35 @@ function roadObject(s, slope) {
   return s.addObject('road', 0, 0, p);
 }
 
-await test('Baustraße: Längsneigung nur im Eigenschaftsfenster, in % und mit Vorzeichen', function () {
+await test('Baustraße: Längsneigung nur im Eigenschaftsfenster, Zahl im Kopf des Reglers, Einheit %', function () {
   const s = newScope();
   const p = s.defaultRoadParams();
   assert.strictEqual(s.buildForm('road', p, function () {}, false).refs.slope, undefined,
     'vor dem Setzen gibt es keine Neigung zum Einstellen');
   p.slope = 5;
-  assert.strictEqual(s.buildForm('road', p, function () {}, true).refs.slope.out.textContent, '+5 %');
+  const ref5 = s.buildForm('road', p, function () {}, true).refs.slope;
+  assert.strictEqual(ref5.num.value, 5);
+  assert.strictEqual(ref5.out.textContent, '%');
   p.slope = -2.5;
   const ref = s.buildForm('road', p, function () {}, true).refs.slope;
-  assert.strictEqual(ref.out.textContent, '-2.5 %');
+  assert.strictEqual(ref.num.value, -2.5);
   assert.strictEqual(ref.input.min, -30);
   assert.strictEqual(ref.input.max, 30);
+});
+
+await test('Mindestradius: tatsächlich erreichter Wert steht neben dem Feld, der Wunschwert im Feld bleibt', function () {
+  const s = newScope();
+  const p = s.defaultRoadParams();
+  p.points = [{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }];   // kurze Schenkel, Radius 40 passt nicht
+  p.radius = 40;
+  const obj = s.addObject('road', 0, 0, p);
+  const form = s.buildForm('road', obj.params, function () {}, true);
+  assert.strictEqual(s.markRoadRadius(obj, form.refs), true);
+  assert.ok(form.refs.radius.eff.textContent.indexOf('→') === 0, form.refs.radius.eff.textContent);
+  assert.strictEqual(form.refs.radius.num.value, 40);
+  obj.params.radius = 3;
+  assert.strictEqual(s.markRoadRadius(obj, form.refs), false);
+  assert.strictEqual(form.refs.radius.eff.textContent, '');
 });
 
 await test('Baustraße: der Hinweis nennt neben der Länge auch die Fläche', function () {
@@ -549,7 +566,8 @@ await test('Zahlenfeld: Tippen und Bestätigen setzt Wert, Regler und Anzeige', 
   r.num.fire('change');
   assert.deepStrictEqual(calls, [['width', 9]]);
   assert.strictEqual(r.input.value, 9);
-  assert.strictEqual(r.out.textContent, '9 m');
+  assert.strictEqual(r.num.value, 9);
+  assert.strictEqual(r.out.textContent, 'm');
 });
 
 await test('Zahlenfeld: Werte außerhalb des Bereichs werden begrenzt, Unsinn fällt auf den Reglerwert zurück', function () {

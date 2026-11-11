@@ -198,7 +198,7 @@ const SCHEMAS = {
     { key: 'width',    label: 'fWidth',       type: 'range', min: 3, max: 14, step: 0.5, unit: 'm' },
     { key: 'radius',   label: 'fMinRadius', type: 'range', min: 5, max: 60, step: 1, unit: 'm' },
     // Nur im Editor: vor dem Setzen gibt es noch keine Punkte, aus denen die Neigung folgt
-    { key: 'slope',    label: 'fSlope',     type: 'range', min: -30, max: 30, step: 0.1, unit: '%', signed: true, editorOnly: true },
+    { key: 'slope',    label: 'fSlope',     type: 'range', min: -30, max: 30, step: 0.1, unit: '%', editorOnly: true },
     { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' }
   ]
 };
@@ -329,6 +329,9 @@ function makeNumberBox(slider, className, apply) {
   num.className = className;
   num.min = slider.min; num.max = slider.max; num.step = 'any';
   num.value = slider.value;
+  // Breite nach der längsten möglichen Zahl (inkl. Vorzeichen und Nachkommastelle)
+  const chars = Math.max(String(slider.min).length, String(slider.max).length) + (parseFloat(slider.step) < 1 ? 2 : 0);
+  num.style.width = (chars + 0.6) + 'ch';
   num.addEventListener('input', function () {
     const v = parseFloat(num.value);
     if (!isFinite(v) || v < parseFloat(slider.min) || v > parseFloat(slider.max)) return;
@@ -353,33 +356,31 @@ function sliderRow(label, min, max, step, value, unit, onChange) {
   head.textContent = label;
   const val = document.createElement('span');
   val.className = 'tw-val';
-  val.textContent = value + unit;
   head.appendChild(val);
   row.appendChild(head);
 
-  const line = document.createElement('div');
-  line.className = 'slider-line';
   const input = document.createElement('input');
   input.type = 'range';
   input.min = min; input.max = max; input.step = step; input.value = value;
   input.className = 'tw-slider';
   const num = makeNumberBox(input, 'tw-num', function (v) {
     input.value = v;
-    val.textContent = v + unit;
     onChange(v);
     applySettings();
   });
+  const u = document.createElement('span');
+  u.className = 'tw-unit';
+  u.textContent = unit.trim();
+  val.appendChild(num);
+  val.appendChild(u);
   input.addEventListener('input', function () {
     const v = parseFloat(input.value);
     if (!isFinite(v)) return;
-    val.textContent = v + unit;
     num.value = v;
     onChange(v);
     applySettings();
   });
-  line.appendChild(input);
-  line.appendChild(num);
-  row.appendChild(line);
+  row.appendChild(input);
   return row;
 }
 
@@ -492,6 +493,8 @@ function makeRow(field, value, onChange) {
   const lab = document.createElement('label');
   lab.textContent = T(field.label);
   head.appendChild(lab);
+  // Bei Reglern ist der Wert in der Kopfzeile selbst das Eingabefeld (Zahl, Einheit,
+  // und - nur beim Straßenradius - der tatsächlich erreichte Wert).
   const out = document.createElement('span');
   out.className = 'field-val';
   head.appendChild(out);
@@ -499,6 +502,7 @@ function makeRow(field, value, onChange) {
 
   let input;
   let num = null;
+  let eff = null;
   if (field.type === 'select') {
     input = document.createElement('select');
     const src = CRANE_MODELS; // nur noch der Mobilkran hat eine Modellauswahl
@@ -520,39 +524,33 @@ function makeRow(field, value, onChange) {
     input.type = field.type === 'number' ? 'number' : 'range';
     input.min = field.min; input.max = field.max; input.step = field.step;
     input.value = value;
-    out.textContent = formatVal(value, field.unit, field.signed);
     if (input.type === 'range') {
       num = makeNumberBox(input, 'field-num', function (v) {
         input.value = v;
-        out.textContent = formatVal(v, field.unit, field.signed);
         onChange(field.key, v);
       });
+      out.appendChild(num);
+      const u = document.createElement('span');
+      u.className = 'field-unit';
+      u.textContent = field.unit || '';
+      out.appendChild(u);
+      eff = document.createElement('span');
+      eff.className = 'field-eff';
+      out.appendChild(eff);
+    } else {
+      out.textContent = formatVal(value, field.unit);
     }
     input.addEventListener('input', function () {
       const v = parseFloat(input.value);
       if (!isFinite(v)) return;
-      out.textContent = formatVal(v, field.unit, field.signed);
       if (num) num.value = v;
+      else out.textContent = formatVal(v, field.unit);
       onChange(field.key, v);
     });
   }
   input.className = 'field-input';
-  if (num) {
-    const line = document.createElement('div');
-    line.className = 'slider-line';
-    line.appendChild(input);
-    line.appendChild(num);
-    row.appendChild(line);
-  } else {
-    row.appendChild(input);
-  }
-  return { row: row, input: input, out: out, field: field, num: num };
-}
-
-function formatVal(v, unit, signed) {
-  let s = (Math.round(v * 100) / 100).toString();
-  if (signed && v > 0) s = '+' + s;
-  return unit ? s + ' ' + unit : s;
+  row.appendChild(input);
+  return { row: row, input: input, out: out, field: field, num: num, eff: eff };
 }
 
 /* Reihenfolge im Formular: Auswahl, Schieberegler, Zahlenfelder, Schalter */
@@ -602,8 +600,8 @@ function syncForm(refs, values) {
     else if (r.field.type === 'select') r.input.value = v;
     else {
       r.input.value = v;
-      r.out.textContent = formatVal(v, r.field.unit, r.field.signed);
       if (r.num) { r.num.value = v; r.num.min = r.input.min; r.num.max = r.input.max; }
+      else r.out.textContent = formatVal(v, r.field.unit);
     }
   });
 }
@@ -933,9 +931,8 @@ function markRoadRadius(obj, refs) {
   const info = roadInfo(obj.params);
   const eng = info.reduced > 0;
   ref.row.className = 'field' + (eng ? ' field-warn' : '');
-  ref.out.textContent = eng
-    ? formatVal(obj.params.radius, 'm') + ' → ' + info.minRadius.toFixed(1) + ' m'
-    : formatVal(obj.params.radius, 'm');
+  // Der gewünschte Radius bleibt im Feld stehen; was tatsächlich möglich ist, steht daneben
+  ref.eff.textContent = eng ? '→ ' + info.minRadius.toFixed(1) + ' m' : '';
   ref.input.title = eng ? T('radiusTooTight') : '';
   return eng;
 }
