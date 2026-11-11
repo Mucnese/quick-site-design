@@ -326,6 +326,9 @@
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   #hints b { color: var(--text); font-weight: normal; }
+  /* Auf schmaleren Fenstern nur die Kurzform: sonst läuft die Fußleiste in die Knöpfe rechts */
+  @media (max-width: 1650px) { #hints .long { display: none; } }
+  @media (max-width: 1500px) { #unit-info { display: none; } }
 
   #road-hint {
     display: none; position: fixed; top: max(170px, 18vh); left: 50%; transform: translateX(-50%);
@@ -532,7 +535,7 @@
   <div id="crs-info">KBS –</div>
   <div id="acc-info">DGM-Genauigkeit –</div>
   <div id="unit-info">Einheit Meter (m)</div>
-  <div id="hints"><b data-i18n="hintClick">Klick</b> <span data-i18n="hintMeasure">Messpunkt</span> · <b data-i18n="hintDrag">Ziehen</b> <span data-i18n="hintRotate">Drehen</span> · <b data-i18n="hintEsc">Esc</b> <span data-i18n="hintCancel">Abbrechen</span></div>
+  <div id="hints"><span class="long"><b data-i18n="hintClick">Linksklick</b> <span data-i18n="hintMeasure">Messpunkt</span> · </span><b><span data-i18n="hintDrag">Links</span><span class="long" data-i18n="hintDragX"> ziehen</span></b> <span data-i18n="hintRotate">Drehen</span> · <b><span data-i18n="hintPan">Rechts/Mitte</span><span class="long" data-i18n="hintPanX"> ziehen</span></b> <span data-i18n="hintPanDo">Verschieben</span> · <b data-i18n="hintWheel">Mausrad</b> <span data-i18n="hintZoom">Zoom</span><span class="long"> · <b data-i18n="hintEsc">Esc</b> <span data-i18n="hintCancel">Abbrechen</span></span></div>
 </div>
 
 <div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
@@ -3495,8 +3498,9 @@ const STRINGS = {
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'DGM-Genauigkeit', unit: 'Einheit', unitMeter: 'Meter',
-    hintClick: 'Klick', hintMeasure: 'Messpunkt', hintDrag: 'Ziehen',
-    hintRotate: 'Drehen', hintEsc: 'Esc', hintCancel: 'Abbrechen',
+    hintClick: 'Linksklick', hintMeasure: 'Messpunkt', hintDrag: 'Links', hintDragX: ' ziehen',
+    hintRotate: 'Drehen', hintPan: 'Rechts/Mitte', hintPanX: ' ziehen', hintPanDo: 'Verschieben',
+    hintWheel: 'Mausrad', hintZoom: 'Zoom', hintEsc: 'Esc', hintCancel: 'Abbrechen',
     measureOn: 'Messpunkt auf', ground: 'Gelände', building: 'Gebäude',
     design: 'Design', font: 'Schriftart', fontSize: 'Schriftgröße',
     accent: 'Akzentfarbe', layout: 'Anordnung', panelWidth: 'Fensterbreite',
@@ -3561,8 +3565,9 @@ const STRINGS = {
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'DTM accuracy', unit: 'Unit', unitMeter: 'Metre',
-    hintClick: 'Click', hintMeasure: 'Measure point', hintDrag: 'Drag',
-    hintRotate: 'Orbit', hintEsc: 'Esc', hintCancel: 'Cancel',
+    hintClick: 'Left click', hintMeasure: 'Measure point', hintDrag: 'Left', hintDragX: ' drag',
+    hintRotate: 'Orbit', hintPan: 'Right/middle', hintPanX: ' drag', hintPanDo: 'Pan',
+    hintWheel: 'Wheel', hintZoom: 'Zoom', hintEsc: 'Esc', hintCancel: 'Cancel',
     measureOn: 'Measure point on', ground: 'terrain', building: 'building',
     design: 'Design', font: 'Typeface', fontSize: 'Text size',
     accent: 'Accent colour', layout: 'Layout', panelWidth: 'Panel width',
