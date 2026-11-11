@@ -49,7 +49,7 @@ const STRINGS = {
     demoAttribution: 'Beispieldaten:',
     radiusTooTight: 'Der Mindestradius passt nicht zwischen die Stützpunkte. Punkte weiter auseinander setzen oder Radius verkleinern.',
     noManufacturerValue: 'keine Herstellerangabe',
-    ifcExportBtn: 'Ausschnitt wählen', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
+    tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände und Gebäude als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'Genauigkeit', unit: 'Einheit', unitMeter: 'Meter',
@@ -117,7 +117,7 @@ const STRINGS = {
     demoAttribution: 'Sample data:',
     radiusTooTight: 'The minimum radius does not fit between the nodes. Move the nodes further apart or reduce the radius.',
     noManufacturerValue: 'no manufacturer figure',
-    ifcExportBtn: 'Select extent', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
+    tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain and buildings as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'Accuracy', unit: 'Unit', unitMeter: 'Metre',
@@ -211,7 +211,8 @@ const TOOL_INFO = {
   container: { name: 'tCont',   hint: 'tContHint' },
   tower:     { name: 'tTower',  hint: 'tTowerHint' },
   mobile:    { name: 'tMobile', hint: 'tMobileHint' },
-  road:      { name: 'tRoad',   hint: 'tRoadHint' }
+  road:      { name: 'tRoad',   hint: 'tRoadHint' },
+  ifc:       { name: 'tIfc',    hint: 'tIfcHint' }   // keine Platzierung, startet die Rechteckauswahl
 };
 
 
@@ -1084,7 +1085,6 @@ function setNeedsData(on) {
   for (let i = 0; i < cards.length; i++) {
     if (cards[i].classList) cards[i].classList.toggle('off', on);
   }
-  document.getElementById('rect-export-btn').classList.toggle('off', on);
 }
 
 function updateInfoBar() {
@@ -1401,6 +1401,15 @@ function setOrbitLocked(locked) {
   controls.enablePan = !locked;
 }
 
+/* Die IFC-Karte leuchtet, solange das Rechteck gezogen wird oder das Exportpanel offen ist */
+function markIfcCard() {
+  const cards = document.getElementById('palette').children;
+  const on = rectSelectActive || isIfcPanelOpen();
+  for (let i = 0; i < cards.length; i++) {
+    if (cards[i].classList && cards[i].dataset && cards[i].dataset.tool === 'ifc') cards[i].classList.toggle('active', on);
+  }
+}
+
 function startRectExport() {
   if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
   clearExportPreview();
@@ -1410,6 +1419,7 @@ function startRectExport() {
   setOrbitLocked(true);
   selectTool(null);
   setStatus(T('ifcExportHint'));
+  markIfcCard();
 }
 
 function cancelRectExport() {
@@ -1418,6 +1428,7 @@ function cancelRectExport() {
   setOrbitLocked(false);
   clearRectDragPreview();
   setStatus('');
+  markIfcCard();
 }
 
 function clearRectDragPreview() {
@@ -1475,6 +1486,7 @@ function finishRectExport(a, b) {
   scene.add(exportPreviewGroup);
   setStatus('');
   showIfcPanel();
+  markIfcCard();
 }
 
 function showIfcPanel() {
@@ -1488,6 +1500,7 @@ function showIfcPanel() {
 
 function hideIfcPanel() {
   document.getElementById('ifc-panel').style.display = 'none';
+  markIfcCard();
 }
 
 function isIfcPanelOpen() {
@@ -1737,7 +1750,7 @@ function onKeyDown(event) {
    ========================================================= */
 function initUI() {
   const palette = document.getElementById('palette');
-  ['container', 'tower', 'mobile', 'road'].forEach(function (type) {
+  ['container', 'tower', 'mobile', 'road', 'ifc'].forEach(function (type) {
     const card = document.createElement('button');
     card.className = 'pal-card';
     card.dataset.tool = type;
@@ -1754,6 +1767,11 @@ function initUI() {
 
     card.addEventListener('click', function () {
       if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
+      if (type === 'ifc') {
+        // Erneuter Klick während der Auswahl bricht sie ab
+        if (rectSelectActive) cancelRectExport(); else startRectExport();
+        return;
+      }
       selectTool(activeTool === type ? null : type);
     });
     palette.appendChild(card);
@@ -1812,9 +1830,6 @@ function initUI() {
     setStatus(T('msgViewReset'));
   });
 
-  document.getElementById('rect-export-btn').addEventListener('click', function () {
-    startRectExport();
-  });
   document.getElementById('ifc-export-btn').addEventListener('click', function () {
     runIfcExport();
   });
@@ -1947,6 +1962,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
     // IFC-Export
     startRectExport: startRectExport,
+    markIfcCard: markIfcCard,
     cancelRectExport: cancelRectExport,
     finishRectExport: finishRectExport,
     clearRectDragPreview: clearRectDragPreview,

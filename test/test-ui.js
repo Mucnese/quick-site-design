@@ -464,6 +464,47 @@ await test('formatVolume: unter 10 m³ eine Nachkommastelle, darüber ganze Kubi
   assert.strictEqual(s.formatVolume(1234.6), '1235 m³');
 });
 
+/* ---------- IFC Export als Karte in der Werkzeugleiste ---------- */
+
+function ifcCard(s) {
+  return Array.prototype.slice.call(s.document.getElementById('palette').children).filter(function (c) {
+    return c.dataset.tool === 'ifc';
+  })[0];
+}
+
+await test('IFC Export: Karte in der Werkzeugleiste (hinter Baustraße), kein Knopf mehr oben', async function () {
+  const s = newScope();
+  s.initUI();
+  const tools = Array.prototype.slice.call(s.document.getElementById('palette').children).map(function (c) { return c.dataset.tool; });
+  assert.deepStrictEqual(tools, ['container', 'tower', 'mobile', 'road', 'ifc']);
+  const card = ifcCard(s);
+  assert.strictEqual(card.children[0].className, 'pal-icon ifc');
+  assert.strictEqual(card.children[1].textContent, 'IFC Export');
+  assert.strictEqual(s.document._byId['rect-export-btn'], undefined, 'der alte Knopf darf nicht mehr angesprochen werden');
+});
+
+await test('IFC Export: Klick auf die Karte startet die Rechteckauswahl und leuchtet, erneuter Klick bricht ab', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const card = ifcCard(s);
+  const toggles = [];
+  card.classList.toggle = function (name, on) { toggles.push([name, on]); };
+  card.fire('click');
+  assert.strictEqual(s.isRectSelectActive(), true);
+  assert.deepStrictEqual(toggles[toggles.length - 1], ['active', true]);
+  card.fire('click');
+  assert.strictEqual(s.isRectSelectActive(), false);
+  assert.deepStrictEqual(toggles[toggles.length - 1], ['active', false]);
+});
+
+await test('IFC Export: ohne Gelände meldet die Karte den Datenmangel statt zu starten', async function () {
+  const s = newScope();
+  s.initUI();
+  ifcCard(s).fire('click');
+  assert.strictEqual(s.isRectSelectActive(), false);
+  assert.strictEqual(s.document.getElementById('status').textContent, s.T('msgNeedTerrain'));
+});
+
 /* ---------- Detailstufe nach Zoom ---------- */
 
 await test('Detailstufe nach Zoom: standardmäßig an, Schalter reicht an das Gelände-LOD durch', async function () {

@@ -195,6 +195,11 @@
   .pal-icon.road {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1'><path d='M6 23C6 14 12 11 20 11s14-3 18-8'/><path d='M14 25C14 17 20 15 26 15s10-3 13-7'/><path d='M10 24l1.6-2M18 14.5l2.4-.6M28 10.6l2-1.4M36 5.2l1.6-1.8'/></svg>");
   }
+  /* Eigenes Piktogramm: Gebäudemodell (Würfel) mit Pfeil nach außen. Das offizielle
+     IFC-/buildingSMART-Logo ist eine geschützte Marke und wird nicht nachgebildet. */
+  .pal-icon.ifc {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1' stroke-linejoin='round' stroke-linecap='round'><path d='M14 3l9 5v10l-9 5-9-5V8z'/><path d='M5 8l9 5 9-5M14 13v10'/><path d='M27 13h13M36 8.5l4.5 4.5-4.5 4.5'/></svg>");
+  }
   .dock-act {
     background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
     color: var(--text-dim); font-family: inherit; font-size: 0.78em;
@@ -382,21 +387,6 @@
   .btn-block:hover { border-color: var(--accent); color: var(--accent); }
   .btn-block.accent { border-color: var(--accent); color: var(--accent); }
 
-  #rect-export-btn {
-    /* #status sitzt ebenfalls oben mittig (top:14px, z-index:20) - tiefer,
-       damit Statusmeldungen (z. B. der Hinweis beim Rechteck ziehen) den
-       Knopf nicht verdecken. */
-    position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 7;
-    background: var(--panel-bg); border: 2px solid var(--accent); border-radius: var(--radius);
-    color: var(--accent); font-family: inherit; font-weight: 600;
-    font-size: 1em; padding: 12px 28px; cursor: pointer;
-    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  }
-  #rect-export-btn:hover { background: var(--field); }
-  #rect-export-btn.off { opacity: 0.35; cursor: not-allowed; }
-  #rect-export-btn.off:hover { background: var(--panel-bg); }
-
   /* Kleines Panel direkt über der Bausteinleiste (#dock, bottom: 56px) */
   #ifc-panel {
     display: none; position: fixed; bottom: 132px; left: 50%; transform: translateX(-50%);
@@ -479,8 +469,6 @@
 
 <div id="loading" data-i18n="loading">Lade</div>
 <div id="canvas-container"></div>
-
-<button id="rect-export-btn" data-i18n="ifcExportBtn">Ausschnitt wählen</button>
 
 <div id="col-left">
   <div id="overview" class="panel">

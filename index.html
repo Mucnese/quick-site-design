@@ -195,6 +195,11 @@
   .pal-icon.road {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1'><path d='M6 23C6 14 12 11 20 11s14-3 18-8'/><path d='M14 25C14 17 20 15 26 15s10-3 13-7'/><path d='M10 24l1.6-2M18 14.5l2.4-.6M28 10.6l2-1.4M36 5.2l1.6-1.8'/></svg>");
   }
+  /* Eigenes Piktogramm: Gebäudemodell (Würfel) mit Pfeil nach außen. Das offizielle
+     IFC-/buildingSMART-Logo ist eine geschützte Marke und wird nicht nachgebildet. */
+  .pal-icon.ifc {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1' stroke-linejoin='round' stroke-linecap='round'><path d='M14 3l9 5v10l-9 5-9-5V8z'/><path d='M5 8l9 5 9-5M14 13v10'/><path d='M27 13h13M36 8.5l4.5 4.5-4.5 4.5'/></svg>");
+  }
   .dock-act {
     background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
     color: var(--text-dim); font-family: inherit; font-size: 0.78em;
@@ -382,21 +387,6 @@
   .btn-block:hover { border-color: var(--accent); color: var(--accent); }
   .btn-block.accent { border-color: var(--accent); color: var(--accent); }
 
-  #rect-export-btn {
-    /* #status sitzt ebenfalls oben mittig (top:14px, z-index:20) - tiefer,
-       damit Statusmeldungen (z. B. der Hinweis beim Rechteck ziehen) den
-       Knopf nicht verdecken. */
-    position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 7;
-    background: var(--panel-bg); border: 2px solid var(--accent); border-radius: var(--radius);
-    color: var(--accent); font-family: inherit; font-weight: 600;
-    font-size: 1em; padding: 12px 28px; cursor: pointer;
-    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  }
-  #rect-export-btn:hover { background: var(--field); }
-  #rect-export-btn.off { opacity: 0.35; cursor: not-allowed; }
-  #rect-export-btn.off:hover { background: var(--panel-bg); }
-
   /* Kleines Panel direkt über der Bausteinleiste (#dock, bottom: 56px) */
   #ifc-panel {
     display: none; position: fixed; bottom: 132px; left: 50%; transform: translateX(-50%);
@@ -479,8 +469,6 @@
 
 <div id="loading" data-i18n="loading">Lade</div>
 <div id="canvas-container"></div>
-
-<button id="rect-export-btn" data-i18n="ifcExportBtn">Ausschnitt wählen</button>
 
 <div id="col-left">
   <div id="overview" class="panel">
@@ -3510,7 +3498,7 @@ const STRINGS = {
     demoAttribution: 'Beispieldaten:',
     radiusTooTight: 'Der Mindestradius passt nicht zwischen die Stützpunkte. Punkte weiter auseinander setzen oder Radius verkleinern.',
     noManufacturerValue: 'keine Herstellerangabe',
-    ifcExportBtn: 'Ausschnitt wählen', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
+    tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände und Gebäude als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'Genauigkeit', unit: 'Einheit', unitMeter: 'Meter',
@@ -3578,7 +3566,7 @@ const STRINGS = {
     demoAttribution: 'Sample data:',
     radiusTooTight: 'The minimum radius does not fit between the nodes. Move the nodes further apart or reduce the radius.',
     noManufacturerValue: 'no manufacturer figure',
-    ifcExportBtn: 'Select extent', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
+    tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain and buildings as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'Accuracy', unit: 'Unit', unitMeter: 'Metre',
@@ -3672,7 +3660,8 @@ const TOOL_INFO = {
   container: { name: 'tCont',   hint: 'tContHint' },
   tower:     { name: 'tTower',  hint: 'tTowerHint' },
   mobile:    { name: 'tMobile', hint: 'tMobileHint' },
-  road:      { name: 'tRoad',   hint: 'tRoadHint' }
+  road:      { name: 'tRoad',   hint: 'tRoadHint' },
+  ifc:       { name: 'tIfc',    hint: 'tIfcHint' }   // keine Platzierung, startet die Rechteckauswahl
 };
 
 
@@ -4545,7 +4534,6 @@ function setNeedsData(on) {
   for (let i = 0; i < cards.length; i++) {
     if (cards[i].classList) cards[i].classList.toggle('off', on);
   }
-  document.getElementById('rect-export-btn').classList.toggle('off', on);
 }
 
 function updateInfoBar() {
@@ -4862,6 +4850,15 @@ function setOrbitLocked(locked) {
   controls.enablePan = !locked;
 }
 
+/* Die IFC-Karte leuchtet, solange das Rechteck gezogen wird oder das Exportpanel offen ist */
+function markIfcCard() {
+  const cards = document.getElementById('palette').children;
+  const on = rectSelectActive || isIfcPanelOpen();
+  for (let i = 0; i < cards.length; i++) {
+    if (cards[i].classList && cards[i].dataset && cards[i].dataset.tool === 'ifc') cards[i].classList.toggle('active', on);
+  }
+}
+
 function startRectExport() {
   if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
   clearExportPreview();
@@ -4871,6 +4868,7 @@ function startRectExport() {
   setOrbitLocked(true);
   selectTool(null);
   setStatus(T('ifcExportHint'));
+  markIfcCard();
 }
 
 function cancelRectExport() {
@@ -4879,6 +4877,7 @@ function cancelRectExport() {
   setOrbitLocked(false);
   clearRectDragPreview();
   setStatus('');
+  markIfcCard();
 }
 
 function clearRectDragPreview() {
@@ -4936,6 +4935,7 @@ function finishRectExport(a, b) {
   scene.add(exportPreviewGroup);
   setStatus('');
   showIfcPanel();
+  markIfcCard();
 }
 
 function showIfcPanel() {
@@ -4949,6 +4949,7 @@ function showIfcPanel() {
 
 function hideIfcPanel() {
   document.getElementById('ifc-panel').style.display = 'none';
+  markIfcCard();
 }
 
 function isIfcPanelOpen() {
@@ -5198,7 +5199,7 @@ function onKeyDown(event) {
    ========================================================= */
 function initUI() {
   const palette = document.getElementById('palette');
-  ['container', 'tower', 'mobile', 'road'].forEach(function (type) {
+  ['container', 'tower', 'mobile', 'road', 'ifc'].forEach(function (type) {
     const card = document.createElement('button');
     card.className = 'pal-card';
     card.dataset.tool = type;
@@ -5215,6 +5216,11 @@ function initUI() {
 
     card.addEventListener('click', function () {
       if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
+      if (type === 'ifc') {
+        // Erneuter Klick während der Auswahl bricht sie ab
+        if (rectSelectActive) cancelRectExport(); else startRectExport();
+        return;
+      }
       selectTool(activeTool === type ? null : type);
     });
     palette.appendChild(card);
@@ -5273,9 +5279,6 @@ function initUI() {
     setStatus(T('msgViewReset'));
   });
 
-  document.getElementById('rect-export-btn').addEventListener('click', function () {
-    startRectExport();
-  });
   document.getElementById('ifc-export-btn').addEventListener('click', function () {
     runIfcExport();
   });
