@@ -230,7 +230,7 @@ const THEMES = {
     name: 'dark',
     vars: {
       '--bg': '#191c1f', '--scene': '#1f2429',
-      '--panel-bg': 'rgba(32, 36, 40, 0.95)',
+      '--panel-bg': 'rgba(32, 36, 40, 0.78)',
       '--border': '#3a4047', '--border-strong': '#586069',
       '--text': '#e2e6ea', '--text-dim': '#9aa3ac', '--text-dim2': '#6d7681',
       '--accent': '#4da3d9', '--danger': '#e0655a',
@@ -241,7 +241,7 @@ const THEMES = {
     name: 'light',
     vars: {
       '--bg': '#cfd5db', '--scene': '#dde2e7',
-      '--panel-bg': 'rgba(250, 251, 252, 0.96)',
+      '--panel-bg': 'rgba(250, 251, 252, 0.80)',
       '--border': '#ccd2d8', '--border-strong': '#98a1aa',
       '--text': '#1b1f23', '--text-dim': '#515a63', '--text-dim2': '#7d868f',
       '--accent': '#1f6feb', '--danger': '#c4362c',
