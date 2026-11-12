@@ -68,7 +68,7 @@ const STRINGS = {
     tRoad: 'Baustraße', tRoadHint: 'Stützpunkte setzen, Rechtsklick oder Leertaste schließt ab',
     tPit: 'Baugrube', tPitHint: 'Eckpunkte setzen, Rechtsklick oder Leertaste schließt das Polygon',
     fDepth: 'Tiefe zum mittleren Gelände', fBottomAbs: 'Höhe Unterkante (m ü. NHN)', fPitAngle: 'Böschungswinkel (90° = senkrecht)',
-    pitFloor: 'Sohlfläche', pitClamped: 'Grube zu schmal für den Winkel: die Wände sind steiler, etwa',
+    pitFloor: 'Sohlfläche', pitClamped: 'Grube zu schmal: Böschungswinkel auf den Mindestwinkel',
     pitDrawing: 'Baugrube: Eckpunkte im Gelände setzen', pitFinish: 'Rechtsklick oder Leertaste schließt das Polygon, Esc bricht ab',
     msgMinThree: 'Mindestens drei Punkte setzen.', msgMaxPoints: 'Mehr als 32 Eckpunkte sind nicht möglich.',
     pitCut: 'Aushub', pitFill: 'Aufschüttung', pitRef: 'Mittleres Gelände', pitBottom: 'Unterkante', pitCreated: 'Baugrube angelegt:',
@@ -143,7 +143,7 @@ const STRINGS = {
     tRoad: 'Haul road', tRoadHint: 'Set points, right-click or space finishes',
     tPit: 'Excavation', tPitHint: 'Set corner points, right-click or space closes the polygon',
     fDepth: 'Depth below mean ground', fBottomAbs: 'Bottom level (m a.s.l.)', fPitAngle: 'Slope angle (90° = vertical)',
-    pitFloor: 'Floor area', pitClamped: 'Pit too narrow for this angle: the walls are steeper, about',
+    pitFloor: 'Floor area', pitClamped: 'Pit too narrow: slope angle set to the minimum angle of',
     pitDrawing: 'Excavation: set corner points on the terrain', pitFinish: 'right-click or space closes the polygon, Esc cancels',
     msgMinThree: 'Set at least three points.', msgMaxPoints: 'More than 32 corner points are not possible.',
     pitCut: 'Excavation', pitFill: 'Fill', pitRef: 'Mean ground', pitBottom: 'Bottom', pitCreated: 'Excavation created:',
@@ -818,6 +818,10 @@ function showObjectEditor(id) {
       document.getElementById('param-title').textContent = labelFor(obj.type, obj.params);
       document.getElementById('param-hint').textContent = pitHintText(obj);
       renderPitInfo(obj, earthEl);
+      // zu schmale Grube: der Winkelregler springt auf den Mindestwinkel
+      const shownAngle = pitAngleShown(obj.group.userData.pit);
+      form.refs.angle.input.value = shownAngle;
+      form.refs.angle.num.value = shownAngle;
       if (key === 'angle') return;
       const other = key === 'bottomAbs' ? form.refs.depth : form.refs.bottomAbs;
       const val = key === 'bottomAbs' ? obj.params.depth : obj.group.userData.pit.bottomAbs;
@@ -992,7 +996,12 @@ function roadHintText(obj) {
    Parameter, sie folgt aus Tiefe und mittlerem Gelände. */
 function pitFormValues(obj) {
   const info = obj.group.userData.pit;
-  return { depth: obj.params.depth, bottomAbs: Math.round(info.bottomAbs * 100) / 100, angle: info.angle };
+  return { depth: obj.params.depth, bottomAbs: Math.round(info.bottomAbs * 100) / 100, angle: pitAngleShown(info) };
+}
+
+/* Winkel für den Regler: ist die Grube zu schmal, der kleinste noch mögliche (ganze Grad) */
+function pitAngleShown(info) {
+  return info.clamped ? Math.min(PIT_ANGLE_MAX, Math.ceil(info.angleEff - 1e-9)) : info.angle;
 }
 
 /* Beide Regler überdecken dieselbe Spanne (Tiefe -30..+10 m um das mittlere Gelände) */
@@ -1038,7 +1047,7 @@ function renderPitInfo(obj, el) {
   if (info.clamped) {
     const warn = document.createElement('div');
     warn.className = 'earth-note earth-warn';
-    warn.textContent = T('pitClamped') + ' ' + Math.round(info.angleEff) + '°.';
+    warn.textContent = T('pitClamped') + ' ' + pitAngleShown(info) + '°.';
     el.appendChild(warn);
   }
 }
@@ -2070,6 +2079,7 @@ if (typeof module !== 'undefined' && module.exports) {
     finishDrawing: finishDrawing,
     isDrawTool: isDrawTool,
     pitFormValues: pitFormValues,
+    pitAngleShown: pitAngleShown,
     setPitRanges: setPitRanges,
     renderPitInfo: renderPitInfo,
     pitHintText: pitHintText,

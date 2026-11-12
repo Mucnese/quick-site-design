@@ -837,6 +837,27 @@ await test('Baugrube: zu schmal für den Winkel - Hinweis mit wirksamem Winkel',
   assert.ok(el.textContent.indexOf(s.T('pitClamped')) >= 0, el.textContent);
 });
 
+await test('Baugrube zu schmal: Winkelregler springt auf den Mindestwinkel und folgt der Tiefe', function () {
+  const s = newScope();
+  const p = s.defaultPitParams();
+  p.points = [{ x: -3, z: -10 }, { x: 3, z: -10 }, { x: 3, z: 10 }, { x: -3, z: 10 }];
+  p.angle = 45;
+  const obj = s.addObject('pit', 0, 0, p);
+  s.showObjectEditor(obj.id);
+  const refs = s.getFormRefs();
+  const info = obj.group.userData.pit;
+  const min1 = refs.angle.num.value;
+  assert.ok(info.clamped && min1 > 45 && min1 >= info.angleEff, 'Regler zeigt Mindestwinkel ' + min1 + ' statt 45');
+  // flacher ziehen geht nicht: Regler springt zurück
+  refs.angle.input.value = '30';
+  refs.angle.input.fire('input');
+  assert.strictEqual(refs.angle.num.value, min1);
+  // flachere Grube (Tiefe -1 m): Mindestwinkel sinkt, Regler folgt
+  refs.depth.input.value = '-1';
+  refs.depth.input.fire('input');
+  assert.ok(refs.angle.num.value < min1, 'Mindestwinkel muss mit der Tiefe sinken');
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {
