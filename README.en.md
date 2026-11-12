@@ -155,6 +155,12 @@ Baden-Württemberg (DGM1 since March 2026), Bremen, Hamburg, Rhineland-Palatinat
 and Schleswig-Holstein publish XYZ text, and in Saarland the offer is unclear.
 That data has to be converted before loading, for example with GDAL.
 
+**File size.** The tool reads each file completely into memory. It therefore
+rejects, with a message and before reading, files over 1 GB, tiles over 100 million
+pixels and more than 150 million pixels (2 GB) in total. This mainly concerns
+Austria: the BEV 1 m rasters and the 10 m file for all of Austria are far larger.
+Cut out an area first, for example with `gdal_translate -projwin`.
+
 **Saarland.** The LVGL page describes the DGM1 but contains no download, and
 the licence statements contradict each other. Until that is settled, "free as
 open data" is not established for Saarland.

@@ -881,14 +881,59 @@ function refreshOsmMap() {
   });
 }
 
-/* Liest eine einzelne Kachel ein und liefert Raster samt Georeferenz */
-async function readTiffTile(arrayBuffer, fileName) {
+/* Grenzen für das Einlesen. Das Tool liest jede Datei vollständig in den Speicher
+   und entpackt das ganze Raster (4 Byte je Pixel), alle gewählten Kacheln bleiben
+   dabei zugleich im Speicher. Die Werte sind Schätzungen für einen Rechner mit
+   etwa 8 GB RAM; was darüber liegt, wird vor dem Einlesen mit klarer Meldung
+   abgelehnt, statt den Browser hängen zu lassen. */
+const TIFF_MAX_FILE_BYTES = 1e9;           // je Datei
+const TIFF_MAX_TOTAL_BYTES = 2e9;          // alle Dateien zusammen
+const TIFF_MAX_PIXELS = 100e6;             // je Kachel
+const TIFF_MAX_TOTAL_PIXELS = 150e6;       // alle Kacheln zusammen
+const TIFF_CUT_HINT = ' Bitte vorher einen Ausschnitt schneiden, z. B. mit gdal_translate -projwin.';
+
+/* Prüft Dateigrößen, bevor etwas gelesen wird; files = [{name, size}] */
+function checkTiffFiles(files) {
+  let total = 0;
+  (files || []).forEach(function (f) {
+    const size = f && f.size;
+    if (!(size > 0)) return;
+    total += size;
+    if (size > TIFF_MAX_FILE_BYTES) {
+      throw new Error(f.name + ': ' + (size / 1e9).toFixed(1) + ' GB sind zu groß für den Browser (Grenze ' +
+        (TIFF_MAX_FILE_BYTES / 1e9) + ' GB je Datei).' + TIFF_CUT_HINT);
+    }
+  });
+  if (total > TIFF_MAX_TOTAL_BYTES) {
+    throw new Error('Die Dateien sind zusammen ' + (total / 1e9).toFixed(1) + ' GB groß, mehr als ' +
+      (TIFF_MAX_TOTAL_BYTES / 1e9) + ' GB gehen nicht. Bitte weniger Kacheln auf einmal wählen.');
+  }
+}
+
+/* Prüft die Pixelzahl einer Kachel anhand der Kopfdaten, vor dem Entpacken */
+function checkTiffPixels(fileName, W, H, soFar) {
+  const px = W * H;
+  if (px > TIFF_MAX_PIXELS) {
+    throw new Error(fileName + ': ' + W + ' × ' + H + ' Pixel (' + Math.round(px / 1e6) + ' Mio.) sind zu viel für den ' +
+      'Browser (Grenze ' + Math.round(TIFF_MAX_PIXELS / 1e6) + ' Mio. je Kachel).' + TIFF_CUT_HINT);
+  }
+  if ((soFar || 0) + px > TIFF_MAX_TOTAL_PIXELS) {
+    throw new Error(fileName + ': mit dieser Kachel kämen ' + Math.round(((soFar || 0) + px) / 1e6) +
+      ' Mio. Pixel zusammen, mehr als ' + Math.round(TIFF_MAX_TOTAL_PIXELS / 1e6) + ' Mio. gehen nicht.' +
+      ' Bitte weniger oder kleinere Kacheln wählen.' );
+  }
+}
+
+/* Liest eine einzelne Kachel ein und liefert Raster samt Georeferenz.
+   soFarPixels: bereits eingelesene Pixel der anderen Kacheln (für die Gesamtgrenze) */
+async function readTiffTile(arrayBuffer, fileName, soFarPixels) {
   const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
   const image = await tiff.getImage();
 
   const W = image.getWidth();
   const H = image.getHeight();
   if (!W || !H) throw new Error(fileName + ': kein lesbares Raster.');
+  checkTiffPixels(fileName, W, H, soFarPixels);
 
   const rasters = await image.readRasters();
   const band = rasters[0];
@@ -943,8 +988,11 @@ async function readTiffTiles(items) {
   }
   if (!items || !items.length) throw new Error('Keine Datei ausgewählt.');
   const tiles = [];
+  let pixels = 0;
   for (let i = 0; i < items.length; i++) {
-    tiles.push(await readTiffTile(items[i].buffer, items[i].name));
+    const t = await readTiffTile(items[i].buffer, items[i].name, pixels);
+    pixels += t.W * t.H;
+    tiles.push(t);
   }
   return tiles;
 }
@@ -4080,6 +4128,12 @@ if (typeof module !== 'undefined' && module.exports) {
     ROAD_SLOPE_MAX: ROAD_SLOPE_MAX,
     buildRoad: buildRoad,
     roadInfo: roadInfo,
+    TIFF_MAX_PIXELS: TIFF_MAX_PIXELS,
+    TIFF_MAX_TOTAL_PIXELS: TIFF_MAX_TOTAL_PIXELS,
+    TIFF_MAX_FILE_BYTES: TIFF_MAX_FILE_BYTES,
+    checkTiffFiles: checkTiffFiles,
+    readTiffTile: readTiffTile,
+    readTiffTiles: readTiffTiles,
     crsToLonLat: crsToLonLat,
     crsGeoDefinition: crsGeoDefinition,
     osmMapPlan: osmMapPlan,

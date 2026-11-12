@@ -934,6 +934,16 @@ await test('Karte (OpenStreetMap): Schalter nur mit Gelände, Hinweis zur IP-Adr
   assert.strictEqual(g('osm-status').textContent, 'Map loaded (36 tiles).');
 });
 
+await test('GeoTIFF zu groß: klare Meldung im Datenfenster, bestehendes Gelände bleibt', async function () {
+  const s = newScope();
+  const f = fakeFile('bev_als_dtm.tif', '');
+  f.size = 2.4e9;
+  await s.handleDemFiles([f]);
+  const txt = s.document.getElementById('dem-status').textContent;
+  assert.ok(txt.indexOf('bev_als_dtm.tif') >= 0 && txt.indexOf('zu groß') > 0 && txt.indexOf('gdal_translate') > 0, txt);
+  assert.strictEqual(s.document.getElementById('dem-status').className.indexOf('err') > 0, true);
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {

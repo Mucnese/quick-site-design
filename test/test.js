@@ -1485,5 +1485,56 @@ test('Karte: Shader färbt das Gelände nach der Karte und behält das Baugruben
   assert.ok(both.fragmentShader.indexOf('discard') > 0 && both.fragmentShader.indexOf('uMapOn') > 0);
 });
 
+/* ---------- Größengrenzen beim Einlesen von GeoTIFFs ---------- */
+
+function fakeTiffOf(w, h, onRead) {
+  return {
+    fromArrayBuffer: function () {
+      return Promise.resolve({
+        getImage: function () {
+          return Promise.resolve({
+            getWidth: function () { return w; }, getHeight: function () { return h; },
+            readRasters: function () { onRead(); return Promise.resolve([new Float32Array(4)]); },
+            getOrigin: function () { return [0, 0]; }, getResolution: function () { return [1, 1]; },
+            getFileDirectory: function () { return {}; }, getGeoKeys: function () { return { ProjectedCSTypeGeoKey: 25832 }; }
+          });
+        }
+      });
+    }
+  };
+}
+
+test('GeoTIFF: Dateien über 1 GB oder zusammen über 2 GB werden vor dem Lesen abgelehnt', function () {
+  app.checkTiffFiles([{ name: 'a.tif', size: 50e6 }, { name: 'b.tif', size: 900e6 }]);
+  assert.throws(function () { app.checkTiffFiles([{ name: 'gross.tif', size: 1.9e9 }]); },
+    function (e) { return /gross\.tif/.test(e.message) && /1\.9 GB/.test(e.message) && /gdal_translate/.test(e.message); });
+  assert.throws(function () { app.checkTiffFiles([{ name: 'a', size: 900e6 }, { name: 'b', size: 900e6 }, { name: 'c', size: 900e6 }]); },
+    function (e) { return /zusammen/.test(e.message); });
+  app.checkTiffFiles([{ name: 'ohne-groesse.tif' }]);
+});
+
+test('GeoTIFF: zu große Kachel wird nach den Kopfdaten abgelehnt, ohne das Raster zu entpacken', async function () {
+  let reads = 0;
+  global.GeoTIFF = fakeTiffOf(20000, 6000, function () { reads++; });      // 120 Mio. Pixel
+  await assert.rejects(app.readTiffTile(new ArrayBuffer(0), 'bev.tif'),
+    function (e) { return /120 Mio\./.test(e.message) && /gdal_translate/.test(e.message); });
+  assert.strictEqual(reads, 0, 'readRasters darf nicht aufgerufen werden');
+  global.GeoTIFF = fakeTiffOf(8000, 8000, function () { reads++; });       // 64 Mio. Pixel: erlaubt
+  const t = await app.readTiffTile(new ArrayBuffer(0), 'ok.tif');
+  assert.strictEqual(t.W, 8000);
+  assert.strictEqual(reads, 1);
+  delete global.GeoTIFF;
+});
+
+test('GeoTIFF: die Gesamtgrenze für mehrere Kacheln greift, bevor die dritte entpackt wird', async function () {
+  let reads = 0;
+  global.GeoTIFF = fakeTiffOf(8000, 8000, function () { reads++; });       // je 64 Mio., Grenze gesamt 150 Mio.
+  await assert.rejects(app.readTiffTiles([
+    { buffer: new ArrayBuffer(0), name: 'k1.tif' }, { buffer: new ArrayBuffer(0), name: 'k2.tif' }, { buffer: new ArrayBuffer(0), name: 'k3.tif' }]),
+    function (e) { return /k3\.tif/.test(e.message) && /192 Mio\./.test(e.message); });
+  assert.strictEqual(reads, 2);
+  delete global.GeoTIFF;
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

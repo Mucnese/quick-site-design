@@ -156,6 +156,12 @@ Nordrhein-Westfalen, Sachsen, Sachsen-Anhalt und Thüringen an. Baden-Württembe
 geben XYZ-Text aus, im Saarland ist das Angebot unklar. Diese Daten müssen vor
 dem Laden umgewandelt werden, etwa mit GDAL.
 
+**Dateigröße.** Das Tool liest jede Datei ganz in den Speicher. Es lehnt deshalb
+Dateien über 1 GB, Kacheln über 100 Mio. Pixel und mehr als 150 Mio. Pixel (2 GB)
+insgesamt vor dem Einlesen mit einer Meldung ab. Das betrifft vor allem Österreich:
+Die BEV-Raster mit 1 m und die 10-m-Datei für ganz Österreich sind viel größer. Dort
+vorher einen Ausschnitt schneiden, etwa mit `gdal_translate -projwin`.
+
 **Saarland.** Die Seite des LVGL beschreibt das DGM1, enthält aber keinen
 Download, und die Angaben zur Lizenz widersprechen sich. Bis das geklärt ist,
 gilt „kostenfrei als Open Data“ für das Saarland nicht als belegt.

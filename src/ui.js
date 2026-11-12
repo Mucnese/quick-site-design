@@ -1436,6 +1436,8 @@ async function handleDemFiles(files, isDemo) {
   if (!list.length) return;
   setFileStatus('dem', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Kacheln', 'busy');
   try {
+    // Größen prüfen, bevor die erste Datei in den Speicher gelesen wird
+    checkTiffFiles(list.map(function (f) { return { name: f.name, size: f.size }; }));
     const items = [];
     for (let i = 0; i < list.length; i++) {
       items.push({ buffer: await list[i].arrayBuffer(), name: list[i].name });

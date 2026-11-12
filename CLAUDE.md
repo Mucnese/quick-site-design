@@ -70,6 +70,12 @@ eine Datei geladen ist.
 **Kein `localStorage`/`sessionStorage`.** Einstellungen gelten nur für die
 Sitzung. Die Datenschutzerklärung sagt das ausdrücklich zu.
 
+**GeoTIFF-Größe.** `readTiffTile` liest ganze Dateien in den Speicher (4 Byte je Pixel).
+`checkTiffFiles` und `checkTiffPixels` lehnen vor dem Einlesen ab (`TIFF_MAX_*`: 1 GB je
+Datei, 100 Mio. Pixel je Kachel, 150 Mio. Pixel und 2 GB gesamt; Schätzwerte für etwa 8 GB
+RAM, nicht gemessen). Teilweises Lesen mit `geotiff.js` (Fenster, Verkleinern beim Lesen)
+wäre der Weg zu größeren COGs, ist aber nicht gebaut.
+
 **Keine CDN-Verweise.** Die drei Bibliotheken liegen in `lib/`. Ein neuer
 `<script src>` auf einen fremden Server würde die Datenschutzerklärung
 unrichtig machen.
