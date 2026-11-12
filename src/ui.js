@@ -1102,7 +1102,7 @@ function groupKeyFor(o) {
   if (o.type === 'road') return 'Baustraße';
   if (o.type === 'pit') return 'Baugrube';
   if (o.type === 'tower') return 'Turmdrehkran';
-  return getModel(o.params.model).name;
+  return 'Mobilkran';
 }
 
 function buildGroups() {

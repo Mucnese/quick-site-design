@@ -224,15 +224,17 @@ await test('groupKeyFor/buildGroups gruppieren Turmdrehkrane alle unter demselbe
   assert.strictEqual(groups[0].ids.length, 2);
 });
 
-await test('groupKeyFor/buildGroups gruppieren Mobilkrane weiterhin nach echtem Modellnamen aus app.js', function () {
+await test('groupKeyFor/buildGroups gruppieren alle Mobilkrane unter einem Eintrag, auch bei verschiedenen Modellen', function () {
   const s = newScope();
   const p1 = s.defaultMobileParams();
   const p2 = s.defaultMobileParams();
+  p1.model = 'ltm1030';
+  p2.model = 'ltm1040';
   s.addObject('mobile', 0, 0, p1);
   s.addObject('mobile', 20, 0, p2);
   const groups = s.buildGroups();
   assert.strictEqual(groups.length, 1);
-  assert.strictEqual(groups[0].key, s.getModel(p1.model).name);
+  assert.strictEqual(groups[0].key, 'Mobilkran');
   assert.strictEqual(groups[0].ids.length, 2);
 });
 
