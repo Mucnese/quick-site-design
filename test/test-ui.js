@@ -858,6 +858,29 @@ await test('Baugrube zu schmal: Winkelregler springt auf den Mindestwinkel und f
   assert.ok(refs.angle.num.value < min1, 'Mindestwinkel muss mit der Tiefe sinken');
 });
 
+await test('Übersicht: Gesamtabtrag/-auftrag der Baustraßen und Gesamtaushub/-aufschüttung der Baugruben', function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  s.renderOverview();
+  ['row-road-cut', 'row-road-fill', 'row-pits', 'row-pit-cut', 'row-pit-fill'].forEach(function (id) {
+    assert.strictEqual(g(id).style.display, 'none', id + ' ohne Objekte versteckt');
+  });
+  const road = roadObject(s, 5);
+  const pp = s.defaultPitParams();
+  pp.points = [{ x: 30, z: 30 }, { x: 50, z: 30 }, { x: 50, z: 50 }, { x: 30, z: 50 }];
+  const pit1 = s.addObject('pit', 0, 0, pp);
+  const pit2 = s.addObject('pit', 0, 0, JSON.parse(JSON.stringify(pp)));
+  s.renderOverview();
+  const ew = road.group.userData.earthworks;
+  const pi = pit1.group.userData.pit;
+  assert.strictEqual(g('row-road-cut').style.display, '');
+  assert.strictEqual(g('stat-road-cut').textContent, s.formatVolume(ew.cut));
+  assert.strictEqual(g('stat-road-fill').textContent, s.formatVolume(ew.fill));
+  assert.strictEqual(g('stat-pits').textContent, 2);
+  assert.strictEqual(g('stat-pit-cut').textContent, s.formatVolume(2 * pi.cut));
+  assert.strictEqual(g('stat-pit-fill').textContent, s.formatVolume(2 * pi.fill));
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {

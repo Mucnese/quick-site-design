@@ -1124,6 +1124,17 @@ function renderOverview() {
   document.getElementById('stat-containers').textContent = s.containers;
   document.getElementById('stat-cranes').textContent = (s.towers + s.mobiles);
   document.getElementById('stat-road').textContent = Math.round(s.roadLength) + ' m';
+  // Gesamtmengen: Zeilen nur, wenn es Baustraßen bzw. Baugruben gibt
+  const showRoad = s.roadLength > 0, showPit = s.pits > 0;
+  [['row-road-cut', showRoad], ['row-road-fill', showRoad], ['row-pits', showPit],
+   ['row-pit-cut', showPit], ['row-pit-fill', showPit]].forEach(function (r) {
+    document.getElementById(r[0]).style.display = r[1] ? '' : 'none';
+  });
+  document.getElementById('stat-road-cut').textContent = formatVolume(s.roadCut);
+  document.getElementById('stat-road-fill').textContent = formatVolume(s.roadFill);
+  document.getElementById('stat-pits').textContent = s.pits;
+  document.getElementById('stat-pit-cut').textContent = formatVolume(s.pitCut);
+  document.getElementById('stat-pit-fill').textContent = formatVolume(s.pitFill);
 
   const list = document.getElementById('overview-list');
   list.innerHTML = '';

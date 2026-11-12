@@ -491,6 +491,11 @@
     <div class="kv"><span class="k" data-i18n="containers">Container</span><span class="v" id="stat-containers">0</span></div>
     <div class="kv"><span class="k" data-i18n="cranes">Krane</span><span class="v" id="stat-cranes">0</span></div>
     <div class="kv"><span class="k" data-i18n="road">Baustraße</span><span class="v" id="stat-road">0 m</span></div>
+    <div class="kv" id="row-road-cut" style="display:none"><span class="k" data-i18n="cut">Abtrag</span><span class="v" id="stat-road-cut">0 m³</span></div>
+    <div class="kv" id="row-road-fill" style="display:none"><span class="k" data-i18n="fill">Auftrag</span><span class="v" id="stat-road-fill">0 m³</span></div>
+    <div class="kv" id="row-pits" style="display:none"><span class="k" data-i18n="tPit">Baugrube</span><span class="v" id="stat-pits">0</span></div>
+    <div class="kv" id="row-pit-cut" style="display:none"><span class="k" data-i18n="pitCut">Aushub</span><span class="v" id="stat-pit-cut">0 m³</span></div>
+    <div class="kv" id="row-pit-fill" style="display:none"><span class="k" data-i18n="pitFill">Aufschüttung</span><span class="v" id="stat-pit-fill">0 m³</span></div>
     <div id="warning"></div>
     <div id="overview-list"></div>
   </div>
@@ -3615,6 +3620,7 @@ function clearGhost() {
    ========================================================= */
 function computeStats() {
   let containers = 0, towers = 0, mobiles = 0, roadLength = 0;
+  let roadCut = 0, roadFill = 0, pits = 0, pitCut = 0, pitFill = 0;
   for (let i = 0; i < objects.length; i++) {
     const o = objects[i];
     if (o.type === 'container') {
@@ -3622,10 +3628,19 @@ function computeStats() {
       containers += lay.count;
     } else if (o.type === 'tower') towers++;
     else if (o.type === 'mobile') mobiles++;
-    else if (o.type === 'road') roadLength += roadInfo(o.params).length;
+    else if (o.type === 'road') {
+      roadLength += roadInfo(o.params).length;
+      const ew = o.group && o.group.userData ? o.group.userData.earthworks : null;
+      if (ew) { roadCut += ew.cut; roadFill += ew.fill; }
+    } else if (o.type === 'pit') {
+      pits++;
+      const pi = o.group && o.group.userData ? o.group.userData.pit : null;
+      if (pi) { pitCut += pi.cut; pitFill += pi.fill; }
+    }
   }
   return { containers: containers, towers: towers, mobiles: mobiles,
-           roadLength: roadLength, total: objects.length };
+           roadLength: roadLength, roadCut: roadCut, roadFill: roadFill,
+           pits: pits, pitCut: pitCut, pitFill: pitFill, total: objects.length };
 }
 
 function radiusConflicts() {
@@ -5076,6 +5091,17 @@ function renderOverview() {
   document.getElementById('stat-containers').textContent = s.containers;
   document.getElementById('stat-cranes').textContent = (s.towers + s.mobiles);
   document.getElementById('stat-road').textContent = Math.round(s.roadLength) + ' m';
+  // Gesamtmengen: Zeilen nur, wenn es Baustraßen bzw. Baugruben gibt
+  const showRoad = s.roadLength > 0, showPit = s.pits > 0;
+  [['row-road-cut', showRoad], ['row-road-fill', showRoad], ['row-pits', showPit],
+   ['row-pit-cut', showPit], ['row-pit-fill', showPit]].forEach(function (r) {
+    document.getElementById(r[0]).style.display = r[1] ? '' : 'none';
+  });
+  document.getElementById('stat-road-cut').textContent = formatVolume(s.roadCut);
+  document.getElementById('stat-road-fill').textContent = formatVolume(s.roadFill);
+  document.getElementById('stat-pits').textContent = s.pits;
+  document.getElementById('stat-pit-cut').textContent = formatVolume(s.pitCut);
+  document.getElementById('stat-pit-fill').textContent = formatVolume(s.pitFill);
 
   const list = document.getElementById('overview-list');
   list.innerHTML = '';

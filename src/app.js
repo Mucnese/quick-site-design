@@ -3008,6 +3008,7 @@ function clearGhost() {
    ========================================================= */
 function computeStats() {
   let containers = 0, towers = 0, mobiles = 0, roadLength = 0;
+  let roadCut = 0, roadFill = 0, pits = 0, pitCut = 0, pitFill = 0;
   for (let i = 0; i < objects.length; i++) {
     const o = objects[i];
     if (o.type === 'container') {
@@ -3015,10 +3016,19 @@ function computeStats() {
       containers += lay.count;
     } else if (o.type === 'tower') towers++;
     else if (o.type === 'mobile') mobiles++;
-    else if (o.type === 'road') roadLength += roadInfo(o.params).length;
+    else if (o.type === 'road') {
+      roadLength += roadInfo(o.params).length;
+      const ew = o.group && o.group.userData ? o.group.userData.earthworks : null;
+      if (ew) { roadCut += ew.cut; roadFill += ew.fill; }
+    } else if (o.type === 'pit') {
+      pits++;
+      const pi = o.group && o.group.userData ? o.group.userData.pit : null;
+      if (pi) { pitCut += pi.cut; pitFill += pi.fill; }
+    }
   }
   return { containers: containers, towers: towers, mobiles: mobiles,
-           roadLength: roadLength, total: objects.length };
+           roadLength: roadLength, roadCut: roadCut, roadFill: roadFill,
+           pits: pits, pitCut: pitCut, pitFill: pitFill, total: objects.length };
 }
 
 function radiusConflicts() {
