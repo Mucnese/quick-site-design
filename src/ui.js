@@ -330,7 +330,7 @@ const SETTINGS = {
   font: 'system',
   size: 12,
   accent: null,
-  width: 200,
+  width: 220,
   language: 'de'
 };
 
@@ -492,7 +492,7 @@ function buildTweakPanel() {
     ACCENTS.map(function (c) { return { value: c, label: '', color: c }; }),
     SETTINGS.accent, function (v) { SETTINGS.accent = v; }));
 
-  body.appendChild(sliderRow(T('panelWidth'), 200, 400, 10, SETTINGS.width, ' px',
+  body.appendChild(sliderRow(T('panelWidth'), 220, 400, 10, SETTINGS.width, ' px',
     function (v) { SETTINGS.width = v; }));
 }
 

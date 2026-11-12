@@ -26,7 +26,7 @@
   :root {
     --ui-font: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
     --ui-size: 12px;
-    --panel-w: 200px;
+    --panel-w: 220px;
     --radius: 0px;
     --bg: #1e1e1e;
     --scene: #22262b;
@@ -5094,7 +5094,7 @@ const SETTINGS = {
   font: 'system',
   size: 12,
   accent: null,
-  width: 200,
+  width: 220,
   language: 'de'
 };
 
@@ -5256,7 +5256,7 @@ function buildTweakPanel() {
     ACCENTS.map(function (c) { return { value: c, label: '', color: c }; }),
     SETTINGS.accent, function (v) { SETTINGS.accent = v; }));
 
-  body.appendChild(sliderRow(T('panelWidth'), 200, 400, 10, SETTINGS.width, ' px',
+  body.appendChild(sliderRow(T('panelWidth'), 220, 400, 10, SETTINGS.width, ' px',
     function (v) { SETTINGS.width = v; }));
 }
 

@@ -584,15 +584,15 @@ function allInputs(el, out) {
   return out;
 }
 
-await test('Darstellung: Fensterbreite reicht von 200 bis 400 px (Standard 200), die Anordnung (Werkzeuge links/rechts) gibt es nicht mehr', function () {
+await test('Darstellung: Fensterbreite reicht von 220 bis 400 px (Standard 220), die Anordnung (Werkzeuge links/rechts) gibt es nicht mehr', function () {
   const s = newScope();
   s.toggleTweak(true);
   const body = s.document.getElementById('tweak-body');
   const ranges = allInputs(body, []).filter(function (i) { return i.type === 'range'; });
   const width = ranges.filter(function (i) { return i.className === 'tw-slider' && i.max === 400; })[0];
   assert.ok(width, 'Regler für die Fensterbreite fehlt');
-  assert.strictEqual(width.min, 200);
-  assert.strictEqual(s.__bridge.SETTINGS.width, 200);
+  assert.strictEqual(width.min, 220);
+  assert.strictEqual(s.__bridge.SETTINGS.width, 220);
   assert.strictEqual(s.T('tweak'), 'Darstellung');
   assert.strictEqual(s.__bridge.SETTINGS.layout, undefined);
   const txt = body.textContent;
