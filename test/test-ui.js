@@ -458,7 +458,7 @@ await test('Baustraße: der Hinweis nennt neben der Länge auch die Fläche', fu
   assert.ok(hint.indexOf(s.T('area') + ' 300 m²') > 0, hint);
 });
 
-await test('Baustraße: Schleppkurve Sattelzug - Schalter im Formular, Ergebnis und Quelle im Eigenschaftsfenster', function () {
+await test('Baustraße: Schleppkurve Sattelzug - Schalter im Formular, Ergebnis im Eigenschaftsfenster', function () {
   const s = newScope();
   const tool = s.buildForm('road', s.defaultRoadParams(), function () {}, false);
   assert.ok(tool.refs.showSwept, 'Schalter fehlt');
@@ -469,13 +469,13 @@ await test('Baustraße: Schleppkurve Sattelzug - Schalter im Formular, Ergebnis 
   const obj = s.addObject('road', 0, 0, p);
   const el = s.document.createElement('div');
   s.renderRoadEarth(obj, el);
-  assert.ok(el.textContent.indexOf('Luzern') < 0, 'ohne Schalter kein Hinweis');
+  assert.ok(el.textContent.indexOf('Sattelzug') < 0, 'ohne Schalter kein Hinweis');
   obj.params.showSwept = true; s.rebuildObject(obj);
   s.renderRoadEarth(obj, el);
   const txt = el.textContent;
   assert.ok(txt.indexOf('Sattelzug 16,50 m braucht') >= 0, txt);
   assert.ok(txt.indexOf('Passt nicht') >= 0, txt);
-  assert.ok(txt.indexOf('Luzern 736.107.2') >= 0, txt);
+  assert.ok(txt.indexOf('Luzern') < 0, 'Quelle steht nicht im Fenster');
   obj.params.width = 9; s.rebuildObject(obj);
   s.renderRoadEarth(obj, el);
   assert.ok(el.textContent.indexOf(s.T('sweptOk')) >= 0 && el.textContent.indexOf('Passt nicht') < 0, el.textContent);

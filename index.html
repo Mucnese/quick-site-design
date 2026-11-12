@@ -4405,7 +4405,6 @@ const STRINGS = {
     fSwept: 'Schleppkurve Sattelzug prüfen',
     sweptNeed: 'Sattelzug 16,50 m braucht {n} m bei Fahrt auf der Straßenmitte (Fahrbahn {w} m).',
     sweptOk: 'Passt.', sweptOver: 'Passt nicht: ragt bis {o} m über den Fahrbahnrand.',
-    sweptSrc: 'Schleppkurve nach Kanton Luzern 736.107.2 (2006), ohne Sicherheitszuschlag.',
     msgPlaced: 'platziert.', msgMinTwo: 'Mindestens zwei Punkte setzen.',
     msgCleared: 'Baustelle geleert.', msgViewReset: 'Ansicht zurückgesetzt.',
     msgMoved: 'Position übernommen.', msgPickNew: 'Neue Position im Gelände anklicken.',
@@ -4484,7 +4483,6 @@ const STRINGS = {
     fSwept: 'Check swept path (semi-trailer)',
     sweptNeed: 'Semi-trailer 16.50 m needs {n} m when driving on the road centre (road {w} m).',
     sweptOk: 'It fits.', sweptOver: 'Does not fit: sticks out up to {o} m beyond the road edge.',
-    sweptSrc: 'Swept path after Kanton Luzern 736.107.2 (2006), no safety margin.',
     msgPlaced: 'placed.', msgMinTwo: 'Set at least two points.',
     msgCleared: 'Site cleared.', msgViewReset: 'View reset.',
     msgMoved: 'Position applied.', msgPickNew: 'Click the new position on the terrain.',
@@ -5425,10 +5423,6 @@ function renderRoadEarth(obj, el) {
     n2.className = 'earth-note' + (sw.fits ? '' : ' earth-warn');
     n2.textContent = sw.fits ? T('sweptOk') : T('sweptOver').replace('{o}', sw.over.toFixed(1));
     el.appendChild(n2);
-    const n3 = document.createElement('div');
-    n3.className = 'earth-note';
-    n3.textContent = T('sweptSrc');
-    el.appendChild(n3);
   }
 }
 
