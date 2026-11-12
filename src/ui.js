@@ -9,6 +9,7 @@ let lastGmlRings = null;
 let lastDemTiles = null;      // eingelesene Kacheln, für Auflösungswechsel
 let lastDemNames = [];
 let gridLimit = MAX_GRID;
+let addNodeMode = false;         // nächster Klick fügt einen Punkt hinzu (Straße, Baugrube)
 let roadPoints = [];          // Stützpunkte während des Zeichnens (Straße oder Baugrube)
 
 /* =========================================================
@@ -87,7 +88,7 @@ const STRINGS = {
     fSlope: 'Längsneigung', area: 'Fläche', fill: 'Auftrag', cut: 'Abtrag',
     fEmbank: 'Böschung', embankment: 'Böschung {r} bis zum Gelände', embankFar: 'Böschung erreicht das Gelände nicht (Grenze 80 m)',
     conflict1: 'Kranradien überschneiden sich um', conflictN: 'Überschneidungen von Kranradien',
-    nodeHint: 'Stützpunkt anklicken, dann neue Position im Gelände wählen.', nodePicked: 'Stützpunkt gewählt. Neue Position anklicken.', nodeMoved: 'Stützpunkt verschoben.', nodePickFirst: 'Zuerst einen Stützpunkt anklicken.', nodeMinTwo: 'Eine Baustraße braucht mindestens zwei Stützpunkte.', nodeMinThree: 'Eine Baugrube braucht mindestens drei Eckpunkte.', delNode: 'Punkt löschen'
+    nodeHint: 'Stützpunkt anklicken, dann neue Position im Gelände wählen.', nodePicked: 'Stützpunkt gewählt. Neue Position anklicken.', nodeMoved: 'Stützpunkt verschoben.', nodePickFirst: 'Zuerst einen Stützpunkt anklicken.', nodeMinTwo: 'Eine Baustraße braucht mindestens zwei Stützpunkte.', nodeMinThree: 'Eine Baugrube braucht mindestens drei Eckpunkte.', delNode: 'Punkt löschen', addNode: 'Punkt hinzufügen', nodeAddHint: 'Stelle im Gelände anklicken: der Punkt wird in die nächste Strecke eingefügt.', nodeAdded: 'Punkt hinzugefügt.'
   },
   en: {
     lang: 'English',
@@ -161,7 +162,7 @@ const STRINGS = {
     fSlope: 'Longitudinal slope', area: 'area', fill: 'Fill', cut: 'Cut',
     fEmbank: 'Embankment', embankment: 'Embankment {r} to the ground', embankFar: 'Embankment does not reach the ground (80 m limit)',
     conflict1: 'Crane radii overlap by', conflictN: 'overlapping crane radii',
-    nodeHint: 'Click a node, then pick its new position on the terrain.', nodePicked: 'Node selected. Click the new position.', nodeMoved: 'Node moved.', nodePickFirst: 'Select a node first.', nodeMinTwo: 'A haul road needs at least two nodes.', nodeMinThree: 'An excavation needs at least three corner points.', delNode: 'Delete node'
+    nodeHint: 'Click a node, then pick its new position on the terrain.', nodePicked: 'Node selected. Click the new position.', nodeMoved: 'Node moved.', nodePickFirst: 'Select a node first.', nodeMinTwo: 'A haul road needs at least two nodes.', nodeMinThree: 'An excavation needs at least three corner points.', delNode: 'Delete node', addNode: 'Add node', nodeAddHint: 'Click a spot on the terrain: the node is inserted into the nearest segment.', nodeAdded: 'Node added.'
   }
 };
 
@@ -684,6 +685,7 @@ function selectTool(type) {
   activeTool = type;
   selectObject(null);
   moveMode = false;
+  addNodeMode = false;
   roadPoints = [];
   clearRoadPreview();
   setRoadHint(isDrawTool(type));
@@ -737,6 +739,8 @@ function selectTool(type) {
   }
   renderOverview();
 }
+
+function isAddNodeMode() { return addNodeMode; }
 
 /* Formularfelder des gerade offenen Fensters (für Tests) */
 function getFormRefs() { return formRefs; }
@@ -889,6 +893,18 @@ function showObjectEditor(id) {
   actions.appendChild(btnDup);
 
   if (hasNodes(obj)) {
+    const btnAdd = document.createElement('button');
+    btnAdd.className = 'btn';
+    btnAdd.textContent = T('addNode');
+    btnAdd.addEventListener('click', function () {
+      moveMode = false;
+      addNodeMode = true;
+      setStatus(obj.type === 'pit' && obj.params.points.length >= PIT_MAX_POINTS ? T('msgMaxPoints') : T('nodeAddHint'),
+                obj.type === 'pit' && obj.params.points.length >= PIT_MAX_POINTS);
+      if (obj.type === 'pit' && obj.params.points.length >= PIT_MAX_POINTS) addNodeMode = false;
+    });
+    actions.appendChild(btnAdd);
+
     const btnNode = document.createElement('button');
     btnNode.className = 'btn';
     btnNode.textContent = T('delNode');
@@ -1751,6 +1767,22 @@ function onCanvasMove(event) {
 }
 
 function onCanvasClick(event) {
+  // Punkt hinzufügen: hat Vorrang vor dem Anklicken vorhandener Stützpunkte
+  if (addNodeMode) {
+    const obj = findObject(getSelectedId());
+    const pt = raycastTerrain(event);
+    if (obj && pt) {
+      addNodeMode = false;
+      if (addRoadNode(obj, pt.x, pt.z) >= 0) {
+        showObjectEditor(obj.id);
+        setStatus(T('nodeAdded'));
+      } else {
+        setStatus(T('msgMaxPoints'), true);
+      }
+    }
+    return;
+  }
+
   // Stützpunkt einer ausgewählten Baustraße bearbeiten
   const sel = findObject(getSelectedId());
   if (hasNodes(sel)) {
@@ -1848,6 +1880,7 @@ function onKeyDown(event) {
     // Erst die Knotenauswahl lösen, die Objektauswahl bleibt bestehen
     if (activeRoadNode() !== null) { setActiveNode(null); setStatus(''); return; }
     moveMode = false;
+    addNodeMode = false;
     roadPoints = []; clearRoadPreview(); setRoadHint(false);
     selectTool(null);
     hideMeasure();
@@ -2086,6 +2119,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // Zustand für Tests
     getPressInfo: function () { return pressInfo; },
     getFormRefs: getFormRefs,
+    isAddNodeMode: isAddNodeMode,
     resetUIState: function () {
       toolParams = {};
       formRefs = {};
@@ -2096,6 +2130,7 @@ if (typeof module !== 'undefined' && module.exports) {
       roadPoints = [];
       pressInfo = null;
       pivotDrag = null;
+      addNodeMode = false;
       lastPlaceTime = 0;
       demoAttribDem = false;
       demoAttribGml = false;

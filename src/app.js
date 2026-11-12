@@ -2685,6 +2685,45 @@ function removeRoadNode(obj, index) {
   return true;
 }
 
+/* Fügt einen Punkt an der angeklickten Stelle ein, und zwar in die nächstgelegene
+   Strecke. Bei der Straße (offener Zug) hängt ein Klick jenseits des Anfangs oder
+   Endes den Punkt vorn oder hinten an; bei der Baugrube zählt auch die
+   Schlusskante vom letzten zum ersten Punkt. Liefert den Index des neuen Punkts
+   oder -1 (kein Punktobjekt, zu viele Ecken). */
+function addRoadNode(obj, x, z) {
+  if (!hasNodes(obj)) return -1;
+  const pts = obj.params.points;
+  if (!pts || pts.length < 2) return -1;
+  if (obj.type === 'pit' && pts.length >= PIT_MAX_POINTS) return -1;
+
+  const closed = obj.type === 'pit';
+  const nSeg = closed ? pts.length : pts.length - 1;
+  let best = -1, bestD = Infinity, bestT = 0;
+  for (let i = 0; i < nSeg; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+    const t = l2 > 0 ? ((x - a.x) * dx + (z - a.z) * dz) / l2 : 0;
+    const tc = Math.max(0, Math.min(1, t));
+    const px = a.x + dx * tc, pz = a.z + dz * tc;
+    const d = (x - px) * (x - px) + (z - pz) * (z - pz);
+    if (d < bestD) { bestD = d; best = i; bestT = t; }
+  }
+
+  let at;
+  if (!closed && best === 0 && bestT < 0) at = 0;
+  else if (!closed && best === nSeg - 1 && bestT > 1) at = pts.length;
+  else at = best + 1;
+  pts.splice(at, 0, { x: x, z: z });
+
+  const c = roadCentroid(pts);
+  obj.x = c.x; obj.z = c.z;
+  if (obj.type === 'road') obj.params.slope = autoRoadSlope(obj.params);
+  activeNode = null;
+  rebuildObject(obj);
+  refreshRoadNodes();
+  return at;
+}
+
 /* =========================================================
    Raycasting
    ========================================================= */
@@ -3315,6 +3354,7 @@ if (typeof module !== 'undefined' && module.exports) {
     setActiveNode: setActiveNode,
     moveRoadNode: moveRoadNode,
     removeRoadNode: removeRoadNode,
+    addRoadNode: addRoadNode,
 
     // Kennzahlen
     computeStats: computeStats,

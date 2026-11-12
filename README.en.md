@@ -52,7 +52,7 @@ browser.
   Length and area are shown in the properties window. Where the carriageway
   lies above or below the terrain, an embankment joins it (1:1, 1:1.5 or 1:2, selectable); fill and cut are
   listed in m³ (average end area method). Selecting a road reveals its nodes,
-  which can be moved or deleted.
+  which can be moved, deleted or added to ("Add node" inserts one into the nearest segment).
 
 **Interaction**
 - Mouse: drag with the left button = orbit, right or middle button = pan,

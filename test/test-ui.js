@@ -733,6 +733,62 @@ await test('Baugrube im Editor: Tiefe und Höhe der Unterkante sind verknüpft (
   assert.ok(Math.abs(obj.params.depth - 3) < 0.01, 'Aufschüttung +3: ' + obj.params.depth);
 });
 
+/* ---------- Punkt hinzufügen: Knopf im Editor, nächster Klick fügt ein ---------- */
+
+function findButton(el, text) {
+  if (el.textContent === text && el.addEventListener && el.className && el.className.indexOf('btn') >= 0) return el;
+  const kids = el.children || [];
+  for (let i = 0; i < kids.length; i++) { const f = findButton(kids[i], text); if (f) return f; }
+  return null;
+}
+
+async function nodeEditorScope(type) {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const params = type === 'pit' ? s.defaultPitParams() : s.defaultRoadParams();
+  params.points = type === 'pit' ? [{ x: 0, z: 0 }, { x: 20, z: 0 }, { x: 20, z: 20 }, { x: 0, z: 20 }] : [{ x: 0, z: 0 }, { x: 40, z: 0 }];
+  const obj = s.addObject(type, 10, 10, params);
+  s.showObjectEditor(obj.id);
+  return { s: s, obj: obj };
+}
+
+await test('Punkt hinzufügen: Knopf bei Straße und Baugrube, nächster Klick fügt den Punkt ein, einmalig', async function () {
+  for (const type of ['road', 'pit']) {
+    const k = await nodeEditorScope(type);
+    const btn = findButton(k.s.document.getElementById('param-panel'), k.s.T('addNode'));
+    assert.ok(btn, type + ': Knopf "Punkt hinzufügen" fehlt');
+    const n0 = k.obj.params.points.length;
+    btn.fire('click');
+    assert.strictEqual(k.s.isAddNodeMode(), true);
+    assert.strictEqual(k.s.document.getElementById('status').textContent, k.s.T('nodeAddHint'));
+    setTerrainHit(k.s, 20, 0, -3);
+    k.s.onCanvasClick({ clientX: 0, clientY: 0 });
+    assert.strictEqual(k.obj.params.points.length, n0 + 1, type);
+    assert.strictEqual(k.s.isAddNodeMode(), false, 'nur ein Punkt je Klick auf den Knopf');
+    assert.strictEqual(k.s.document.getElementById('status').textContent, k.s.T('nodeAdded'));
+  }
+});
+
+await test('Punkt hinzufügen: Esc bricht ab, andere Objekttypen haben den Knopf nicht', async function () {
+  const k = await nodeEditorScope('road');
+  findButton(k.s.document.getElementById('param-panel'), k.s.T('addNode')).fire('click');
+  k.s.onKeyDown({ key: 'Escape' });
+  assert.strictEqual(k.s.isAddNodeMode(), false);
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const c = s.addObject('container', 0, 0, s.defaultContainerParams());
+  s.showObjectEditor(c.id);
+  assert.strictEqual(findButton(s.document.getElementById('param-panel'), s.T('addNode')), null);
+});
+
+await test('Punkt hinzufügen: Klick im Modus trifft keinen vorhandenen Stützpunkt, sondern fügt ein', async function () {
+  const k = await nodeEditorScope('road');
+  findButton(k.s.document.getElementById('param-panel'), k.s.T('addNode')).fire('click');
+  k.s.__bridge.raycaster._results = [{ point: { x: 20, y: 0, z: 1 }, object: { userData: { __nodeIndex: 0 } } }];
+  k.s.onCanvasClick({ clientX: 0, clientY: 0 });
+  assert.strictEqual(k.obj.params.points.length, 3);
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {

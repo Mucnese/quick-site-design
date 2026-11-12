@@ -1048,6 +1048,66 @@ test('Baugrube: Stützpunkte bearbeiten wie bei der Straße (versetzen, mindeste
   assert.strictEqual(obj.params.slope, undefined, 'Baugruben haben keine Längsneigung');
 });
 
+/* ---------- Punkt hinzufügen (Baustraße, Baugrube) ---------- */
+
+function openRoad() {
+  const p = roadAlongX(0); p.points = [{ x: 0, z: 0 }, { x: 100, z: 0 }, { x: 100, z: 100 }]; return p;
+}
+
+test('Punkt hinzufügen (Straße): wird in die nächstgelegene Strecke an der Klickstelle eingefügt', function () {
+  roadTerrain(0);
+  const obj = app.addObject('road', 0, 0, openRoad());
+  assert.strictEqual(app.addRoadNode(obj, 50, 10), 1);
+  assert.deepStrictEqual(obj.params.points, [{ x: 0, z: 0 }, { x: 50, z: 10 }, { x: 100, z: 0 }, { x: 100, z: 100 }]);
+  assert.strictEqual(app.addRoadNode(obj, 108, 60), 3, 'liegt nahe der letzten Strecke (x = 100), davor eingefügt');
+  assert.strictEqual(obj.params.points[3].x, 108);
+  assert.strictEqual(obj.params.points.length, 5);
+});
+
+test('Punkt hinzufügen (Straße): jenseits von Anfang oder Ende wird vorn oder hinten angehängt', function () {
+  roadTerrain(0);
+  const a = app.addObject('road', 0, 0, openRoad());
+  assert.strictEqual(app.addRoadNode(a, -30, -5), 0);
+  assert.strictEqual(a.params.points[0].x, -30);
+  const b = app.addObject('road', 0, 0, openRoad());
+  assert.strictEqual(app.addRoadNode(b, 100, 140), 3);
+  assert.strictEqual(b.params.points[3].z, 140);
+  assert.strictEqual(b.params.points.length, 4);
+});
+
+test('Punkt hinzufügen (Straße): Geometrie wird neu gebaut, Neigung neu eingepasst, Auswahl der Stützpunkte gelöst', function () {
+  roadTerrain(0.1);
+  const obj = app.addObject('road', 0, 0, openRoad());
+  obj.params.slope = 1;
+  const lenBefore = obj.group.userData.length;
+  app.addRoadNode(obj, 50, 40);                          // Umweg: Strecke wird länger
+  assert.ok(obj.group.userData.length > lenBefore, 'Straße muss neu gebaut sein');
+  assert.notStrictEqual(obj.params.slope, 1, 'Neigung wird aus dem Gelände neu abgeleitet');
+  assert.strictEqual(app.activeRoadNode(), null);
+});
+
+test('Punkt hinzufügen (Baugrube): auch die Schlusskante zählt; Loch im Gelände folgt', function () {
+  roadTerrain(0);
+  const obj = app.addObject('pit', 0, 0, pitParams(square(0, 0, 20, 20)));
+  assert.strictEqual(app.addRoadNode(obj, 2, 10), 4, 'Schlusskante (links, vom letzten zum ersten Punkt): ans Ende');
+  assert.strictEqual(obj.params.points.length, 5);
+  assert.deepStrictEqual(obj.params.points[4], { x: 2, z: 10 });
+  assert.strictEqual(app.getPitUniforms().uPitN.value[0], 5, 'Loch hat jetzt fünf Kanten');
+  assert.strictEqual(app.addRoadNode(obj, 10, -4), 1, 'obere Kante: zwischen Punkt 0 und 1');
+  assert.strictEqual(obj.params.slope, undefined);
+});
+
+test('Punkt hinzufügen (Baugrube): bei 32 Ecken gibt es -1, sonst wächst nichts; Nicht-Punktobjekte ebenso', function () {
+  roadTerrain(0);
+  const pts = [];
+  for (let i = 0; i < app.PIT_MAX_POINTS; i++) pts.push({ x: 20 * Math.cos(i / 32 * 2 * Math.PI), z: 20 * Math.sin(i / 32 * 2 * Math.PI) });
+  const obj = app.addObject('pit', 0, 0, pitParams(pts));
+  assert.strictEqual(app.addRoadNode(obj, 0, 0), -1);
+  assert.strictEqual(obj.params.points.length, app.PIT_MAX_POINTS);
+  const c = app.addObject('container', 0, 0, app.defaultContainerParams());
+  assert.strictEqual(app.addRoadNode(c, 1, 1), -1);
+});
+
 test('Baugrube: Beschriftung nennt Fläche und Tiefe', function () {
   assert.strictEqual(app.labelFor('pit', pitParams(square(0, 0, 20, 20), -5)), 'Baugrube 400 m² · -5.0 m');
 });

@@ -54,7 +54,7 @@ Browser.
   stehen im Eigenschaftsfenster. Wo die Fahrbahn über oder unter dem Gelände
   liegt, schließt eine Böschung an (1:1, 1:1,5 oder 1:2 wählbar); Auftrag und Abtrag erscheinen in m³
   (Mittelflächenverfahren). Bei Auswahl erscheinen die Stützpunkte und lassen
-  sich versetzen oder löschen.
+  sich versetzen, löschen oder ergänzen („Punkt hinzufügen“ fügt ihn in die nächste Strecke ein).
 
 **Bedienung**
 - Maus: linke Taste ziehen = umkreisen, rechte oder mittlere Taste ziehen =
