@@ -123,44 +123,75 @@ schematisch.
 
 ## Datenquellen
 
-Alle 16 Bundesländer stellen das DGM1 kostenfrei als Open Data bereit. Die
-Portale unterscheiden sich allerdings deutlich — in Format, Kachelung, Zugang
-und Lizenz.
+Nicht jedes Bundesland bietet das DGM1 als GeoTIFF an, und nicht jedes Portal
+stellt es erkennbar als Open Data bereit. Die Portale unterscheiden sich in
+Format, Kachelung, Zugang und Lizenz. Die Tabelle nennt DGM1 und
+3D-Gebäudemodell (LoD2) je Land; die Links sind im November 2026 geprüft.
+Ein ⚠ in der Formatspalte heißt: kein GeoTIFF.
 
-| Land | Stelle | Portal | Lizenz |
-|---|---|---|---|
-| Baden-Württemberg | LGL-BW | [opengeodata.lgl-bw.de](https://opengeodata.lgl-bw.de/) | dl-de/by-2-0 |
-| Bayern | Bayer. Vermessungsverwaltung | [geodaten.bayern.de](https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1) | cc-by/4.0 |
-| Berlin | — | in den Brandenburg-Daten enthalten | — |
-| Brandenburg | LGB | [data.geobasis-bb.de](https://data.geobasis-bb.de/geobasis/daten/) | dl-de/by-2-0 |
-| Bremen | LGV Bremen | [geoportal.bremen.de](https://geoportal.bremen.de/geoportal/) | cc-by/4.0 |
-| Hamburg | LGV Hamburg | [metaver.de](https://metaver.de/trefferanzeige?docuuid=A39B4E86-15E2-4BF7-BA82-66F9913D5640) | dl-de/by-2-0 |
-| Hessen | HVBG | [hvbg.hessen.de](https://hvbg.hessen.de/landesvermessung/geotopographie/3d-daten/digitale-gelaendemodelle) | dl-de/by-2-0 |
-| Mecklenburg-Vorpommern | LAiV MV | [laiv.geodaten-mv.de](https://laiv.geodaten-mv.de/afgvk/Geotopographie/Download?produkt=DGM1) | dl-de/by-2-0 |
-| Niedersachsen | LGLN | [ni-lgln-opengeodata.hub.arcgis.com](https://ni-lgln-opengeodata.hub.arcgis.com/pages/digitales-gel-ndemodell-dgm1) | cc-by/4.0 |
-| Nordrhein-Westfalen | Geobasis NRW | [opengeodata.nrw.de](https://www.opengeodata.nrw.de/produkte/geobasis/hm/dgm1_tiff/) | dl-de/by-2-0 |
-| Rheinland-Pfalz | LVermGeo RP | [geoshop.rlp.de](https://geoshop.rlp.de/opendata-dgm1.html) | dl-de/by-2-0 |
-| Saarland | LVGL-SL | [saarland.de/lvgl](https://www.saarland.de/lvgl/DE/themen-aufgaben/themen/geotopographie/digitalegelaendemodelle/digitalegelaendemodelle) | dl-de/by-2-0 |
-| Sachsen | GeoSN | [geodaten.sachsen.de](https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html) | dl-de/by-2-0 |
-| Sachsen-Anhalt | LVermGeo ST | [lvermgeo.sachsen-anhalt.de](https://www.lvermgeo.sachsen-anhalt.de/de/gdp-dgm-dom-lsa.html) | dl-de/by-2-0 |
-| Schleswig-Holstein | LVermGeo SH | [opendata.schleswig-holstein.de](https://opendata.schleswig-holstein.de/dataset/digitales-gelandemodell-1-dgm1) | cc-by/4.0 |
-| Thüringen | TLBG | [tlbg.thueringen.de](https://tlbg.thueringen.de/geobasisdaten/3d-informationen/digitale-gelaendemodelle) | dl-de/by-2-0 |
+| Land | Stelle | DGM1-Portal | DGM1-Format | Gebäudemodell (LoD2) | Lizenz (DGM1) |
+|---|---|---|---|---|---|
+| Baden-Württemberg | LGL-BW | [opengeodata.lgl-bw.de](https://opengeodata.lgl-bw.de/) | ⚠ XYZ-Text (GeoTIFF nur beim DGM025, 0,25 m) | [opengeodata.lgl-bw.de](https://opengeodata.lgl-bw.de/) (CityGML, 2 × 2 km) | dl-de/by-2-0 |
+| Bayern | Bayer. Vermessungsverwaltung | [geodaten.bayern.de](https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1) | GeoTIFF | [geodaten.bayern.de](https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=lod2) | cc-by/4.0 |
+| Berlin | — | in den Brandenburg-Daten enthalten (nicht geprüft) | — | [gdi.berlin.de](https://gdi.berlin.de/geonetwork/srv/api/records/3c7c49af-00a4-3bcd-bc00-20e7f0f1b7bf) | — |
+| Brandenburg | LGB | [data.geobasis-bb.de](https://data.geobasis-bb.de/geobasis/daten/) | GeoTIFF (auch XYZ) | [data.geobasis-bb.de](https://data.geobasis-bb.de/geobasis/daten/3d_gebaeude/) | dl-de/by-2-0 |
+| Bremen | LGV Bremen | [GDI-DE-Katalog](https://gdk.gdi-de.org/geonetwork/srv/api/records/C448202A-0F15-413A-99E6-F22F10E190C9) | ⚠ XYZ-ASCII | [geo.bremen.de](https://www.geo.bremen.de/produkte/3d-produkte/3d-gebaeudemodelle-11892) | cc-by/4.0 |
+| Hamburg | LGV Hamburg | [metaver.de](https://metaver.de/trefferanzeige?docuuid=A39B4E86-15E2-4BF7-BA82-66F9913D5640) | ⚠ XYZ-ASCII, 2 × 2 km (das Paket 2022 ist als „PNG“ ausgewiesen, nicht geprüft) | [metaver.de](https://metaver.de/trefferanzeige?docuuid=1F6E48EB-3B7B-4F61-AE3C-C03079ECCAEA) (GML) | dl-de/by-2-0 |
+| Hessen | HVBG | [hvbg.hessen.de](https://hvbg.hessen.de/landesvermessung/geotopographie/3d-daten/digitale-gelaendemodelle) | GeoTIFF | [hvbg.hessen.de](https://hvbg.hessen.de/landesvermessung/geotopographie/3d-daten/3d-gebaeudemodelle) | dl-de/by-2-0 |
+| Mecklenburg-Vorpommern | LAiV MV | [laiv.geodaten-mv.de](https://laiv.geodaten-mv.de/afgvk/Geotopographie/Download?produkt=DGM1) | GeoTIFF | [laiv.geodaten-mv.de](https://laiv.geodaten-mv.de/afgvk/Geotopographie/Download?produkt=3DGbm) | dl-de/by-2-0 |
+| Niedersachsen | LGLN | [ni-lgln-opengeodata.hub.arcgis.com](https://ni-lgln-opengeodata.hub.arcgis.com/pages/digitales-gel-ndemodell-dgm1) | GeoTIFF (COG) | [ni-lgln-opengeodata.hub.arcgis.com](https://ni-lgln-opengeodata.hub.arcgis.com/pages/3d-geb-udemodell-lod2) | cc-by/4.0 |
+| Nordrhein-Westfalen | Geobasis NRW | [opengeodata.nrw.de](https://www.opengeodata.nrw.de/produkte/geobasis/hm/dgm1_tiff/) | GeoTIFF | [opengeodata.nrw.de](https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/) | dl-de/by-2-0 |
+| Rheinland-Pfalz | LVermGeo RP | [geoshop.rlp.de](https://geoshop.rlp.de/opendata-dgm1.html) | ⚠ XYZ-ASCII (laut Metadaten, GeoTIFF nur als Alternative) | [geoshop.rlp.de](https://geoshop.rlp.de/opendata-geb3dlo.html) | dl-de/by-2-0 |
+| Saarland | LVGL-SL | [saarland.de/lvgl](https://www.saarland.de/lvgl/DE/themen-aufgaben/themen/geotopographie/digitalegelaendemodelle/digitalegelaendemodelle) | ⚠ unklar: die Seite beschreibt das DGM1, bietet aber keinen Download | — (nur INSPIRE-Dienste, nicht als Open Data bestätigt) | ⚠ widersprüchlich: Metadaten nennen dl-de/by-2-0, andere Angaben kostenpflichtigen Download |
+| Sachsen | GeoSN | [geodaten.sachsen.de](https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html) | GeoTIFF | [geodaten.sachsen.de](https://www.geodaten.sachsen.de/downloadbereich-digitale-3d-stadtmodelle-4875.html) | dl-de/by-2-0 |
+| Sachsen-Anhalt | LVermGeo ST | [lvermgeo.sachsen-anhalt.de](https://www.lvermgeo.sachsen-anhalt.de/de/gdp-dgm-dom-lsa.html) | GeoTIFF (XYZ optional) | [lvermgeo.sachsen-anhalt.de](https://www.lvermgeo.sachsen-anhalt.de/de/gdp-3d-gebaeudemodell.html) | dl-de/by-2-0 |
+| Schleswig-Holstein | LVermGeo SH | [opendata.schleswig-holstein.de](https://opendata.schleswig-holstein.de/dataset/digitales-gelandemodell-1-dgm1) | ⚠ XYZ-ASCII | [OpenGBD-Portal](https://www.schleswig-holstein.de/DE/landesregierung/ministerien-behoerden/LVERMGEOSH/Themen/themaOpenGbd) (LoD2 nicht geprüft) | cc-by/4.0 |
+| Thüringen | TLBG | [tlbg.thueringen.de](https://tlbg.thueringen.de/geobasisdaten/3d-informationen/digitale-gelaendemodelle) | GeoTIFF (teils Punktwolken) | [tlbg.thueringen.de](https://tlbg.thueringen.de/geobasisdaten/3d-informationen/3d-gebaeudemodelle) | dl-de/by-2-0 |
 
 **Format.** Quick-Site-Design erwartet GeoTIFF mit Höhenwerten als Gleitkomma
-und einer Georeferenz im Header. Die meisten Länder liefern genau das,
-Niedersachsen als Cloud-Optimized GeoTIFF. Bremen, Schleswig-Holstein und Teile
-Thüringens geben XYZ-ASCII aus — diese Daten müssen vor dem Laden umgewandelt
-werden, etwa mit GDAL.
+und einer Georeferenz im Header. GeoTIFF bieten Bayern, Brandenburg, Hessen,
+Mecklenburg-Vorpommern, Niedersachsen (als Cloud-Optimized GeoTIFF),
+Nordrhein-Westfalen, Sachsen, Sachsen-Anhalt und Thüringen an. Baden-Württemberg
+(DGM1 seit März 2026), Bremen, Hamburg, Rheinland-Pfalz und Schleswig-Holstein
+geben XYZ-Text aus, im Saarland ist das Angebot unklar. Diese Daten müssen vor
+dem Laden umgewandelt werden, etwa mit GDAL.
+
+**Saarland.** Die Seite des LVGL beschreibt das DGM1, enthält aber keinen
+Download, und die Angaben zur Lizenz widersprechen sich. Bis das geklärt ist,
+gilt „kostenfrei als Open Data“ für das Saarland nicht als belegt.
 
 **Kachelung.** Meist 1 × 1 km, teilweise 2 × 2 km. Mehrere Kacheln lassen sich
 gemeinsam auswählen und werden beim Laden verschmolzen.
 
-**Gebäudemodelle.** Die LoD2-Daten liegen überwiegend in denselben Portalen,
-teils unter abweichenden Lizenzen; dort unter „LoD2" oder „3D-Gebäudemodell"
-aufgeführt.
+**Gebäudemodelle.** Die Links der Spalte „Gebäudemodell (LoD2)“ führen auf die
+jeweilige Produktseite; die Daten liegen als CityGML vor, teils unter
+abweichenden Lizenzen. Für Schleswig-Holstein ist das LoD2-Angebot nicht
+bestätigt, für das Saarland gibt es nur Dienste.
 
-**Lizenzpflicht.** Beide Lizenzen verlangen eine Quellenangabe. Der genaue
-Wortlaut steht in den Metadaten des jeweiligen Landes.
+**Lizenzpflicht.** Die genannten Lizenzen verlangen eine Quellenangabe. Der
+genaue Wortlaut steht in den Metadaten des jeweiligen Landes.
+
+### Österreich
+
+Die Daten kommen vom Bund und von einzelnen Ländern und Städten; ein
+landesweites 3D-Gebäudemodell gibt es nicht. Verzeichnet sind nur Angebote, die
+im November 2026 geprüft wurden. Steiermark, Niederösterreich, Kärnten und
+Vorarlberg sind nicht geprüft.
+
+| Stelle | Geländemodell | Format | Gebäudemodell (LoD2) | Lizenz |
+|---|---|---|---|---|
+| Bund (BEV) | [ALS-Höhenraster 1 m](https://www.bev.gv.at/Services/Produkte/Digitales-Gelaendehoehenmodell/ALS-Hoehenraster.html), Download auf data.bev.gv.at | GeoTIFF (COG), ⚠ EPSG:3035 | — | CC BY 4.0 |
+| Bund (10 m) | [DGM Österreich 10 m](https://www.data.gv.at/katalog/dataset/d88a1246-9684-480b-a480-ff63286b35b7) | GeoTIFF | — | CC BY 4.0 |
+| Wien | [Geländemodell Raster 1 m](https://www.data.gv.at/katalog/dataset/1eda4b16-05e3-43c3-b5b0-ef8276df0701) | GeoTIFF und ASCII | [Dachmodell LoD2.1](https://www.data.gv.at/katalog/dataset/86d88cae-ad97-4476-bae5-73488a12776d) | CC BY 4.0 |
+| Tirol | [DGM Tirol](https://www.data.gv.at/katalog/dataset/0454f5f3-1d8c-464e-847d-541901eb021a) | GeoTIFF (0,5 m, 5 m, 10 m), XYZ-Grid (1 m) | — | CC BY 4.0 |
+| Salzburg | [DGM 1 m](https://www.data.gv.at/katalog/dataset/093d4dec-8397-4faf-b690-b8cbe9a9dc31) | TIF mit World-File und ASCII, gemeindeweise | — | nicht geprüft |
+| Oberösterreich | [DGM 0,5 m](https://www.data.gv.at/katalog/dataset/68cfe491-7cdf-4781-a1f1-603cd0738abd) | GeoTIFF und XYZ, EPSG:31255 | — | CC BY 4.0 |
+| Burgenland | [Höhenmodelle und Orthofotos](https://geodaten.bgld.gv.at/de/downloads/hoehenmodelle-orthofotos.html) | nicht geprüft | — | nicht geprüft |
+| Linz (Stadt) | — | — | [3D-Geodaten LoD2 2018](https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e), Gauß-Krüger M31 | CC BY 4.0 |
+
+Das BEV liefert seine Höhenraster in EPSG:3035 (ETRS89-LAEA). Die Kartengrundlage
+(OpenStreetMap) rechnet dieses System nicht um und schaltet sich dort mit einer
+Meldung ab; die Gauß-Krüger-Systeme MGI (EPSG:31254 bis 31256) funktionieren.
 
 ---
 
