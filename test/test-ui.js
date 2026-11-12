@@ -944,6 +944,54 @@ await test('GeoTIFF zu groß: klare Meldung im Datenfenster, bestehendes Geländ
   assert.strictEqual(s.document.getElementById('dem-status').className.indexOf('err') > 0, true);
 });
 
+function xyzFile(name, n) {
+  let t = '';
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) t += (692000 + i + 0.5) + ' ' + (5336020 - j - 0.5) + ' ' + (520 + i + j) + '\n';
+  const buf = new Uint8Array(Buffer.from(t, 'utf8')).buffer;
+  return { name: name, size: buf.byteLength, arrayBuffer: function () { return Promise.resolve(buf); } };
+}
+
+await test('XYZ-Datei: ohne Bezugssystem vorgemerkt, mit gewähltem System oder eingetipptem EPSG-Code gelesen', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  s.buildXyzCrsOptions();
+  assert.ok(g('xyz-crs').children.length >= 5, 'Auswahl fehlt');
+  const first = g('xyz-crs').children[1];
+  assert.strictEqual(first.value, '25832');
+  // ohne Wahl: vorgemerkt, Hinweis, kein Gelände
+  await s.handleDemFiles([xyzFile('hh.xyz', 4)]);
+  assert.ok(g('dem-status').textContent.indexOf('Bezugssystem') >= 0, g('dem-status').textContent);
+  assert.strictEqual(g('tile-label').textContent === 'Testkachel', false);
+  // Wahl getroffen: die vorgemerkte Datei wird gelesen
+  g('xyz-crs').value = '25832';
+  s.onXyzCrsChanged();
+  await new Promise(function (r) { setImmediate(r); });
+  await new Promise(function (r) { setImmediate(r); });
+  assert.ok(g('dem-status').className.indexOf('ok') > 0, g('dem-status').textContent);
+  // manueller Code
+  const s2 = newScope();
+  const g2 = function (id) { return s2.document.getElementById(id); };
+  s2.buildXyzCrsOptions();
+  g2('xyz-crs').value = 'other';
+  g2('xyz-epsg').value = '12';
+  await s2.handleDemFiles([xyzFile('a.xyz', 4)]);
+  assert.ok(g2('dem-status').textContent.indexOf('Ungültiger') >= 0, g2('dem-status').textContent);
+  g2('xyz-epsg').value = '25832';
+  assert.strictEqual(s2.getXyzEpsg(), 25832);
+  await s2.handleDemFiles([xyzFile('a.xyz', 4)]);
+  assert.ok(g2('dem-status').className.indexOf('ok') > 0, g2('dem-status').textContent);
+});
+
+await test('XYZ-Datei: ein Code, der die Koordinaten weit außerhalb Europas legt, bekommt eine Warnung', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  s.buildXyzCrsOptions();
+  g('xyz-crs').value = 'other';
+  g('xyz-epsg').value = '32660';                  // UTM 60N: Zone am anderen Ende der Welt
+  await s.handleDemFiles([xyzFile('x.xyz', 4)]);
+  assert.ok(g('dem-status').textContent.indexOf('außerhalb Europas') >= 0, g('dem-status').textContent);
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {

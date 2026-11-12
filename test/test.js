@@ -1536,5 +1536,51 @@ test('GeoTIFF: die Gesamtgrenze für mehrere Kacheln greift, bevor die dritte en
   delete global.GeoTIFF;
 });
 
+/* ---------- XYZ-Textdateien ---------- */
+
+function xyzBuf(text) { return new Uint8Array(Buffer.from(text, 'utf8')); }
+
+test('XYZ: Kopfzeile, CRLF, Tabulator, Komma, Semikolon und Exponent werden gelesen, Textzeilen übersprungen', function () {
+  const p = app.parseXyz(xyzBuf('Rechts Hoch Hoehe\r\n500000.5\t5400000.5\t100.25\r\n500001.5,5400000.5,101\r\n\r\n500002.5;5400000.5;1.5e2\r\n# Kommentar\r\n  500003.5   5400000.5   -2.5  \r\n'), 'a.xyz');
+  assert.strictEqual(p.n, 4);
+  assert.deepStrictEqual([p.xs[0], p.ys[0], p.zs[0]], [500000.5, 5400000.5, 100.25]);
+  assert.strictEqual(p.zs[2], 150);
+  assert.strictEqual(p.zs[3], -2.5);
+});
+
+test('XYZ: regelmäßiges Raster wird zur Kachel - Zellmitten, Ursprung oben links, Lücken als NoData, beliebige Reihenfolge', function () {
+  // 3 Spalten (Abstand 2 m) x 2 Zeilen (Abstand 1 m), Spalte für Spalte sortiert, ein Punkt fehlt
+  const pts = [[500000, 5400001, 1], [500000, 5400000, 2], [500002, 5400001, 3], [500004, 5400001, 5], [500004, 5400000, 6]];
+  const t = app.readXyzTile(xyzBuf(pts.map(function (q) { return q.join(' '); }).join('\n')), 'b.xyz', 25832, 0);
+  assert.strictEqual(t.W, 3); assert.strictEqual(t.H, 2);
+  assert.strictEqual(t.resX, 2); assert.strictEqual(t.resY, 1);
+  assert.strictEqual(t.originX, 499999);          // linke Kante = erste Zellmitte - halbe Zelle
+  assert.strictEqual(t.originY, 5400001.5);
+  assert.deepStrictEqual(Array.from(t.band), [1, 3, 5, 2, -9999, 6]);
+  assert.strictEqual(t.nodata, -9999);
+  assert.strictEqual(t.epsg, 25832);
+});
+
+test('XYZ: Fehler - kein EPSG, ESRI-ASCII-Raster, Streupunkte ohne Raster, zu viele Zeilen', function () {
+  assert.throws(function () { app.readXyzTile(xyzBuf('1 2 3\n2 2 3\n1 3 3\n2 3 3\n'), 'c.xyz', null, 0); }, /Bezugssystem/);
+  assert.throws(function () { app.readXyzTile(xyzBuf('ncols 4\nnrows 3\nxllcorner 1\n'), 'd.xyz', 25832, 0); }, /ESRI-ASCII/);
+  let txt = ''; for (let i = 0; i < 40; i++) txt += (500000 + i * 7.3 + (i * i) % 11) + ' ' + (5400000 + i * 13.1) + ' ' + i + '\n';
+  assert.throws(function () { app.readXyzTile(xyzBuf(txt), 'e.xyz', 25832, 0); }, /kein regelmäßiges Raster/);
+  assert.throws(function () { app.parseXyz(new Uint8Array(Buffer.alloc(app.XYZ_MAX_POINTS + 2000, 10)), 'f.xyz'); }, /Mio\. Zeilen/);
+  assert.strictEqual(app.isXyzName('A.XYZ'), true);
+  assert.strictEqual(app.isXyzName('kachel.tif'), false);
+});
+
+test('XYZ: zwei Kacheln werden verschmolzen und tragen den gewählten EPSG-Code, GeoTIFF und XYZ lassen sich mischen', async function () {
+  const grid = function (x0, n) { let t = ''; for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) t += (x0 + i + 0.5) + ' ' + (5400000 - j - 0.5) + ' ' + (100 + i + j) + '\n'; return t; };
+  const items = [{ name: 'k1.xyz', buffer: xyzBuf(grid(500000, 4)).buffer }, { name: 'k2.xyz', buffer: xyzBuf(grid(500004, 4)).buffer }];
+  const tiles = await app.readTiffTiles(items, 25833);
+  const t = app.gridTiles(tiles, 0);
+  assert.strictEqual(t.epsg, 25833);
+  assert.strictEqual(Math.round(t.w), 8);
+  assert.strictEqual(Math.round(t.d), 4);
+  await assert.rejects(app.readTiffTiles(items, null), /Bezugssystem/);
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

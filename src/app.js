@@ -982,19 +982,136 @@ function tileIsNoData(tile, v) {
 /* Mehrere GeoTIFF-Kacheln zu einem Gelände verschmelzen.
    Die Pixel aller Kacheln werden in ein gemeinsames Zielraster gemittelt;
    dadurch spielen unterschiedliche Auflösungen und Überlappungen keine Rolle. */
-async function readTiffTiles(items) {
-  if (typeof GeoTIFF === 'undefined') {
+async function readTiffTiles(items, xyzEpsg) {
+  if (!items || !items.length) throw new Error('Keine Datei ausgewählt.');
+  const hasTiff = items.some(function (it) { return !isXyzName(it.name); });
+  if (hasTiff && typeof GeoTIFF === 'undefined') {
     throw new Error('Die Datei lib/geotiff.js fehlt. Siehe lib/LIESMICH.txt.');
   }
-  if (!items || !items.length) throw new Error('Keine Datei ausgewählt.');
   const tiles = [];
   let pixels = 0;
   for (let i = 0; i < items.length; i++) {
-    const t = await readTiffTile(items[i].buffer, items[i].name, pixels);
+    const t = isXyzName(items[i].name)
+      ? readXyzTile(items[i].buffer, items[i].name, xyzEpsg, pixels)
+      : await readTiffTile(items[i].buffer, items[i].name, pixels);
     pixels += t.W * t.H;
     tiles.push(t);
   }
   return tiles;
+}
+
+/* ---------- XYZ-Textdateien ----------
+   Zeilen aus Rechtswert, Hochwert und Höhe auf einem regelmäßigen Raster (Punkte
+   = Zellmitten), getrennt durch Leerzeichen, Tabulator, Komma oder Semikolon;
+   Dezimalzeichen ist der Punkt. Das Raster wird aus den Koordinatenabständen
+   bestimmt und wie eine GeoTIFF-Kachel behandelt. Eine XYZ-Datei enthält kein
+   Bezugssystem - der EPSG-Code kommt vom Nutzer. */
+const XYZ_MAX_POINTS = 30e6;          // 20 Byte je Punkt im Speicher, die Datei selbst kommt dazu
+const XYZ_NODATA = -9999;
+
+function isXyzName(name) {
+  return /\.(xyz|txt|csv)$/i.test(name || '');
+}
+
+/* Liest alle Zeilen mit mindestens drei Zahlen; Kopfzeilen und Leerzeilen werden übersprungen */
+function parseXyz(bytes, fileName) {
+  const len = bytes.length;
+  let lines = 1;
+  for (let i = 0; i < len; i++) if (bytes[i] === 10) lines++;
+  if (lines > XYZ_MAX_POINTS + 1000) {
+    throw new Error(fileName + ': ' + Math.round(lines / 1e6) + ' Mio. Zeilen sind zu viel für den Browser (Grenze ' +
+      Math.round(XYZ_MAX_POINTS / 1e6) + ' Mio. Punkte).' + TIFF_CUT_HINT);
+  }
+  const xs = new Float64Array(lines), ys = new Float64Array(lines), zs = new Float32Array(lines);
+  let n = 0, p = 0;
+  const val = [0, 0, 0];
+  while (p < len) {
+    // eine Zeile: bis zu drei Zahlen lesen
+    let got = 0, bad = false;
+    while (p < len && bytes[p] !== 10) {
+      let c = bytes[p];
+      if (c === 32 || c === 9 || c === 44 || c === 59 || c === 13) { p++; continue; }
+      // Zahl: [+-]ziffern[.ziffern][e[+-]ziffern]
+      let sign = 1, num = 0, digits = 0, frac = 0, fracDigits = 0;
+      if (c === 45 || c === 43) { if (c === 45) sign = -1; p++; c = bytes[p]; }
+      while (p < len && bytes[p] >= 48 && bytes[p] <= 57) { num = num * 10 + (bytes[p] - 48); digits++; p++; }
+      if (p < len && bytes[p] === 46) {
+        p++;
+        while (p < len && bytes[p] >= 48 && bytes[p] <= 57) { frac = frac * 10 + (bytes[p] - 48); fracDigits++; digits++; p++; }
+      }
+      let v = digits ? num + (fracDigits ? frac / Math.pow(10, fracDigits) : 0) : NaN;
+      if (digits && p < len && (bytes[p] === 101 || bytes[p] === 69)) {
+        let q = p + 1, es = 1, ev = 0, ed = 0;
+        if (bytes[q] === 45 || bytes[q] === 43) { if (bytes[q] === 45) es = -1; q++; }
+        while (q < len && bytes[q] >= 48 && bytes[q] <= 57) { ev = ev * 10 + (bytes[q] - 48); ed++; q++; }
+        if (ed) { v *= Math.pow(10, es * ev); p = q; }
+      }
+      // das Zahlende muss ein Trenner sein, sonst ist die Zeile keine Zahlenzeile (z. B. Kopfzeile)
+      if (!digits || (p < len && bytes[p] !== 10 && bytes[p] !== 32 && bytes[p] !== 9 && bytes[p] !== 44 && bytes[p] !== 59 && bytes[p] !== 13)) {
+        bad = true; while (p < len && bytes[p] !== 10) p++; break;
+      }
+      if (got < 3) val[got] = sign * v;
+      got++;
+    }
+    if (!bad && got >= 3) { xs[n] = val[0]; ys[n] = val[1]; zs[n] = val[2]; n++; }
+    p++;
+  }
+  if (n < 4) throw new Error(fileName + ': keine XYZ-Zeilen gefunden (erwartet: Rechtswert Hochwert Höhe).');
+  return { xs: xs, ys: ys, zs: zs, n: n };
+}
+
+/* Rasterweite einer Koordinatenfolge: häufigster Abstand benachbarter Werte (auf mm gerundet) */
+function xyzStep(values, n) {
+  const seen = new Set();
+  const lim = Math.min(n, 200000);
+  for (let i = 0; i < lim; i++) seen.add(Math.round(values[i] * 1000));
+  const u = Array.from(seen).sort(function (a, b) { return a - b; });
+  const counts = new Map();
+  for (let i = 1; i < u.length; i++) {
+    const d = u[i] - u[i - 1];
+    if (d > 0) counts.set(d, (counts.get(d) || 0) + 1);
+  }
+  let best = 0, bestN = 0;
+  counts.forEach(function (c, d) { if (c > bestN || (c === bestN && d < best)) { best = d; bestN = c; } });
+  return best / 1000;
+}
+
+/* Wandelt eine XYZ-Datei in eine Kachel wie bei GeoTIFF; epsg: Code des Nutzers */
+function readXyzTile(arrayBuffer, fileName, epsg, soFarPixels) {
+  const bytes = new Uint8Array(arrayBuffer);
+  // ESRI-ASCII-Raster erkennen und verständlich ablehnen
+  let head = '';
+  for (let i = 0; i < Math.min(bytes.length, 200); i++) head += String.fromCharCode(bytes[i]);
+  if (/^\s*ncols\b/i.test(head)) {
+    throw new Error(fileName + ': ESRI-ASCII-Raster (ncols, nrows ...) wird nicht gelesen. Bitte als GeoTIFF umwandeln, etwa mit gdal_translate.');
+  }
+  if (!(epsg > 0)) throw new Error(fileName + ': für XYZ-Dateien fehlt das Bezugssystem (EPSG-Code).');
+  const pts = parseXyz(bytes, fileName);
+  const stepX = xyzStep(pts.xs, pts.n), stepY = xyzStep(pts.ys, pts.n);
+  if (!(stepX > 0) || !(stepY > 0)) {
+    throw new Error(fileName + ': kein regelmäßiges Raster erkennbar (Punkte liegen nicht in Zeilen und Spalten).');
+  }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < pts.n; i++) {
+    const x = pts.xs[i], y = pts.ys[i];
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  const W = Math.round((maxX - minX) / stepX) + 1, H = Math.round((maxY - minY) / stepY) + 1;
+  if (W * H > 4 * pts.n + 1000) {
+    throw new Error(fileName + ': kein regelmäßiges Raster erkennbar (' + pts.n + ' Punkte füllen ' + W + ' × ' + H + ' Zellen nur zu einem kleinen Teil).');
+  }
+  checkTiffPixels(fileName, W, H, soFarPixels);
+  const band = new Float32Array(W * H).fill(XYZ_NODATA);
+  for (let i = 0; i < pts.n; i++) {
+    const c = Math.round((pts.xs[i] - minX) / stepX), r = Math.round((maxY - pts.ys[i]) / stepY);
+    band[r * W + c] = pts.zs[i];
+  }
+  return {
+    name: fileName, W: W, H: H, band: band,
+    originX: minX - stepX / 2, originY: maxY + stepY / 2, resX: stepX, resY: stepY,
+    nodata: XYZ_NODATA, epsg: epsg, srcRes: Math.min(stepX, stepY)
+  };
 }
 
 async function terrainFromGeoTIFFs(items, maxGrid) {
@@ -4132,6 +4249,10 @@ if (typeof module !== 'undefined' && module.exports) {
     TIFF_MAX_TOTAL_PIXELS: TIFF_MAX_TOTAL_PIXELS,
     TIFF_MAX_FILE_BYTES: TIFF_MAX_FILE_BYTES,
     checkTiffFiles: checkTiffFiles,
+    parseXyz: parseXyz,
+    readXyzTile: readXyzTile,
+    isXyzName: isXyzName,
+    XYZ_MAX_POINTS: XYZ_MAX_POINTS,
     readTiffTile: readTiffTile,
     readTiffTiles: readTiffTiles,
     crsToLonLat: crsToLonLat,

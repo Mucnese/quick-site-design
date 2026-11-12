@@ -156,6 +156,10 @@
   .file-status.ok { color: var(--accent); }
   .file-status.err { color: var(--danger); }
   .file-status.busy { color: var(--text-dim); }
+  #xyz-crs-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  #xyz-crs-row .xyz-label { flex: 0 0 100%; font-size: 0.78em; color: var(--text-dim2); }
+  #xyz-crs { flex: 1 1 120px; min-width: 0; }
+  #xyz-epsg { flex: 0 0 76px; width: 76px; }
   .osm-switch { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--accent); font-size: 0.9em; }
   .osm-switch input { margin: 0; accent-color: var(--accent); cursor: pointer; }
   .osm-switch input:disabled { cursor: default; }
@@ -504,8 +508,13 @@
     <div class="body">
       <div class="file-row">
         <div class="file-head"><span data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="hintx">mehrere möglich</span></div>
-        <input type="file" id="dem-input" multiple accept=".tif,.tiff,image/tiff">
+        <input type="file" id="dem-input" multiple accept=".tif,.tiff,.xyz,.txt,.csv,image/tiff">
         <div class="file-status" id="dem-status">Keine Datei</div>
+        <div id="xyz-crs-row">
+          <div class="xyz-label" data-i18n="xyzCrs">Bezugssystem für XYZ-Dateien</div>
+          <select id="xyz-crs"></select>
+          <input type="number" id="xyz-epsg" min="1000" max="99999" step="1" placeholder="EPSG" style="display:none">
+        </div>
       </div>
       <div class="file-row">
         <div class="file-head"><span data-i18n="buildingFile">Gebäude · CityGML</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>
@@ -1599,19 +1608,136 @@ function tileIsNoData(tile, v) {
 /* Mehrere GeoTIFF-Kacheln zu einem Gelände verschmelzen.
    Die Pixel aller Kacheln werden in ein gemeinsames Zielraster gemittelt;
    dadurch spielen unterschiedliche Auflösungen und Überlappungen keine Rolle. */
-async function readTiffTiles(items) {
-  if (typeof GeoTIFF === 'undefined') {
+async function readTiffTiles(items, xyzEpsg) {
+  if (!items || !items.length) throw new Error('Keine Datei ausgewählt.');
+  const hasTiff = items.some(function (it) { return !isXyzName(it.name); });
+  if (hasTiff && typeof GeoTIFF === 'undefined') {
     throw new Error('Die Datei lib/geotiff.js fehlt. Siehe lib/LIESMICH.txt.');
   }
-  if (!items || !items.length) throw new Error('Keine Datei ausgewählt.');
   const tiles = [];
   let pixels = 0;
   for (let i = 0; i < items.length; i++) {
-    const t = await readTiffTile(items[i].buffer, items[i].name, pixels);
+    const t = isXyzName(items[i].name)
+      ? readXyzTile(items[i].buffer, items[i].name, xyzEpsg, pixels)
+      : await readTiffTile(items[i].buffer, items[i].name, pixels);
     pixels += t.W * t.H;
     tiles.push(t);
   }
   return tiles;
+}
+
+/* ---------- XYZ-Textdateien ----------
+   Zeilen aus Rechtswert, Hochwert und Höhe auf einem regelmäßigen Raster (Punkte
+   = Zellmitten), getrennt durch Leerzeichen, Tabulator, Komma oder Semikolon;
+   Dezimalzeichen ist der Punkt. Das Raster wird aus den Koordinatenabständen
+   bestimmt und wie eine GeoTIFF-Kachel behandelt. Eine XYZ-Datei enthält kein
+   Bezugssystem - der EPSG-Code kommt vom Nutzer. */
+const XYZ_MAX_POINTS = 30e6;          // 20 Byte je Punkt im Speicher, die Datei selbst kommt dazu
+const XYZ_NODATA = -9999;
+
+function isXyzName(name) {
+  return /\.(xyz|txt|csv)$/i.test(name || '');
+}
+
+/* Liest alle Zeilen mit mindestens drei Zahlen; Kopfzeilen und Leerzeilen werden übersprungen */
+function parseXyz(bytes, fileName) {
+  const len = bytes.length;
+  let lines = 1;
+  for (let i = 0; i < len; i++) if (bytes[i] === 10) lines++;
+  if (lines > XYZ_MAX_POINTS + 1000) {
+    throw new Error(fileName + ': ' + Math.round(lines / 1e6) + ' Mio. Zeilen sind zu viel für den Browser (Grenze ' +
+      Math.round(XYZ_MAX_POINTS / 1e6) + ' Mio. Punkte).' + TIFF_CUT_HINT);
+  }
+  const xs = new Float64Array(lines), ys = new Float64Array(lines), zs = new Float32Array(lines);
+  let n = 0, p = 0;
+  const val = [0, 0, 0];
+  while (p < len) {
+    // eine Zeile: bis zu drei Zahlen lesen
+    let got = 0, bad = false;
+    while (p < len && bytes[p] !== 10) {
+      let c = bytes[p];
+      if (c === 32 || c === 9 || c === 44 || c === 59 || c === 13) { p++; continue; }
+      // Zahl: [+-]ziffern[.ziffern][e[+-]ziffern]
+      let sign = 1, num = 0, digits = 0, frac = 0, fracDigits = 0;
+      if (c === 45 || c === 43) { if (c === 45) sign = -1; p++; c = bytes[p]; }
+      while (p < len && bytes[p] >= 48 && bytes[p] <= 57) { num = num * 10 + (bytes[p] - 48); digits++; p++; }
+      if (p < len && bytes[p] === 46) {
+        p++;
+        while (p < len && bytes[p] >= 48 && bytes[p] <= 57) { frac = frac * 10 + (bytes[p] - 48); fracDigits++; digits++; p++; }
+      }
+      let v = digits ? num + (fracDigits ? frac / Math.pow(10, fracDigits) : 0) : NaN;
+      if (digits && p < len && (bytes[p] === 101 || bytes[p] === 69)) {
+        let q = p + 1, es = 1, ev = 0, ed = 0;
+        if (bytes[q] === 45 || bytes[q] === 43) { if (bytes[q] === 45) es = -1; q++; }
+        while (q < len && bytes[q] >= 48 && bytes[q] <= 57) { ev = ev * 10 + (bytes[q] - 48); ed++; q++; }
+        if (ed) { v *= Math.pow(10, es * ev); p = q; }
+      }
+      // das Zahlende muss ein Trenner sein, sonst ist die Zeile keine Zahlenzeile (z. B. Kopfzeile)
+      if (!digits || (p < len && bytes[p] !== 10 && bytes[p] !== 32 && bytes[p] !== 9 && bytes[p] !== 44 && bytes[p] !== 59 && bytes[p] !== 13)) {
+        bad = true; while (p < len && bytes[p] !== 10) p++; break;
+      }
+      if (got < 3) val[got] = sign * v;
+      got++;
+    }
+    if (!bad && got >= 3) { xs[n] = val[0]; ys[n] = val[1]; zs[n] = val[2]; n++; }
+    p++;
+  }
+  if (n < 4) throw new Error(fileName + ': keine XYZ-Zeilen gefunden (erwartet: Rechtswert Hochwert Höhe).');
+  return { xs: xs, ys: ys, zs: zs, n: n };
+}
+
+/* Rasterweite einer Koordinatenfolge: häufigster Abstand benachbarter Werte (auf mm gerundet) */
+function xyzStep(values, n) {
+  const seen = new Set();
+  const lim = Math.min(n, 200000);
+  for (let i = 0; i < lim; i++) seen.add(Math.round(values[i] * 1000));
+  const u = Array.from(seen).sort(function (a, b) { return a - b; });
+  const counts = new Map();
+  for (let i = 1; i < u.length; i++) {
+    const d = u[i] - u[i - 1];
+    if (d > 0) counts.set(d, (counts.get(d) || 0) + 1);
+  }
+  let best = 0, bestN = 0;
+  counts.forEach(function (c, d) { if (c > bestN || (c === bestN && d < best)) { best = d; bestN = c; } });
+  return best / 1000;
+}
+
+/* Wandelt eine XYZ-Datei in eine Kachel wie bei GeoTIFF; epsg: Code des Nutzers */
+function readXyzTile(arrayBuffer, fileName, epsg, soFarPixels) {
+  const bytes = new Uint8Array(arrayBuffer);
+  // ESRI-ASCII-Raster erkennen und verständlich ablehnen
+  let head = '';
+  for (let i = 0; i < Math.min(bytes.length, 200); i++) head += String.fromCharCode(bytes[i]);
+  if (/^\s*ncols\b/i.test(head)) {
+    throw new Error(fileName + ': ESRI-ASCII-Raster (ncols, nrows ...) wird nicht gelesen. Bitte als GeoTIFF umwandeln, etwa mit gdal_translate.');
+  }
+  if (!(epsg > 0)) throw new Error(fileName + ': für XYZ-Dateien fehlt das Bezugssystem (EPSG-Code).');
+  const pts = parseXyz(bytes, fileName);
+  const stepX = xyzStep(pts.xs, pts.n), stepY = xyzStep(pts.ys, pts.n);
+  if (!(stepX > 0) || !(stepY > 0)) {
+    throw new Error(fileName + ': kein regelmäßiges Raster erkennbar (Punkte liegen nicht in Zeilen und Spalten).');
+  }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < pts.n; i++) {
+    const x = pts.xs[i], y = pts.ys[i];
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  const W = Math.round((maxX - minX) / stepX) + 1, H = Math.round((maxY - minY) / stepY) + 1;
+  if (W * H > 4 * pts.n + 1000) {
+    throw new Error(fileName + ': kein regelmäßiges Raster erkennbar (' + pts.n + ' Punkte füllen ' + W + ' × ' + H + ' Zellen nur zu einem kleinen Teil).');
+  }
+  checkTiffPixels(fileName, W, H, soFarPixels);
+  const band = new Float32Array(W * H).fill(XYZ_NODATA);
+  for (let i = 0; i < pts.n; i++) {
+    const c = Math.round((pts.xs[i] - minX) / stepX), r = Math.round((maxY - pts.ys[i]) / stepY);
+    band[r * W + c] = pts.zs[i];
+  }
+  return {
+    name: fileName, W: W, H: H, band: band,
+    originX: minX - stepX / 2, originY: maxY + stepY / 2, resX: stepX, resY: stepY,
+    nodata: XYZ_NODATA, epsg: epsg, srcRes: Math.min(stepX, stepY)
+  };
 }
 
 async function terrainFromGeoTIFFs(items, maxGrid) {
@@ -4668,7 +4794,11 @@ const STRINGS = {
     osmNoCrs: 'Das Bezugssystem {c} lässt sich nicht in Längen- und Breitengrad umrechnen.',
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
-    terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
+    xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
+    xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
+    xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
+    xyzFar: 'Achtung: Im gewählten System {c} liegen die Koordinaten bei Breite {lat}, Länge {lon}, also außerhalb Europas.',
+    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', road: 'Baustraße',
@@ -4754,7 +4884,11 @@ const STRINGS = {
     osmNoCrs: 'The coordinate system {c} cannot be converted to latitude and longitude.',
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
-    terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
+    xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
+    xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
+    xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
+    xyzFar: 'Warning: in the chosen system {c} the coordinates lie at latitude {lat}, longitude {lon}, outside Europe.',
+    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', road: 'Haul road',
@@ -5157,6 +5291,7 @@ function refreshTexts() {
   renderOverview();
   refreshAttribution();
   renderOsmUi();
+  buildXyzCrsOptions();
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -6069,9 +6204,66 @@ function demStatusText(t) {
   return st;
 }
 
+/* ---------- Bezugssystem für XYZ-Dateien ----------
+   XYZ-Dateien tragen kein Bezugssystem. Auswahlfeld mit gängigen Systemen plus
+   Eingabefeld für einen beliebigen EPSG-Code; bis eines gewählt ist, bleiben die
+   Dateien vorgemerkt und werden mit der Wahl gelesen. */
+const XYZ_CRS_CHOICES = [25832, 25833, 25831, 4647, 31467, 31468, 31466, 31469, 31255, 31256, 31254];
+let pendingDemFiles = null;
+
+function buildXyzCrsOptions() {
+  const sel = document.getElementById('xyz-crs');
+  if (!sel) return;
+  const keep = sel.value;
+  sel.innerHTML = '';
+  const add = function (value, label) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    sel.appendChild(o);
+  };
+  add('', T('xyzChoose'));
+  XYZ_CRS_CHOICES.forEach(function (c) { add(String(c), crsLabel(c)); });
+  add('other', T('xyzOther'));
+  sel.value = keep || '';
+  const inp = document.getElementById('xyz-epsg');
+  if (inp) inp.style.display = sel.value === 'other' ? '' : 'none';
+}
+
+/* EPSG-Code aus Auswahl oder Eingabefeld, sonst null */
+function getXyzEpsg() {
+  const sel = document.getElementById('xyz-crs'), inp = document.getElementById('xyz-epsg');
+  if (!sel) return null;
+  const raw = sel.value === 'other' ? (inp ? inp.value : '') : sel.value;
+  const v = parseInt(raw, 10);
+  return (isFinite(v) && v >= 1000 && v <= 99999) ? v : null;
+}
+
+function onXyzCrsChanged() {
+  const sel = document.getElementById('xyz-crs'), inp = document.getElementById('xyz-epsg');
+  inp.style.display = sel.value === 'other' ? '' : 'none';
+  if (pendingDemFiles && getXyzEpsg()) {
+    const p = pendingDemFiles;
+    handleDemFiles(p.files, p.isDemo);
+  }
+}
+
 async function handleDemFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
+  const hasXyz = list.some(function (f) { return isXyzName(f.name); });
+  let xyzEpsg = null;
+  if (hasXyz) {
+    xyzEpsg = getXyzEpsg();
+    if (!xyzEpsg) {
+      const sel = document.getElementById('xyz-crs');
+      pendingDemFiles = { files: list, isDemo: isDemo };
+      const typed = sel && sel.value === 'other' && document.getElementById('xyz-epsg').value;
+      setFileStatus('dem', T(typed ? 'xyzBadEpsg' : 'xyzNeedCrs'), 'busy');
+      if (sel && sel.focus) sel.focus();
+      return;
+    }
+  }
+  pendingDemFiles = null;
   setFileStatus('dem', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Kacheln', 'busy');
   try {
     // Größen prüfen, bevor die erste Datei in den Speicher gelesen wird
@@ -6080,9 +6272,17 @@ async function handleDemFiles(files, isDemo) {
     for (let i = 0; i < list.length; i++) {
       items.push({ buffer: await list[i].arrayBuffer(), name: list[i].name });
     }
-    lastDemTiles = await readTiffTiles(items);
+    lastDemTiles = await readTiffTiles(items, xyzEpsg);
     lastDemNames = items.map(function (x) { return x.name; });
     const t = gridTiles(lastDemTiles, GRID_MAX);
+    // XYZ ohne Bezugssystem in der Datei: liegt das Ergebnis weit weg von Europa, stimmt der Code vermutlich nicht
+    let crsWarn = '';
+    if (hasXyz) {
+      const g = crsToLonLat(t.epsg, t.originE, t.originN);
+      if (g && (g.lat < 34 || g.lat > 72 || g.lon < -12 || g.lon > 45)) {
+        crsWarn = ' ' + T('xyzFar').replace('{c}', 'EPSG:' + t.epsg).replace('{lat}', g.lat.toFixed(1)).replace('{lon}', g.lon.toFixed(1));
+      }
+    }
 
     hideMeasure();
     buildTerrain(t);
@@ -6095,7 +6295,7 @@ async function handleDemFiles(files, isDemo) {
     demoAttribDem = !!isDemo;
     refreshAttribution();
 
-    setFileStatus('dem', demStatusText(t), 'ok');
+    setFileStatus('dem', demStatusText(t) + crsWarn, crsWarn ? 'err' : 'ok');
 
     let msg = 'Gelände ersetzt: ' + Math.round(t.w) + ' × ' + Math.round(t.d) + ' m.';
     if (removed) msg += ' ' + removed + ' Objekt(e) außerhalb entfernt.';
@@ -6682,6 +6882,9 @@ function initUI() {
     palette.appendChild(card);
   });
 
+  buildXyzCrsOptions();
+  document.getElementById('xyz-crs').addEventListener('change', onXyzCrsChanged);
+  document.getElementById('xyz-epsg').addEventListener('change', onXyzCrsChanged);
   const demInput = document.getElementById('dem-input');
   demInput.addEventListener('change', function () {
     if (demInput.files && demInput.files.length) handleDemFiles(demInput.files);

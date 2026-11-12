@@ -126,7 +126,7 @@ Not every German state offers the DGM1 as GeoTIFF, and not every portal
 clearly publishes it as open data. The portals differ in format, tiling,
 access and licence. The table lists the DGM1 and the 3D building model (LoD2)
 per state; the links were checked in November 2026. A ⚠ in the format column
-means: no GeoTIFF.
+means: no GeoTIFF (XYZ can be loaded directly).
 
 | State | Authority | DGM1 portal | DGM1 format | Building model (LoD2) | Licence (DGM1) |
 |---|---|---|---|---|---|
@@ -153,7 +153,10 @@ Hesse, Mecklenburg-Western Pomerania, Lower Saxony (as Cloud-Optimized
 GeoTIFF), North Rhine-Westphalia, Saxony, Saxony-Anhalt and Thuringia.
 Baden-Württemberg (DGM1 since March 2026), Bremen, Hamburg, Rhineland-Palatinate
 and Schleswig-Holstein publish XYZ text, and in Saarland the offer is unclear.
-That data has to be converted before loading, for example with GDAL.
+The application reads XYZ files (`.xyz`, `.txt`, `.csv`; easting, northing, height on a
+regular grid) directly. They carry no coordinate system, so you choose it in the data
+window or type the EPSG code. ESRI ASCII grids (`.asc`) are not read; convert them to
+GeoTIFF with GDAL.
 
 **File size.** The tool reads each file completely into memory. It therefore
 rejects, with a message and before reading, files over 1 GB, tiles over 100 million

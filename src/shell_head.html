@@ -156,6 +156,10 @@
   .file-status.ok { color: var(--accent); }
   .file-status.err { color: var(--danger); }
   .file-status.busy { color: var(--text-dim); }
+  #xyz-crs-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  #xyz-crs-row .xyz-label { flex: 0 0 100%; font-size: 0.78em; color: var(--text-dim2); }
+  #xyz-crs { flex: 1 1 120px; min-width: 0; }
+  #xyz-epsg { flex: 0 0 76px; width: 76px; }
   .osm-switch { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--accent); font-size: 0.9em; }
   .osm-switch input { margin: 0; accent-color: var(--accent); cursor: pointer; }
   .osm-switch input:disabled { cursor: default; }
@@ -504,8 +508,13 @@
     <div class="body">
       <div class="file-row">
         <div class="file-head"><span data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="hintx">mehrere möglich</span></div>
-        <input type="file" id="dem-input" multiple accept=".tif,.tiff,image/tiff">
+        <input type="file" id="dem-input" multiple accept=".tif,.tiff,.xyz,.txt,.csv,image/tiff">
         <div class="file-status" id="dem-status">Keine Datei</div>
+        <div id="xyz-crs-row">
+          <div class="xyz-label" data-i18n="xyzCrs">Bezugssystem für XYZ-Dateien</div>
+          <select id="xyz-crs"></select>
+          <input type="number" id="xyz-epsg" min="1000" max="99999" step="1" placeholder="EPSG" style="display:none">
+        </div>
       </div>
       <div class="file-row">
         <div class="file-head"><span data-i18n="buildingFile">Gebäude · CityGML</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>

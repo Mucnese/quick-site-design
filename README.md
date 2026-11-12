@@ -26,7 +26,7 @@ Browser.
 ## Funktionsumfang
 
 **Geobasisdaten**
-- GeoTIFF-Geländemodelle, mehrere Kacheln gleichzeitig. Die Pixel aller Kacheln
+- GeoTIFF- und XYZ-Geländemodelle (bei XYZ mit Wahl des EPSG-Codes), mehrere Kacheln gleichzeitig. Die Pixel aller Kacheln
   werden in ein gemeinsames Raster gemittelt, unterschiedliche Auflösungen und
   Überlappungen sind daher unkritisch.
 - CityGML LOD2, ebenfalls als Stapel. Die Achsenreihenfolge wird erkannt,
@@ -127,7 +127,7 @@ Nicht jedes Bundesland bietet das DGM1 als GeoTIFF an, und nicht jedes Portal
 stellt es erkennbar als Open Data bereit. Die Portale unterscheiden sich in
 Format, Kachelung, Zugang und Lizenz. Die Tabelle nennt DGM1 und
 3D-Gebäudemodell (LoD2) je Land; die Links sind im November 2026 geprüft.
-Ein ⚠ in der Formatspalte heißt: kein GeoTIFF.
+Ein ⚠ in der Formatspalte heißt: kein GeoTIFF (XYZ lässt sich direkt laden).
 
 | Land | Stelle | DGM1-Portal | DGM1-Format | Gebäudemodell (LoD2) | Lizenz (DGM1) |
 |---|---|---|---|---|---|
@@ -153,8 +153,11 @@ und einer Georeferenz im Header. GeoTIFF bieten Bayern, Brandenburg, Hessen,
 Mecklenburg-Vorpommern, Niedersachsen (als Cloud-Optimized GeoTIFF),
 Nordrhein-Westfalen, Sachsen, Sachsen-Anhalt und Thüringen an. Baden-Württemberg
 (DGM1 seit März 2026), Bremen, Hamburg, Rheinland-Pfalz und Schleswig-Holstein
-geben XYZ-Text aus, im Saarland ist das Angebot unklar. Diese Daten müssen vor
-dem Laden umgewandelt werden, etwa mit GDAL.
+geben XYZ-Text aus, im Saarland ist das Angebot unklar. XYZ-Dateien (`.xyz`,
+`.txt`, `.csv`; Rechtswert, Hochwert, Höhe auf einem regelmäßigen Raster) liest die
+Anwendung direkt. Da sie kein Bezugssystem enthalten, wählt man es im Datenfenster
+oder tippt den EPSG-Code ein. ESRI-ASCII-Raster (`.asc`) werden nicht gelesen, die
+muss man mit GDAL in GeoTIFF umwandeln.
 
 **Dateigröße.** Das Tool liest jede Datei ganz in den Speicher. Es lehnt deshalb
 Dateien über 1 GB, Kacheln über 100 Mio. Pixel und mehr als 150 Mio. Pixel (2 GB)

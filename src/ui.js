@@ -30,7 +30,11 @@ const STRINGS = {
     osmNoCrs: 'Das Bezugssystem {c} lässt sich nicht in Längen- und Breitengrad umrechnen.',
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
-    terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
+    xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
+    xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
+    xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
+    xyzFar: 'Achtung: Im gewählten System {c} liegen die Koordinaten bei Breite {lat}, Länge {lon}, also außerhalb Europas.',
+    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', road: 'Baustraße',
@@ -116,7 +120,11 @@ const STRINGS = {
     osmNoCrs: 'The coordinate system {c} cannot be converted to latitude and longitude.',
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
-    terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
+    xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
+    xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
+    xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
+    xyzFar: 'Warning: in the chosen system {c} the coordinates lie at latitude {lat}, longitude {lon}, outside Europe.',
+    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', road: 'Haul road',
@@ -519,6 +527,7 @@ function refreshTexts() {
   renderOverview();
   refreshAttribution();
   renderOsmUi();
+  buildXyzCrsOptions();
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -1431,9 +1440,66 @@ function demStatusText(t) {
   return st;
 }
 
+/* ---------- Bezugssystem für XYZ-Dateien ----------
+   XYZ-Dateien tragen kein Bezugssystem. Auswahlfeld mit gängigen Systemen plus
+   Eingabefeld für einen beliebigen EPSG-Code; bis eines gewählt ist, bleiben die
+   Dateien vorgemerkt und werden mit der Wahl gelesen. */
+const XYZ_CRS_CHOICES = [25832, 25833, 25831, 4647, 31467, 31468, 31466, 31469, 31255, 31256, 31254];
+let pendingDemFiles = null;
+
+function buildXyzCrsOptions() {
+  const sel = document.getElementById('xyz-crs');
+  if (!sel) return;
+  const keep = sel.value;
+  sel.innerHTML = '';
+  const add = function (value, label) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    sel.appendChild(o);
+  };
+  add('', T('xyzChoose'));
+  XYZ_CRS_CHOICES.forEach(function (c) { add(String(c), crsLabel(c)); });
+  add('other', T('xyzOther'));
+  sel.value = keep || '';
+  const inp = document.getElementById('xyz-epsg');
+  if (inp) inp.style.display = sel.value === 'other' ? '' : 'none';
+}
+
+/* EPSG-Code aus Auswahl oder Eingabefeld, sonst null */
+function getXyzEpsg() {
+  const sel = document.getElementById('xyz-crs'), inp = document.getElementById('xyz-epsg');
+  if (!sel) return null;
+  const raw = sel.value === 'other' ? (inp ? inp.value : '') : sel.value;
+  const v = parseInt(raw, 10);
+  return (isFinite(v) && v >= 1000 && v <= 99999) ? v : null;
+}
+
+function onXyzCrsChanged() {
+  const sel = document.getElementById('xyz-crs'), inp = document.getElementById('xyz-epsg');
+  inp.style.display = sel.value === 'other' ? '' : 'none';
+  if (pendingDemFiles && getXyzEpsg()) {
+    const p = pendingDemFiles;
+    handleDemFiles(p.files, p.isDemo);
+  }
+}
+
 async function handleDemFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
+  const hasXyz = list.some(function (f) { return isXyzName(f.name); });
+  let xyzEpsg = null;
+  if (hasXyz) {
+    xyzEpsg = getXyzEpsg();
+    if (!xyzEpsg) {
+      const sel = document.getElementById('xyz-crs');
+      pendingDemFiles = { files: list, isDemo: isDemo };
+      const typed = sel && sel.value === 'other' && document.getElementById('xyz-epsg').value;
+      setFileStatus('dem', T(typed ? 'xyzBadEpsg' : 'xyzNeedCrs'), 'busy');
+      if (sel && sel.focus) sel.focus();
+      return;
+    }
+  }
+  pendingDemFiles = null;
   setFileStatus('dem', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Kacheln', 'busy');
   try {
     // Größen prüfen, bevor die erste Datei in den Speicher gelesen wird
@@ -1442,9 +1508,17 @@ async function handleDemFiles(files, isDemo) {
     for (let i = 0; i < list.length; i++) {
       items.push({ buffer: await list[i].arrayBuffer(), name: list[i].name });
     }
-    lastDemTiles = await readTiffTiles(items);
+    lastDemTiles = await readTiffTiles(items, xyzEpsg);
     lastDemNames = items.map(function (x) { return x.name; });
     const t = gridTiles(lastDemTiles, GRID_MAX);
+    // XYZ ohne Bezugssystem in der Datei: liegt das Ergebnis weit weg von Europa, stimmt der Code vermutlich nicht
+    let crsWarn = '';
+    if (hasXyz) {
+      const g = crsToLonLat(t.epsg, t.originE, t.originN);
+      if (g && (g.lat < 34 || g.lat > 72 || g.lon < -12 || g.lon > 45)) {
+        crsWarn = ' ' + T('xyzFar').replace('{c}', 'EPSG:' + t.epsg).replace('{lat}', g.lat.toFixed(1)).replace('{lon}', g.lon.toFixed(1));
+      }
+    }
 
     hideMeasure();
     buildTerrain(t);
@@ -1457,7 +1531,7 @@ async function handleDemFiles(files, isDemo) {
     demoAttribDem = !!isDemo;
     refreshAttribution();
 
-    setFileStatus('dem', demStatusText(t), 'ok');
+    setFileStatus('dem', demStatusText(t) + crsWarn, crsWarn ? 'err' : 'ok');
 
     let msg = 'Gelände ersetzt: ' + Math.round(t.w) + ' × ' + Math.round(t.d) + ' m.';
     if (removed) msg += ' ' + removed + ' Objekt(e) außerhalb entfernt.';
@@ -2044,6 +2118,9 @@ function initUI() {
     palette.appendChild(card);
   });
 
+  buildXyzCrsOptions();
+  document.getElementById('xyz-crs').addEventListener('change', onXyzCrsChanged);
+  document.getElementById('xyz-epsg').addEventListener('change', onXyzCrsChanged);
   const demInput = document.getElementById('dem-input');
   demInput.addEventListener('change', function () {
     if (demInput.files && demInput.files.length) handleDemFiles(demInput.files);
