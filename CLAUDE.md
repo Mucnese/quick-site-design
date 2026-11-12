@@ -140,6 +140,16 @@ Regler überschreibt sie danach. Böschung wählbar 1:1, 1:1,5 oder 1:2
 Mittelflächenverfahren in `computeRoad`. Alles Volumen stammt aus dieser einen
 Funktion – nicht in der Oberfläche nachrechnen.
 
+**Baugrube.** Polygon (`params.points`, höchstens 32 Ecken), Tiefe `params.depth`
+(Standard −5 m) zum MITTLEREN Gelände im Polygon. Die absolute Unterkante ist kein
+Parameter, sondern folgt aus `computePit(...).bottomAbs`; beide Regler zeigen denselben
+Wert (der Editor rechnet um). Aushub und Aufschüttung nur aus `computePit`. Das Gelände
+bekommt das Loch per Fragment-Shader (`pitHoleShader`, `pitUniforms`, auch am Sockel);
+die Höhendaten bleiben unverändert, deshalb ändern sich Mengen, Objekthöhen und IFC nicht.
+Raycasts überspringen weggeschnittene Geländestücke (`firstVisibleHit`). Bekannte Grenze:
+Bausteine, die in einer Grube stehen, sitzen auf der Höhe des ursprünglichen Geländes.
+Baustraße und Baugrube werden mit Rechtsklick oder Leertaste abgeschlossen.
+
 **IFC-Export** muss strenge Leser bestehen: reines ASCII (Umlaute als `\X2\`),
 GUIDs mit erstem Zeichen 0–3, genaue Attributzahl je Entität, Gelände-Dreiecke
 nach oben gewickelt. Nach Änderungen an `buildIfc` einmal mit ifcopenshell

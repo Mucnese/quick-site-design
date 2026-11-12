@@ -153,7 +153,7 @@ function newScope() {
     'var __bridge = { STRINGS: STRINGS, TOOL_INFO: TOOL_INFO, FIELD_ORDER: FIELD_ORDER, ' +
     'SETTINGS: SETTINGS, DRAG_TOLERANCE: DRAG_TOLERANCE, ' +
     'REPEAT_GUARD: REPEAT_GUARD, DEMO_ATTRIBUTION: DEMO_ATTRIBUTION, raycaster: raycaster, ' +
-    'controls: controls, renderer: renderer, camera: camera };',
+    'controls: controls, renderer: renderer, camera: camera, objects: objects };',
     sandbox
   );
 
@@ -508,11 +508,11 @@ function ifcCard(s) {
   })[0];
 }
 
-await test('IFC Export: Karte in der Werkzeugleiste (hinter Baustraße), kein Knopf mehr oben', async function () {
+await test('IFC Export: Karte in der Werkzeugleiste (hinter Baustraße und Baugrube), kein Knopf mehr oben', async function () {
   const s = newScope();
   s.initUI();
   const tools = Array.prototype.slice.call(s.document.getElementById('palette').children).map(function (c) { return c.dataset.tool; });
-  assert.deepStrictEqual(tools, ['container', 'tower', 'mobile', 'road', 'ifc']);
+  assert.deepStrictEqual(tools, ['container', 'tower', 'mobile', 'road', 'pit', 'ifc']);
   const card = ifcCard(s);
   assert.strictEqual(card.children[0].className, 'pal-icon ifc');
   assert.strictEqual(card.children[1].textContent, 'IFC Export');
@@ -587,6 +587,152 @@ await test('Geoportale: Link neben "Daten" führt auf die Tabelle im README der 
   assert.strictEqual(a.href, 'https://github.com/Mucnese/quick-site-design/blob/main/README.en.md#where-to-get-the-data');
 });
 
+/* ---------- Zeichnen: Rechtsklick oder Leertaste schließt ab (Baustraße und Baugrube) ---------- */
+
+async function drawingScope(tool, pts) {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  s.selectTool(tool);
+  pts.forEach(function (q) {
+    setTerrainHit(s, q[0], 0, q[1]);
+    s.onCanvasClick({ clientX: 0, clientY: 0 });
+  });
+  return s;
+}
+
+function rightClick(s, moveBy) {
+  s.onCanvasPointerDown({ button: 2, clientX: 100, clientY: 100, pointerId: 1 });
+  s.onCanvasPointerUp({ clientX: 100 + (moveBy || 0), clientY: 100, pointerId: 1 });
+}
+
+const PIT_PTS = [[-10, -10], [10, -10], [10, 10], [-10, 10]];
+
+await test('Baugrube zeichnen: Leertaste schließt das Polygon, Standardtiefe -5 m', async function () {
+  const s = await drawingScope('pit', PIT_PTS);
+  s.onKeyDown({ key: ' ', code: 'Space' });
+  assert.strictEqual(s.__bridge.objects.length, 1);
+  assert.strictEqual(s.__bridge.objects[0].type, 'pit');
+  assert.strictEqual(s.__bridge.objects[0].params.depth, -5);
+  assert.strictEqual(s.__bridge.objects[0].params.points.length, 4);
+});
+
+await test('Baugrube zeichnen: Rechtsklick schließt das Polygon; Ziehen mit rechts (Ansicht verschieben) schließt nicht', async function () {
+  const s = await drawingScope('pit', PIT_PTS);
+  rightClick(s, 40);                                  // gezogen: Verschieben der Ansicht
+  assert.strictEqual(s.__bridge.objects.length, 0, 'Rechtsziehen darf nicht abschließen');
+  rightClick(s);
+  assert.strictEqual(s.__bridge.objects.length, 1);
+  assert.strictEqual(s.__bridge.objects[0].type, 'pit');
+});
+
+await test('Baustraße zeichnen: Rechtsklick und Leertaste schließen ab (ab zwei Punkten)', async function () {
+  const a = await drawingScope('road', [[0, 0], [30, 0]]);
+  rightClick(a);
+  assert.strictEqual(a.__bridge.objects.length, 1);
+  assert.strictEqual(a.__bridge.objects[0].type, 'road');
+  const b = await drawingScope('road', [[0, 0], [30, 0]]);
+  b.onKeyDown({ key: ' ', code: 'Space' });
+  assert.strictEqual(b.__bridge.objects.length, 1);
+});
+
+await test('Zeichnen: zu wenige Punkte erzeugen nichts und melden es (Straße 2, Baugrube 3), die Punkte bleiben', async function () {
+  const road = await drawingScope('road', [[0, 0]]);
+  rightClick(road);
+  assert.strictEqual(road.__bridge.objects.length, 0);
+  assert.strictEqual(road.document.getElementById('status').textContent, road.T('msgMinTwo'));
+  const pit = await drawingScope('pit', [[0, 0], [10, 0]]);
+  pit.onKeyDown({ key: ' ', code: 'Space' });
+  assert.strictEqual(pit.__bridge.objects.length, 0);
+  assert.strictEqual(pit.document.getElementById('status').textContent, pit.T('msgMinThree'));
+  setTerrainHit(pit, 10, 0, 10); pit.onCanvasClick({ clientX: 0, clientY: 0 });
+  pit.onKeyDown({ key: ' ', code: 'Space' });
+  assert.strictEqual(pit.__bridge.objects.length, 1, 'mit dem dritten Punkt klappt es');
+});
+
+await test('Rechtsklick ohne Zeichenwerkzeug tut nichts; Esc bricht das Zeichnen ab', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  rightClick(s);
+  assert.strictEqual(s.__bridge.objects.length, 0);
+  s.selectTool('pit');
+  setTerrainHit(s, 0, 0, 0); s.onCanvasClick({ clientX: 0, clientY: 0 });
+  s.onKeyDown({ key: 'Escape' });
+  s.onKeyDown({ key: ' ', code: 'Space' });
+  assert.strictEqual(s.__bridge.objects.length, 0);
+});
+
+await test('Baugrube: höchstens 32 Eckpunkte, danach Hinweis', async function () {
+  const pts = [];
+  for (let i = 0; i < 34; i++) pts.push([Math.cos(i) * 30, Math.sin(i) * 30]);
+  const s = await drawingScope('pit', pts);
+  s.onKeyDown({ key: ' ', code: 'Space' });
+  assert.strictEqual(s.__bridge.objects[0].params.points.length, 32);
+  assert.strictEqual(s.document.getElementById('status').textContent.indexOf('Baugrube angelegt') >= 0, true);
+});
+
+await test('Baugrube: Werkzeugfenster zeigt nur die Tiefe (Standard -5), der Editor zusätzlich die Höhe der Unterkante', async function () {
+  const s = newScope();
+  const tool = s.buildForm('pit', s.defaultPitParams(), function () {}, false).refs;
+  assert.ok(tool.depth && !tool.bottomAbs);
+  assert.strictEqual(tool.depth.num.value, -5);
+  assert.strictEqual(tool.depth.input.min, -30);
+  assert.strictEqual(tool.depth.input.max, 10);
+});
+
+function pitEditor(s) {
+  const p = s.defaultPitParams();
+  p.points = [{ x: -10, z: -10 }, { x: 10, z: -10 }, { x: 10, z: 10 }, { x: -10, z: 10 }];
+  const obj = s.addObject('pit', 0, 0, p);
+  const form = s.buildForm('pit', s.pitFormValues(obj), function () {}, true);
+  s.setPitRanges(obj, form.refs);
+  return { obj: obj, refs: form.refs };
+}
+
+await test('Baugrube: beide Regler überdecken dieselbe Spanne um das mittlere Gelände und zeigen denselben Wert', function () {
+  const s = newScope();
+  const e = pitEditor(s);
+  const info = e.obj.group.userData.pit;
+  assert.ok(Math.abs(e.refs.bottomAbs.input.min - (info.refAbs - 30)) < 0.06);
+  assert.ok(Math.abs(e.refs.bottomAbs.input.max - (info.refAbs + 10)) < 0.06);
+  assert.ok(Math.abs(e.refs.bottomAbs.num.value - (info.refAbs - 5)) < 0.01, 'Unterkante = Bezug - 5');
+  assert.strictEqual(e.refs.depth.num.value, -5);
+});
+
+await test('Baugrube: Beschriftung, Hinweis und Mengenanzeige im Eigenschaftsfenster', function () {
+  const s = newScope();
+  const e = pitEditor(s);
+  const el = s.document.createElement('div');
+  s.renderPitInfo(e.obj, el);
+  const txt = el.textContent;
+  assert.ok(txt.indexOf(s.T('pitCut')) >= 0 && txt.indexOf(s.T('pitFill')) >= 0 && txt.indexOf('m³') > 0, txt);
+  assert.ok(txt.indexOf(s.T('pitBottom')) >= 0 && txt.indexOf('m ü. NHN') > 0, txt);
+  assert.ok(s.pitHintText(e.obj).indexOf('400 m²') >= 0, s.pitHintText(e.obj));
+});
+
+await test('Baugrube im Editor: Tiefe und Höhe der Unterkante sind verknüpft (Regler und Zahlenfeld)', async function () {
+  const s = newScope();
+  const p = s.defaultPitParams();
+  p.points = [{ x: -10, z: -10 }, { x: 10, z: -10 }, { x: 10, z: 10 }, { x: -10, z: 10 }];
+  const obj = s.addObject('pit', 0, 0, p);
+  s.showObjectEditor(obj.id);
+  const refs = s.getFormRefs();
+  const ref = obj.group.userData.pit.refAbs;
+  // Tiefe ändern -> Höhe folgt
+  refs.depth.input.value = '-8';
+  refs.depth.input.fire('input');
+  assert.strictEqual(obj.params.depth, -8);
+  assert.ok(Math.abs(refs.bottomAbs.num.value - (ref - 8)) < 0.01);
+  // Höhe ändern -> Tiefe folgt
+  refs.bottomAbs.input.value = String(ref - 2);
+  refs.bottomAbs.input.fire('input');
+  assert.ok(Math.abs(obj.params.depth - (-2)) < 0.01, 'Tiefe ' + obj.params.depth);
+  assert.ok(Math.abs(refs.depth.num.value - (-2)) < 0.01);
+  // Zahlenfeld der Höhe
+  refs.bottomAbs.num.value = String(ref + 3);
+  refs.bottomAbs.num.fire('change');
+  assert.ok(Math.abs(obj.params.depth - 3) < 0.01, 'Aufschüttung +3: ' + obj.params.depth);
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {
@@ -608,7 +754,8 @@ await test('Editor aller Bausteintypen baut sich auf, auch Zahlenfelder ohne Reg
   const s = newScope();
   const defaults = {
     container: s.defaultContainerParams(), tower: s.defaultTowerParams(), mobile: s.defaultMobileParams(),
-    road: (function () { const p = s.defaultRoadParams(); p.points = [{ x: 0, z: 0 }, { x: 30, z: 0 }]; return p; })()
+    road: (function () { const p = s.defaultRoadParams(); p.points = [{ x: 0, z: 0 }, { x: 30, z: 0 }]; return p; })(),
+    pit: (function () { const p = s.defaultPitParams(); p.points = [{ x: 0, z: 0 }, { x: 20, z: 0 }, { x: 20, z: 20 }, { x: 0, z: 20 }]; return p; })()
   };
   Object.keys(defaults).forEach(function (type) {
     const obj = s.addObject(type, 0, 0, defaults[type]);

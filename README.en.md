@@ -44,6 +44,9 @@ browser.
   freely adjustable within the range of real construction cranes.
 - 24 Liebherr mobile cranes from 35 t to 750 t, all figures taken from the
   manufacturers' original data sheets, with the real axle count from the model name.
+- Excavation as a polygon (right-click or space closes it): depth below the mean ground
+  (default −5 m) and the bottom level are two sliders for the same value. Excavation and
+  fill are shown in m³ in the properties window; the terrain gets a hole you can look into.
 - Haul roads as a polyline with filleted corners and a constant longitudinal
   slope (slider in %, preset from the start and end elevation on the terrain).
   Length and area are shown in the properties window. Where the carriageway

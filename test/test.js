@@ -883,6 +883,175 @@ test('frameObjects mitten in einer Kamerafahrt: Blickrichtung bleibt die des Zie
   assert.ok(Math.abs(d[0] - dir0[0]) < 1e-3 && Math.abs(d[2] - dir0[2]) < 1e-3, 'Blickrichtung hat sich gedreht: ' + dir0 + ' -> ' + d);
 });
 
+/* ---------- Baugrube ---------- */
+
+function square(x0, z0, w, d) { return [{ x: x0, z: z0 }, { x: x0 + w, z: z0 }, { x: x0 + w, z: z0 + d }, { x: x0, z: z0 + d }]; }
+function lShape() { return [{ x: 0, z: 0 }, { x: 20, z: 0 }, { x: 20, z: 10 }, { x: 10, z: 10 }, { x: 10, z: 20 }, { x: 0, z: 20 }]; }
+function triArea(pts, t) {
+  const a = pts[t[0]], b = pts[t[1]], c = pts[t[2]];
+  return Math.abs((b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x)) / 2;
+}
+function pitParams(points, depth) { const p = app.defaultPitParams(); p.points = points; if (depth !== undefined) p.depth = depth; return p; }
+
+test('Polygon: Fläche, Punkt-im-Polygon (auch konkav)', function () {
+  assert.strictEqual(app.polygonArea(square(0, 0, 20, 20)), 400);
+  assert.strictEqual(app.polygonArea(lShape()), 300);
+  assert.strictEqual(app.polygonArea(square(0, 0, 20, 20).reverse()), 400, 'Umlaufsinn darf nichts ändern');
+  const L = lShape();
+  assert.ok(app.pointInPolygon(L, 5, 15));
+  assert.ok(app.pointInPolygon(L, 15, 5));
+  assert.ok(!app.pointInPolygon(L, 15, 15), 'Einbuchtung der L-Form liegt außerhalb');
+  assert.ok(!app.pointInPolygon(L, -1, 5));
+});
+
+test('triangulatePolygon: Quadrat 2, L-Form 4 Dreiecke, Flächen summieren sich, alle zeigen nach oben', function () {
+  [[square(0, 0, 20, 20), 2], [lShape(), 4], [lShape().reverse(), 4]].forEach(function (c) {
+    const pts = c[0], tris = app.triangulatePolygon(pts);
+    assert.strictEqual(tris.length, c[1]);
+    assert.ok(Math.abs(tris.reduce(function (a, t) { return a + triArea(pts, t); }, 0) - app.polygonArea(pts)) < 1e-9, 'Flächensumme');
+    tris.forEach(function (t) {
+      const a = pts[t[0]], b = pts[t[1]], d = pts[t[2]];
+      assert.ok((b.x - a.x) * (d.z - a.z) - (b.z - a.z) * (d.x - a.x) <= 0, 'Dreieck zeigt nach unten');
+    });
+  });
+  assert.deepStrictEqual(app.triangulatePolygon(square(0, 0, 1, 1).slice(0, 2)), []);
+});
+
+test('triangulatePolygon: sich selbst schneidendes Polygon liefert trotzdem Dreiecke (Notlösung Fächer)', function () {
+  const bow = [{ x: 0, z: 0 }, { x: 10, z: 10 }, { x: 10, z: 0 }, { x: 0, z: 10 }];
+  assert.ok(app.triangulatePolygon(bow).length >= 2);
+});
+
+test('Baugrube: Standardtiefe -5 m; ebene Grube 20 x 20 m ergibt genau 2000 m³ Aushub, keine Aufschüttung', function () {
+  roadTerrain(0);
+  assert.strictEqual(app.defaultPitParams().depth, -5);
+  const info = app.computePit(pitParams(square(-10, -10, 20, 20)));
+  assert.ok(Math.abs(info.cut - 2000) < 1, 'Aushub ' + info.cut);
+  assert.ok(info.fill < 1e-6);
+  assert.strictEqual(info.area, 400);
+  assert.ok(Math.abs(info.bottom - (info.ref - 5)) < 1e-9);
+});
+
+test('Baugrube: Sohle über dem Gelände = Aufschüttung (+2 m: 800 m³), auf Geländehöhe nichts', function () {
+  roadTerrain(0);
+  const up = app.computePit(pitParams(square(-10, -10, 20, 20), 2));
+  assert.ok(Math.abs(up.fill - 800) < 1 && up.cut < 1e-6, up.fill + ' / ' + up.cut);
+  const zero = app.computePit(pitParams(square(-10, -10, 20, 20), 0));
+  assert.ok(zero.cut < 1e-6 && zero.fill < 1e-6);
+});
+
+test('Baugrube am Hang: Aushub und Aufschüttung zugleich; Aushub minus Aufschüttung = -Tiefe * Fläche', function () {
+  roadTerrain(0.1);                                   // 10 % Gefälle in x
+  const pts = square(-20, -20, 40, 40);
+  // Gelände schwankt um +-2 m um den Mittelwert; mit -1 m liegt ein Streifen darunter (Aufschüttung)
+  const info = app.computePit(pitParams(pts, -1));
+  assert.ok(info.cut > 100 && info.fill > 100, 'beides erwartet: ' + info.cut + ' / ' + info.fill);
+  const net = info.cut - info.fill, expected = 1 * 1600;
+  assert.ok(Math.abs(net - expected) / expected < 0.01, 'Netto ' + net + ' statt ' + expected);
+});
+
+test('Baugrube: absolute Höhe der Unterkante = zmin + mittleres Gelände + Tiefe, Bezugshöhe unabhängig von der Tiefe', function () {
+  roadTerrain(0);
+  const a = app.computePit(pitParams(square(-10, -10, 20, 20), -5)), b = app.computePit(pitParams(square(-10, -10, 20, 20), -8));
+  assert.strictEqual(a.refAbs, b.refAbs);
+  assert.ok(Math.abs(a.bottomAbs - (a.refAbs - 5)) < 1e-9 && Math.abs(b.bottomAbs - (a.refAbs - 8)) < 1e-9);
+  assert.ok(Math.abs(a.refAbs - (500 + 10)) < 1e-6, 'zmin 500 + 10 m: ' + a.refAbs);
+});
+
+test('buildPit: Sohle auf Unterkantenhöhe, Wände, Ober- und Unterkante; Polygone unter 3 Punkten bleiben leer', function () {
+  roadTerrain(0);
+  const g = app.buildPit(pitParams(square(-10, -10, 20, 20)));
+  const kinds = g.children.map(function (c) { return c.userData.kind; }).sort();
+  assert.deepStrictEqual(kinds, ['pitBottomLine', 'pitFloor', 'pitRim', 'pitWalls']);
+  const floor = g.children.filter(function (c) { return c.userData.kind === 'pitFloor'; })[0];
+  const pos = floor.geometry.attributes.position.array;
+  for (let i = 1; i < pos.length; i += 3) assert.ok(Math.abs(pos[i] - g.userData.pit.bottom) < 1e-6, 'Sohle nicht eben');
+  assert.strictEqual(floor.geometry.indices.length, 6, 'Quadrat = 2 Dreiecke');
+  assert.ok(g.userData.bbox.w === 20 && g.userData.bbox.d === 20);
+  assert.strictEqual(app.buildPit(pitParams([{ x: 0, z: 0 }, { x: 5, z: 0 }])).children.length, 0);
+});
+
+test('buildPit: Wände reichen von der Geländeoberfläche bis zur Sohle (am Hang unterschiedlich hoch)', function () {
+  roadTerrain(0.1);
+  const g = app.buildPit(pitParams(square(-20, -20, 40, 40), -3));
+  const walls = g.children.filter(function (c) { return c.userData.kind === 'pitWalls'; })[0];
+  const pos = walls.geometry.attributes.position.array, bottom = g.userData.pit.bottom;
+  let minTop = Infinity, maxTop = -Infinity;
+  for (let i = 0; i < pos.length; i += 6) {
+    assert.ok(Math.abs(pos[i + 4] - bottom) < 1e-6, 'unterer Wandpunkt liegt nicht auf der Sohle');
+    minTop = Math.min(minTop, pos[i + 1]); maxTop = Math.max(maxTop, pos[i + 1]);
+  }
+  assert.ok(maxTop - minTop > 3, 'am Hang müssen die Oberkanten unterschiedlich hoch liegen');
+});
+
+test('Loch im Gelände: Baugrube trägt ihr Polygon in die Shader-Uniforms ein, Entfernen und Verschieben aktualisieren sie', function () {
+  roadTerrain(0);
+  const u = app.getPitUniforms();
+  assert.strictEqual(u.uPitCount.value, 0);
+  const obj = app.addObject('pit', 0, 0, pitParams(square(-10, -10, 20, 20)));
+  assert.strictEqual(u.uPitCount.value, 1);
+  assert.strictEqual(u.uPitN.value[0], 4);
+  assert.deepStrictEqual(Array.from(u.uPitEdges.value.slice(0, 4)), [-10, -10, 10, -10], 'erste Kante (ax, az, bx, bz)');
+  assert.ok(app.pitHoleContains(0, 0) && !app.pitHoleContains(30, 0));
+  app.moveObject(obj, 40, 0);
+  assert.ok(app.pitHoleContains(40, 0) && !app.pitHoleContains(0, 0), 'Loch muss mit der Grube wandern');
+  app.removeObject(obj.id);
+  assert.strictEqual(u.uPitCount.value, 0);
+  assert.ok(!app.pitHoleContains(40, 0));
+  assert.ok(Array.from(u.uPitEdges.value).every(function (v) { return v === 0; }), 'Kanten müssen zurückgesetzt sein');
+});
+
+test('Loch im Gelände: höchstens 32 Ecken je Grube und 6 Gruben gleichzeitig', function () {
+  roadTerrain(0);
+  const many = [];
+  for (let i = 0; i < 40; i++) many.push({ x: 20 * Math.cos(i / 40 * 2 * Math.PI), z: 20 * Math.sin(i / 40 * 2 * Math.PI) });
+  app.addObject('pit', 0, 0, pitParams(many));
+  assert.strictEqual(app.getPitUniforms().uPitN.value[0], app.PIT_MAX_POINTS);
+  for (let k = 0; k < 8; k++) app.addObject('pit', 0, 0, pitParams(square(-90 + k * 20, 60, 10, 10)));
+  assert.strictEqual(app.getPitUniforms().uPitCount.value, app.PIT_MAX_HOLES);
+});
+
+test('Loch im Gelände: Shader verwirft Fragmente im Polygon (Uniforms, Schleife, discard eingespritzt)', function () {
+  const sh = {
+    uniforms: {},
+    vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
+    fragmentShader: '#include <common>\nvoid main() {\n#include <clipping_planes_fragment>\n}'
+  };
+  app.pitHoleShader(sh);
+  assert.ok(sh.uniforms.uPitCount && sh.uniforms.uPitN && sh.uniforms.uPitEdges);
+  assert.ok(sh.vertexShader.indexOf('varying vec2 vPitXZ') >= 0 && sh.vertexShader.indexOf('vPitXZ = position.xz') >= 0);
+  assert.ok(sh.fragmentShader.indexOf('uniform vec4 uPitEdges[' + (app.PIT_MAX_HOLES * app.PIT_MAX_POINTS) + ']') >= 0);
+  assert.ok(sh.fragmentShader.indexOf('if (pitInside()) discard;') > sh.fragmentShader.indexOf('#include <clipping_planes_fragment>'));
+});
+
+test('Klicks im Loch: weggeschnittene Geländestücke werden übersprungen, die Sohle wird getroffen', function () {
+  roadTerrain(0);
+  app.addObject('pit', 0, 0, pitParams(square(-10, -10, 20, 20)));
+  const terrainInside = { point: { x: 0, y: 10, z: 0 }, object: { userData: { isTerrain: true } } };
+  const floor = { point: { x: 0, y: 5, z: 0 }, object: { userData: { kind: 'pitFloor' } } };
+  const terrainOutside = { point: { x: 50, y: 10, z: 0 }, object: { userData: { isTerrain: true } } };
+  assert.strictEqual(app.firstVisibleHit([terrainInside, floor]), floor);
+  assert.strictEqual(app.firstVisibleHit([terrainOutside, floor]), terrainOutside);
+  assert.strictEqual(app.firstVisibleHit([terrainInside]), null);
+  assert.strictEqual(app.firstVisibleHit([]), null);
+});
+
+test('Baugrube: Stützpunkte bearbeiten wie bei der Straße (versetzen, mindestens drei bleiben), Gelände-Loch folgt', function () {
+  roadTerrain(0);
+  const obj = app.addObject('pit', 0, 0, pitParams(square(-10, -10, 20, 20)));
+  assert.ok(app.hasNodes(obj));
+  assert.ok(app.moveRoadNode(obj, 2, 30, 30));
+  assert.ok(app.pitHoleContains(25, 25), 'Loch muss dem versetzten Eckpunkt folgen');
+  assert.strictEqual(app.getPitHoles()[0].length, 4);
+  assert.ok(app.removeRoadNode(obj, 3), 'von vier auf drei Punkte');
+  assert.strictEqual(app.removeRoadNode(obj, 0), false, 'unter drei Punkten bleibt alles');
+  assert.strictEqual(obj.params.slope, undefined, 'Baugruben haben keine Längsneigung');
+});
+
+test('Baugrube: Beschriftung nennt Fläche und Tiefe', function () {
+  assert.strictEqual(app.labelFor('pit', pitParams(square(0, 0, 20, 20), -5)), 'Baugrube 400 m² · -5.0 m');
+});
+
 /* ---------- Kamera: Drehen um einen angeklickten Punkt ---------- */
 
 function camSetup(pos, tgt) {

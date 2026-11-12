@@ -45,6 +45,10 @@ Browser.
   frei einstellbar innerhalb der Bandbreite realer Baukrane.
 - 24 Liebherr-Mobilkrane von 35 t bis 750 t, sämtliche Kennwerte aus den
   Original-Datenblättern, mit der echten Achszahl aus der Modellbezeichnung.
+- Baugrube als Polygon (Rechtsklick oder Leertaste schließt): Tiefe zum mittleren Gelände
+  (Standard −5 m) und Höhe der Unterkante sind zwei Regler für denselben Wert. Aushub
+  und Aufschüttung stehen in m³ im Eigenschaftsfenster; im Gelände entsteht ein Loch,
+  in das man hineinsieht.
 - Baustraßen als Polygonzug mit ausgerundeten Ecken und konstanter Längsneigung
   (Regler in %, vorbelegt aus Anfangs- und Endhöhe im Gelände). Länge und Fläche
   stehen im Eigenschaftsfenster. Wo die Fahrbahn über oder unter dem Gelände

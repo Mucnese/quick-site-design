@@ -204,6 +204,10 @@ function initSharedResources() {
   // Böschungen: Auftrag hell (aufgeschüttet), Abtrag dunkel (angeschnitten)
   MAT.roadFill    = new THREE.MeshLambertMaterial({ color: 0xc9a45c, side: THREE.DoubleSide });
   MAT.roadCut     = new THREE.MeshLambertMaterial({ color: 0x9a5a44, side: THREE.DoubleSide });
+  // Baugrube: Sohle und Wände; ohne Schattenempfang (das Gelände darüber würde sie sonst beschatten)
+  MAT.pitFloor    = new THREE.MeshLambertMaterial({ color: 0xa5977f, side: THREE.DoubleSide });
+  MAT.pitWall     = new THREE.MeshLambertMaterial({ color: 0x84735c, side: THREE.DoubleSide });
+  MAT.pitEdge     = new THREE.LineBasicMaterial({ color: 0xffd24a });
   // Abtrag liegt unter dem Gelände: Überlagerung ohne Tiefentest, damit man ihn sieht
   MAT.cutOverlay  = new THREE.MeshBasicMaterial({ color: 0x9a5a44, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   MAT.roadOverlay = new THREE.MeshBasicMaterial({ color: 0x6f6a60, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
@@ -424,6 +428,7 @@ function buildTerrain(t) {
   }
 
   terrainMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  terrainMat.onBeforeCompile = pitHoleShader;
   terrainMesh = new THREE.Group();
   terrainMesh.name = 'terrain';
   const segX = t.w / (t.nx - 1), segZ = t.d / (t.nz - 1);
@@ -441,18 +446,21 @@ function buildTerrain(t) {
       c.mesh = new THREE.Mesh(new THREE.BufferGeometry(), terrainMat);
       c.mesh.receiveShadow = true;
       c.mesh.castShadow = true;
+      c.mesh.userData.isTerrain = true;
       terrainMesh.add(c.mesh);
       terrainChunks.push(c);
     }
   }
   scene.add(terrainMesh);
   updateTerrainLod(true);
+  updatePitHoles();
 
   const plinthH = Math.max((t.zmax - t.zmin) * 0.6, 12);
-  plinthMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(t.w, plinthH, t.d),
-    new THREE.MeshLambertMaterial({ color: 0x151c20 })
-  );
+  // Auch der Sockel bekommt das Baugruben-Loch: reicht eine Grube unter das tiefste
+  // Gelände, läge ihre Sohle sonst im Sockel und wäre nicht zu sehen
+  const plinthMat = new THREE.MeshLambertMaterial({ color: 0x151c20 });
+  plinthMat.onBeforeCompile = pitHoleShader;
+  plinthMesh = new THREE.Mesh(new THREE.BoxGeometry(t.w, plinthH, t.d), plinthMat);
   plinthMesh.position.y = -plinthH / 2 - 0.2;
   plinthMesh.receiveShadow = true;
   scene.add(plinthMesh);
@@ -1883,6 +1891,308 @@ function roadInfo(p) {
   };
 }
 
+/* =========================================================
+   Baugrube
+   Ein Polygon im Gelände, eine Sohle auf konstanter Höhe, senkrechte Wände.
+   Die Tiefe (params.depth, Standard -5 m) gilt zum MITTLEREN Gelände innerhalb
+   des Polygons; die absolute Höhe der Unterkante folgt daraus und umgekehrt
+   (zwei Regler, ein Wert). Liegt die Sohle teils unter, teils über dem
+   Gelände, gibt es Aushub und Aufschüttung.
+   ========================================================= */
+const PIT_MAX_POINTS = 32;       // Eckpunkte je Polygon (Shader-Uniforms sind begrenzt)
+const PIT_MAX_HOLES = 6;         // Baugruben, die gleichzeitig ein Loch ins Gelände schneiden
+const PIT_DEPTH_MIN = -30;
+const PIT_DEPTH_MAX = 10;
+const PIT_SAMPLES = 40000;       // Obergrenze der Stichproben für die Mengen
+
+function defaultPitParams() {
+  return { points: [], depth: -5 };
+}
+
+/* Fläche eines Polygons (Gaußsche Trapezformel), immer positiv */
+function polygonArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    a += p.x * q.z - q.x * p.z;
+  }
+  return Math.abs(a) / 2;
+}
+
+/* Punkt im Polygon (gerade-ungerade-Regel) */
+function pointInPolygon(pts, x, z) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if ((a.z > z) !== (b.z > z) && x < (b.x - a.x) * (z - a.z) / (b.z - a.z) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+/* Zerlegt ein einfaches Polygon (auch konkav) in Dreiecke (Ear-Clipping). Gibt
+   Indextripel zurück, jedes so gewendet, dass die Fläche von oben gesehen
+   nach oben zeigt. Bei sich selbst schneidenden Polygonen greift ein Fächer
+   als Notlösung, statt nichts zu zeigen. */
+function triangulatePolygon(pts) {
+  const n = pts.length;
+  if (n < 3) return [];
+  function cross(a, b, c) { return (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x); }
+  let signed = 0;
+  for (let i = 0; i < n; i++) signed += cross(pts[0], pts[i], pts[(i + 1) % n]);
+  const dir = signed >= 0 ? 1 : -1;
+  const idx = [];
+  for (let i = 0; i < n; i++) idx.push(i);
+  const out = [];
+
+  function inTri(p, a, b, c) {
+    const d1 = cross(p, a, b), d2 = cross(p, b, c), d3 = cross(p, c, a);
+    const neg = d1 < 0 || d2 < 0 || d3 < 0, pos = d1 > 0 || d2 > 0 || d3 > 0;
+    return !(neg && pos);
+  }
+  function emit(a, b, c) {
+    // Aufwärts gewendet: von oben gesehen (Nord oben) gegen den Uhrzeigersinn = negatives Kreuzprodukt
+    if (cross(pts[a], pts[b], pts[c]) > 0) out.push([a, c, b]); else out.push([a, b, c]);
+  }
+
+  let guard = 0;
+  while (idx.length > 3 && guard++ < 5000) {
+    let clipped = false;
+    for (let i = 0; i < idx.length; i++) {
+      const a = idx[(i + idx.length - 1) % idx.length], b = idx[i], c = idx[(i + 1) % idx.length];
+      if (dir * cross(pts[a], pts[b], pts[c]) <= 1e-9) continue;        // reflexe Ecke
+      let blocked = false;
+      for (let k = 0; k < idx.length; k++) {
+        const j = idx[k];
+        if (j === a || j === b || j === c) continue;
+        if (inTri(pts[j], pts[a], pts[b], pts[c])) { blocked = true; break; }
+      }
+      if (blocked) continue;
+      emit(a, b, c);
+      idx.splice(i, 1);
+      clipped = true;
+      break;
+    }
+    if (!clipped) {
+      for (let i = 1; i + 1 < idx.length; i++) emit(idx[0], idx[i], idx[i + 1]);
+      return out;
+    }
+  }
+  if (idx.length === 3) emit(idx[0], idx[1], idx[2]);
+  return out;
+}
+
+/* Alles Rechnerische einer Baugrube: Fläche, Bezugshöhe, Unterkante, Aushub und
+   Aufschüttung. Die Mengen kommen aus einem Raster von Stichproben im Polygon
+   (Mittelpunktregel), hochgerechnet auf die exakte Polygonfläche - dadurch
+   stimmt eine ebene Grube unabhängig von der Rasterweite. */
+function computePit(p) {
+  const pts = (p && p.points) || [];
+  const depth = (p && isFinite(p.depth)) ? p.depth : -5;
+  const out = { area: 0, ref: 0, refAbs: 0, bottom: 0, bottomAbs: 0, cut: 0, fill: 0, samples: 0 };
+  const zmin = TERRAIN ? TERRAIN.zmin : 0;
+  if (pts.length < 3) return out;
+
+  out.area = polygonArea(pts);
+  let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
+  pts.forEach(function (q) {
+    if (q.x < minx) minx = q.x; if (q.x > maxx) maxx = q.x;
+    if (q.z < minz) minz = q.z; if (q.z > maxz) maxz = q.z;
+  });
+  const cell = TERRAIN && isFinite(TERRAIN.cell) ? TERRAIN.cell : 1;
+  const step = Math.max(0.5, cell * 0.5, Math.sqrt(Math.max(out.area, 1) / PIT_SAMPLES));
+
+  const hs = [];
+  for (let z = minz + step / 2; z < maxz; z += step) {
+    for (let x = minx + step / 2; x < maxx; x += step) {
+      if (pointInPolygon(pts, x, z)) hs.push(getHeightAt(x, z));
+    }
+  }
+  if (!hs.length) {                                  // winziges Polygon: eine Stichprobe in der Mitte
+    const c = roadCentroid(pts);
+    hs.push(getHeightAt(c.x, c.z));
+  }
+  let sum = 0;
+  hs.forEach(function (h) { sum += h; });
+  out.ref = sum / hs.length;
+  out.bottom = out.ref + depth;
+  let cut = 0, fill = 0;
+  hs.forEach(function (h) {
+    if (h > out.bottom) cut += h - out.bottom; else fill += out.bottom - h;
+  });
+  out.cut = cut / hs.length * out.area;
+  out.fill = fill / hs.length * out.area;
+  out.refAbs = zmin + out.ref;
+  out.bottomAbs = zmin + out.bottom;
+  out.samples = hs.length;
+  return out;
+}
+
+function buildPit(p) {
+  const g = new THREE.Group();
+  const pts = (p.points || []).slice(0, PIT_MAX_POINTS);
+
+  if (pts.length < 3) {
+    g.userData.bbox = { w: 4, d: 4, h: 1 };
+    g.userData.selBox = { w: 4, d: 4, h: 1, cy: 0.5, cx: 0, cz: 0 };
+    g.userData.pit = computePit({ points: [], depth: p.depth });
+    return g;
+  }
+
+  const info = computePit({ points: pts, depth: p.depth });
+  const bottom = info.bottom;
+
+  // Sohle
+  const tris = triangulatePolygon(pts);
+  const fp = [], fi = [];
+  pts.forEach(function (q) { fp.push(q.x, bottom, q.z); });
+  tris.forEach(function (t) { fi.push(t[0], t[1], t[2]); });
+  const fg = new THREE.BufferGeometry();
+  fg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(fp), 3));
+  fg.setIndex(fi);
+  fg.computeVertexNormals();
+  const floor = new THREE.Mesh(fg, MAT.pitFloor);
+  floor.userData.kind = 'pitFloor';
+  g.add(floor);
+
+  // Wände: senkrecht von der Geländeoberfläche zur Sohle, Kanten alle 2 m abgetastet
+  const wp = [], wi = [], top = [], bot = [];
+  let first = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const len = Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.z - a.z) * (b.z - a.z));
+    const k = Math.max(1, Math.ceil(len / 2));
+    for (let j = 0; j <= k; j++) {
+      if (i > 0 && j === 0) continue;                // gemeinsame Ecke nicht doppeln
+      const t = j / k, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+      const h = getHeightAt(x, z) + 0.05;
+      wp.push(x, h, z, x, bottom, z);
+      top.push(new THREE.Vector3(x, h + 0.03, z));
+      bot.push(new THREE.Vector3(x, bottom + 0.03, z));
+    }
+  }
+  const nCols = wp.length / 6;
+  for (let c = 0; c + 1 < nCols; c++) {
+    const a = c * 2, b = a + 1, d = a + 2, e = a + 3;
+    wi.push(a, d, b, b, d, e);
+  }
+  const wg = new THREE.BufferGeometry();
+  wg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(wp), 3));
+  wg.setIndex(wi);
+  wg.computeVertexNormals();
+  const walls = new THREE.Mesh(wg, MAT.pitWall);
+  walls.userData.kind = 'pitWalls';
+  g.add(walls);
+
+  // Oberkante und Unterkante als Linien
+  top.push(top[0].clone()); bot.push(bot[0].clone());
+  const tl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(top), MAT.pitEdge);
+  tl.userData.kind = 'pitRim';
+  g.add(tl);
+  const bl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(bot), MAT.pitEdge);
+  bl.userData.kind = 'pitBottomLine';
+  g.add(bl);
+
+  let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
+  pts.forEach(function (q) {
+    if (q.x < minx) minx = q.x; if (q.x > maxx) maxx = q.x;
+    if (q.z < minz) minz = q.z; if (q.z > maxz) maxz = q.z;
+  });
+  const hh = Math.max(Math.abs(p.depth) + 2, 3);
+  g.userData.bbox = { w: maxx - minx, d: maxz - minz, h: hh };
+  g.userData.selBox = { w: maxx - minx, d: maxz - minz, h: hh, cy: (info.ref + bottom) / 2, cx: (minx + maxx) / 2, cz: (minz + maxz) / 2 };
+  g.userData.pit = info;
+  g.userData.area = info.area;
+  return g;
+}
+
+/* ---------- Loch im Gelände über der Baugrube ----------
+   Das Gelände ist eine geschlossene Fläche; die Sohle und die Wände der Baugrube
+   liegen darunter und wären nicht zu sehen. Deshalb verwirft der Fragment-
+   Shader des Geländes alles, was im Polygon einer Baugrube liegt. Die Höhendaten
+   (getHeightAt) bleiben unberührt: Mengen, Objekte und IFC-Export sehen das
+   unveränderte Gelände. Bis PIT_MAX_HOLES Baugruben mit je PIT_MAX_POINTS Ecken. */
+const pitUniforms = {
+  uPitCount: { value: 0 },
+  uPitN: { value: new Float32Array(PIT_MAX_HOLES) },
+  uPitEdges: { value: new Float32Array(PIT_MAX_HOLES * PIT_MAX_POINTS * 4) }
+};
+let pitHoles = [];                                   // Polygone der aktuellen Löcher
+
+function pitHoleShader(shader) {
+  shader.uniforms.uPitCount = pitUniforms.uPitCount;
+  shader.uniforms.uPitN = pitUniforms.uPitN;
+  shader.uniforms.uPitEdges = pitUniforms.uPitEdges;
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying vec2 vPitXZ;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPitXZ = position.xz;');
+  const M = PIT_MAX_HOLES, E = PIT_MAX_POINTS;
+  const fn = [
+    'varying vec2 vPitXZ;',
+    'uniform float uPitCount;',
+    'uniform float uPitN[' + M + '];',
+    'uniform vec4 uPitEdges[' + (M * E) + '];',
+    'bool pitInside() {',
+    '  vec2 p = vPitXZ;',
+    '  for (int k = 0; k < ' + M + '; k++) {',
+    '    if (float(k) >= uPitCount) break;',
+    '    bool inside = false;',
+    '    int n = int(uPitN[k]);',
+    '    for (int e = 0; e < ' + E + '; e++) {',
+    '      if (e >= n) break;',
+    '      vec4 d = uPitEdges[k * ' + E + ' + e];',
+    '      if (((d.y > p.y) != (d.w > p.y)) && (p.x < (d.z - d.x) * (p.y - d.y) / (d.w - d.y) + d.x)) inside = !inside;',
+    '    }',
+    '    if (inside) return true;',
+    '  }',
+    '  return false;',
+    '}'
+  ].join('\n');
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\n' + fn)
+    .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (pitInside()) discard;');
+}
+
+/* Trägt die Polygone aller Baugruben in die Shader-Uniforms ein */
+function updatePitHoles() {
+  pitHoles = [];
+  objects.forEach(function (o) {
+    if (o.type !== 'pit') return;
+    const pts = (o.params.points || []).slice(0, PIT_MAX_POINTS);
+    if (pts.length >= 3 && pitHoles.length < PIT_MAX_HOLES) pitHoles.push(pts);
+  });
+  pitUniforms.uPitCount.value = pitHoles.length;
+  pitUniforms.uPitN.value.fill(0);
+  pitUniforms.uPitEdges.value.fill(0);
+  pitHoles.forEach(function (pts, k) {
+    pitUniforms.uPitN.value[k] = pts.length;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const o = (k * PIT_MAX_POINTS + i) * 4;
+      pitUniforms.uPitEdges.value[o] = a.x; pitUniforms.uPitEdges.value[o + 1] = a.z;
+      pitUniforms.uPitEdges.value[o + 2] = b.x; pitUniforms.uPitEdges.value[o + 3] = b.z;
+    }
+  });
+}
+
+function pitHoleContains(x, z) {
+  for (let i = 0; i < pitHoles.length; i++) if (pointInPolygon(pitHoles[i], x, z)) return true;
+  return false;
+}
+
+/* Erster Treffer, der nicht ein vom Loch weggeschnittenes Geländestück ist */
+function firstVisibleHit(hits) {
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    if (h.object && h.object.userData && h.object.userData.isTerrain && pitHoleContains(h.point.x, h.point.z)) continue;
+    return h;
+  }
+  return null;
+}
+
+/* Stützpunkte haben Straßen (mindestens 2) und Baugruben (mindestens 3) */
+function hasNodes(obj) { return !!obj && (obj.type === 'road' || obj.type === 'pit'); }
+function minNodes(obj) { return obj.type === 'pit' ? 3 : 2; }
+
 function roadCentroid(pts) {
   if (!pts || !pts.length) return { x: 0, z: 0 };
   let sx = 0, sz = 0;
@@ -1893,7 +2203,7 @@ function roadCentroid(pts) {
 /* ---------- Vorschau während des Setzens ---------- */
 let roadPreview = null;
 
-function setRoadPreview(pts, hover) {
+function setRoadPreview(pts, hover, closed) {
   clearRoadPreview();
   if (!pts || !pts.length) return;
   const g = new THREE.Group();
@@ -1903,7 +2213,7 @@ function setRoadPreview(pts, hover) {
     const line = all.map(function (q) {
       return new THREE.Vector3(q.x, getHeightAt(q.x, q.z) + 0.4, q.z);
     });
-    g.add(thickLine(line, 0.8, MAT.drawPreview, false));
+    g.add(thickLine(line, 0.8, MAT.drawPreview, !!closed && all.length >= 3));
   }
   pts.forEach(function (q) {
     const m = new THREE.Mesh(GEO.sphere, MAT.measure);
@@ -1933,6 +2243,7 @@ function builderFor(type) {
   if (type === 'tower') return buildTowerCrane;
   if (type === 'mobile') return buildMobileCrane;
   if (type === 'road') return buildRoad;
+  if (type === 'pit') return buildPit;
   throw new Error('Unbekannter Typ: ' + type);
 }
 
@@ -1941,6 +2252,7 @@ function defaultsFor(type) {
   if (type === 'tower') return defaultTowerParams();
   if (type === 'mobile') return defaultMobileParams();
   if (type === 'road') return defaultRoadParams();
+  if (type === 'pit') return defaultPitParams();
   throw new Error('Unbekannter Typ: ' + type);
 }
 
@@ -1955,6 +2267,9 @@ function labelFor(type, params) {
   if (type === 'road') {
     return 'Baustraße ' + Math.round(roadInfo(params).length) + ' m · ' + params.width.toFixed(1) + ' m';
   }
+  if (type === 'pit') {
+    return 'Baugrube ' + Math.round(polygonArea(params.points || [])) + ' m² · ' + (isFinite(params.depth) ? params.depth : -5).toFixed(1) + ' m';
+  }
   if (type === 'road') {
     const fil = filletPath(params.points || [], Math.max(params.radius, 1));
     const l = pathLength(densifyPath(fil.path, 2.5));
@@ -1964,7 +2279,7 @@ function labelFor(type, params) {
 }
 
 function placeGroup(obj) {
-  if (obj.type === 'road') {
+  if (hasNodes(obj)) {
     // Die Geometrie liegt bereits in Weltkoordinaten
     obj.group.position.set(0, 0, 0);
     const c = roadCentroid(obj.params.points);
@@ -1986,6 +2301,7 @@ function addObject(type, x, z, params) {
   placeGroup(obj);
   group.userData.__objId = obj.id;
   objects.push(obj);
+  if (type === 'pit') updatePitHoles();
   return obj;
 }
 
@@ -1996,16 +2312,17 @@ function rebuildObject(obj) {
   obj.group.userData.__objId = obj.id;
   scene.add(obj.group);
   placeGroup(obj);
+  if (obj.type === 'pit') updatePitHoles();
   if (isSelected(obj.id)) updateSelectionBoxes();
 }
 
 function moveObject(obj, x, z) {
-  if (obj.type === 'road') {
+  if (hasNodes(obj)) {
     const dx = x - obj.x, dz = z - obj.z;
     obj.params.points = (obj.params.points || []).map(function (q) {
       return { x: q.x + dx, z: q.z + dz };
     });
-    obj.params.slope = autoRoadSlope(obj.params);    // anderes Gelände, neue Anfangs-/Endhöhe
+    if (obj.type === 'road') obj.params.slope = autoRoadSlope(obj.params);    // anderes Gelände, neue Anfangs-/Endhöhe
     rebuildObject(obj);
     return;
   }
@@ -2021,7 +2338,9 @@ function removeObject(id) {
   if (idx < 0) return false;
   disposeGroup(objects[idx].group);
   scene.remove(objects[idx].group);
+  const wasPit = objects[idx].type === 'pit';
   objects.splice(idx, 1);
+  if (wasPit) updatePitHoles();
   const si = selectedIds.indexOf(id);
   if (si >= 0) { selectedIds.splice(si, 1); updateSelectionBoxes(); }
   return true;
@@ -2042,7 +2361,7 @@ function disposeGroup(group) {
 
 function reseatAllObjects() {
   for (let i = 0; i < objects.length; i++) {
-    if (objects[i].type === 'road') rebuildObject(objects[i]);
+    if (hasNodes(objects[i])) rebuildObject(objects[i]);
     else objects[i].group.position.y = getHeightAt(objects[i].x, objects[i].z);
   }
   if (selectedIds.length) updateSelectionBoxes();
@@ -2092,7 +2411,7 @@ function isSelected(id) {
 /* Angeklicktes Objekt wird zum Drehzentrum der Kamera */
 function focusOnObject(obj) {
   const b = obj.group.userData.selBox || { cy: 5 };
-  if (obj.type === 'road') { frameObjects([obj]); return; }
+  if (hasNodes(obj)) { frameObjects([obj]); return; }
   focusGoal = new THREE.Vector3(obj.x, getHeightAt(obj.x, obj.z) + b.cy, obj.z);
   camGoal = null;
 }
@@ -2270,7 +2589,7 @@ const NODE_PIXELS = 13;
 function showRoadNodes(obj) {
   // Nur die Darstellung erneuern; die Knotenauswahl bleibt bestehen
   dropNodeGroup();
-  if (!obj || obj.type !== 'road') { clearRoadNodes(); return null; }
+  if (!hasNodes(obj)) { clearRoadNodes(); return null; }
   const pts = obj.params.points || [];
   if (!pts.length) { clearRoadNodes(); return null; }
 
@@ -2339,27 +2658,27 @@ function setActiveNode(i) {
 
 /* Verschiebt einen Stützpunkt und baut die Trasse neu auf */
 function moveRoadNode(obj, index, x, z) {
-  if (!obj || obj.type !== 'road') return false;
+  if (!hasNodes(obj)) return false;
   const pts = obj.params.points;
   if (!pts || index < 0 || index >= pts.length) return false;
   pts[index] = { x: x, z: z };
   const c = roadCentroid(pts);
   obj.x = c.x; obj.z = c.z;
-  obj.params.slope = autoRoadSlope(obj.params);
+  if (obj.type === 'road') obj.params.slope = autoRoadSlope(obj.params);
   rebuildObject(obj);
   refreshRoadNodes();
   return true;
 }
 
-/* Stützpunkt entfernen; unter drei Punkten bleibt alles unverändert */
+/* Stützpunkt entfernen; unter dem Minimum (Straße 2, Baugrube 3) bleibt alles unverändert */
 function removeRoadNode(obj, index) {
-  if (!obj || obj.type !== 'road') return false;
+  if (!hasNodes(obj)) return false;
   const pts = obj.params.points;
-  if (!pts || pts.length <= 2 || index < 0 || index >= pts.length) return false;
+  if (!pts || pts.length <= minNodes(obj) || index < 0 || index >= pts.length) return false;
   pts.splice(index, 1);
   const c = roadCentroid(pts);
   obj.x = c.x; obj.z = c.z;
-  obj.params.slope = autoRoadSlope(obj.params);
+  if (obj.type === 'road') obj.params.slope = autoRoadSlope(obj.params);
   activeNode = null;
   rebuildObject(obj);
   refreshRoadNodes();
@@ -2375,12 +2694,20 @@ function pointerToNDC(event) {
   return pointer;
 }
 
+/* Was beim Anklicken des Bodens getroffen werden darf: Gelände, Baugruben, optional Gebäude */
+function groundTargets(withBuildings) {
+  const t = [terrainMesh];
+  objects.forEach(function (o) { if (o.type === 'pit') t.push(o.group); });
+  if (withBuildings && buildingsMesh) t.push(buildingsMesh);
+  return t;
+}
+
 function raycastTerrain(event) {
   if (!terrainMesh) return null;
   pointerToNDC(event);
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObject(terrainMesh, true);
-  return hits.length ? hits[0].point : null;
+  const hit = firstVisibleHit(raycaster.intersectObjects(groundTargets(false), true));
+  return hit ? hit.point : null;
 }
 
 /* Trifft Gelände oder Gebäude; liefert Punkt und Quelle */
@@ -2388,13 +2715,11 @@ function raycastGround(event) {
   if (!terrainMesh) return null;
   pointerToNDC(event);
   raycaster.setFromCamera(pointer, camera);
-  const targets = [terrainMesh];
-  if (buildingsMesh) targets.push(buildingsMesh);
-  const hits = raycaster.intersectObjects(targets, true);
-  if (!hits.length) return null;
+  const hit = firstVisibleHit(raycaster.intersectObjects(groundTargets(true), true));
+  if (!hit) return null;
   return {
-    point: hits[0].point,
-    onBuilding: buildingsMesh ? hits[0].object === buildingsMesh : false
+    point: hit.point,
+    onBuilding: buildingsMesh ? hit.object === buildingsMesh : false
   };
 }
 
@@ -2420,9 +2745,9 @@ function raycastPivot(event) {
   if (terrainMesh) roots.push(terrainMesh);
   if (buildingsMesh) roots.push(buildingsMesh);
   if (!roots.length) return null;
-  const hits = raycaster.intersectObjects(roots, true);
-  if (!hits.length) return null;
-  const p = hits[0].point;
+  const hit = firstVisibleHit(raycaster.intersectObjects(roots, true));
+  if (!hit) return null;
+  const p = hit.point;
   return { x: p.x, y: p.y, z: p.z };
 }
 
@@ -2470,7 +2795,7 @@ function orbitAround(pivot, dAzimuth, dPolar) {
    ========================================================= */
 function makeGhost(type, params) {
   const g = new THREE.Group();
-  if (type === 'road') return g;
+  if (type === 'road' || type === 'pit') return g;
   if (type === 'container') {
     const lay = containerLayout(params);
     const ls = new THREE.LineSegments(
@@ -2937,6 +3262,23 @@ if (typeof module !== 'undefined' && module.exports) {
     pathLength: pathLength,
     computeRoad: computeRoad,
     autoRoadSlope: autoRoadSlope,
+    defaultPitParams: defaultPitParams,
+    computePit: computePit,
+    buildPit: buildPit,
+    polygonArea: polygonArea,
+    pointInPolygon: pointInPolygon,
+    triangulatePolygon: triangulatePolygon,
+    updatePitHoles: updatePitHoles,
+    getPitHoles: function () { return pitHoles; },
+    getPitUniforms: function () { return pitUniforms; },
+    pitHoleContains: pitHoleContains,
+    pitHoleShader: pitHoleShader,
+    firstVisibleHit: firstVisibleHit,
+    hasNodes: hasNodes,
+    PIT_MAX_POINTS: PIT_MAX_POINTS,
+    PIT_MAX_HOLES: PIT_MAX_HOLES,
+    PIT_DEPTH_MIN: PIT_DEPTH_MIN,
+    PIT_DEPTH_MAX: PIT_DEPTH_MAX,
     EMBANKMENT_CHOICES: EMBANKMENT_CHOICES,
     ROAD_SLOPE_MAX: ROAD_SLOPE_MAX,
     buildRoad: buildRoad,
@@ -2984,6 +3326,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getSelectedIds: function () { return selectedIds; },
     resetState: function () {
       objects.length = 0;
+      updatePitHoles();
       nextId = 1;
       selectedIds = [];
       TERRAIN = null;
