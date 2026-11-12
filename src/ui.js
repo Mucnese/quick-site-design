@@ -22,6 +22,14 @@ const STRINGS = {
     clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
+    osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen',
+    osmNote: 'Aus. Beim Einschalten lädt Ihr Browser Kartenkacheln von tile.openstreetmap.org; dabei wird Ihre IP-Adresse übertragen.',
+    osmLoading: 'Lade Kacheln …', osmLoaded: 'Karte geladen ({n} Kacheln).',
+    osmPartial: 'Karte geladen, {m} von {n} Kacheln fehlen.',
+    osmNoTiles: 'Keine Kachel konnte geladen werden (offline oder blockiert?).',
+    osmNoCrs: 'Das Bezugssystem {c} lässt sich nicht in Längen- und Breitengrad umrechnen.',
+    osmNoTerrain: 'Zuerst ein Geländemodell laden.',
+    osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
     terrainFile: 'Gelände · GeoTIFF', buildingFile: 'Gebäude · CityGML',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
@@ -100,6 +108,14 @@ const STRINGS = {
     clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
+    osmMap: 'Map · OpenStreetMap', osmShow: 'show',
+    osmNote: 'Off. Turning it on makes your browser load map tiles from tile.openstreetmap.org; your IP address is transmitted.',
+    osmLoading: 'Loading tiles …', osmLoaded: 'Map loaded ({n} tiles).',
+    osmPartial: 'Map loaded, {m} of {n} tiles are missing.',
+    osmNoTiles: 'No tile could be loaded (offline or blocked?).',
+    osmNoCrs: 'The coordinate system {c} cannot be converted to latitude and longitude.',
+    osmNoTerrain: 'Load a terrain model first.',
+    osmAttrib: 'Map data © OpenStreetMap contributors',
     terrainFile: 'Terrain · GeoTIFF', buildingFile: 'Buildings · CityGML',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
@@ -502,6 +518,7 @@ function refreshTexts() {
   updateTerrainInfo();
   renderOverview();
   refreshAttribution();
+  renderOsmUi();
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -1303,9 +1320,11 @@ function updateTerrainInfo() {
     document.getElementById('tile-grid').textContent = '–';
     document.getElementById('stat-relief').textContent = '–';
     setNeedsData(true);
+    renderOsmUi();
     return;
   }
   setNeedsData(false);
+  renderOsmUi();
   document.getElementById('tile-label').textContent = t.label;
   document.getElementById('tile-size').textContent = Math.round(t.w) + ' × ' + Math.round(t.d) + ' m';
   document.getElementById('tile-grid').textContent = t.nx + ' × ' + t.nz;
@@ -1359,6 +1378,48 @@ function setFileStatus(which, msg, kind) {
   const el = document.getElementById(which === 'dem' ? 'dem-status' : 'gml-status');
   el.textContent = msg;
   el.className = 'file-status' + (kind ? ' ' + kind : '');
+}
+
+/* ---------- Karte (OpenStreetMap) ----------
+   Schalter im Datenfenster. Der Status-Text wird aus (Schlüssel, Werte) neu gebaut,
+   damit ein Sprachwechsel ihn mitnimmt. */
+let osmStatus = { key: 'osmNote', cls: '', vars: null };
+
+function setOsmStatus(key, cls, vars) {
+  osmStatus = { key: key, cls: cls || '', vars: vars || null };
+  renderOsmUi();
+}
+
+function renderOsmUi() {
+  const tg = document.getElementById('osm-toggle');
+  const st = document.getElementById('osm-status');
+  const at = document.getElementById('osm-attribution');
+  if (!tg || !st) return;
+  tg.disabled = !TERRAIN;
+  if (!TERRAIN && tg.checked) tg.checked = false;
+  let txt = T(osmStatus.key);
+  if (osmStatus.vars) Object.keys(osmStatus.vars).forEach(function (k) { txt = txt.replace('{' + k + '}', osmStatus.vars[k]); });
+  st.textContent = txt;
+  st.className = 'file-status' + (osmStatus.cls ? ' ' + osmStatus.cls : '');
+  if (at) at.style.display = tg.checked ? 'block' : 'none';
+}
+
+async function onOsmToggle() {
+  const tg = document.getElementById('osm-toggle');
+  const on = tg.checked;
+  if (!on) { await setOsmMap(false); setOsmStatus('osmNote'); return; }
+  setOsmStatus('osmLoading', 'busy');
+  try {
+    const r = await setOsmMap(true);
+    if (r.stale) return;
+    if (r.failed) setOsmStatus('osmPartial', 'ok', { m: r.failed, n: r.tiles + r.failed });
+    else setOsmStatus('osmLoaded', 'ok', { n: r.tiles });
+  } catch (e) {
+    tg.checked = false;
+    if (e.code === 'noCrs') setOsmStatus('osmNoCrs', 'err', { c: (TERRAIN && TERRAIN.epsg) ? 'EPSG:' + TERRAIN.epsg : '' });
+    else if (e.code === 'noTerrain') setOsmStatus('osmNoTerrain', 'err');
+    else setOsmStatus('osmNoTiles', 'err');
+  }
 }
 
 function demStatusText(t) {
@@ -1990,6 +2051,18 @@ function initUI() {
   gmlInput.addEventListener('change', function () {
     if (gmlInput.files && gmlInput.files.length) handleGmlFiles(gmlInput.files);
   });
+
+  document.getElementById('osm-toggle').addEventListener('change', onOsmToggle);
+  // Neues Gelände bei eingeschalteter Karte: die Karte lädt sich neu, bei Fehlern geht sie aus
+  osmMap.onChange = function (s) {
+    const tg = document.getElementById('osm-toggle');
+    if (s.error) {
+      tg.checked = false;
+      if (s.error === 'noCrs') setOsmStatus('osmNoCrs', 'err', { c: (TERRAIN && TERRAIN.epsg) ? 'EPSG:' + TERRAIN.epsg : '' });
+      else setOsmStatus('osmNoTiles', 'err');
+    } else if (s.on && s.failed === 0) setOsmStatus('osmLoaded', 'ok', { n: s.tiles });
+    else if (s.on) setOsmStatus('osmPartial', 'ok', { m: s.failed, n: s.tiles + s.failed });
+  };
 
   document.getElementById('gml-clear').addEventListener('click', function () {
     clearBuildings();

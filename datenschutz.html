@@ -70,7 +70,8 @@ E-Mail: <a href="mailto:info@quick-site-design.com">info@quick-site-design.com</
 Quick-Site-Design verarbeitet alle Daten ausschließlich im Browser. Weder die
 Geländemodelle und Gebäudemodelle, die Sie laden, noch Ihre Planung verlassen
 Ihr Gerät. Es findet keine Übertragung an einen Server statt, es werden keine
-Dateien gespeichert.
+Dateien gespeichert. Einzige Ausnahme ist die ausdrücklich zuschaltbare
+Kartengrundlage (siehe unten); sie ist standardmäßig aus.
 </p>
 </div>
 
@@ -85,8 +86,8 @@ Dateien gespeichert.
 </ul>
 
 <p>
-Eine Einwilligung ist deshalb nicht erforderlich, ein Cookie-Banner erübrigt
-sich.
+Für die Grundfunktionen ist deshalb keine Einwilligung erforderlich, ein
+Cookie-Banner erübrigt sich.
 </p>
 
 <h2>Aufruf der Seite: Server-Logdateien</h2>
@@ -138,6 +139,34 @@ Wird die Anwendung mit dem Zusatz <code>?demo=1</code> aufgerufen, lädt sie
 zwei Beispieldateien nach. Diese liegen auf demselben Server wie die Seite
 selbst; es entsteht keine Verbindung zu Dritten. Es handelt sich um amtliche
 Geobasisdaten ohne Personenbezug.
+</p>
+
+<h2>Optional: Kartengrundlage von OpenStreetMap</h2>
+
+<p>
+Im Datenfenster gibt es den Schalter „Karte · OpenStreetMap“. Er ist
+<strong>standardmäßig aus</strong>. Erst wenn Sie ihn einschalten, lädt Ihr
+Browser Kartenkacheln (Bilddateien) von <code>tile.openstreetmap.org</code> und
+legt sie als Farbe über das Gelände. Betreiber des Kartendienstes ist die
+OpenStreetMap Foundation (Vereinigtes Königreich).
+</p>
+
+<p>
+Dabei werden an OpenStreetMap übertragen: Ihre IP-Adresse, Datum und Uhrzeit,
+die Adresse dieser Seite als Herkunft der Anfrage, Angaben zu Browser und
+Betriebssystem und die Nummern der angeforderten Kacheln. Aus den Kachelnummern
+lässt sich der ungefähre Ort Ihres Geländemodells ablesen. Die Geländedaten
+selbst, Ihre Planung und Ihre geladenen Dateien werden nicht übertragen.
+</p>
+
+<p>
+Rechtsgrundlage ist Ihre Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO, die Sie
+durch das Einschalten des Schalters erteilen. Sie können sie jederzeit
+widerrufen, indem Sie den Schalter ausschalten; danach werden keine weiteren
+Kacheln angefordert. Einzelheiten zur Verarbeitung dort:
+<a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener noreferrer">Datenschutzerklärung der OpenStreetMap Foundation</a>.
+Die Kartendaten stehen unter der Open Database License, © OpenStreetMap-Mitwirkende
+(<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">Urheberrecht und Lizenz</a>).
 </p>
 
 <h2>Ihre Rechte</h2>

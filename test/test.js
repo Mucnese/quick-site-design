@@ -1417,5 +1417,73 @@ test('Schleppkurve in der Baustraße: ohne Schalter nichts, mit Schalter Fläche
   assert.strictEqual(app.defaultRoadParams().showSwept, false);
 });
 
+/* ---------- Karte (OpenStreetMap) ---------- */
+
+test('Karte: Umrechnung ins Längen-/Breitengrad stimmt mit PROJ (pyproj 3.8) überein', function () {
+  // [EPSG, Rechts, Hoch, Länge, Breite] - Referenzwerte aus pyproj; Bessel-Systeme (DHDN, MGI) hängen vom
+  // Datumsübergang ab und werden auf 1 m verglichen, alle anderen auf 5 cm.
+  const ref = [
+    [25832, 713500, 5420500, 11.9133363, 48.9006176], [25832, 500000, 5400000, 9.0, 48.753013],
+    [25833, 380000, 5800000, 13.2386841, 52.3371646], [25831, 420000, 5600000, 1.8708633, 50.5464582],
+    [4647, 32501000, 5300000, 9.0133678, 47.8533412], [32632, 700000, 5000000, 11.5431235, 45.1251538],
+    [3857, 1288000, 6130000, 11.5703009, 48.1389358],
+    [31467, 3502000, 5400000, 9.0261611, 48.7375361], [31466, 2600000, 5600000, 7.4096916, 50.5271955],
+    [31468, 4400000, 5700000, 10.5607137, 51.4258267],
+    [31255, 60000, 340000, 14.1396154, 48.1955024], [31255, -20000, 300000, 13.0654009, 47.8382504],
+    [31254, -100000, 230000, 9.0132367, 47.2012429], [31256, 50000, 330000, 17.0035377, 48.1065382]
+  ];
+  ref.forEach(function (r) {
+    const g = app.crsToLonLat(r[0], r[1], r[2]);
+    const dm = Math.hypot((g.lon - r[3]) * 111320 * Math.cos(r[4] * Math.PI / 180), (g.lat - r[4]) * 110540);
+    const tol = (r[0] >= 31254 && r[0] <= 31469) ? 1 : 0.05;
+    assert.ok(dm < tol, 'EPSG:' + r[0] + ' weicht ' + dm.toFixed(3) + ' m ab');
+  });
+  assert.strictEqual(app.crsToLonLat(99999, 1, 1), null);
+  assert.strictEqual(app.crsGeoDefinition(4326), null, 'Grad-Systeme gehen nicht als Geländebezug durch');
+});
+
+test('Karte: Kachelplan für ein 1000-m-Gelände in EPSG:25832 - höchstens 36 Kacheln, Abbildung trifft die Mitte', function () {
+  const t = { w: 1000, d: 1000, originE: 713500, originN: 5420500, epsg: 25832 };
+  const plan = app.osmMapPlan(t);
+  assert.ok(plan.tiles.length >= 1 && plan.tiles.length <= app.OSM_MAX_TILES, plan.tiles.length + ' Kacheln');
+  assert.ok(plan.z >= 16 && plan.z <= 19, 'Zoom ' + plan.z);
+  assert.ok(Math.abs(plan.center.lon - 11.9133363) < 1e-6 && Math.abs(plan.center.lat - 48.9006176) < 1e-6);
+  assert.ok(plan.tiles[0].url.indexOf('https://tile.openstreetmap.org/' + plan.z + '/') === 0, plan.tiles[0].url);
+  // Mitte des Geländes (0,0) liegt im Bild und genau dort, wo die Mercator-Rechnung sie hinlegt
+  const u = plan.u[2], v = plan.v[2];
+  assert.ok(u > 0 && u < 1 && v > 0 && v < 1, u + ' ' + v);
+  const lat = plan.center.lat * Math.PI / 180;
+  const mx = (plan.center.lon + 180) / 360 * Math.pow(2, plan.z), my = (1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2 * Math.pow(2, plan.z);
+  assert.ok(Math.abs((mx - plan.tx0) * 256 / plan.W - u) < 0.5 / plan.W, 'u der Mitte');
+  assert.ok(Math.abs(1 - (my - plan.ty0) * 256 / plan.H - v) < 0.5 / plan.H, 'v der Mitte');
+  // Norden ist oben im Bild: -z (Norden) vergrößert v
+  assert.ok(plan.v[1] < 0, 'Süd (+z) liegt im Bild unten');
+  assert.ok(plan.affineError < 0.5, 'affine Abweichung ' + plan.affineError + ' m');
+});
+
+test('Karte: sehr großes Gelände bekommt eine niedrigere Zoomstufe, unbekanntes Bezugssystem gibt null', function () {
+  const small = app.osmMapPlan({ w: 1000, d: 1000, originE: 500000, originN: 5400000, epsg: 25832 });
+  const big = app.osmMapPlan({ w: 40000, d: 40000, originE: 500000, originN: 5400000, epsg: 25832 });
+  assert.ok(big.z < small.z && big.tiles.length <= app.OSM_MAX_TILES, big.z + ' / ' + small.z);
+  assert.strictEqual(app.osmMapPlan({ w: 1000, d: 1000, originE: 0, originN: 0, epsg: 12345 }), null);
+  assert.strictEqual(app.osmMapPlan(null), null);
+});
+
+test('Karte: Shader färbt das Gelände nach der Karte und behält das Baugruben-Loch', function () {
+  const shader = {
+    uniforms: {},
+    vertexShader: '#include <common>\n#include <begin_vertex>',
+    fragmentShader: '#include <common>\n#include <clipping_planes_fragment>\n#include <color_fragment>'
+  };
+  app.mapShader(shader);
+  assert.ok(shader.fragmentShader.indexOf('uniform sampler2D uMapTex') >= 0);
+  assert.ok(shader.fragmentShader.indexOf('texture2D(uMapTex, muv)') > shader.fragmentShader.indexOf('#include <color_fragment>'));
+  ['uMapOn', 'uMapTex', 'uMapU', 'uMapV'].forEach(function (k) { assert.ok(shader.uniforms[k], k); });
+  const both = { uniforms: {}, vertexShader: shader.vertexShader.replace(/[\s\S]*/, '#include <common>\n#include <begin_vertex>'),
+                 fragmentShader: '#include <common>\n#include <clipping_planes_fragment>\n#include <color_fragment>' };
+  app.pitHoleShader(both); app.mapShader(both);
+  assert.ok(both.fragmentShader.indexOf('discard') > 0 && both.fragmentShader.indexOf('uMapOn') > 0);
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

@@ -908,6 +908,32 @@ await test('Übersicht: Baustraße mit Abtrag/Auftrag, Baugrube mit Aushub/Aufsc
   assert.ok(txt.indexOf(s.T('pitFill') + ' ' + s.formatVolume(gp.fill)) >= 0, txt);
 });
 
+await test('Karte (OpenStreetMap): Schalter nur mit Gelände, Hinweis zur IP-Adresse, Fehler bei unbekanntem Bezugssystem', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  s.renderOsmUi();
+  assert.strictEqual(g('osm-toggle').disabled, true, 'ohne Gelände gesperrt');
+  assert.ok(g('osm-status').textContent.indexOf('IP-Adresse') > 0, g('osm-status').textContent);
+  assert.ok(g('osm-status').textContent.indexOf('tile.openstreetmap.org') > 0);
+  const terr = s.terrainFromEmbedded({ n: 3, heights: new Array(9).fill(1000), scale: 100, zmin: 500, zmax: 510, width: 100, depth: 100 });
+  s.buildTerrain(terr);
+  s.updateTerrainInfo();
+  assert.strictEqual(g('osm-toggle').disabled, false, 'mit Gelände freigegeben');
+  // Bezugssystem, das sich nicht umrechnen lässt: kein Netzzugriff, Schalter springt zurück, Fehlertext
+  terr.epsg = 12345;
+  g('osm-toggle').checked = true;
+  await s.onOsmToggle();
+  assert.strictEqual(g('osm-toggle').checked, false);
+  assert.ok(g('osm-status').textContent.indexOf('EPSG:12345') >= 0, g('osm-status').textContent);
+  assert.strictEqual(g('osm-status').className.indexOf('err') > 0, true);
+  // Sprache: Statustext folgt
+  s.setOsmStatus('osmLoaded', 'ok', { n: 36 });
+  assert.strictEqual(g('osm-status').textContent, 'Karte geladen (36 Kacheln).');
+  s.__bridge.SETTINGS.language = 'en';
+  s.renderOsmUi();
+  assert.strictEqual(g('osm-status').textContent, 'Map loaded (36 tiles).');
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {

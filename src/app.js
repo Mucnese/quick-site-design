@@ -431,7 +431,7 @@ function buildTerrain(t) {
   }
 
   terrainMat = new THREE.MeshLambertMaterial({ vertexColors: true });
-  terrainMat.onBeforeCompile = pitHoleShader;
+  terrainMat.onBeforeCompile = terrainShader;
   terrainMesh = new THREE.Group();
   terrainMesh.name = 'terrain';
   const segX = t.w / (t.nx - 1), segZ = t.d / (t.nz - 1);
@@ -457,6 +457,7 @@ function buildTerrain(t) {
   scene.add(terrainMesh);
   updateTerrainLod(true);
   updatePitHoles();
+  refreshOsmMap();
 
   const plinthH = Math.max((t.zmax - t.zmin) * 0.6, 12);
   // Auch der Sockel bekommt das Baugruben-Loch: reicht eine Grube unter das tiefste
@@ -623,6 +624,257 @@ function crsLabel(code) {
   if (!code) return 'unbekannt';
   const n = EPSG_NAMES[code];
   return n ? 'EPSG:' + code + ' · ' + n : 'EPSG:' + code;
+}
+
+/* =========================================================
+   Karte (OpenStreetMap) als Grundlage
+   Nur auf Wunsch (Schalter, Standard aus): lädt Kartenkacheln von
+   tile.openstreetmap.org und legt sie als Farbe über das Gelände. Dabei
+   gehen IP-Adresse und der ungefähre Standort des Geländes an OpenStreetMap -
+   die Datenschutzerklärung nennt das.
+   Die Kacheln liegen in Web Mercator; das Gelände in seinem Bezugssystem
+   (UTM, Gauß-Krüger, Österreich GK). Über Längen-/Breitengrad der Ecken wird
+   eine affine Abbildung Welt -> Kartenbild bestimmt; sie weicht bei 1 km
+   Kantenlänge um etwa 0,2 m von der strengen Rechnung ab (plan.affineError).
+   Bei Bezugssystemen auf Bessel (DHDN, MGI) kommt eine Helmert-Transformation
+   nach WGS 84 dazu; die Lage stimmt dann auf etwa 1 bis 2 m.
+   ========================================================= */
+const GEO_ELL = {
+  grs80: { a: 6378137, f: 1 / 298.257222101 },
+  wgs84: { a: 6378137, f: 1 / 298.257223563 },
+  bessel: { a: 6377397.155, f: 1 / 299.1528128 }
+};
+// dx, dy, dz in m; rx, ry, rz in Bogensekunden; Maßstab in ppm (Position-Vector-Konvention)
+const HELMERT_DHDN = [598.1, 73.7, 418.2, 0.202, 0.045, -2.455, 6.7];
+const HELMERT_MGI = [577.326, 90.129, 463.919, 5.137, 1.474, 5.297, 2.4232];
+
+/* Beschreibt, wie ein EPSG-Code in Längen-/Breitengrad umgerechnet wird, oder null */
+function crsGeoDefinition(epsg) {
+  if (epsg >= 25828 && epsg <= 25838) return { ell: GEO_ELL.grs80, lon0: (epsg - 25800) * 6 - 183, k0: 0.9996, fe: 500000, fn: 0 };
+  if (epsg >= 32601 && epsg <= 32660) return { ell: GEO_ELL.wgs84, lon0: (epsg - 32600) * 6 - 183, k0: 0.9996, fe: 500000, fn: 0 };
+  if (epsg === 4647) return { ell: GEO_ELL.grs80, lon0: 9, k0: 0.9996, fe: 32500000, fn: 0 };
+  if (epsg === 5650) return { ell: GEO_ELL.grs80, lon0: 15, k0: 0.9996, fe: 33500000, fn: 0 };
+  if (epsg >= 31466 && epsg <= 31469) {
+    const z = epsg - 31464;
+    return { ell: GEO_ELL.bessel, lon0: z * 3, k0: 1, fe: z * 1e6 + 500000, fn: 0, helmert: HELMERT_DHDN };
+  }
+  if (epsg >= 31254 && epsg <= 31256) {
+    return { ell: GEO_ELL.bessel, lon0: [10 + 1 / 3, 13 + 1 / 3, 16 + 1 / 3][epsg - 31254], k0: 1, fe: 0, fn: -5000000, helmert: HELMERT_MGI };
+  }
+  if (epsg === 3857) return { merc: true };
+  return null;
+}
+
+/* Umkehrung der Transversalen Mercator-Abbildung (Krüger-Reihe), Ergebnis in Grad */
+function transverseMercatorInverse(e, n, d) {
+  const f = d.ell.f, a = d.ell.a, nn = f / (2 - f);
+  const n2 = nn * nn, n3 = n2 * nn, n4 = n3 * nn;
+  const A = a / (1 + nn) * (1 + n2 / 4 + n4 / 64);
+  const beta = [nn / 2 - 2 * n2 / 3 + 37 * n3 / 96 - n4 / 360, n2 / 48 + n3 / 15 - 437 * n4 / 1440,
+                17 * n3 / 480 - 37 * n4 / 840, 4397 * n4 / 161280];
+  const delta = [2 * nn - 2 * n2 / 3 - 2 * n3 + 116 * n4 / 45, 7 * n2 / 3 - 8 * n3 / 5 - 227 * n4 / 45,
+                 56 * n3 / 15 - 136 * n4 / 35, 4279 * n4 / 630];
+  const xi0 = (n - d.fn) / (d.k0 * A), eta0 = (e - d.fe) / (d.k0 * A);
+  let xi = xi0, eta = eta0;
+  for (let j = 1; j <= 4; j++) {
+    xi -= beta[j - 1] * Math.sin(2 * j * xi0) * Math.cosh(2 * j * eta0);
+    eta -= beta[j - 1] * Math.cos(2 * j * xi0) * Math.sinh(2 * j * eta0);
+  }
+  const chi = Math.asin(Math.sin(xi) / Math.cosh(eta));
+  let lat = chi;
+  for (let j = 1; j <= 4; j++) lat += delta[j - 1] * Math.sin(2 * j * chi);
+  const lon = d.lon0 * Math.PI / 180 + Math.atan2(Math.sinh(eta), Math.cos(xi));
+  return { lat: lat * 180 / Math.PI, lon: lon * 180 / Math.PI };
+}
+
+/* Datumswechsel Bessel -> WGS 84 mit Helmert-Parametern (Höhe 0) */
+function helmertToWgs84(lat, lon, ell, h) {
+  const rad = Math.PI / 180, as = Math.PI / 648000;
+  const e2 = ell.f * (2 - ell.f);
+  const phi = lat * rad, lam = lon * rad;
+  const N = ell.a / Math.sqrt(1 - e2 * Math.sin(phi) * Math.sin(phi));
+  const X = N * Math.cos(phi) * Math.cos(lam), Y = N * Math.cos(phi) * Math.sin(lam), Z = N * (1 - e2) * Math.sin(phi);
+  const rx = h[3] * as, ry = h[4] * as, rz = h[5] * as, s = 1 + h[6] * 1e-6;
+  const x2 = s * (X - rz * Y + ry * Z) + h[0];
+  const y2 = s * (rz * X + Y - rx * Z) + h[1];
+  const z2 = s * (-ry * X + rx * Y + Z) + h[2];
+  const w = GEO_ELL.wgs84, we2 = w.f * (2 - w.f);
+  const p = Math.hypot(x2, y2);
+  let ph = Math.atan2(z2, p * (1 - we2));
+  for (let i = 0; i < 6; i++) {
+    const Nw = w.a / Math.sqrt(1 - we2 * Math.sin(ph) * Math.sin(ph));
+    ph = Math.atan2(z2 + we2 * Nw * Math.sin(ph), p);
+  }
+  return { lat: ph / rad, lon: Math.atan2(y2, x2) / rad };
+}
+
+/* Koordinaten im Bezugssystem des Geländes (Rechts-/Hochwert) -> {lat, lon} in Grad, oder null */
+function crsToLonLat(epsg, e, n) {
+  const d = crsGeoDefinition(epsg);
+  if (!d) return null;
+  if (d.merc) {
+    const R = 6378137;
+    return { lon: e / R * 180 / Math.PI, lat: (2 * Math.atan(Math.exp(n / R)) - Math.PI / 2) * 180 / Math.PI };
+  }
+  const g = transverseMercatorInverse(e, n, d);
+  return d.helmert ? helmertToWgs84(g.lat, g.lon, d.ell, d.helmert) : g;
+}
+
+const OSM_TILE = 256;
+const OSM_MAX_TILES = 36;       // höchstens 6 x 6 Kacheln, das Bild bleibt unter 1536 px
+const OSM_MAX_ZOOM = 19;
+const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+/* Welche Kacheln das Gelände abdecken und wie Weltkoordinaten ins Kartenbild fallen.
+   Liefert null, wenn das Bezugssystem unbekannt ist. Die Zoomstufe ist die höchste
+   mit höchstens OSM_MAX_TILES Kacheln. u,v sind affine Koeffizienten (a*x + b*z + c)
+   auf 0..1 im Bild (v von unten, wie in WebGL-Texturen). */
+function osmMapPlan(t) {
+  if (!t || !crsGeoDefinition(t.epsg)) return null;
+  const hw = t.w / 2, hd = t.d / 2;
+  const pts = [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd], [0, 0]].map(function (c) {
+    const g = crsToLonLat(t.epsg, t.originE + c[0], t.originN - c[1]);
+    const lat = Math.max(-85.05, Math.min(85.05, g.lat)) * Math.PI / 180;
+    return { mx: (g.lon + 180) / 360, my: (1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2, lat: g.lat, lon: g.lon };
+  });
+  let plan = null;
+  for (let z = OSM_MAX_ZOOM; z >= 3 && !plan; z--) {
+    const n2 = Math.pow(2, z);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    pts.slice(0, 4).forEach(function (p) {
+      x0 = Math.min(x0, p.mx * n2); x1 = Math.max(x1, p.mx * n2);
+      y0 = Math.min(y0, p.my * n2); y1 = Math.max(y1, p.my * n2);
+    });
+    const tx0 = Math.floor(x0), tx1 = Math.floor(x1), ty0 = Math.floor(y0), ty1 = Math.floor(y1);
+    const nx = tx1 - tx0 + 1, ny = ty1 - ty0 + 1;
+    if (nx * ny <= OSM_MAX_TILES || z === 3) plan = { z: z, tx0: tx0, ty0: ty0, nx: nx, ny: ny };
+  }
+  const n2 = Math.pow(2, plan.z), W = plan.nx * OSM_TILE, H = plan.ny * OSM_TILE;
+  // Bildpunkt (px, py) jeder Ecke; Ecken: 0 = NW (-w/2,-d/2), 1 = NO, 2 = SW
+  const px = pts.map(function (p) { return (p.mx * n2 - plan.tx0) * OSM_TILE; });
+  const py = pts.map(function (p) { return (p.my * n2 - plan.ty0) * OSM_TILE; });
+  const ax = (px[1] - px[0]) / t.w, bx = (px[2] - px[0]) / t.d, cx = px[0] + ax * hw + bx * hd;
+  const ay = (py[1] - py[0]) / t.w, by = (py[2] - py[0]) / t.d, cy = py[0] + ay * hw + by * hd;
+  plan.W = W; plan.H = H;
+  plan.u = [ax / W, bx / W, cx / W];
+  plan.v = [-ay / H, -by / H, 1 - cy / H];
+  plan.center = { lat: pts[4].lat, lon: pts[4].lon };
+  // Prüfung der vierten Ecke: Abweichung der affinen Abbildung von der strengen Rechnung in m
+  const e4 = [px[3], py[3]], a4 = [ax * hw + bx * hd + cx, ay * hw + by * hd + cy];
+  const mPerPx = t.w / Math.hypot(px[1] - px[0], py[1] - py[0]);
+  plan.affineError = Math.hypot(e4[0] - a4[0], e4[1] - a4[1]) * mPerPx;
+  plan.tiles = [];
+  for (let j = 0; j < plan.ny; j++) for (let i = 0; i < plan.nx; i++) {
+    plan.tiles.push({ x: plan.tx0 + i, y: plan.ty0 + j, col: i, row: j,
+                      url: OSM_TILE_URL.replace('{z}', plan.z).replace('{x}', plan.tx0 + i).replace('{y}', plan.ty0 + j) });
+  }
+  return plan;
+}
+
+/* Zustand der Karte (nur Sitzung) und Shader-Werte. Die Werte liegen als einfache
+   Objekte vor ({x,y,z}); three.js liest sie als vec3. */
+const mapUniforms = {
+  uMapOn: { value: 0 },
+  uMapTex: { value: null },
+  uMapU: { value: { x: 0, y: 0, z: 0 } },
+  uMapV: { value: { x: 0, y: 0, z: 0 } }
+};
+const osmMap = { on: false, plan: null, texture: null, token: 0, onChange: null };
+
+/* Färbt das Gelände nach der Karte: nach der Vertexfarbe wird sie durch den
+   Kartenpunkt ersetzt (die Beleuchtung bleibt) */
+function mapShader(shader) {
+  shader.uniforms.uMapOn = mapUniforms.uMapOn;
+  shader.uniforms.uMapTex = mapUniforms.uMapTex;
+  shader.uniforms.uMapU = mapUniforms.uMapU;
+  shader.uniforms.uMapV = mapUniforms.uMapV;
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nuniform float uMapOn;\nuniform sampler2D uMapTex;\nuniform vec3 uMapU;\nuniform vec3 uMapV;')
+    .replace('#include <color_fragment>', '#include <color_fragment>\n' +
+      'if (uMapOn > 0.5) {\n' +
+      '  vec2 muv = vec2(dot(uMapU.xy, vPitXZ) + uMapU.z, dot(uMapV.xy, vPitXZ) + uMapV.z);\n' +
+      '  if (muv.x >= 0.0 && muv.x <= 1.0 && muv.y >= 0.0 && muv.y <= 1.0) diffuseColor.rgb = texture2D(uMapTex, muv).rgb;\n' +
+      '}');
+}
+
+function terrainShader(shader) {
+  pitHoleShader(shader);
+  mapShader(shader);
+}
+
+function loadOsmImage(url) {
+  return new Promise(function (resolve, reject) {
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = function () { resolve(im); };
+    im.onerror = function () { reject(new Error(url)); };
+    im.src = url;
+  });
+}
+
+/* Lädt die Kacheln eines Plans und setzt sie zu einem Bild zusammen */
+async function loadOsmCanvas(plan) {
+  const canvas = document.createElement('canvas');
+  canvas.width = plan.W; canvas.height = plan.H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#dfe3e0';
+  ctx.fillRect(0, 0, plan.W, plan.H);
+  let loaded = 0;
+  await Promise.all(plan.tiles.map(function (t) {
+    return loadOsmImage(t.url).then(function (im) {
+      ctx.drawImage(im, t.col * OSM_TILE, t.row * OSM_TILE, OSM_TILE, OSM_TILE);
+      loaded++;
+    }, function () { /* einzelne fehlende Kachel: bleibt grau */ });
+  }));
+  return { canvas: canvas, loaded: loaded, total: plan.tiles.length };
+}
+
+function osmNotify(state) {
+  if (osmMap.onChange) osmMap.onChange(state);
+}
+
+/* Schaltet die Karte ein oder aus. Liefert {tiles, failed}; wirft bei Fehlern (kein
+   Gelände, Bezugssystem unbekannt, keine Kachel geladen). */
+async function setOsmMap(on) {
+  const token = ++osmMap.token;
+  if (!on) {
+    osmMap.on = false;
+    mapUniforms.uMapOn.value = 0;
+    mapUniforms.uMapTex.value = null;
+    if (osmMap.texture) { osmMap.texture.dispose(); osmMap.texture = null; }
+    osmMap.plan = null;
+    osmNotify({ on: false });
+    return { tiles: 0, failed: 0 };
+  }
+  if (!TERRAIN) { const e = new Error('noTerrain'); e.code = 'noTerrain'; throw e; }
+  const plan = osmMapPlan(TERRAIN);
+  if (!plan) { const e = new Error('noCrs'); e.code = 'noCrs'; throw e; }
+  const res = await loadOsmCanvas(plan);
+  if (token !== osmMap.token) return { tiles: res.loaded, failed: res.total - res.loaded, stale: true };
+  if (!res.loaded) { const e = new Error('noTiles'); e.code = 'noTiles'; throw e; }
+  const tex = new THREE.CanvasTexture(res.canvas);
+  tex.anisotropy = 4;
+  if (osmMap.texture) osmMap.texture.dispose();
+  osmMap.texture = tex;
+  osmMap.plan = plan;
+  osmMap.on = true;
+  mapUniforms.uMapTex.value = tex;
+  mapUniforms.uMapU.value = { x: plan.u[0], y: plan.u[1], z: plan.u[2] };
+  mapUniforms.uMapV.value = { x: plan.v[0], y: plan.v[1], z: plan.v[2] };
+  mapUniforms.uMapOn.value = 1;
+  osmNotify({ on: true, tiles: res.loaded, failed: res.total - res.loaded });
+  return { tiles: res.loaded, failed: res.total - res.loaded };
+}
+
+/* Nach einem neuen Gelände: ist die Karte an, wird sie neu geladen; schlägt das
+   fehl, geht sie aus */
+function refreshOsmMap() {
+  if (!osmMap.on) return;
+  setOsmMap(true).catch(function (e) {
+    osmMap.on = false;
+    mapUniforms.uMapOn.value = 0;
+    osmNotify({ on: false, error: e.code || 'noTiles' });
+  });
 }
 
 /* Liest eine einzelne Kachel ein und liefert Raster samt Georeferenz */
@@ -3824,6 +4076,11 @@ if (typeof module !== 'undefined' && module.exports) {
     ROAD_SLOPE_MAX: ROAD_SLOPE_MAX,
     buildRoad: buildRoad,
     roadInfo: roadInfo,
+    crsToLonLat: crsToLonLat,
+    crsGeoDefinition: crsGeoDefinition,
+    osmMapPlan: osmMapPlan,
+    mapShader: mapShader,
+    OSM_MAX_TILES: OSM_MAX_TILES,
     SEMI_TRUCK: SEMI_TRUCK,
     semiTruckLength: semiTruckLength,
     sweepSemiTruck: sweepSemiTruck,

@@ -74,6 +74,17 @@ Sitzung. Die Datenschutzerklärung sagt das ausdrücklich zu.
 `<script src>` auf einen fremden Server würde die Datenschutzerklärung
 unrichtig machen.
 
+**Einzige Verbindung nach außen: die Karte (OpenStreetMap).** Nur auf Schalter im
+Datenfenster, Standard aus (`osmMap`, `setOsmMap`): der Browser lädt dann Kacheln von
+`tile.openstreetmap.org` (`OSM_TILE_URL`), die als Farbe über das Gelände gelegt
+werden (`mapShader` in `terrainShader`, `osmMapPlan` rechnet die Kachelauswahl und die
+affine Abbildung Welt -> Bild; `crsToLonLat` rechnet UTM, Gauß-Krüger DHDN und Österreich
+GK/MGI um, Referenz pyproj). Die Datenschutzerklärung beschreibt das als Einwilligung durch
+den Schalter; Quellenhinweis „© OpenStreetMap-Mitwirkende" erscheint, solange die Karte an
+ist. Weitere externe Anfragen (andere Kartendienste, Schriften, Zähler) dürfen nicht
+dazukommen, ohne dass die Erklärung nachgezogen wird. Bezugssysteme, die `crsGeoDefinition`
+nicht kennt, schalten die Karte mit Fehlermeldung ab.
+
 **Krandrehung:** `g.rotation.y = baseRot`, `slew.rotation.y = rot - baseRot`.
 So bleibt der Auslegerwinkel absolut, unabhängig vom Fundament.
 

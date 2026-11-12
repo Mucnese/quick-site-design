@@ -50,6 +50,8 @@ Browser.
   und Aufschüttung stehen in m³ im Eigenschaftsfenster; im Gelände entsteht ein Loch,
   in das man hineinsieht. Der Böschungswinkel (20–90°, 90° = senkrecht) lässt die
   gezeichnete Kante oben stehen und verkleinert nur die Sohle.
+- Optional: OpenStreetMap als Kartengrundlage auf dem Gelände (Schalter im Datenfenster, standardmäßig aus;
+  beim Einschalten lädt der Browser Kacheln von tile.openstreetmap.org, die IP-Adresse wird dabei übertragen).
 - Baustraßen als Polygonzug mit ausgerundeten Ecken und konstanter Längsneigung
   (Regler in %, vorbelegt aus Anfangs- und Endhöhe im Gelände). Länge und Fläche
   stehen im Eigenschaftsfenster. Wo die Fahrbahn über oder unter dem Gelände

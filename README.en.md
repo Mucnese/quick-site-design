@@ -49,6 +49,8 @@ browser.
   fill are shown in m³ in the properties window; the terrain gets a hole you can look into.
   The slope angle (20–90°, 90° = vertical) keeps the drawn outline as the top edge and
   only shrinks the floor.
+- Optional: OpenStreetMap as a base map on the terrain (switch in the data window, off by default;
+  turning it on makes the browser load tiles from tile.openstreetmap.org, which transmits the IP address).
 - Haul roads as a polyline with filleted corners and a constant longitudinal
   slope (slider in %, preset from the start and end elevation on the terrain).
   Length and area are shown in the properties window. Where the carriageway

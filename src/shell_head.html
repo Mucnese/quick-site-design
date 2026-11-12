@@ -156,6 +156,10 @@
   .file-status.ok { color: var(--accent); }
   .file-status.err { color: var(--danger); }
   .file-status.busy { color: var(--text-dim); }
+  .osm-switch { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--accent); font-size: 0.9em; }
+  .osm-switch input { margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .osm-switch input:disabled { cursor: default; }
+  #osm-attribution { display: none; }
 
   #data.needs { border-color: var(--accent); }
   #data.needs .sec { color: var(--accent); }
@@ -508,6 +512,11 @@
         <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,text/xml">
         <div class="file-status" id="gml-status">Keine Datei</div>
       </div>
+      <div class="file-row" id="osm-row">
+        <div class="file-head"><span data-i18n="osmMap">Karte · OpenStreetMap</span>
+          <label class="osm-switch"><input type="checkbox" id="osm-toggle" disabled><span data-i18n="osmShow">anzeigen</span></label></div>
+        <div class="file-status" id="osm-status"></div>
+      </div>
       <div id="data-note" data-i18n="loadFirst">Zum Starten ein Geländemodell laden</div>
     </div>
   </div>
@@ -522,6 +531,7 @@
       <a href="datenschutz.html" data-i18n="privacy">Datenschutz</a>
     </span>
     <div id="attribution"></div>
+    <div id="osm-attribution"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" data-i18n="osmAttrib">Kartendaten © OpenStreetMap-Mitwirkende</a></div>
   </div>
 
 </div>
