@@ -1477,8 +1477,8 @@ test('Karte: Shader färbt das Gelände nach der Karte und behält das Baugruben
   };
   app.mapShader(shader);
   assert.ok(shader.fragmentShader.indexOf('uniform sampler2D uMapTex') >= 0);
-  assert.ok(shader.fragmentShader.indexOf('texture2D(uMapTex, muv)') > shader.fragmentShader.indexOf('#include <color_fragment>'));
-  ['uMapOn', 'uMapTex', 'uMapU', 'uMapV'].forEach(function (k) { assert.ok(shader.uniforms[k], k); });
+  assert.ok(shader.fragmentShader.indexOf('texture2D(uMapTex, muv).rgb * uMapScale') > shader.fragmentShader.indexOf('#include <color_fragment>'), 'Karte wird gegen die Überbelichtung durch die Szenenlichter abgedunkelt');
+  ['uMapOn', 'uMapScale', 'uMapTex', 'uMapU', 'uMapV'].forEach(function (k) { assert.ok(shader.uniforms[k], k); });
   const both = { uniforms: {}, vertexShader: shader.vertexShader.replace(/[\s\S]*/, '#include <common>\n#include <begin_vertex>'),
                  fragmentShader: '#include <common>\n#include <clipping_planes_fragment>\n#include <color_fragment>' };
   app.pitHoleShader(both); app.mapShader(both);

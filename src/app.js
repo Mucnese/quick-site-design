@@ -775,6 +775,7 @@ function osmMapPlan(t) {
    Objekte vor ({x,y,z}); three.js liest sie als vec3. */
 const mapUniforms = {
   uMapOn: { value: 0 },
+  uMapScale: { value: 0.7 },
   uMapTex: { value: null },
   uMapU: { value: { x: 0, y: 0, z: 0 } },
   uMapV: { value: { x: 0, y: 0, z: 0 } }
@@ -782,18 +783,21 @@ const mapUniforms = {
 const osmMap = { on: false, plan: null, texture: null, token: 0, onChange: null };
 
 /* Färbt das Gelände nach der Karte: nach der Vertexfarbe wird sie durch den
-   Kartenpunkt ersetzt (die Beleuchtung bleibt) */
+   Kartenpunkt ersetzt (die Beleuchtung bleibt). Die Lichter der Szene summieren sich
+   auf flachem Boden auf etwa das 1,35-fache; deshalb wird die Karte mit uMapScale
+   (0,7) abgedunkelt, sonst brennt sie im Sonnenlicht aus. */
 function mapShader(shader) {
   shader.uniforms.uMapOn = mapUniforms.uMapOn;
+  shader.uniforms.uMapScale = mapUniforms.uMapScale;
   shader.uniforms.uMapTex = mapUniforms.uMapTex;
   shader.uniforms.uMapU = mapUniforms.uMapU;
   shader.uniforms.uMapV = mapUniforms.uMapV;
   shader.fragmentShader = shader.fragmentShader
-    .replace('#include <common>', '#include <common>\nuniform float uMapOn;\nuniform sampler2D uMapTex;\nuniform vec3 uMapU;\nuniform vec3 uMapV;')
+    .replace('#include <common>', '#include <common>\nuniform float uMapOn;\nuniform float uMapScale;\nuniform sampler2D uMapTex;\nuniform vec3 uMapU;\nuniform vec3 uMapV;')
     .replace('#include <color_fragment>', '#include <color_fragment>\n' +
       'if (uMapOn > 0.5) {\n' +
       '  vec2 muv = vec2(dot(uMapU.xy, vPitXZ) + uMapU.z, dot(uMapV.xy, vPitXZ) + uMapV.z);\n' +
-      '  if (muv.x >= 0.0 && muv.x <= 1.0 && muv.y >= 0.0 && muv.y <= 1.0) diffuseColor.rgb = texture2D(uMapTex, muv).rgb;\n' +
+      '  if (muv.x >= 0.0 && muv.x <= 1.0 && muv.y >= 0.0 && muv.y <= 1.0) diffuseColor.rgb = texture2D(uMapTex, muv).rgb * uMapScale;\n' +
       '}');
 }
 
