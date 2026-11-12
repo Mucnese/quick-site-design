@@ -78,6 +78,10 @@ const STRINGS = {
     fRadius: 'Ausladung', fMast: 'Turmbreite', fJibRot: 'Winkel Ausleger',
     fBaseRot: 'Winkel Fundament', fVehRot: 'Winkel Fahrzeug', fShowRadius: 'Arbeitsradius zeigen',
     fWidth: 'Straßenbreite', fMinRadius: 'Mindestradius Kurve', fShowEdge: 'Ränder zeigen',
+    fSwept: 'Schleppkurve Sattelzug prüfen',
+    sweptNeed: 'Sattelzug 16,50 m braucht {n} m bei Fahrt auf der Straßenmitte (Fahrbahn {w} m).',
+    sweptOk: 'Passt.', sweptOver: 'Passt nicht: ragt bis {o} m über den Fahrbahnrand.',
+    sweptSrc: 'Schleppkurve nach Kanton Luzern 736.107.2 (2006), ohne Sicherheitszuschlag.',
     msgPlaced: 'platziert.', msgMinTwo: 'Mindestens zwei Punkte setzen.',
     msgCleared: 'Baustelle geleert.', msgViewReset: 'Ansicht zurückgesetzt.',
     msgMoved: 'Position übernommen.', msgPickNew: 'Neue Position im Gelände anklicken.',
@@ -153,6 +157,10 @@ const STRINGS = {
     fRadius: 'Radius', fMast: 'Mast width', fJibRot: 'Jib angle',
     fBaseRot: 'Base angle', fVehRot: 'Carrier angle', fShowRadius: 'Show working radius',
     fWidth: 'Road width', fMinRadius: 'Minimum curve radius', fShowEdge: 'Show edges',
+    fSwept: 'Check swept path (semi-trailer)',
+    sweptNeed: 'Semi-trailer 16.50 m needs {n} m when driving on the road centre (road {w} m).',
+    sweptOk: 'It fits.', sweptOver: 'Does not fit: sticks out up to {o} m beyond the road edge.',
+    sweptSrc: 'Swept path after Kanton Luzern 736.107.2 (2006), no safety margin.',
     msgPlaced: 'placed.', msgMinTwo: 'Set at least two points.',
     msgCleared: 'Site cleared.', msgViewReset: 'View reset.',
     msgMoved: 'Position applied.', msgPickNew: 'Click the new position on the terrain.',
@@ -224,7 +232,8 @@ const SCHEMAS = {
     { key: 'slope',    label: 'fSlope',     type: 'range', min: -30, max: 30, step: 0.1, unit: '%', editorOnly: true },
     { key: 'embank',   label: 'fEmbank',    type: 'choice', options: [
       { value: 1, label: '1 : 1' }, { value: 1.5, label: '1 : 1.5' }, { value: 2, label: '1 : 2' }] },
-    { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' }
+    { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' },
+    { key: 'showSwept', label: 'fSwept',         type: 'checkbox' }
   ],
   pit: [
     // Tiefe zum MITTLEREN Gelände im Polygon (Standard -5 m); die Höhe der Unterkante
@@ -1081,6 +1090,22 @@ function renderRoadEarth(obj, el) {
   note.className = 'earth-note';
   note.textContent = T('embankment').replace('{r}', '1:' + ew.embank) + (ew.unreached ? ' · ' + T('embankFar') : '');
   el.appendChild(note);
+
+  const sw = obj.group.userData.swept;
+  if (sw) {
+    const n1 = document.createElement('div');
+    n1.className = 'earth-note';
+    n1.textContent = T('sweptNeed').replace('{n}', sw.need.toFixed(1)).replace('{w}', sw.width.toFixed(1));
+    el.appendChild(n1);
+    const n2 = document.createElement('div');
+    n2.className = 'earth-note' + (sw.fits ? '' : ' earth-warn');
+    n2.textContent = sw.fits ? T('sweptOk') : T('sweptOver').replace('{o}', sw.over.toFixed(1));
+    el.appendChild(n2);
+    const n3 = document.createElement('div');
+    n3.className = 'earth-note';
+    n3.textContent = T('sweptSrc');
+    el.appendChild(n3);
+  }
 }
 
 /* Färbt den Radiusregler, sobald der Wunschradius nicht gehalten werden kann.

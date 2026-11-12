@@ -819,6 +819,9 @@ function initSharedResources() {
   MAT.cutOverlay  = new THREE.MeshBasicMaterial({ color: 0x9a5a44, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   MAT.roadOverlay = new THREE.MeshBasicMaterial({ color: 0x6f6a60, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   MAT.cutCrest    = new THREE.LineBasicMaterial({ color: 0xffd24a, depthTest: false });
+  MAT.sweptFill   = new THREE.MeshBasicMaterial({ color: 0x4aa3ff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  MAT.sweptLine   = new THREE.MeshBasicMaterial({ color: 0x2f8cff, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  MAT.sweptOver   = new THREE.MeshBasicMaterial({ color: 0xff4d3d, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   // Immer sichtbar, damit der Punkt nicht im Gelände verschwindet
   MAT.measure     = new THREE.MeshBasicMaterial({ color: 0x6cff8a, depthTest: false });
   MAT.node        = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
@@ -2093,7 +2096,7 @@ function thickLine(points, width, material, closed) {
    wie nötig und das Ergebnis gemeldet.
    ========================================================= */
 function defaultRoadParams() {
-  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null, embank: 1 };
+  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null, embank: 1, showSwept: false };
 }
 
 function dist2d(a, b) {
@@ -2333,6 +2336,69 @@ function computeRoad(p) {
   };
 }
 
+/* Schleppkurve als blaue Fläche mit Rand über der Straße (ohne Tiefentest). Wo der
+   Rand weiter als die halbe Fahrbahnbreite von der Straßenmitte entfernt ist, wird
+   er rot. Nur Darstellung - der Prüfwert kommt aus checkSemiTruck. */
+function addSweptOverlay(g, secs, chk) {
+  const loops = sweptOutlines(chk.sweep, 0.1, 0.04);
+  if (!loops.length || !secs.length) return;
+  const half = chk.width / 2;
+  function hr(x, z) {
+    let best = Infinity, h = secs[0].hr;
+    for (let i = 0; i < secs.length; i++) {
+      const dx = secs[i].f.x - x, dz = secs[i].f.z - z, d = dx * dx + dz * dz;
+      if (d < best) { best = d; h = secs[i].hr; }
+    }
+    return h + ROAD_LIFT + 0.12;
+  }
+  let main = loops[0], mainArea = 0;
+  loops.forEach(function (lp) {
+    const a = Math.abs(signedArea(lp));
+    if (a > mainArea) { mainArea = a; main = lp; }
+  });
+  const fillPts = simplifyLoop(main, 0.15);
+  const tri = triangulatePolygon(fillPts);
+  if (tri.length) {
+    const pos = [], idx = [];
+    fillPts.forEach(function (q) { pos.push(q.x, hr(q.x, q.z), q.z); });
+    tri.forEach(function (t) { idx.push(t[0], t[1], t[2]); });
+    const fg = new THREE.BufferGeometry();
+    fg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+    fg.setIndex(idx);
+    const fm = new THREE.Mesh(fg, MAT.sweptFill);
+    fm.renderOrder = 8;
+    fm.userData.kind = 'sweptFill';
+    g.add(fm);
+  }
+  // Rand als flaches Band (0,3 m breit), damit er in jedem Abstand zu sehen ist
+  const BAND = 0.3;
+  const okPos = [], okIdx = [], badPos = [], badIdx = [];
+  loops.forEach(function (lp) {
+    for (let i = 0; i < lp.length; i++) {
+      const a = lp[i], b = lp[(i + 1) % lp.length];
+      const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz);
+      if (l < 1e-6) continue;
+      const nx = -dz / l * BAND / 2, nz = dx / l * BAND / 2;
+      const bad = Math.abs(lateralOffsetOnPath(chk.path, [a.x, a.z])) > half + 0.02 ||
+                  Math.abs(lateralOffsetOnPath(chk.path, [b.x, b.z])) > half + 0.02;
+      const pos = bad ? badPos : okPos, idx = bad ? badIdx : okIdx;
+      const base = pos.length / 3, ya = hr(a.x, a.z) + 0.03, yb = hr(b.x, b.z) + 0.03;
+      pos.push(a.x + nx, ya, a.z + nz, a.x - nx, ya, a.z - nz, b.x + nx, yb, b.z + nz, b.x - nx, yb, b.z - nz);
+      idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+    }
+  });
+  [[okPos, okIdx, MAT.sweptLine, 'sweptLine'], [badPos, badIdx, MAT.sweptOver, 'sweptOver']].forEach(function (e) {
+    if (!e[1].length) return;
+    const bg = new THREE.BufferGeometry();
+    bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(e[0]), 3));
+    bg.setIndex(e[1]);
+    const bm = new THREE.Mesh(bg, e[2]);
+    bm.renderOrder = 9;
+    bm.userData.kind = e[3];
+    g.add(bm);
+  });
+}
+
 /* Im Abtrag liegen Böschung und Fahrbahn unter dem Gelände und wären nicht
    zu sehen. Deshalb zusätzlich: Böschung und eingegrabene Fahrbahn als
    halbtransparente Fläche ohne Tiefentest über dem Gelände, dazu eine helle
@@ -2451,6 +2517,16 @@ function buildRoad(p) {
 
   addCutOverlay(g, secs, ePos, cutIdx);
 
+  // Schleppkurve des Sattelzugs (nur auf Wunsch)
+  if (p.showSwept) {
+    const chk = checkSemiTruck(rd.path, rd.width);
+    if (chk) {
+      addSweptOverlay(g, secs, chk);
+      g.userData.swept = { need: chk.need, left: chk.left, right: chk.right, width: chk.width,
+                           over: chk.over, fits: chk.fits, vehicle: chk.vehicle.name, source: chk.vehicle.source };
+    }
+  }
+
   if (p.showEdge !== false) {
     const left = [], right = [];
     secs.forEach(function (sc) {
@@ -2496,6 +2572,302 @@ function roadInfo(p) {
     length: length, area: length * Math.max(p.width || 0, 1),
     minRadius: rp.fil.minRadius, reduced: rp.fil.reduced
   };
+}
+
+/* =========================================================
+   Schleppkurve Sattelzug
+   Einspurmodell: die Mitte der Vorderachse folgt der Straßenmitte (Leitlinie),
+   die Hinterachse der Zugmaschine und die Achsgruppe des Aufliegers laufen
+   ohne Querschlupf nach. Zugmaschine und Auflieger sind Rechtecke; überstrichen
+   wird, was sie dabei zusammen belegen.
+   Vorgabe: Sattelzug 16,50 m, Breite 2,55 m, starre Nachläuferachse, ohne
+   Sicherheitszuschlag - Kanton Luzern, Blatt 736.107.2 "Schleppkurven
+   Sattelschlepper L=16.50m" (2006). Die RBSV 2020 liegt nicht vor; deren Werte
+   ersetzen später nur die Zahlen in SEMI_TRUCK.
+   Kalibrierung: Das Blatt nennt Maße einer Seitenansicht (nicht maßstäblich).
+   Mit den Zeichenmaßen (Anhängerachse 7,66 m hinter dem Sattelzapfen) liegen
+   die berechneten Ränder im Mittel 17 cm neben den Kurven des Blatts und bei
+   Kurveneintritt bis 0,7 m zu eng. Mit einer Ersatzachse 5,90 m hinter dem
+   Sattelzapfen (Achsgruppe, Sattelzapfen 0,60 m vor der Hinterachse, Länge
+   bis zum Heck 6,00 m bei gleicher Gesamtlänge von 16,50 m) liegen 90 % der
+   Punkte der acht Kurven (22,5 bis 180 Grad, R = 10 m) innerhalb von 7 cm.
+   ========================================================= */
+const SEMI_TRUCK = {
+  name: 'Sattelzug 16,50 m',
+  source: 'Kanton Luzern 736.107.2 (2006)',
+  width: 2.55,            // Fahrzeugbreite
+  front: 1.25,            // Stoßfänger bis Vorderachse
+  wheelbase: 3.95,        // Radstand der Zugmaschine
+  tailTractor: 0.95,      // Hinterachse bis Ende des Zugmaschinenrahmens
+  kingpinAhead: 0.60,     // Sattelzapfen liegt so weit vor der Hinterachse
+  kingpinToAxle: 5.90,    // Sattelzapfen bis Ersatzachse des Aufliegers
+  kingpinToFront: 2.07,   // Sattelzapfen bis Vorderkante des Aufliegers
+  axleToRear: 6.00        // Ersatzachse bis Heck
+};
+const SWEPT_STEP = 0.25;      // Schritt der Vorderachse in m
+const SWEPT_RUN = 25;         // gerade Anfahrt vor dem ersten Punkt in m
+
+/* Länge des Fahrzeugs von Stoßfänger bis Heck */
+function semiTruckLength(v) {
+  v = v || SEMI_TRUCK;
+  return v.front + v.wheelbase - v.kingpinAhead + v.kingpinToAxle + v.axleToRear;
+}
+
+function sweptRect(p, u, ahead, behind, w) {
+  const nx = -u[1], nz = u[0], h = w / 2;
+  function P(s, q) { return [p[0] + u[0] * s + nx * q, p[1] + u[1] * s + nz * q]; }
+  return [P(ahead, h), P(ahead, -h), P(-behind, -h), P(-behind, h)];
+}
+
+/* Fährt den Sattelzug mit der Vorderachse an `path` (Punkte {x,z}) entlang, mit
+   gerader Anfahrt davor und Auslauf danach. Liefert je Schritt die Rechtecke von
+   Zugmaschine (tr) und Auflieger (tl) sowie Hinterachse r, Sattelzapfen k und
+   Ersatzachse t des Aufliegers. Jeder `keep`-te Schritt wird behalten. */
+function sweepSemiTruck(path, veh, keep) {
+  const v = veh || SEMI_TRUCK;
+  keep = keep || 2;
+  if (!path || path.length < 2) return null;
+  const total = pathLength(path);
+  if (!(total > 0.5)) return null;
+  // Richtung am Anfang und am Ende des Wegs
+  let a = path[0], b = path[1];
+  for (let i = 1; i < path.length; i++) { b = path[i]; if (dist2d(a, b) > 0.05) break; }
+  let l0 = dist2d(a, b) || 1;
+  const d0 = [(b.x - a.x) / l0, (b.z - a.z) / l0];
+  a = path[path.length - 2]; b = path[path.length - 1];
+  for (let i = path.length - 2; i >= 0; i--) { a = path[i]; if (dist2d(a, b) > 0.05) break; }
+  l0 = dist2d(a, b) || 1;
+  const d1 = [(b.x - a.x) / l0, (b.z - a.z) / l0];
+  const run = SWEPT_RUN, out = semiTruckLength(v) + 2;
+  const P = [{ x: path[0].x - d0[0] * run, z: path[0].z - d0[1] * run }].concat(path);
+  P.push({ x: b.x + d1[0] * out, z: b.z + d1[1] * out });
+
+  // gleichmäßig verteilte Punkte der Vorderachse
+  const Q = [[P[0].x, P[0].z, -run]];
+  let need = SWEPT_STEP, base = -run;
+  for (let i = 1; i < P.length; i++) {
+    const A = P[i - 1], B = P[i];
+    const seg = dist2d(A, B);
+    if (seg < 1e-9) continue;
+    let pos = 0;
+    while (need <= seg - pos) {
+      pos += need;
+      Q.push([A.x + (B.x - A.x) * pos / seg, A.z + (B.z - A.z) * pos / seg, base + pos]);
+      need = SWEPT_STEP;
+    }
+    need -= seg - pos;
+    base += seg;
+  }
+
+  const e = v.kingpinAhead;
+  let f = [Q[0][0], Q[0][1]];
+  let r = [f[0] - d0[0] * v.wheelbase, f[1] - d0[1] * v.wheelbase];
+  let k = [r[0] + d0[0] * e, r[1] + d0[1] * e];
+  let t = [k[0] - d0[0] * v.kingpinToAxle, k[1] - d0[1] * v.kingpinToAxle];
+  const steps = [];
+  const SUB = 5;       // Teilschritte je Schritt der Vorderachse: Nachlauf genauer rechnen
+  let u = [d0[0], d0[1]], w = [d0[0], d0[1]];
+  for (let i = 0; i < Q.length; i++) {
+    const from = f.slice();
+    for (let m = 1; m <= SUB; m++) {
+      const nf = [from[0] + (Q[i][0] - from[0]) * m / SUB, from[1] + (Q[i][1] - from[1]) * m / SUB];
+      u = [f[0] - r[0], f[1] - r[1]];
+      let l = Math.hypot(u[0], u[1]); u = [u[0] / l, u[1] / l];
+      const pr = (nf[0] - f[0]) * u[0] + (nf[1] - f[1]) * u[1];
+      f = nf;
+      r = [r[0] + pr * u[0], r[1] + pr * u[1]];
+      u = [f[0] - r[0], f[1] - r[1]]; l = Math.hypot(u[0], u[1]); u = [u[0] / l, u[1] / l];
+      r = [f[0] - u[0] * v.wheelbase, f[1] - u[1] * v.wheelbase];
+      const kn = [r[0] + u[0] * e, r[1] + u[1] * e];
+      w = [k[0] - t[0], k[1] - t[1]];
+      let lw = Math.hypot(w[0], w[1]); w = [w[0] / lw, w[1] / lw];
+      const pk = (kn[0] - k[0]) * w[0] + (kn[1] - k[1]) * w[1];
+      k = kn;
+      t = [t[0] + pk * w[0], t[1] + pk * w[1]];
+      w = [k[0] - t[0], k[1] - t[1]]; lw = Math.hypot(w[0], w[1]); w = [w[0] / lw, w[1] / lw];
+      t = [k[0] - w[0] * v.kingpinToAxle, k[1] - w[1] * v.kingpinToAxle];
+    }
+    if (i % keep === 0) {
+      steps.push({
+        s: Q[i][2], f: f.slice(), r: r.slice(), k: k.slice(), t: t.slice(),
+        tr: sweptRect(f, u, v.front, v.wheelbase + v.tailTractor, v.width),
+        tl: sweptRect(k, w, v.kingpinToFront, v.kingpinToAxle + v.axleToRear, v.width)
+      });
+    }
+  }
+  return { steps: steps, length: total, vehicle: v };
+}
+
+/* Abstand eines Punkts von der Straßenmitte, mit Vorzeichen (links = +, wie die
+   linke Fahrbahnkante der Straße), gemessen am verlängerten Weg */
+function lateralOffsetOnPath(P, q) {
+  let best = Infinity, off = 0;
+  for (let i = 1; i < P.length; i++) {
+    const A = P[i - 1], B = P[i];
+    const dx = B.x - A.x, dz = B.z - A.z;
+    const l2 = dx * dx + dz * dz;
+    if (l2 < 1e-12) continue;
+    let t = ((q[0] - A.x) * dx + (q[1] - A.z) * dz) / l2;
+    // erstes und letztes Stück gelten als unendlich lange Strahlen (gerade Verlängerung)
+    if (i > 1) t = Math.max(0, t);
+    if (i < P.length - 1) t = Math.min(1, t);
+    const ex = q[0] - (A.x + dx * t), ez = q[1] - (A.z + dz * t);
+    const d2 = ex * ex + ez * ez;
+    if (d2 < best) {
+      best = d2;
+      off = Math.sqrt(d2) * ((-dz * ex + dx * ez) >= 0 ? 1 : -1);
+    }
+  }
+  return off;
+}
+
+/* Der um gerade Anfahrt und Auslauf verlängerte Weg (wie in sweepSemiTruck) */
+function extendedPath(path, veh) {
+  const v = veh || SEMI_TRUCK;
+  let a = path[0], b = path[1];
+  for (let i = 1; i < path.length; i++) { b = path[i]; if (dist2d(a, b) > 0.05) break; }
+  let l = dist2d(a, b) || 1;
+  const d0 = [(b.x - a.x) / l, (b.z - a.z) / l];
+  a = path[path.length - 2]; b = path[path.length - 1];
+  for (let i = path.length - 2; i >= 0; i--) { a = path[i]; if (dist2d(a, b) > 0.05) break; }
+  l = dist2d(a, b) || 1;
+  const d1 = [(b.x - a.x) / l, (b.z - a.z) / l];
+  const out = semiTruckLength(v) + 2;
+  const P = [{ x: path[0].x - d0[0] * SWEPT_RUN, z: path[0].z - d0[1] * SWEPT_RUN }].concat(path);
+  P.push({ x: b.x + d1[0] * out, z: b.z + d1[1] * out });
+  return P;
+}
+
+/* Prüft eine Straße (Weg und Fahrbahnbreite): größte Abweichung des Fahrzeugs von
+   der Straßenmitte nach links und rechts, solange die Vorderachse auf der Straße
+   fährt und danach, bis das Heck durch ist. Bei Fahrt auf der Mitte braucht die
+   Straße 2 mal das Größere von beiden. */
+function checkSemiTruck(path, width, veh) {
+  const sw = sweepSemiTruck(path, veh, 2);
+  if (!sw) return null;
+  const P = extendedPath(path, veh);
+  let left = 0, right = 0;
+  const endS = sw.length + semiTruckLength(sw.vehicle);
+  for (let i = 0; i < sw.steps.length; i++) {
+    const st = sw.steps[i];
+    if (st.s < 0 || st.s > endS) continue;
+    [st.tr, st.tl].forEach(function (poly) {
+      for (let c = 0; c < 4; c++) {
+        const o = lateralOffsetOnPath(P, poly[c]);
+        if (o > left) left = o;
+        if (-o > right) right = -o;
+      }
+    });
+  }
+  const need = 2 * Math.max(left, right);
+  const half = Math.max(width, 1) / 2;
+  const over = Math.max(0, Math.max(left, right) - half);
+  return { left: left, right: right, need: need, width: Math.max(width, 1), over: over,
+           fits: over <= 0.005, vehicle: sw.vehicle, sweep: sw, path: P };
+}
+
+/* Rand der überstrichenen Fläche: Rechtecke in ein Raster (cell m) einzeichnen und
+   die Umrisse der belegten Zellen verfolgen (Marching Squares). Liefert Schleifen
+   aus {x,z}, vereinfacht auf `tol` m. Nur Darstellung, nicht für Prüfwerte. */
+function sweptOutlines(sweep, cell, tol) {
+  cell = cell || 0.1; tol = tol == null ? 0.06 : tol;
+  let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
+  sweep.steps.forEach(function (st) {
+    [st.tr, st.tl].forEach(function (pl) {
+      pl.forEach(function (p) {
+        if (p[0] < minx) minx = p[0]; if (p[0] > maxx) maxx = p[0];
+        if (p[1] < minz) minz = p[1]; if (p[1] > maxz) maxz = p[1];
+      });
+    });
+  });
+  // lange Straßen: Raster gröber, damit es nicht zu groß wird (höchstens ca. 2,5 Mio. Zellen)
+  cell = Math.max(cell, Math.sqrt((maxx - minx + 1) * (maxz - minz + 1) / 2.5e6));
+  const x0 = minx - 2 * cell, z0 = minz - 2 * cell;
+  const nx = Math.ceil((maxx - x0) / cell) + 3, nz = Math.ceil((maxz - z0) / cell) + 3;
+  const g = new Uint8Array(nx * nz);
+  function fill(pl) {
+    let lo = Infinity, hi = -Infinity;
+    pl.forEach(function (p) { if (p[1] < lo) lo = p[1]; if (p[1] > hi) hi = p[1]; });
+    for (let j = Math.max(0, Math.floor((lo - z0) / cell)); j <= Math.min(nz - 1, Math.ceil((hi - z0) / cell)); j++) {
+      const z = z0 + (j + 0.5) * cell;
+      const xs = [];
+      for (let i = 0; i < 4; i++) {
+        const A = pl[i], B = pl[(i + 1) % 4];
+        if ((A[1] <= z) !== (B[1] <= z)) xs.push(A[0] + (z - A[1]) * (B[0] - A[0]) / (B[1] - A[1]));
+      }
+      if (xs.length < 2) continue;
+      xs.sort(function (p, q) { return p - q; });
+      const i0 = Math.max(0, Math.floor((xs[0] - x0) / cell)), i1 = Math.min(nx - 1, Math.ceil((xs[xs.length - 1] - x0) / cell));
+      for (let i = i0; i <= i1; i++) g[j * nx + i] = 1;
+    }
+  }
+  sweep.steps.forEach(function (st) { fill(st.tr); fill(st.tl); });
+
+  // Segmente zwischen Kantenmitten; Kante: horizontal h(i,j) zwischen Knoten (i,j)-(i+1,j), vertikal v(i,j)
+  const segs = new Map();
+  function addSeg(a, b) {
+    if (!segs.has(a)) segs.set(a, []);
+    if (!segs.has(b)) segs.set(b, []);
+    segs.get(a).push(b); segs.get(b).push(a);
+  }
+  const H = function (i, j) { return (j * nx + i) * 2; }, Vv = function (i, j) { return (j * nx + i) * 2 + 1; };
+  for (let j = 0; j < nz - 1; j++) {
+    for (let i = 0; i < nx - 1; i++) {
+      const bl = g[j * nx + i], br = g[j * nx + i + 1], tl = g[(j + 1) * nx + i], tr = g[(j + 1) * nx + i + 1];
+      const c = bl | (br << 1) | (tr << 2) | (tl << 3);
+      if (c === 0 || c === 15) continue;
+      const eB = H(i, j), eT = H(i, j + 1), eL = Vv(i, j), eR = Vv(i + 1, j);
+      switch (c) {
+        case 1: case 14: addSeg(eL, eB); break;
+        case 2: case 13: addSeg(eB, eR); break;
+        case 3: case 12: addSeg(eL, eR); break;
+        case 4: case 11: addSeg(eR, eT); break;
+        case 6: case 9: addSeg(eB, eT); break;
+        case 7: case 8: addSeg(eL, eT); break;
+        case 5: addSeg(eL, eT); addSeg(eB, eR); break;
+        case 10: addSeg(eL, eB); addSeg(eR, eT); break;
+      }
+    }
+  }
+  // Rasterknoten liegen in den Zellmitten; H(i,j) verbindet (i,j)-(i+1,j), V(i,j) verbindet (i,j)-(i,j+1)
+  function edgePoint(e) {
+    const kind = e & 1, id = e >> 1, i = id % nx, j = (id - i) / nx;
+    return kind === 0 ? { x: x0 + (i + 1) * cell, z: z0 + (j + 0.5) * cell } : { x: x0 + (i + 0.5) * cell, z: z0 + (j + 1) * cell };
+  }
+  const loops = [];
+  const used = new Set();
+  segs.forEach(function (nbrs, start) {
+    if (used.has(start)) return;
+    const loop = [start];
+    used.add(start);
+    let prev = -1, cur = start;
+    for (let guard = 0; guard < 1e6; guard++) {
+      const ns = segs.get(cur);
+      let next = -1;
+      for (let q = 0; q < ns.length; q++) { if (ns[q] !== prev && !used.has(ns[q])) { next = ns[q]; break; } }
+      if (next < 0) break;
+      used.add(next); loop.push(next); prev = cur; cur = next;
+    }
+    if (loop.length > 8) loops.push(loop.map(edgePoint));
+  });
+  return loops.map(function (lp) { return simplifyLoop(lp, tol); }).filter(function (lp) { return lp.length >= 4; });
+}
+
+function simplifyLoop(pts, tol) {
+  if (pts.length < 5) return pts;
+  function dp(a, b, out) {
+    let md = -1, mi = -1;
+    const A = pts[a], B = pts[b];
+    const dx = B.x - A.x, dz = B.z - A.z, l = Math.hypot(dx, dz) || 1e-9;
+    for (let i = a + 1; i < b; i++) {
+      const d = Math.abs((pts[i].x - A.x) * dz - (pts[i].z - A.z) * dx) / l;
+      if (d > md) { md = d; mi = i; }
+    }
+    if (md > tol) { dp(a, mi, out); out.push(pts[mi]); dp(mi, b, out); }
+  }
+  const half = Math.floor(pts.length / 2), out = [pts[0]];
+  dp(0, half, out); out.push(pts[half]); dp(half, pts.length - 1, out); out.push(pts[pts.length - 1]);
+  return out;
 }
 
 /* =========================================================
@@ -4030,6 +4402,10 @@ const STRINGS = {
     fRadius: 'Ausladung', fMast: 'Turmbreite', fJibRot: 'Winkel Ausleger',
     fBaseRot: 'Winkel Fundament', fVehRot: 'Winkel Fahrzeug', fShowRadius: 'Arbeitsradius zeigen',
     fWidth: 'Straßenbreite', fMinRadius: 'Mindestradius Kurve', fShowEdge: 'Ränder zeigen',
+    fSwept: 'Schleppkurve Sattelzug prüfen',
+    sweptNeed: 'Sattelzug 16,50 m braucht {n} m bei Fahrt auf der Straßenmitte (Fahrbahn {w} m).',
+    sweptOk: 'Passt.', sweptOver: 'Passt nicht: ragt bis {o} m über den Fahrbahnrand.',
+    sweptSrc: 'Schleppkurve nach Kanton Luzern 736.107.2 (2006), ohne Sicherheitszuschlag.',
     msgPlaced: 'platziert.', msgMinTwo: 'Mindestens zwei Punkte setzen.',
     msgCleared: 'Baustelle geleert.', msgViewReset: 'Ansicht zurückgesetzt.',
     msgMoved: 'Position übernommen.', msgPickNew: 'Neue Position im Gelände anklicken.',
@@ -4105,6 +4481,10 @@ const STRINGS = {
     fRadius: 'Radius', fMast: 'Mast width', fJibRot: 'Jib angle',
     fBaseRot: 'Base angle', fVehRot: 'Carrier angle', fShowRadius: 'Show working radius',
     fWidth: 'Road width', fMinRadius: 'Minimum curve radius', fShowEdge: 'Show edges',
+    fSwept: 'Check swept path (semi-trailer)',
+    sweptNeed: 'Semi-trailer 16.50 m needs {n} m when driving on the road centre (road {w} m).',
+    sweptOk: 'It fits.', sweptOver: 'Does not fit: sticks out up to {o} m beyond the road edge.',
+    sweptSrc: 'Swept path after Kanton Luzern 736.107.2 (2006), no safety margin.',
     msgPlaced: 'placed.', msgMinTwo: 'Set at least two points.',
     msgCleared: 'Site cleared.', msgViewReset: 'View reset.',
     msgMoved: 'Position applied.', msgPickNew: 'Click the new position on the terrain.',
@@ -4176,7 +4556,8 @@ const SCHEMAS = {
     { key: 'slope',    label: 'fSlope',     type: 'range', min: -30, max: 30, step: 0.1, unit: '%', editorOnly: true },
     { key: 'embank',   label: 'fEmbank',    type: 'choice', options: [
       { value: 1, label: '1 : 1' }, { value: 1.5, label: '1 : 1.5' }, { value: 2, label: '1 : 2' }] },
-    { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' }
+    { key: 'showEdge', label: 'fShowEdge',       type: 'checkbox' },
+    { key: 'showSwept', label: 'fSwept',         type: 'checkbox' }
   ],
   pit: [
     // Tiefe zum MITTLEREN Gelände im Polygon (Standard -5 m); die Höhe der Unterkante
@@ -5033,6 +5414,22 @@ function renderRoadEarth(obj, el) {
   note.className = 'earth-note';
   note.textContent = T('embankment').replace('{r}', '1:' + ew.embank) + (ew.unreached ? ' · ' + T('embankFar') : '');
   el.appendChild(note);
+
+  const sw = obj.group.userData.swept;
+  if (sw) {
+    const n1 = document.createElement('div');
+    n1.className = 'earth-note';
+    n1.textContent = T('sweptNeed').replace('{n}', sw.need.toFixed(1)).replace('{w}', sw.width.toFixed(1));
+    el.appendChild(n1);
+    const n2 = document.createElement('div');
+    n2.className = 'earth-note' + (sw.fits ? '' : ' earth-warn');
+    n2.textContent = sw.fits ? T('sweptOk') : T('sweptOver').replace('{o}', sw.over.toFixed(1));
+    el.appendChild(n2);
+    const n3 = document.createElement('div');
+    n3.className = 'earth-note';
+    n3.textContent = T('sweptSrc');
+    el.appendChild(n3);
+  }
 }
 
 /* Färbt den Radiusregler, sobald der Wunschradius nicht gehalten werden kann.

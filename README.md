@@ -56,6 +56,8 @@ Browser.
   liegt, schließt eine Böschung an (1:1, 1:1,5 oder 1:2 wählbar); Auftrag und Abtrag erscheinen in m³
   (Mittelflächenverfahren). Bei Auswahl erscheinen die Stützpunkte und lassen
   sich versetzen, löschen oder ergänzen („Punkt hinzufügen“ fügt ihn in die nächste Strecke ein).
+  Auf Wunsch prüft die Straße die Schleppkurve eines Sattelzugs (16,50 m, Fahrt auf der
+  Straßenmitte): überstrichene Fläche im Plan, benötigte Breite und „passt / passt nicht“.
 
 **Bedienung**
 - Maus: linke Taste ziehen = umkreisen, rechte oder mittlere Taste ziehen =

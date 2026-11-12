@@ -112,6 +112,7 @@ app.js
   containerLayout / buildContainer    Containeranlage samt Verbindungsbau
   buildTowerCrane / buildMobileCrane  Krane
   filletPath / buildRoad / roadInfo   Baustraße
+  sweepSemiTruck / checkSemiTruck     Schleppkurve Sattelzug, Prüfung gegen die Fahrbahnbreite
   computeRoad / autoRoadSlope         Längsneigung, Böschung (1:n), Auftrag/Abtrag
   raycastPivot / orbitAround          Drehen um den angeklickten Punkt
   computePit / buildPit / pitHoleShader  Baugrube, Mengen, Loch im Gelände

@@ -55,6 +55,8 @@ browser.
   lies above or below the terrain, an embankment joins it (1:1, 1:1.5 or 1:2, selectable); fill and cut are
   listed in m³ (average end area method). Selecting a road reveals its nodes,
   which can be moved, deleted or added to ("Add node" inserts one into the nearest segment).
+  On request the road checks the swept path of a semi-trailer truck (16.50 m, driving on
+  the road centre): swept area on the plan, required width and "fits / does not fit".
 
 **Interaction**
 - Mouse: drag with the left button = orbit, right or middle button = pan,

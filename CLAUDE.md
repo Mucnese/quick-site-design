@@ -156,6 +156,22 @@ fehl), verkleinert `computePit` den Versatz per Bisektion und meldet `clamped` u
 tatsächlichen steileren Winkel `angleEff`; die Mengen rechnen mit diesem Winkel.
 Baustraße und Baugrube werden mit Rechtsklick oder Leertaste abgeschlossen.
 
+**Schleppkurve Sattelzug.** `params.showSwept` der Baustraße (Standard aus). Reine Rechnung
+in `sweepSemiTruck` (Einspurmodell: Vorderachse folgt der Straßenmitte, Hinterachse der
+Zugmaschine und Ersatzachse des Aufliegers laufen ohne Schlupf nach, 5 Teilschritte je
+0,25 m) und `checkSemiTruck` (größte seitliche Abweichung links/rechts von der Mitte,
+Bedarf = 2 × das Größere, `fits`/`over`). `sweptOutlines` (Raster und Marching Squares)
+und `addSweptOverlay` sind nur Darstellung (blaue Fläche, Rand; rot, wo er über die
+Fahrbahn hinausragt). Fahrzeugwerte stehen in `SEMI_TRUCK` mit Quelle: Kanton Luzern,
+Blatt 736.107.2 (2006), Sattelschlepper 16,50 m; die RBSV 2020 liegt nicht vor. Die
+Maße der Seitenansicht (Anhängerachse 7,66 m hinter dem Sattelzapfen) trafen die Kurven
+des Blatts schlecht; kalibriert wurde auf eine Ersatzachse 5,90 m hinter dem Sattelzapfen,
+Sattelzapfen 0,60 m vor der Hinterachse, Heck 6,00 m hinter der Ersatzachse (Gesamtlänge
+bleibt 16,50 m). Der Test "Ränder stimmen mit den Kurven des Luzerner Blatts überein"
+hält das fest: 90 % der Punkte der acht Kurven (22,5–180°, R = 10 m) lagen im Abgleich
+innerhalb von 7 cm. Neue Fahrzeuge oder RBSV-Werte: nur `SEMI_TRUCK` ändern und den
+Abgleich wiederholen, nicht Werte raten.
+
 **IFC-Export** muss strenge Leser bestehen: reines ASCII (Umlaute als `\X2\`),
 GUIDs mit erstem Zeichen 0–3, genaue Attributzahl je Entität, Gelände-Dreiecke
 nach oben gewickelt. Nach Änderungen an `buildIfc` einmal mit ifcopenshell

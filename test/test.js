@@ -1311,5 +1311,111 @@ test('Draufsicht schaltet die OrbitControls-Trägheit aus, sonst dreht sich die 
   assert.strictEqual(controls.enableDamping, true, 'außerhalb der Draufsicht wieder wie gewohnt an');
 });
 
+/* ---------- Schleppkurve Sattelzug ---------- */
+
+/* Leitlinie wie auf dem Luzerner Blatt: gerade nach Osten, Bogen R rechtsrum um
+   (0,0) mit Winkel alpha, danach gerade weiter. Welt: Norden = -z. */
+function turnPath(R, alphaDeg, run, post) {
+  const a = alphaDeg * Math.PI / 180, pts = [];
+  for (let s = -run; s < 0; s += 1) pts.push({ x: s, z: -R });
+  const n = Math.max(2, Math.ceil(a / 0.05));
+  for (let i = 0; i <= n; i++) { const t = a * i / n; pts.push({ x: R * Math.sin(t), z: -R * Math.cos(t) }); }
+  const e = pts[pts.length - 1], hx = Math.cos(a), hz = Math.sin(a);
+  for (let s = 1; s <= post; s += 1) pts.push({ x: e.x + hx * s, z: e.z + hz * s });
+  return pts;
+}
+
+test('Sattelzug: Gesamtlänge 16,50 m und Breite 2,55 m laut Blatt 736.107.2', function () {
+  assert.ok(Math.abs(app.semiTruckLength() - 16.5) < 1e-9);
+  assert.strictEqual(app.SEMI_TRUCK.width, 2.55);
+  assert.strictEqual(app.SEMI_TRUCK.front, 1.25);
+  assert.strictEqual(app.SEMI_TRUCK.wheelbase, 3.95);
+  assert.strictEqual(app.SEMI_TRUCK.kingpinToFront, 2.07);
+});
+
+test('Sattelzug: gerade Straße - das Fahrzeug braucht genau seine Breite, 1,275 m je Seite', function () {
+  const path = []; for (let x = 0; x <= 100; x += 2.5) path.push({ x: x, z: 0 });
+  const r = app.checkSemiTruck(path, 6);
+  assert.ok(Math.abs(r.left - 1.275) < 1e-6 && Math.abs(r.right - 1.275) < 1e-6, r.left + ' / ' + r.right);
+  assert.ok(Math.abs(r.need - 2.55) < 1e-6);
+  assert.strictEqual(r.fits, true);
+  assert.strictEqual(r.over, 0);
+});
+
+test('Sattelzug: Kreisfahrt im eingeschwungenen Zustand - Radien von Hinterachse, Sattelzapfen und Anhängerachse', function () {
+  const R = 15, pts = [];
+  for (let i = 0; i <= 720; i++) { const t = i * Math.PI / 180 * 3; pts.push({ x: R * Math.sin(t), z: -R * Math.cos(t) }); }
+  const v = app.SEMI_TRUCK;
+  const sw = app.sweepSemiTruck(pts, v, 1);
+  const st = sw.steps[sw.steps.length - 200];
+  // Mittelpunkt des Kreises ist (0,0); Vorderachse läuft auf R
+  const rr = Math.hypot(st.r[0], st.r[1]), rk = Math.hypot(st.k[0], st.k[1]), rt = Math.hypot(st.t[0], st.t[1]);
+  const eR = Math.sqrt(R * R - v.wheelbase * v.wheelbase);
+  const eK = Math.sqrt(eR * eR + v.kingpinAhead * v.kingpinAhead);
+  const eT = Math.sqrt(eK * eK - v.kingpinToAxle * v.kingpinToAxle);
+  assert.ok(Math.abs(rr - eR) < 0.01, 'Hinterachse ' + rr + ' statt ' + eR);
+  assert.ok(Math.abs(rk - eK) < 0.01, 'Sattelzapfen ' + rk + ' statt ' + eK);
+  assert.ok(Math.abs(rt - eT) < 0.02, 'Anhängerachse ' + rt + ' statt ' + eT);
+});
+
+test('Sattelzug: engere Kurve braucht mehr Breite, die Prüfung kippt mit der Fahrbahnbreite', function () {
+  const need = function (R) { return app.checkSemiTruck(turnPath(R, 90, 30, 30), 20).need; };
+  const n10 = need(10), n20 = need(20), n60 = need(60);
+  assert.ok(n10 > n20 && n20 > n60 && n60 > 2.55, n10 + ' ' + n20 + ' ' + n60);
+  const tight = app.checkSemiTruck(turnPath(10, 90, 30, 30), 5);
+  assert.strictEqual(tight.fits, false);
+  assert.ok(tight.over > 0.2, 'Überstand ' + tight.over);
+  const wide = app.checkSemiTruck(turnPath(10, 90, 30, 30), 14);
+  assert.strictEqual(wide.fits, true);
+  assert.strictEqual(app.checkSemiTruck([{ x: 0, z: 0 }], 6), null);
+});
+
+test('Sattelzug: Ränder stimmen mit den Kurven des Luzerner Blatts überein (R = 10 m, 22,5 bis 180 Grad)', function () {
+  // Aus dem Blatt gemessen (Vektorzeichnung, Maßstab 1:200): Höhe der Außenkante über der
+  // Leitlinie im Bogeneintritt; Leitlinie liegt bei y = 10 m, Norden oben.
+  const sheet = [[-10, 11.58], [-6, 12.04], [-3, 12.18], [0, 11.91], [3, 11.06]];
+  const outlines = [22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180].map(function (a) {
+    return app.sweptOutlines(app.sweepSemiTruck(turnPath(10, a, 40, 45), app.SEMI_TRUCK, 2), 0.1, 0.02);
+  });
+  sheet.forEach(function (row) {
+    let top = -Infinity;
+    outlines.forEach(function (loops) {
+      loops.forEach(function (lp) { lp.forEach(function (q) { if (Math.abs(q.x - row[0]) < 0.12 && -q.z > top) top = -q.z; }); });
+    });
+    assert.ok(Math.abs(top - row[1]) < 0.12, 'x=' + row[0] + ': ' + top.toFixed(2) + ' statt ' + row[1]);
+  });
+});
+
+test('Sattelzug: Umriss der überstrichenen Fläche ist eine geschlossene Schleife um das Fahrzeug', function () {
+  const path = []; for (let x = 0; x <= 40; x += 2.5) path.push({ x: x, z: 0 });
+  const loops = app.sweptOutlines(app.sweepSemiTruck(path, app.SEMI_TRUCK, 2), 0.2);
+  assert.ok(loops.length >= 1);
+  const big = loops.sort(function (a, b) { return b.length - a.length; })[0];
+  let lo = Infinity, hi = -Infinity;
+  big.forEach(function (q) { lo = Math.min(lo, q.z); hi = Math.max(hi, q.z); });
+  assert.ok(Math.abs((hi - lo) - 2.55) < 0.45, 'Breite ' + (hi - lo));
+});
+
+test('Schleppkurve in der Baustraße: ohne Schalter nichts, mit Schalter Fläche und Rand; zu schmal gibt roten Rand', function () {
+  roadTerrain(0);
+  const base = function (width, on) {
+    const p = app.defaultRoadParams();
+    p.points = [{ x: -60, z: -10 }, { x: -10, z: -10 }, { x: -10, z: 50 }];
+    p.radius = 10; p.width = width; p.slope = 0; p.showSwept = on;
+    return app.buildRoad(p);
+  };
+  const off = base(6, false);
+  assert.strictEqual(off.userData.swept, undefined);
+  assert.ok(overlayKinds(off).indexOf('sweptFill') < 0);
+  const ok = base(9, true);
+  assert.ok(ok.userData.swept && ok.userData.swept.fits, JSON.stringify(ok.userData.swept));
+  assert.deepStrictEqual(overlayKinds(ok).filter(function (k) { return k.indexOf('swept') === 0; }), ['sweptFill', 'sweptLine']);
+  const narrow = base(4.5, true);
+  assert.strictEqual(narrow.userData.swept.fits, false);
+  assert.ok(narrow.userData.swept.over > 0.3);
+  assert.ok(overlayKinds(narrow).indexOf('sweptOver') >= 0, 'roter Rand fehlt');
+  assert.strictEqual(app.defaultRoadParams().showSwept, false);
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
