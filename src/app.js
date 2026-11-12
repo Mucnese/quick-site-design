@@ -1906,7 +1906,7 @@ const PIT_DEPTH_MAX = 10;
 const PIT_SAMPLES = 40000;       // Obergrenze der Stichproben für die Mengen
 
 function defaultPitParams() {
-  return { points: [], depth: -5 };
+  return { points: [], depth: -5, angle: PIT_ANGLE_MAX };
 }
 
 /* Fläche eines Polygons (Gaußsche Trapezformel), immer positiv */
@@ -1981,49 +1981,172 @@ function triangulatePolygon(pts) {
   return out;
 }
 
-/* Alles Rechnerische einer Baugrube: Fläche, Bezugshöhe, Unterkante, Aushub und
-   Aufschüttung. Die Mengen kommen aus einem Raster von Stichproben im Polygon
-   (Mittelpunktregel), hochgerechnet auf die exakte Polygonfläche - dadurch
-   stimmt eine ebene Grube unabhängig von der Rasterweite. */
+/* ---------- Böschung der Baugrube ----------
+   Das gezeichnete Polygon ist die OBERKANTE (am Gelände) und bleibt, wie es ist.
+   Die Wände laufen mit dem Böschungswinkel nach innen, die Sohle wird kleiner:
+   horizontaler Versatz je Ecke = Höhenunterschied zwischen Gelände und Sohle /
+   tan(Winkel). 90° heißt senkrecht (Verbau), der Standard. Liegt die Sohle über
+   dem Gelände (Aufschüttung), verjüngt sich die Platte nach oben genauso.
+   Ist die Grube zu schmal für den Winkel, würde die Sohle zusammenlaufen; dann
+   wird der Versatz so weit verkleinert, wie nötig (die Böschung wirkt steiler,
+   angleEff) - Darstellung und Mengen rechnen mit dieser tatsächlichen Neigung. */
+const PIT_ANGLE_MIN = 20;
+const PIT_ANGLE_MAX = 90;                       // 90° = senkrecht
+
+function pitAngleOf(p) {
+  const a = p && p.angle;
+  return (typeof a === 'number' && isFinite(a)) ? Math.max(PIT_ANGLE_MIN, Math.min(PIT_ANGLE_MAX, a)) : PIT_ANGLE_MAX;
+}
+
+function signedArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    a += p.x * q.z - q.x * p.z;
+  }
+  return a / 2;
+}
+
+/* Polygon nach innen versetzt; dists = Versatz je Ecke in m (Gehrung an den Ecken) */
+function polygonInset(pts, dists, scale) {
+  const n = pts.length;
+  const sign = signedArea(pts) >= 0 ? 1 : -1;
+  function normal(a, b) {
+    const dx = b.x - a.x, dz = b.z - a.z, l = Math.sqrt(dx * dx + dz * dz) || 1;
+    return { x: sign * (-dz) / l, z: sign * dx / l };
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const prev = pts[(i + n - 1) % n], cur = pts[i], next = pts[(i + 1) % n];
+    const n1 = normal(prev, cur), n2 = normal(cur, next);
+    const denom = Math.max(1 + n1.x * n2.x + n1.z * n2.z, 0.2);      // sehr spitze Ecken nicht ins Unendliche
+    const d = scale * dists[i] / denom;
+    out.push({ x: cur.x + (n1.x + n2.x) * d, z: cur.z + (n1.z + n2.z) * d });
+  }
+  return out;
+}
+
+/* Ein Versatz-Polygon ist brauchbar, wenn es nicht umgeklappt ist (Umlaufsinn und
+   Kantenrichtungen bleiben), noch Fläche hat und sich nicht selbst schneidet */
+function insetValid(orig, off) {
+  const a0 = signedArea(orig), a1 = signedArea(off);
+  if (a0 * a1 <= 0 || Math.abs(a1) < 0.02 * Math.abs(a0)) return false;
+  const n = orig.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const ox = orig[j].x - orig[i].x, oz = orig[j].z - orig[i].z;
+    const fx = off[j].x - off[i].x, fz = off[j].z - off[i].z;
+    if (ox * fx + oz * fz <= 0) return false;
+  }
+  function cross(a, b, c) { return (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x); }
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue;
+      const a = off[i], b = off[(i + 1) % n], c = off[j], d = off[(j + 1) % n];
+      if (cross(a, b, c) * cross(a, b, d) < 0 && cross(c, d, a) * cross(c, d, b) < 0) return false;
+    }
+  }
+  return true;
+}
+
+/* Alles Rechnerische einer Baugrube: Fläche, Bezugshöhe, Unterkante, Sohle samt
+   Böschung, Aushub und Aufschüttung. Die Mengen kommen aus einem Raster von
+   Stichproben im Polygon (Mittelpunktregel), hochgerechnet auf die exakte
+   Fläche - dadurch stimmt eine ebene Grube unabhängig von der Rasterweite.
+   Die Entwurfsfläche je Stichprobe: Sohlhöhe im Inneren, an den Wänden steigt sie
+   mit dem Böschungswinkel vom Rand (Gelände dort) zur Sohle bzw. fällt bei
+   Aufschüttung von der Sohle zum Rand. */
 function computePit(p) {
   const pts = (p && p.points) || [];
   const depth = (p && isFinite(p.depth)) ? p.depth : -5;
-  const out = { area: 0, ref: 0, refAbs: 0, bottom: 0, bottomAbs: 0, cut: 0, fill: 0, samples: 0 };
+  const angle = pitAngleOf(p);
+  const out = {
+    area: 0, ref: 0, refAbs: 0, bottom: 0, bottomAbs: 0, cut: 0, fill: 0, samples: 0,
+    angle: angle, angleEff: angle, clamped: false, floor: pts.map(function (q) { return { x: q.x, z: q.z }; }), floorArea: 0
+  };
   const zmin = TERRAIN ? TERRAIN.zmin : 0;
   if (pts.length < 3) return out;
 
   out.area = polygonArea(pts);
+  out.floorArea = out.area;
   let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
   pts.forEach(function (q) {
     if (q.x < minx) minx = q.x; if (q.x > maxx) maxx = q.x;
     if (q.z < minz) minz = q.z; if (q.z > maxz) maxz = q.z;
   });
   const cell = TERRAIN && isFinite(TERRAIN.cell) ? TERRAIN.cell : 1;
-  const step = Math.max(0.5, cell * 0.5, Math.sqrt(Math.max(out.area, 1) / PIT_SAMPLES));
+  // Senkrechte Wände: die Entwurfsfläche ist überall die Sohle, die Rasterweite des Geländes
+  // genügt. Mit Böschung muss auch das schmale Wandband aufgelöst werden: feiner, nur durch
+  // die Obergrenze der Stichproben begrenzt.
+  const sloped = angle < PIT_ANGLE_MAX - 0.01;
+  const stepCap = Math.sqrt(Math.max(out.area, 1) / PIT_SAMPLES);
+  const step = sloped ? Math.max(0.25, stepCap) : Math.max(0.5, cell * 0.5, stepCap);
 
-  const hs = [];
+  const xs = [], zs = [], hs = [];
   for (let z = minz + step / 2; z < maxz; z += step) {
     for (let x = minx + step / 2; x < maxx; x += step) {
-      if (pointInPolygon(pts, x, z)) hs.push(getHeightAt(x, z));
+      if (pointInPolygon(pts, x, z)) { xs.push(x); zs.push(z); hs.push(getHeightAt(x, z)); }
     }
   }
   if (!hs.length) {                                  // winziges Polygon: eine Stichprobe in der Mitte
     const c = roadCentroid(pts);
-    hs.push(getHeightAt(c.x, c.z));
+    xs.push(c.x); zs.push(c.z); hs.push(getHeightAt(c.x, c.z));
   }
   let sum = 0;
   hs.forEach(function (h) { sum += h; });
   out.ref = sum / hs.length;
   out.bottom = out.ref + depth;
-  let cut = 0, fill = 0;
-  hs.forEach(function (h) {
-    if (h > out.bottom) cut += h - out.bottom; else fill += out.bottom - h;
-  });
-  out.cut = cut / hs.length * out.area;
-  out.fill = fill / hs.length * out.area;
   out.refAbs = zmin + out.ref;
   out.bottomAbs = zmin + out.bottom;
   out.samples = hs.length;
+
+  // Sohle: Polygon nach innen versetzen
+  let tanEff = Infinity;
+  if (sloped) {
+    const tanA = Math.tan(angle * Math.PI / 180);
+    const dists = pts.map(function (q) { return Math.abs(getHeightAt(q.x, q.z) - out.bottom) / tanA; });
+    let scale = 1;
+    if (!insetValid(pts, polygonInset(pts, dists, 1))) {
+      let lo = 0, hi = 1;
+      for (let it = 0; it < 18; it++) {
+        const mid = (lo + hi) / 2;
+        if (insetValid(pts, polygonInset(pts, dists, mid))) lo = mid; else hi = mid;
+      }
+      scale = lo;
+      out.clamped = true;
+    }
+    if (scale > 1e-6) {
+      out.floor = polygonInset(pts, dists, scale);
+      tanEff = tanA / scale;
+      out.angleEff = Math.atan(tanEff) * 180 / Math.PI;
+    } else {
+      out.angleEff = PIT_ANGLE_MAX;                  // gar kein Platz: wie senkrecht behandeln
+    }
+    out.floorArea = polygonArea(out.floor);
+  }
+
+  let cut = 0, fill = 0;
+  const n = pts.length;
+  for (let k = 0; k < hs.length; k++) {
+    let zd = out.bottom;
+    if (isFinite(tanEff)) {
+      // Abstand zur Oberkante und Gelände am nächsten Randpunkt
+      let best = Infinity, qx = 0, qz = 0;
+      for (let i = 0; i < n; i++) {
+        const a = pts[i], b = pts[(i + 1) % n];
+        const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+        const t = l2 > 0 ? Math.max(0, Math.min(1, ((xs[k] - a.x) * dx + (zs[k] - a.z) * dz) / l2)) : 0;
+        const px = a.x + dx * t, pz = a.z + dz * t;
+        const d2 = (xs[k] - px) * (xs[k] - px) + (zs[k] - pz) * (zs[k] - pz);
+        if (d2 < best) { best = d2; qx = px; qz = pz; }
+      }
+      const tRim = getHeightAt(qx, qz), dist = Math.sqrt(best);
+      zd = tRim >= out.bottom ? Math.max(out.bottom, tRim - dist * tanEff) : Math.min(out.bottom, tRim + dist * tanEff);
+    }
+    if (hs[k] > zd) cut += hs[k] - zd; else fill += zd - hs[k];
+  }
+  out.cut = cut / hs.length * out.area;
+  out.fill = fill / hs.length * out.area;
   return out;
 }
 
@@ -2038,13 +2161,14 @@ function buildPit(p) {
     return g;
   }
 
-  const info = computePit({ points: pts, depth: p.depth });
+  const info = computePit({ points: pts, depth: p.depth, angle: p.angle });
   const bottom = info.bottom;
+  const fl = info.floor;
 
-  // Sohle
-  const tris = triangulatePolygon(pts);
+  // Sohle (kleiner als die Oberkante, wenn die Wände geböscht sind)
+  const tris = triangulatePolygon(fl);
   const fp = [], fi = [];
-  pts.forEach(function (q) { fp.push(q.x, bottom, q.z); });
+  fl.forEach(function (q) { fp.push(q.x, bottom, q.z); });
   tris.forEach(function (t) { fi.push(t[0], t[1], t[2]); });
   const fg = new THREE.BufferGeometry();
   fg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(fp), 3));
@@ -2054,20 +2178,22 @@ function buildPit(p) {
   floor.userData.kind = 'pitFloor';
   g.add(floor);
 
-  // Wände: senkrecht von der Geländeoberfläche zur Sohle, Kanten alle 2 m abgetastet
+  // Wände: von der Geländekante (Oberkante) zur Sohlkante, Kanten alle 2 m abgetastet
   const wp = [], wi = [], top = [], bot = [];
-  let first = 0;
   for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const j = (i + 1) % pts.length;
+    const a = pts[i], b = pts[j], fa = fl[i], fb = fl[j];
     const len = Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.z - a.z) * (b.z - a.z));
     const k = Math.max(1, Math.ceil(len / 2));
-    for (let j = 0; j <= k; j++) {
-      if (i > 0 && j === 0) continue;                // gemeinsame Ecke nicht doppeln
-      const t = j / k, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+    for (let m = 0; m <= k; m++) {
+      if (i > 0 && m === 0) continue;                // gemeinsame Ecke nicht doppeln
+      const t = m / k;
+      const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+      const fx = fa.x + (fb.x - fa.x) * t, fz = fa.z + (fb.z - fa.z) * t;
       const h = getHeightAt(x, z) + 0.05;
-      wp.push(x, h, z, x, bottom, z);
+      wp.push(x, h, z, fx, bottom, fz);
       top.push(new THREE.Vector3(x, h + 0.03, z));
-      bot.push(new THREE.Vector3(x, bottom + 0.03, z));
+      bot.push(new THREE.Vector3(fx, bottom + 0.03, fz));
     }
   }
   const nCols = wp.length / 6;
@@ -3318,6 +3444,10 @@ if (typeof module !== 'undefined' && module.exports) {
     PIT_MAX_HOLES: PIT_MAX_HOLES,
     PIT_DEPTH_MIN: PIT_DEPTH_MIN,
     PIT_DEPTH_MAX: PIT_DEPTH_MAX,
+    PIT_ANGLE_MIN: PIT_ANGLE_MIN,
+    PIT_ANGLE_MAX: PIT_ANGLE_MAX,
+    polygonInset: polygonInset,
+    insetValid: insetValid,
     EMBANKMENT_CHOICES: EMBANKMENT_CHOICES,
     ROAD_SLOPE_MAX: ROAD_SLOPE_MAX,
     buildRoad: buildRoad,

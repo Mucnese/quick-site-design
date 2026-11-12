@@ -48,7 +48,8 @@ Browser.
 - Baugrube als Polygon (Rechtsklick oder Leertaste schließt): Tiefe zum mittleren Gelände
   (Standard −5 m) und Höhe der Unterkante sind zwei Regler für denselben Wert. Aushub
   und Aufschüttung stehen in m³ im Eigenschaftsfenster; im Gelände entsteht ein Loch,
-  in das man hineinsieht.
+  in das man hineinsieht. Der Böschungswinkel (20–90°, 90° = senkrecht) lässt die
+  gezeichnete Kante oben stehen und verkleinert nur die Sohle.
 - Baustraßen als Polygonzug mit ausgerundeten Ecken und konstanter Längsneigung
   (Regler in %, vorbelegt aus Anfangs- und Endhöhe im Gelände). Länge und Fläche
   stehen im Eigenschaftsfenster. Wo die Fahrbahn über oder unter dem Gelände

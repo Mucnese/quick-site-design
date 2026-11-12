@@ -148,6 +148,12 @@ bekommt das Loch per Fragment-Shader (`pitHoleShader`, `pitUniforms`, auch am So
 die Höhendaten bleiben unverändert, deshalb ändern sich Mengen, Objekthöhen und IFC nicht.
 Raycasts überspringen weggeschnittene Geländestücke (`firstVisibleHit`). Bekannte Grenze:
 Bausteine, die in einer Grube stehen, sitzen auf der Höhe des ursprünglichen Geländes.
+Böschung der Grube: `params.angle` in Grad (`PIT_ANGLE_MIN` 20 bis `PIT_ANGLE_MAX` 90,
+90 = senkrecht, Standard). Der gezeichnete Umriss bleibt die Oberkante; die Sohle ist ein
+nach innen versetztes Polygon (`polygonInset`, Gehrung), der Abstand je Ecke ist
+|Geländehöhe − Sohle| / tan(Winkel). Wird die Grube dafür zu schmal (`insetValid` schlägt
+fehl), verkleinert `computePit` den Versatz per Bisektion und meldet `clamped` und den
+tatsächlichen steileren Winkel `angleEff`; die Mengen rechnen mit diesem Winkel.
 Baustraße und Baugrube werden mit Rechtsklick oder Leertaste abgeschlossen.
 
 **IFC-Export** muss strenge Leser bestehen: reines ASCII (Umlaute als `\X2\`),

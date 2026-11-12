@@ -67,7 +67,8 @@ const STRINGS = {
     tMobile: 'Mobilkran', tMobileHint: 'Liebherr LTM',
     tRoad: 'Baustraße', tRoadHint: 'Stützpunkte setzen, Rechtsklick oder Leertaste schließt ab',
     tPit: 'Baugrube', tPitHint: 'Eckpunkte setzen, Rechtsklick oder Leertaste schließt das Polygon',
-    fDepth: 'Tiefe zum mittleren Gelände', fBottomAbs: 'Höhe Unterkante (m ü. NHN)',
+    fDepth: 'Tiefe zum mittleren Gelände', fBottomAbs: 'Höhe Unterkante (m ü. NHN)', fPitAngle: 'Böschungswinkel (90° = senkrecht)',
+    pitFloor: 'Sohlfläche', pitClamped: 'Grube zu schmal für den Winkel: die Wände sind steiler, etwa',
     pitDrawing: 'Baugrube: Eckpunkte im Gelände setzen', pitFinish: 'Rechtsklick oder Leertaste schließt das Polygon, Esc bricht ab',
     msgMinThree: 'Mindestens drei Punkte setzen.', msgMaxPoints: 'Mehr als 32 Eckpunkte sind nicht möglich.',
     pitCut: 'Aushub', pitFill: 'Aufschüttung', pitRef: 'Mittleres Gelände', pitBottom: 'Unterkante', pitCreated: 'Baugrube angelegt:',
@@ -141,7 +142,8 @@ const STRINGS = {
     tMobile: 'Mobile crane', tMobileHint: 'Liebherr LTM',
     tRoad: 'Haul road', tRoadHint: 'Set points, right-click or space finishes',
     tPit: 'Excavation', tPitHint: 'Set corner points, right-click or space closes the polygon',
-    fDepth: 'Depth below mean ground', fBottomAbs: 'Bottom level (m a.s.l.)',
+    fDepth: 'Depth below mean ground', fBottomAbs: 'Bottom level (m a.s.l.)', fPitAngle: 'Slope angle (90° = vertical)',
+    pitFloor: 'Floor area', pitClamped: 'Pit too narrow for this angle: the walls are steeper, about',
     pitDrawing: 'Excavation: set corner points on the terrain', pitFinish: 'right-click or space closes the polygon, Esc cancels',
     msgMinThree: 'Set at least three points.', msgMaxPoints: 'More than 32 corner points are not possible.',
     pitCut: 'Excavation', pitFill: 'Fill', pitRef: 'Mean ground', pitBottom: 'Bottom', pitCreated: 'Excavation created:',
@@ -228,7 +230,9 @@ const SCHEMAS = {
     // Tiefe zum MITTLEREN Gelände im Polygon (Standard -5 m); die Höhe der Unterkante
     // ist derselbe Wert in absoluten Metern und wird im Editor an das Gelände angepasst
     { key: 'depth',     label: 'fDepth',     type: 'range', min: -30, max: 10, step: 0.1, unit: 'm' },
-    { key: 'bottomAbs', label: 'fBottomAbs', type: 'range', min: 0, max: 100, step: 0.1, unit: 'm', editorOnly: true }
+    { key: 'bottomAbs', label: 'fBottomAbs', type: 'range', min: 0, max: 100, step: 0.1, unit: 'm', editorOnly: true },
+    // Böschungswinkel der Wände (90° = senkrecht); das gezeichnete Polygon bleibt die Oberkante
+    { key: 'angle',     label: 'fPitAngle',  type: 'range', min: 20, max: 90, step: 1, unit: '°' }
   ]
 };
 
@@ -807,12 +811,14 @@ function showObjectEditor(id) {
     if (obj.type === 'pit') {
       // Tiefe und Höhe der Unterkante sind derselbe Wert: der andere Regler folgt
       const ref = obj.group.userData.pit.refAbs;
-      obj.params.depth = key === 'bottomAbs' ? Math.round((v - ref) * 100) / 100 : v;
+      if (key === 'angle') obj.params.angle = v;
+      else obj.params.depth = key === 'bottomAbs' ? Math.round((v - ref) * 100) / 100 : v;
       rebuildObject(obj);
       renderOverview();
       document.getElementById('param-title').textContent = labelFor(obj.type, obj.params);
       document.getElementById('param-hint').textContent = pitHintText(obj);
       renderPitInfo(obj, earthEl);
+      if (key === 'angle') return;
       const other = key === 'bottomAbs' ? form.refs.depth : form.refs.bottomAbs;
       const val = key === 'bottomAbs' ? obj.params.depth : obj.group.userData.pit.bottomAbs;
       other.input.value = val;
@@ -986,7 +992,7 @@ function roadHintText(obj) {
    Parameter, sie folgt aus Tiefe und mittlerem Gelände. */
 function pitFormValues(obj) {
   const info = obj.group.userData.pit;
-  return { depth: obj.params.depth, bottomAbs: Math.round(info.bottomAbs * 100) / 100 };
+  return { depth: obj.params.depth, bottomAbs: Math.round(info.bottomAbs * 100) / 100, angle: info.angle };
 }
 
 /* Beide Regler überdecken dieselbe Spanne (Tiefe -30..+10 m um das mittlere Gelände) */
@@ -1026,8 +1032,15 @@ function renderPitInfo(obj, el) {
   });
   const note = document.createElement('div');
   note.className = 'earth-note';
-  note.textContent = T('pitBottom') + ' ' + info.bottomAbs.toFixed(2) + ' m ü. NHN';
+  note.textContent = T('pitBottom') + ' ' + info.bottomAbs.toFixed(2) + ' m ü. NHN' +
+    (info.angle < 90 ? ' · ' + T('pitFloor') + ' ' + Math.round(info.floorArea) + ' m²' : '');
   el.appendChild(note);
+  if (info.clamped) {
+    const warn = document.createElement('div');
+    warn.className = 'earth-note earth-warn';
+    warn.textContent = T('pitClamped') + ' ' + Math.round(info.angleEff) + '°.';
+    el.appendChild(warn);
+  }
 }
 
 /* Auftrag und Abtrag der Baustraße samt Hinweis zur Böschung. Die Mengen

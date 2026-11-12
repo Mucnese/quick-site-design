@@ -47,6 +47,8 @@ browser.
 - Excavation as a polygon (right-click or space closes it): depth below the mean ground
   (default −5 m) and the bottom level are two sliders for the same value. Excavation and
   fill are shown in m³ in the properties window; the terrain gets a hole you can look into.
+  The slope angle (20–90°, 90° = vertical) keeps the drawn outline as the top edge and
+  only shrinks the floor.
 - Haul roads as a polyline with filleted corners and a constant longitudinal
   slope (slider in %, preset from the start and end elevation on the terrain).
   Length and area are shown in the properties window. Where the carriageway

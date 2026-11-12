@@ -1108,6 +1108,111 @@ test('Punkt hinzufügen (Baugrube): bei 32 Ecken gibt es -1, sonst wächst nicht
   assert.strictEqual(app.addRoadNode(c, 1, 1), -1);
 });
 
+/* ---------- Baugrube: Böschungswinkel ---------- */
+
+function frustum(h, a1, a2) { return h / 3 * (a1 + a2 + Math.sqrt(a1 * a2)); }
+function pitAt(points, depth, angle) { const p = pitParams(points, depth); p.angle = angle; return p; }
+
+test('Böschungswinkel: Standard senkrecht (90°), Winkel wird auf 20..90 begrenzt, fehlender Wert gilt als senkrecht', function () {
+  roadTerrain(0);
+  assert.strictEqual(app.defaultPitParams().angle, 90);
+  const sq = square(-10, -10, 20, 20);
+  assert.strictEqual(app.computePit(pitAt(sq, -5, 10)).angle, 20, 'unter 20° wird auf 20° gesetzt');
+  assert.strictEqual(app.computePit(pitAt(sq, -5, 120)).angle, 90);
+  const old = pitParams(sq, -5); delete old.angle;
+  assert.strictEqual(app.computePit(old).angle, 90, 'ältere Gruben ohne Winkel bleiben senkrecht');
+  assert.ok(Math.abs(app.computePit(pitAt(sq, -5, 90)).cut - 2000) < 1);
+});
+
+test('Böschungswinkel: Oberkante bleibt, Sohle wird kleiner - 45° bei 5 m Tiefe: Sohle 10 x 10, Aushub = Pyramidenstumpf', function () {
+  roadTerrain(0);
+  const info = app.computePit(pitAt(square(-10, -10, 20, 20), -5, 45));
+  assert.ok(Math.abs(info.floorArea - 100) < 0.01, 'Sohle ' + info.floorArea);
+  const expected = frustum(5, 400, 100);
+  assert.ok(Math.abs(info.cut - expected) / expected < 0.01, 'Aushub ' + info.cut + ' statt ' + expected);
+  assert.ok(info.fill < 1e-6 && !info.clamped);
+  info.floor.forEach(function (q) { assert.ok(Math.abs(Math.abs(q.x) - 5) < 1e-9 && Math.abs(Math.abs(q.z) - 5) < 1e-9, 'Sohlecke ' + q.x + ',' + q.z); });
+});
+
+test('Böschungswinkel: 60° (Versatz 5/tan 60°) und flacher = mehr Platz verbraucht, weniger Aushub', function () {
+  roadTerrain(0);
+  const sq = square(-10, -10, 20, 20);
+  const a60 = app.computePit(pitAt(sq, -5, 60));
+  const inset = 5 / Math.tan(60 * Math.PI / 180), side = 20 - 2 * inset;
+  assert.ok(Math.abs(a60.floorArea - side * side) < 0.01);
+  const expected = frustum(5, 400, side * side);
+  assert.ok(Math.abs(a60.cut - expected) / expected < 0.01, 'Aushub ' + a60.cut + ' statt ' + expected);
+  const v = [90, 75, 60, 45, 30].map(function (a) { return app.computePit(pitAt(sq, -5, a)).cut; });
+  for (let i = 1; i < v.length; i++) assert.ok(v[i] < v[i - 1], 'Aushub muss mit flacherem Winkel sinken: ' + v);
+});
+
+test('Böschungswinkel bei Aufschüttung: die Platte verjüngt sich nach oben, Menge = Pyramidenstumpf', function () {
+  roadTerrain(0);
+  const info = app.computePit(pitAt(square(-10, -10, 20, 20), 2, 45));
+  assert.ok(Math.abs(info.floorArea - 256) < 0.01, 'Plattenoberseite 16 x 16: ' + info.floorArea);
+  const expected = frustum(2, 400, 256);
+  assert.ok(Math.abs(info.fill - expected) / expected < 0.01 && info.cut < 1e-6, 'Aufschüttung ' + info.fill + ' statt ' + expected);
+});
+
+test('Böschungswinkel: zu schmale Grube - Sohle läuft nicht zusammen, wirksamer Winkel ist steiler und Mengen passen dazu', function () {
+  roadTerrain(0);
+  const narrow = square(-3, -10, 6, 20);
+  const info = app.computePit(pitAt(narrow, -5, 45));
+  assert.strictEqual(info.clamped, true);
+  assert.ok(info.angleEff > 45 && info.angleEff < 90, 'wirksamer Winkel ' + info.angleEff);
+  assert.ok(info.floorArea > 0 && info.floorArea < info.area);
+  assert.ok(app.insetValid(narrow, info.floor), 'Sohle muss ein gültiges Polygon sein');
+  // Gegenprobe: dieselbe Grube mit dem wirksamen Winkel von vornherein rechnet dasselbe
+  const same = app.computePit(pitAt(narrow, -5, info.angleEff));
+  assert.ok(Math.abs(same.cut - info.cut) / info.cut < 0.02, same.cut + ' vs ' + info.cut);
+  assert.ok(info.cut < 600, 'weniger als senkrecht (600 m³)');
+});
+
+test('Böschungswinkel: Sohle einer L-förmigen Grube bleibt gültig und liegt innerhalb der Oberkante', function () {
+  roadTerrain(0);
+  const L = lShape();
+  const info = app.computePit(pitAt(L, -3, 50));
+  assert.strictEqual(info.clamped, false);
+  assert.ok(app.insetValid(L, info.floor));
+  assert.ok(info.floorArea < app.polygonArea(L));
+  info.floor.forEach(function (q) { assert.ok(app.pointInPolygon(L, q.x, q.z), 'Sohlecke außerhalb: ' + q.x + ',' + q.z); });
+});
+
+test('Böschungswinkel am Hang: der Versatz richtet sich nach der örtlichen Tiefe (höheres Gelände = größerer Versatz)', function () {
+  roadTerrain(0.1);                                   // Gelände steigt nach +x
+  const info = app.computePit(pitAt(square(-20, -20, 40, 40), -3, 45));
+  const east = info.floor.filter(function (q) { return q.x > 0; }).map(function (q) { return 20 - q.x; });
+  const west = info.floor.filter(function (q) { return q.x < 0; }).map(function (q) { return q.x + 20; });
+  assert.ok(Math.min.apply(null, east) > Math.max.apply(null, west), 'Ost (tiefer) ' + east + ' / West ' + west);
+});
+
+test('buildPit mit Böschung: Sohle auf Unterkantenhöhe und verkleinert, Wände verbinden Oberkante und Sohlkante', function () {
+  roadTerrain(0);
+  const g = app.buildPit(pitAt(square(-10, -10, 20, 20), -5, 45));
+  const floor = g.children.filter(function (c) { return c.userData.kind === 'pitFloor'; })[0];
+  const fpos = floor.geometry.attributes.position.array;
+  for (let i = 0; i < fpos.length; i += 3) {
+    assert.ok(Math.abs(fpos[i + 1] - g.userData.pit.bottom) < 1e-6);
+    assert.ok(Math.abs(Math.abs(fpos[i]) - 5) < 1e-6 && Math.abs(Math.abs(fpos[i + 2]) - 5) < 1e-6, 'Sohle muss 10 x 10 sein');
+  }
+  const walls = g.children.filter(function (c) { return c.userData.kind === 'pitWalls'; })[0];
+  const w = walls.geometry.attributes.position.array;
+  for (let i = 0; i < w.length; i += 6) {
+    const onRim = Math.abs(Math.abs(w[i]) - 10) < 1e-6 || Math.abs(Math.abs(w[i + 2]) - 10) < 1e-6;
+    assert.ok(onRim, 'oberer Wandpunkt liegt nicht auf der Oberkante');
+    const onFloor = Math.abs(Math.abs(w[i + 3]) - 5) < 1e-6 || Math.abs(Math.abs(w[i + 5]) - 5) < 1e-6;
+    assert.ok(onFloor && Math.abs(w[i + 3]) <= 5 + 1e-6 && Math.abs(w[i + 5]) <= 5 + 1e-6, 'unterer Wandpunkt liegt nicht auf der Sohlkante');
+    assert.ok(Math.abs(w[i + 4] - g.userData.pit.bottom) < 1e-6);
+  }
+});
+
+test('Böschungswinkel: das Loch im Gelände folgt der Oberkante (nicht der Sohle)', function () {
+  roadTerrain(0);
+  app.addObject('pit', 0, 0, pitAt(square(-10, -10, 20, 20), -5, 45));
+  assert.ok(app.pitHoleContains(9, 9), 'Ecke der Oberkante gehört zum Loch');
+  assert.deepStrictEqual(Array.from(app.getPitUniforms().uPitEdges.value.slice(0, 4)), [-10, -10, 10, -10]);
+});
+
 test('Baugrube: Beschriftung nennt Fläche und Tiefe', function () {
   assert.strictEqual(app.labelFor('pit', pitParams(square(0, 0, 20, 20), -5)), 'Baugrube 400 m² · -5.0 m');
 });

@@ -789,6 +789,54 @@ await test('Punkt hinzufügen: Klick im Modus trifft keinen vorhandenen Stützpu
   assert.strictEqual(k.obj.params.points.length, 3);
 });
 
+/* ---------- Baugrube: Böschungswinkel im Fenster ---------- */
+
+await test('Baugrube: Winkel-Regler (20 bis 90°, Standard 90°) im Werkzeug- und im Editorfenster', function () {
+  const s = newScope();
+  const tool = s.buildForm('pit', s.defaultPitParams(), function () {}, false).refs;
+  assert.ok(tool.angle, 'Regler fehlt im Werkzeugfenster');
+  assert.strictEqual(tool.angle.input.min, 20);
+  assert.strictEqual(tool.angle.input.max, 90);
+  assert.strictEqual(tool.angle.num.value, 90);
+  assert.strictEqual(tool.angle.out.textContent, '°');
+  const e = pitEditor(s);
+  assert.strictEqual(e.refs.angle.num.value, 90);
+});
+
+await test('Baugrube im Editor: Winkel ändern baut neu, Sohlfläche wird angezeigt, Tiefe und Höhe bleiben', async function () {
+  const s = newScope();
+  const p = s.defaultPitParams();
+  p.points = [{ x: -10, z: -10 }, { x: 10, z: -10 }, { x: 10, z: 10 }, { x: -10, z: 10 }];
+  const obj = s.addObject('pit', 0, 0, p);
+  s.showObjectEditor(obj.id);
+  const refs = s.getFormRefs();
+  const bottomBefore = obj.group.userData.pit.bottomAbs;
+  refs.angle.input.value = '45';
+  refs.angle.input.fire('input');
+  assert.strictEqual(obj.params.angle, 45);
+  assert.ok(obj.group.userData.pit.floorArea < 400, 'Sohle muss kleiner sein');
+  assert.strictEqual(obj.params.depth, -5, 'Tiefe bleibt');
+  assert.strictEqual(obj.group.userData.pit.bottomAbs, bottomBefore);
+  const el = s.document.createElement('div');
+  s.renderPitInfo(obj, el);
+  assert.ok(el.textContent.indexOf(s.T('pitFloor')) >= 0, el.textContent);
+  // senkrecht: keine Sohlfläche im Hinweis
+  obj.params.angle = 90; s.rebuildObject(obj); s.renderPitInfo(obj, el);
+  assert.ok(el.textContent.indexOf(s.T('pitFloor')) < 0);
+});
+
+await test('Baugrube: zu schmal für den Winkel - Hinweis mit wirksamem Winkel', function () {
+  const s = newScope();
+  const p = s.defaultPitParams();
+  p.points = [{ x: -3, z: -10 }, { x: 3, z: -10 }, { x: 3, z: 10 }, { x: -3, z: 10 }];
+  p.angle = 45;
+  const obj = s.addObject('pit', 0, 0, p);
+  assert.strictEqual(obj.group.userData.pit.clamped, true);
+  const el = s.document.createElement('div');
+  s.renderPitInfo(obj, el);
+  assert.ok(el.textContent.indexOf(s.T('pitClamped')) >= 0, el.textContent);
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {
