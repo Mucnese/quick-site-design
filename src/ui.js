@@ -1110,10 +1110,14 @@ function buildGroups() {
   const order = [];
   objects.forEach(function (o) {
     const k = groupKeyFor(o);
-    if (!map[k]) { map[k] = { key: k, type: o.type, ids: [], units: 0, meters: 0 }; order.push(k); }
+    if (!map[k]) { map[k] = { key: k, type: o.type, ids: [], units: 0, meters: 0, cut: 0, fill: 0 }; order.push(k); }
     map[k].ids.push(o.id);
     map[k].units += o.type === 'container' ? containerLayout(o.params).count : 1;
     if (o.type === 'road') map[k].meters += roadInfo(o.params).length;
+    // Mengen stehen nach dem Neuaufbau in group.userData (Straße: earthworks, Grube: pit)
+    const ud = o.group && o.group.userData ? o.group.userData : null;
+    const q = ud ? (o.type === 'road' ? ud.earthworks : (o.type === 'pit' ? ud.pit : null)) : null;
+    if (q) { map[k].cut += q.cut; map[k].fill += q.fill; }
   });
   return order.map(function (k) { return map[k]; });
 }
@@ -1121,20 +1125,6 @@ function buildGroups() {
 function renderOverview() {
   const s = computeStats();
   document.getElementById('stat-objects').textContent = s.total;
-  document.getElementById('stat-containers').textContent = s.containers;
-  document.getElementById('stat-cranes').textContent = (s.towers + s.mobiles);
-  document.getElementById('stat-road').textContent = Math.round(s.roadLength) + ' m';
-  // Gesamtmengen: Zeilen nur, wenn es Baustraßen bzw. Baugruben gibt
-  const showRoad = s.roadLength > 0, showPit = s.pits > 0;
-  [['row-road-cut', showRoad], ['row-road-fill', showRoad], ['row-pits', showPit],
-   ['row-pit-cut', showPit], ['row-pit-fill', showPit]].forEach(function (r) {
-    document.getElementById(r[0]).style.display = r[1] ? '' : 'none';
-  });
-  document.getElementById('stat-road-cut').textContent = formatVolume(s.roadCut);
-  document.getElementById('stat-road-fill').textContent = formatVolume(s.roadFill);
-  document.getElementById('stat-pits').textContent = s.pits;
-  document.getElementById('stat-pit-cut').textContent = formatVolume(s.pitCut);
-  document.getElementById('stat-pit-fill').textContent = formatVolume(s.pitFill);
 
   const list = document.getElementById('overview-list');
   list.innerHTML = '';
@@ -1166,6 +1156,18 @@ function renderOverview() {
         ? g.ids.length + ' / ' + g.units + ' St.'
         : (g.type === 'road' ? Math.round(g.meters) + ' m' : String(g.ids.length));
       row.appendChild(cnt);
+
+      // Baustraße: Abtrag/Auftrag, Baugrube: Aushub/Aufschüttung als Unterzeile
+      if (g.type === 'road' || g.type === 'pit') {
+        const sub = document.createElement('div');
+        sub.className = 'grp-sub';
+        const l = document.createElement('span');
+        l.textContent = T(g.type === 'road' ? 'cut' : 'pitCut') + ' ' + formatVolume(g.cut);
+        const r = document.createElement('span');
+        r.textContent = T(g.type === 'road' ? 'fill' : 'pitFill') + ' ' + formatVolume(g.fill);
+        sub.appendChild(l); sub.appendChild(r);
+        row.appendChild(sub);
+      }
 
       row.addEventListener('click', function () {
         if (g.ids.length === 1) {

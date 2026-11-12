@@ -105,6 +105,9 @@
   }
   .grp-row:hover { background: var(--field); }
   .grp-row.selected { border-left-color: var(--accent); background: var(--field); }
+  .grp-sub { flex: 0 0 100%; display: flex; flex-wrap: wrap; gap: 0 12px; padding-left: 14px; margin-top: -3px; font-size: 0.86em; color: var(--text-dim2); font-variant-numeric: tabular-nums; }
+  .grp-row { flex-wrap: wrap; }
+  .grp-sub span { white-space: nowrap; }
   .grp-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .grp-count { color: var(--text-dim2); font-variant-numeric: tabular-nums; }
   .dot { width: 6px; height: 6px; flex: 0 0 6px; }
@@ -488,14 +491,6 @@
     <div id="tile-sub"><span id="tile-size">–</span> · <span id="tile-grid">–</span> Raster</div>
     <div class="kv"><span class="k" data-i18n="heightRange">Höhenbereich</span><span class="v" id="stat-relief">–</span></div>
     <div class="kv"><span class="k" data-i18n="objects">Objekte</span><span class="v" id="stat-objects">0</span></div>
-    <div class="kv"><span class="k" data-i18n="containers">Container</span><span class="v" id="stat-containers">0</span></div>
-    <div class="kv"><span class="k" data-i18n="cranes">Krane</span><span class="v" id="stat-cranes">0</span></div>
-    <div class="kv"><span class="k" data-i18n="road">Baustraße</span><span class="v" id="stat-road">0 m</span></div>
-    <div class="kv" id="row-road-cut" style="display:none"><span class="k" data-i18n="cut">Abtrag</span><span class="v" id="stat-road-cut">0 m³</span></div>
-    <div class="kv" id="row-road-fill" style="display:none"><span class="k" data-i18n="fill">Auftrag</span><span class="v" id="stat-road-fill">0 m³</span></div>
-    <div class="kv" id="row-pits" style="display:none"><span class="k" data-i18n="tPit">Baugrube</span><span class="v" id="stat-pits">0</span></div>
-    <div class="kv" id="row-pit-cut" style="display:none"><span class="k" data-i18n="pitCut">Aushub</span><span class="v" id="stat-pit-cut">0 m³</span></div>
-    <div class="kv" id="row-pit-fill" style="display:none"><span class="k" data-i18n="pitFill">Aufschüttung</span><span class="v" id="stat-pit-fill">0 m³</span></div>
     <div id="warning"></div>
     <div id="overview-list"></div>
   </div>
@@ -3620,7 +3615,6 @@ function clearGhost() {
    ========================================================= */
 function computeStats() {
   let containers = 0, towers = 0, mobiles = 0, roadLength = 0;
-  let roadCut = 0, roadFill = 0, pits = 0, pitCut = 0, pitFill = 0;
   for (let i = 0; i < objects.length; i++) {
     const o = objects[i];
     if (o.type === 'container') {
@@ -3628,19 +3622,10 @@ function computeStats() {
       containers += lay.count;
     } else if (o.type === 'tower') towers++;
     else if (o.type === 'mobile') mobiles++;
-    else if (o.type === 'road') {
-      roadLength += roadInfo(o.params).length;
-      const ew = o.group && o.group.userData ? o.group.userData.earthworks : null;
-      if (ew) { roadCut += ew.cut; roadFill += ew.fill; }
-    } else if (o.type === 'pit') {
-      pits++;
-      const pi = o.group && o.group.userData ? o.group.userData.pit : null;
-      if (pi) { pitCut += pi.cut; pitFill += pi.fill; }
-    }
+    else if (o.type === 'road') roadLength += roadInfo(o.params).length;
   }
   return { containers: containers, towers: towers, mobiles: mobiles,
-           roadLength: roadLength, roadCut: roadCut, roadFill: roadFill,
-           pits: pits, pitCut: pitCut, pitFill: pitFill, total: objects.length };
+           roadLength: roadLength, total: objects.length };
 }
 
 function radiusConflicts() {
@@ -5077,10 +5062,14 @@ function buildGroups() {
   const order = [];
   objects.forEach(function (o) {
     const k = groupKeyFor(o);
-    if (!map[k]) { map[k] = { key: k, type: o.type, ids: [], units: 0, meters: 0 }; order.push(k); }
+    if (!map[k]) { map[k] = { key: k, type: o.type, ids: [], units: 0, meters: 0, cut: 0, fill: 0 }; order.push(k); }
     map[k].ids.push(o.id);
     map[k].units += o.type === 'container' ? containerLayout(o.params).count : 1;
     if (o.type === 'road') map[k].meters += roadInfo(o.params).length;
+    // Mengen stehen nach dem Neuaufbau in group.userData (Straße: earthworks, Grube: pit)
+    const ud = o.group && o.group.userData ? o.group.userData : null;
+    const q = ud ? (o.type === 'road' ? ud.earthworks : (o.type === 'pit' ? ud.pit : null)) : null;
+    if (q) { map[k].cut += q.cut; map[k].fill += q.fill; }
   });
   return order.map(function (k) { return map[k]; });
 }
@@ -5088,20 +5077,6 @@ function buildGroups() {
 function renderOverview() {
   const s = computeStats();
   document.getElementById('stat-objects').textContent = s.total;
-  document.getElementById('stat-containers').textContent = s.containers;
-  document.getElementById('stat-cranes').textContent = (s.towers + s.mobiles);
-  document.getElementById('stat-road').textContent = Math.round(s.roadLength) + ' m';
-  // Gesamtmengen: Zeilen nur, wenn es Baustraßen bzw. Baugruben gibt
-  const showRoad = s.roadLength > 0, showPit = s.pits > 0;
-  [['row-road-cut', showRoad], ['row-road-fill', showRoad], ['row-pits', showPit],
-   ['row-pit-cut', showPit], ['row-pit-fill', showPit]].forEach(function (r) {
-    document.getElementById(r[0]).style.display = r[1] ? '' : 'none';
-  });
-  document.getElementById('stat-road-cut').textContent = formatVolume(s.roadCut);
-  document.getElementById('stat-road-fill').textContent = formatVolume(s.roadFill);
-  document.getElementById('stat-pits').textContent = s.pits;
-  document.getElementById('stat-pit-cut').textContent = formatVolume(s.pitCut);
-  document.getElementById('stat-pit-fill').textContent = formatVolume(s.pitFill);
 
   const list = document.getElementById('overview-list');
   list.innerHTML = '';
@@ -5133,6 +5108,18 @@ function renderOverview() {
         ? g.ids.length + ' / ' + g.units + ' St.'
         : (g.type === 'road' ? Math.round(g.meters) + ' m' : String(g.ids.length));
       row.appendChild(cnt);
+
+      // Baustraße: Abtrag/Auftrag, Baugrube: Aushub/Aufschüttung als Unterzeile
+      if (g.type === 'road' || g.type === 'pit') {
+        const sub = document.createElement('div');
+        sub.className = 'grp-sub';
+        const l = document.createElement('span');
+        l.textContent = T(g.type === 'road' ? 'cut' : 'pitCut') + ' ' + formatVolume(g.cut);
+        const r = document.createElement('span');
+        r.textContent = T(g.type === 'road' ? 'fill' : 'pitFill') + ' ' + formatVolume(g.fill);
+        sub.appendChild(l); sub.appendChild(r);
+        row.appendChild(sub);
+      }
 
       row.addEventListener('click', function () {
         if (g.ids.length === 1) {

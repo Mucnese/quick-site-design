@@ -858,27 +858,29 @@ await test('Baugrube zu schmal: Winkelregler springt auf den Mindestwinkel und f
   assert.ok(refs.angle.num.value < min1, 'Mindestwinkel muss mit der Tiefe sinken');
 });
 
-await test('Übersicht: Gesamtabtrag/-auftrag der Baustraßen und Gesamtaushub/-aufschüttung der Baugruben', function () {
+await test('Übersicht: Baustraße mit Abtrag/Auftrag, Baugrube mit Aushub/Aufschüttung als Unterzeile', function () {
   const s = newScope();
-  const g = function (id) { return s.document.getElementById(id); };
+  const list = s.document.getElementById('overview-list');
   s.renderOverview();
-  ['row-road-cut', 'row-road-fill', 'row-pits', 'row-pit-cut', 'row-pit-fill'].forEach(function (id) {
-    assert.strictEqual(g(id).style.display, 'none', id + ' ohne Objekte versteckt');
-  });
+  assert.strictEqual(list.textContent.indexOf(s.T('pitCut')), -1, 'ohne Objekte keine Unterzeilen');
   const road = roadObject(s, 5);
   const pp = s.defaultPitParams();
   pp.points = [{ x: 30, z: 30 }, { x: 50, z: 30 }, { x: 50, z: 50 }, { x: 30, z: 50 }];
   const pit1 = s.addObject('pit', 0, 0, pp);
-  const pit2 = s.addObject('pit', 0, 0, JSON.parse(JSON.stringify(pp)));
+  s.addObject('pit', 0, 0, JSON.parse(JSON.stringify(pp)));
+  const groups = s.buildGroups();
+  const gr = groups.filter(function (g) { return g.type === 'road'; })[0];
+  const gp = groups.filter(function (g) { return g.type === 'pit'; })[0];
+  const ew = road.group.userData.earthworks, pi = pit1.group.userData.pit;
+  assert.ok(Math.abs(gr.cut - ew.cut) < 1e-9 && Math.abs(gr.fill - ew.fill) < 1e-9);
+  assert.strictEqual(gp.ids.length, 2);
+  assert.ok(Math.abs(gp.cut - 2 * pi.cut) < 1e-6 && Math.abs(gp.fill - 2 * pi.fill) < 1e-6);
   s.renderOverview();
-  const ew = road.group.userData.earthworks;
-  const pi = pit1.group.userData.pit;
-  assert.strictEqual(g('row-road-cut').style.display, '');
-  assert.strictEqual(g('stat-road-cut').textContent, s.formatVolume(ew.cut));
-  assert.strictEqual(g('stat-road-fill').textContent, s.formatVolume(ew.fill));
-  assert.strictEqual(g('stat-pits').textContent, 2);
-  assert.strictEqual(g('stat-pit-cut').textContent, s.formatVolume(2 * pi.cut));
-  assert.strictEqual(g('stat-pit-fill').textContent, s.formatVolume(2 * pi.fill));
+  const txt = list.textContent;
+  assert.ok(txt.indexOf(s.T('cut') + ' ' + s.formatVolume(gr.cut)) >= 0, txt);
+  assert.ok(txt.indexOf(s.T('fill') + ' ' + s.formatVolume(gr.fill)) >= 0, txt);
+  assert.ok(txt.indexOf(s.T('pitCut') + ' ' + s.formatVolume(gp.cut)) >= 0, txt);
+  assert.ok(txt.indexOf(s.T('pitFill') + ' ' + s.formatVolume(gp.fill)) >= 0, txt);
 });
 
 /* ---------- Punktkoordinaten-Fenster ---------- */

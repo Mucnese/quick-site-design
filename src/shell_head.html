@@ -105,6 +105,9 @@
   }
   .grp-row:hover { background: var(--field); }
   .grp-row.selected { border-left-color: var(--accent); background: var(--field); }
+  .grp-sub { flex: 0 0 100%; display: flex; flex-wrap: wrap; gap: 0 12px; padding-left: 14px; margin-top: -3px; font-size: 0.86em; color: var(--text-dim2); font-variant-numeric: tabular-nums; }
+  .grp-row { flex-wrap: wrap; }
+  .grp-sub span { white-space: nowrap; }
   .grp-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .grp-count { color: var(--text-dim2); font-variant-numeric: tabular-nums; }
   .dot { width: 6px; height: 6px; flex: 0 0 6px; }
@@ -488,14 +491,6 @@
     <div id="tile-sub"><span id="tile-size">–</span> · <span id="tile-grid">–</span> Raster</div>
     <div class="kv"><span class="k" data-i18n="heightRange">Höhenbereich</span><span class="v" id="stat-relief">–</span></div>
     <div class="kv"><span class="k" data-i18n="objects">Objekte</span><span class="v" id="stat-objects">0</span></div>
-    <div class="kv"><span class="k" data-i18n="containers">Container</span><span class="v" id="stat-containers">0</span></div>
-    <div class="kv"><span class="k" data-i18n="cranes">Krane</span><span class="v" id="stat-cranes">0</span></div>
-    <div class="kv"><span class="k" data-i18n="road">Baustraße</span><span class="v" id="stat-road">0 m</span></div>
-    <div class="kv" id="row-road-cut" style="display:none"><span class="k" data-i18n="cut">Abtrag</span><span class="v" id="stat-road-cut">0 m³</span></div>
-    <div class="kv" id="row-road-fill" style="display:none"><span class="k" data-i18n="fill">Auftrag</span><span class="v" id="stat-road-fill">0 m³</span></div>
-    <div class="kv" id="row-pits" style="display:none"><span class="k" data-i18n="tPit">Baugrube</span><span class="v" id="stat-pits">0</span></div>
-    <div class="kv" id="row-pit-cut" style="display:none"><span class="k" data-i18n="pitCut">Aushub</span><span class="v" id="stat-pit-cut">0 m³</span></div>
-    <div class="kv" id="row-pit-fill" style="display:none"><span class="k" data-i18n="pitFill">Aufschüttung</span><span class="v" id="stat-pit-fill">0 m³</span></div>
     <div id="warning"></div>
     <div id="overview-list"></div>
   </div>
