@@ -2141,20 +2141,22 @@ function dropLines(radius, y, count) {
 /* Baut eine sichtbar dicke Linie aus schmalen Boxen entlang der Segmente.
    LineBasicMaterial.linewidth wird von so gut wie jedem Browser ignoriert
    (WebGL/ANGLE-Beschränkung) – deshalb echte Geometrie statt linewidth.
-   Nur um die Hochachse gedreht (kein vollständiges 3D-"look at"): für
-   flache Vorschaulinien auf sanft geneigtem Gelände reicht das, echte
-   Steigungen an einzelnen Segmenten werden dabei leicht unterschlagen. */
+   Jede Box dreht sich um die Hochachse und neigt sich (Reihenfolge Y, Z, X) mit
+   der Steigung des Segments, damit beide Enden auf den Punkten liegen. */
 function thickLine(points, width, material, closed) {
   const g = new THREE.Group();
   const n = closed ? points.length : points.length - 1;
   for (let i = 0; i < n; i++) {
     const a = points[i], b = points[(i + 1) % points.length];
     const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
-    const len = Math.sqrt(dx * dx + dz * dz);
-    if (len < 1e-6) continue;
+    const flat = Math.sqrt(dx * dx + dz * dz);
+    if (flat < 1e-6) continue;
+    const len = Math.sqrt(flat * flat + dy * dy);
     const seg = new THREE.Mesh(new THREE.BoxGeometry(len, width * 0.4, width), material);
     seg.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    seg.rotation.order = 'YZX';
     seg.rotation.y = -Math.atan2(dz, dx);
+    seg.rotation.z = Math.atan2(dy, flat);
     g.add(seg);
   }
   return g;
@@ -3388,10 +3390,22 @@ function setRoadPreview(pts, hover, closed) {
   const all = hover ? pts.concat([hover]) : pts;
 
   if (all.length >= 2) {
-    const line = all.map(function (q) {
-      return new THREE.Vector3(q.x, getHeightAt(q.x, q.z) + 0.4, q.z);
-    });
-    g.add(thickLine(line, 0.8, MAT.drawPreview, !!closed && all.length >= 3));
+    // Linie dem Gelände folgen lassen: Zwischenpunkte alle 2 m, sonst schneidet die gerade
+    // Strecke zwischen zwei Punkten über einen Hang durch das Gelände und wirkt versetzt
+    const close = !!closed && all.length >= 3;
+    const line = [];
+    const count = close ? all.length : all.length - 1;
+    for (let i = 0; i < count; i++) {
+      const p = all[i], q = all[(i + 1) % all.length];
+      const steps = Math.max(1, Math.min(200, Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / 2)));
+      for (let k = 0; k < steps; k++) {
+        const x = p.x + (q.x - p.x) * k / steps, z = p.z + (q.z - p.z) * k / steps;
+        line.push(new THREE.Vector3(x, getHeightAt(x, z) + 0.4, z));
+      }
+    }
+    const last = close ? all[0] : all[all.length - 1];
+    line.push(new THREE.Vector3(last.x, getHeightAt(last.x, last.z) + 0.4, last.z));
+    g.add(thickLine(line, 0.8, MAT.drawPreview, false));
   }
   pts.forEach(function (q) {
     const m = new THREE.Mesh(GEO.sphere, MAT.measure);
@@ -4466,6 +4480,8 @@ if (typeof module !== 'undefined' && module.exports) {
     buildTerrain: buildTerrain,
     terrainFromEmbedded: terrainFromEmbedded,
     getHeightAt: getHeightAt,
+    setRoadPreview: setRoadPreview,
+    clearRoadPreview: clearRoadPreview,
     getAbsoluteHeightAt: getAbsoluteHeightAt,
     colorAt: colorAt,
     crsLabel: crsLabel,

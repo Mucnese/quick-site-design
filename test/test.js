@@ -1326,6 +1326,32 @@ test('thickLine: Boxrichtung folgt dem Segment (kein linewidth-Trick, echte Geom
   assert.ok(Math.abs(across.children[0].rotation.y - (-Math.PI / 2)) < 1e-9, 'entlang +z: 90° gedreht');
 });
 
+test('thickLine: eine Box neigt sich mit der Steigung des Segments, sodass beide Enden auf den Punkten liegen', function () {
+  const up = app.thickLine([new THREE.Vector3(0, 0, 0), new THREE.Vector3(10, 10, 0)], 1, {}, false).children[0];
+  assert.ok(Math.abs(up.rotation.z - Math.PI / 4) < 1e-9, 'Steigung 45 Grad');
+  assert.ok(Math.abs(up.position.y - 5) < 1e-9 && Math.abs(up.position.x - 5) < 1e-9);
+  assert.ok(Math.abs(up.geometry.params[0] - Math.sqrt(200)) < 1e-9, 'Länge ist die räumliche Länge');
+});
+
+test('Zeichenvorschau (Straße, Baugrube): die Linie folgt dem Gelände, auch über einen Hang zwischen zwei Punkten', function () {
+  roadTerrain(0.1);                                   // 10-%-Rampe in +x
+  const seg = function (grp) { return grp.children[0].children; };
+  const g = app.setRoadPreview([{ x: -40, z: 0 }, { x: 40, z: 0 }], null, false);
+  const boxes = seg(g);
+  assert.ok(boxes.length >= 40, 'Zwischenpunkte alle 2 m, nicht nur eine Box: ' + boxes.length);
+  boxes.forEach(function (b) {
+    const ground = app.getHeightAt(b.position.x, b.position.z);
+    assert.ok(Math.abs(b.position.y - (ground + 0.4)) < 0.15, 'Box liegt 0,4 m über dem Gelände, nicht in der Luft oder darunter');
+  });
+  assert.ok(Math.abs(boxes[0].rotation.z - Math.atan(0.1)) < 0.02, 'Neigung folgt dem Hang');
+  // Baugrube: geschlossenes Polygon schließt sich mit der Kante zum ersten Punkt
+  const poly = app.setRoadPreview([{ x: -10, z: -10 }, { x: 10, z: -10 }, { x: 10, z: 10 }], { x: -10, z: 10 }, true);
+  const first = seg(poly)[0], lastBox = seg(poly)[seg(poly).length - 1];
+  assert.ok(Math.hypot(lastBox.position.x - (-10), lastBox.position.z - (-10)) < 2, 'letzte Kante führt zurück zum Startpunkt');
+  assert.ok(first);
+  app.clearRoadPreview();
+});
+
 /* ---------- Draufsicht: keine Trägheitsdrehung ---------- */
 
 test('Draufsicht schaltet die OrbitControls-Trägheit aus, sonst dreht sich die Ansicht nach einer Drehgeste von selbst weiter', function () {
