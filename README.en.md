@@ -2,7 +2,7 @@
 
 # Quick-Site-Design
 
-*[Deutsche Fassung](README.md)*
+*[Deutsche Fassung](README.md)* · *[User guide](USER-GUIDE.en.md)*
 
 A tool for the early stage of construction site layout. The official terrain
 model of the site is loaded and populated with what actually goes on it: site
@@ -215,6 +215,8 @@ quick-site-design/
 ├── datenschutz.html      privacy policy (German)
 ├── README.md             German
 ├── README.en.md
+├── BENUTZERANLEITUNG.md  user guide (German), the Help button links to it
+├── USER-GUIDE.en.md      user guide (English)
 ├── PROJEKT.md            developer notes (German)
 ├── LICENSE
 ├── build.py

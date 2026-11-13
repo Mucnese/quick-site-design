@@ -1033,6 +1033,28 @@ await test('Adressleiste: Platzhalter, Vorschläge, Wahl zeigt Links zu DGM und 
   delete global.fetch;
 });
 
+await test('Hilfe: Knopf öffnet das Hilfefenster mit sieben Abschnitten und Link zur Anleitung, schließt Darstellung, folgt der Sprache', function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  s.toggleTweak(true);
+  assert.strictEqual(g('tweak-panel').style.display, 'block');
+  s.toggleHelp(true);
+  assert.strictEqual(g('help-panel').style.display, 'block');
+  assert.strictEqual(g('tweak-panel').style.display, 'none', 'Darstellung schließt sich');
+  const txt = g('help-body').textContent;
+  ['Loslegen', 'Ansicht steuern', 'Bausteine setzen', 'Bearbeiten', 'Mengen und Prüfungen', 'Karte und Export', 'Tastatur', 'Wo ist deine Baustelle?', 'ersetzt keine Statik'].forEach(function (k) {
+    assert.ok(txt.indexOf(k) >= 0, k + ' fehlt');
+  });
+  const link = [].concat.apply([], g('help-body').children.map(function (c) { return c.children || []; })).filter(function (c) { return c.href; })[0];
+  assert.ok(link && link.href.indexOf('BENUTZERANLEITUNG.md') > 0, 'Link zur Anleitung fehlt');
+  s.__bridge.SETTINGS.language = 'en';
+  s.buildHelpPanel();
+  assert.ok(g('help-body').textContent.indexOf('Getting started') >= 0);
+  s.toggleHelp(false);
+  assert.strictEqual(g('help-panel').style.display, 'none');
+  assert.strictEqual(s.T('helpBtn'), 'Help');
+});
+
 /* ---------- Punktkoordinaten-Fenster ---------- */
 
 await test('Punktfenster: Position per transform (kein left/top), 14 px neben dem Punkt, ohne Punkt versteckt', function () {

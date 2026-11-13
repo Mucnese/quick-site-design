@@ -91,11 +91,16 @@ Datei, 100 Mio. Pixel je Kachel, 150 Mio. Pixel und 2 GB gesamt; Schätzwerte f�
 RAM, nicht gemessen). Teilweises Lesen mit `geotiff.js` (Fenster, Verkleinern beim Lesen)
 wäre der Weg zu größeren COGs, ist aber nicht gebaut.
 
+**Hilfe und Anleitung.** Der Knopf „Hilfe“ (`help-btn`, `toggleHelp`, `buildHelpPanel`) zeigt sieben
+Kurzabschnitte aus `STRINGS` (`helpS1T`..`helpS7B`, beide Sprachen) und verlinkt auf
+`BENUTZERANLEITUNG.md` bzw. `USER-GUIDE.en.md` im Hauptzweig. Wer eine Funktion ändert, die dort
+beschrieben ist, passt Anleitung (beide Sprachen) und Kurzhilfe mit an.
+
 **Keine CDN-Verweise.** Die drei Bibliotheken liegen in `lib/`. Ein neuer
 `<script src>` auf einen fremden Server würde die Datenschutzerklärung
 unrichtig machen.
 
-**Einzige Verbindung nach außen: die Karte (OpenStreetMap).** Nur auf Schalter im
+**Verbindungen nach außen: die Karte (OpenStreetMap) und die Adressleiste.** Die Karte läuft nur auf Schalter im
 Datenfenster, Standard aus (`osmMap`, `setOsmMap`): der Browser lädt dann Kacheln von
 `tile.openstreetmap.org` (`OSM_TILE_URL`), die als Farbe über das Gelände gelegt
 werden (`mapShader` in `terrainShader`, `osmMapPlan` rechnet die Kachelauswahl und die

@@ -72,6 +72,17 @@ test('keine CDN-Verweise', function () {
   assert.ok(!/<script[^>]+src=["']https?:\/\//.test(indexHtml), 'ein <script src> zeigt auf einen fremden Server');
 });
 
+test('Benutzeranleitung (Deutsch und Englisch) liegt vor, der Hilfe-Knopf verlinkt sie und die Gliederung stimmt überein', function () {
+  const de = fs.readFileSync(path.join(ROOT, 'BENUTZERANLEITUNG.md'), 'utf8');
+  const en = fs.readFileSync(path.join(ROOT, 'USER-GUIDE.en.md'), 'utf8');
+  const ui = fs.readFileSync(path.join(ROOT, 'src/ui.js'), 'utf8');
+  assert.ok(ui.indexOf('blob/main/BENUTZERANLEITUNG.md') > 0 && ui.indexOf('blob/main/USER-GUIDE.en.md') > 0, 'Hilfe verlinkt die Anleitung nicht');
+  assert.ok(indexHtml.indexOf('id="help-btn"') > 0, 'Hilfe-Knopf fehlt');
+  const heads = function (t) { return (t.match(/^## \d+\./gm) || []).join(','); };
+  assert.strictEqual(heads(de), heads(en), 'Abschnitte von deutscher und englischer Anleitung weichen ab');
+  assert.ok(/^## 11\./m.test(de));
+});
+
 test('Impressum und Datenschutzerklärung liegen neben index.html', function () {
   assert.ok(fs.existsSync(path.join(ROOT, 'impressum.html')));
   assert.ok(fs.existsSync(path.join(ROOT, 'datenschutz.html')));

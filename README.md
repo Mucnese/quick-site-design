@@ -2,7 +2,7 @@
 
 # Quick-Site-Design
 
-*[English version](README.en.md)*
+*[English version](README.en.md)* · *[Benutzeranleitung](BENUTZERANLEITUNG.md)*
 
 Werkzeug für die frühe Phase der Baustelleneinrichtung. Das amtliche
 Geländemodell des Bauplatzes wird geladen und darauf gestellt, was wirklich
@@ -213,6 +213,8 @@ quick-site-design/
 ├── datenschutz.html
 ├── README.md
 ├── README.en.md
+├── BENUTZERANLEITUNG.md  Benutzeranleitung (Deutsch), der Hilfe-Knopf verweist darauf
+├── USER-GUIDE.en.md      Benutzeranleitung (Englisch)
 ├── PROJEKT.md            Entwicklernotizen
 ├── LICENSE
 ├── build.py

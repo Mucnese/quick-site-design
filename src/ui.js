@@ -30,6 +30,23 @@ const STRINGS = {
     osmNoCrs: 'Das Bezugssystem {c} lässt sich nicht in Längen- und Breitengrad umrechnen.',
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
+    helpBtn: 'Hilfe', helpGuide: 'Vollständige Anleitung auf GitHub ↗',
+    helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/BENUTZERANLEITUNG.md',
+    helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers.',
+    helpS1T: 'Loslegen',
+    helpS1B: '- Oben links die Adresse eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS2T: 'Ansicht steuern',
+    helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: dunkel oder hell, Schrift, Fensterbreite. DE und EN wechseln die Sprache.',
+    helpS3T: 'Bausteine setzen',
+    helpS3B: '- Unten einen Baustein wählen und ins Gelände klicken: Container, Turmdrehkran, Mobilkran.\n- Baustraße und Baugrube: Punkt für Punkt setzen, dann Rechtsklick oder Leertaste. Esc bricht ab.\n- Im Eigenschaftsfenster rechts Maße, Winkel und Typ einstellen. Jeder Regler hat ein Zahlenfeld zum Eintippen.',
+    helpS4T: 'Bearbeiten',
+    helpS4B: '- Objekt anklicken: Verschieben, Duplizieren, Löschen.\n- Straße und Baugrube: Stützpunkte anklicken und versetzen, „Punkt hinzufügen“, „Punkt löschen“.\n- Ein Eintrag in der Übersicht wählt die ganze Gruppe.',
+    helpS5T: 'Mengen und Prüfungen',
+    helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.',
+    helpS6T: 'Karte und Export',
+    helpS6B: '- „Karte · OpenStreetMap“ (Fenster „Daten“) legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände und Gebäude als IFC-Datei mit Koordinatenbezug heruntergeladen.',
+    helpS7T: 'Tastatur',
+    helpS7B: '- Esc: abbrechen und Auswahl aufheben.\n- Leertaste: Straße oder Baugrube abschließen.\n- Entf oder Rücktaste: ausgewählte Objekte löschen (nicht beim Tippen in Feldern).',
     addrPlaceholder: 'Wo ist deine Baustelle?',
     addrNote: 'Vorschläge von photon.komoot.io; Eingabe und IP-Adresse werden übertragen.',
     addrSearching: 'Suche …', addrNone: 'Keine Treffer.', addrError: 'Die Suche ist gerade nicht erreichbar.',
@@ -135,6 +152,23 @@ const STRINGS = {
     osmNoCrs: 'The coordinate system {c} cannot be converted to latitude and longitude.',
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
+    helpBtn: 'Help', helpGuide: 'Full user guide on GitHub ↗',
+    helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/USER-GUIDE.en.md',
+    helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts.',
+    helpS1T: 'Getting started',
+    helpS1B: '- Type the address at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS2T: 'Controlling the view',
+    helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: dark or light, font, panel width. DE and EN switch the language.',
+    helpS3T: 'Placing building blocks',
+    helpS3B: '- Choose a block at the bottom and click into the terrain: container, tower crane, mobile crane.\n- Haul road and excavation: set point after point, then right-click or space. Esc cancels.\n- Set sizes, angles and type in the properties window on the right. Every slider has a number field for typing.',
+    helpS4T: 'Editing',
+    helpS4B: '- Click an object: move, duplicate, delete.\n- Road and excavation: click nodes and move them, “Add node”, “Delete node”.\n- An entry in the overview selects the whole group.',
+    helpS5T: 'Quantities and checks',
+    helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.',
+    helpS6T: 'Map and export',
+    helpS6B: '- “Map · OpenStreetMap” (“Data” window) puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain and buildings are downloaded as an IFC file with coordinate reference.',
+    helpS7T: 'Keyboard',
+    helpS7B: '- Esc: cancel and clear the selection.\n- Space: finish a road or excavation.\n- Delete or Backspace: delete the selected objects (not while typing in fields).',
     addrPlaceholder: 'Where is your construction site?',
     addrNote: 'Suggestions from photon.komoot.io; input and IP address are transmitted.',
     addrSearching: 'Searching …', addrNone: 'No results.', addrError: 'The search is not reachable right now.',
@@ -532,6 +566,7 @@ function setLanguage(code) {
   markLanguageButtons();
   refreshTexts();
   if (document.getElementById('tweak-panel').style.display === 'block') buildTweakPanel();
+  if (document.getElementById('help-panel').style.display === 'block') buildHelpPanel();
 }
 
 function markLanguageButtons() {
@@ -565,11 +600,46 @@ function refreshTexts() {
   else selectTool(null);
 }
 
+/* ---------- Hilfe ---------- */
+function buildHelpPanel() {
+  const body = document.getElementById('help-body');
+  body.innerHTML = '';
+  for (let i = 1; i <= 7; i++) {
+    const h = document.createElement('h3');
+    h.textContent = T('helpS' + i + 'T');
+    body.appendChild(h);
+    const ul = document.createElement('ul');
+    String(T('helpS' + i + 'B')).split('\n').forEach(function (line) {
+      const li = document.createElement('li');
+      li.textContent = line.replace(/^- /, '');
+      ul.appendChild(li);
+    });
+    body.appendChild(ul);
+  }
+  const note = document.createElement('p');
+  note.className = 'help-note';
+  note.textContent = T('helpNote');
+  body.appendChild(note);
+  const p = document.createElement('p');
+  const a = document.createElement('a');
+  a.href = T('helpGuideUrl'); a.target = '_blank'; a.rel = 'noopener noreferrer';
+  a.textContent = T('helpGuide');
+  p.appendChild(a);
+  body.appendChild(p);
+}
+
+function toggleHelp(force) {
+  const p = document.getElementById('help-panel');
+  const open = force !== undefined ? force : p.style.display !== 'block';
+  p.style.display = open ? 'block' : 'none';
+  if (open) { toggleTweak(false); buildHelpPanel(); }
+}
+
 function toggleTweak(force) {
   const p = document.getElementById('tweak-panel');
   const open = force !== undefined ? force : p.style.display !== 'block';
   p.style.display = open ? 'block' : 'none';
-  if (open) buildTweakPanel();
+  if (open) { const hp = document.getElementById('help-panel'); if (hp) hp.style.display = 'none'; buildTweakPanel(); }
 }
 
 /* =========================================================
@@ -2256,6 +2326,7 @@ function onKeyDown(event) {
     selectTool(null);
     hideMeasure();
     toggleTweak(false);
+    toggleHelp(false);
     setStatus('');
   } else if (event.key === 'Delete' || event.key === 'Backspace') {
     const ids = selectedIds.slice();
@@ -2373,6 +2444,8 @@ function initUI() {
   document.getElementById('compass').addEventListener('click', function () { faceNorth(); });
 
   document.getElementById('tweak-btn').addEventListener('click', function () { toggleTweak(); });
+  document.getElementById('help-btn').addEventListener('click', function () { toggleHelp(); });
+  document.getElementById('help-close').addEventListener('click', function () { toggleHelp(false); });
   document.getElementById('tweak-close').addEventListener('click', function () { toggleTweak(false); });
 
   const dom = renderer.domElement;
@@ -2431,6 +2504,8 @@ if (typeof module !== 'undefined' && module.exports) {
     applySettings: applySettings,
     buildTweakPanel: buildTweakPanel,
     toggleTweak: toggleTweak,
+    toggleHelp: toggleHelp,
+    buildHelpPanel: buildHelpPanel,
 
     // Werkzeuge und Editoren
     showPanel: showPanel,
