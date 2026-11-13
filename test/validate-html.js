@@ -83,6 +83,23 @@ test('Benutzeranleitung (Deutsch und Englisch) liegt vor, der Hilfe-Knopf verlin
   assert.ok(/^## 11\./m.test(de));
 });
 
+test('alle Links der Anwendung öffnen in einem neuen Tab (die Planung geht sonst beim Verlassen der Seite verloren)', function () {
+  const anchors = indexHtml.match(/<a\s[^>]*href=[^>]*>/g) || [];
+  assert.ok(anchors.length >= 5, 'Links im Markup nicht gefunden');
+  anchors.forEach(function (a) {
+    assert.ok(/target="_blank"/.test(a) && /rel="noopener noreferrer"/.test(a), 'Link ohne neuen Tab: ' + a.slice(0, 90));
+  });
+  // Links, die ui.js erzeugt (außer dem Download der IFC-Datei, der keine href-Navigation ist)
+  const ui = fs.readFileSync(path.join(ROOT, 'src/ui.js'), 'utf8');
+  const made = ui.split('\n').filter(function (l, i, all) { return /createElement\('a'\)/.test(l); });
+  made.forEach(function (line) {
+    const i = ui.indexOf(line);
+    const block = ui.slice(i, i + 600);
+    if (/\.download\s*=/.test(block)) return;
+    assert.ok(/target\s*=\s*'_blank'/.test(block) && /rel\s*=\s*'noopener noreferrer'/.test(block), 'erzeugter Link ohne neuen Tab: ' + line.trim());
+  });
+});
+
 test('Impressum und Datenschutzerklärung liegen neben index.html', function () {
   assert.ok(fs.existsSync(path.join(ROOT, 'impressum.html')));
   assert.ok(fs.existsSync(path.join(ROOT, 'datenschutz.html')));
