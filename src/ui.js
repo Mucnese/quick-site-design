@@ -34,7 +34,7 @@ const STRINGS = {
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/BENUTZERANLEITUNG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers.',
     helpS1T: 'Loslegen',
-    helpS1B: '- Oben links die Adresse eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: dunkel oder hell, Schrift, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -49,6 +49,8 @@ const STRINGS = {
     helpS7B: '- Esc: abbrechen und Auswahl aufheben.\n- Leertaste: Straße oder Baugrube abschließen.\n- Entf oder Rücktaste: ausgewählte Objekte löschen (nicht beim Tippen in Feldern).',
     addrPlaceholder: 'Wo ist deine Baustelle?',
     addrNote: 'Vorschläge von photon.komoot.io; Eingabe und IP-Adresse werden übertragen.',
+    addrSimilar: 'Nichts zu „{q}“ gefunden. Ähnlich:', addrCoordSub: 'Ort und Bundesland werden beim Wählen ermittelt',
+    addrCoordFail: 'Ort oder Bundesland konnte nicht ermittelt werden.', addrAt: 'Lage',
     addrSearching: 'Suche …', addrNone: 'Keine Treffer.', addrError: 'Die Suche ist gerade nicht erreichbar.',
     addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Deutschland und Österreich).',
     addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD2)',
@@ -158,7 +160,7 @@ const STRINGS = {
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/USER-GUIDE.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts.',
     helpS1T: 'Getting started',
-    helpS1B: '- Type the address at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- Type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: dark or light, font, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -173,6 +175,8 @@ const STRINGS = {
     helpS7B: '- Esc: cancel and clear the selection.\n- Space: finish a road or excavation.\n- Delete or Backspace: delete the selected objects (not while typing in fields).',
     addrPlaceholder: 'Where is your construction site?',
     addrNote: 'Suggestions from photon.komoot.io; input and IP address are transmitted.',
+    addrSimilar: 'Nothing found for “{q}”. Similar:', addrCoordSub: 'Place and state are looked up when you choose it',
+    addrCoordFail: 'The place or state could not be determined.', addrAt: 'Position',
     addrSearching: 'Searching …', addrNone: 'No results.', addrError: 'The search is not reachable right now.',
     addrOnlyDeAt: 'No data sources are listed for this place (Germany and Austria only).',
     addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD2)',
@@ -1549,6 +1553,7 @@ function demStatusText(t) {
    Vorschläge von Photon beim Tippen (mind. 3 Zeichen, 350 ms Pause); nach der Wahl
    stehen Links zur DGM- und zur Gebäudemodell-Seite des Landes darunter. */
 let addrTimer = null, addrAbort = null, addrItems = [], addrSel = -1, addrSeq = 0, addrPlace = null;
+let addrStale = false;       // die Liste gehört zu einem älteren Eingabetext: Enter wählt dann nichts
 
 function addrHost(url) {
   try { return new URL(url).hostname; } catch (e) { return url; }
@@ -1572,7 +1577,8 @@ function renderAddrList(message) {
     li.className = 'none';
     li.textContent = message;
     ul.appendChild(li);
-  } else {
+  }
+  if (!message || addrItems.length) {
     addrItems.forEach(function (it, i) {
       const li = document.createElement('li');
       li.className = i === addrSel ? 'sel' : '';
@@ -1594,12 +1600,24 @@ async function runAddrSearch(q) {
   const seq = ++addrSeq;
   if (addrAbort && addrAbort.abort) addrAbort.abort();
   addrAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  addrItems = []; addrSel = -1;
   renderAddrList(T('addrSearching'));
   try {
-    const items = await photonSearch(q, addrAbort ? addrAbort.signal : null);
+    let items = await photonSearch(q, addrAbort ? addrAbort.signal : null);
     if (seq !== addrSeq) return;
+    let note = null;
+    // Nichts Passendes (Photon liefert sonst Ähnlichklingendes): mit dem Namensstamm ("Ohetalbrücke" -> "Ohetal") nachfragen
+    if (!addrHasMatch(items, q)) {
+      const stem = addrStem(q);
+      if (stem) {
+        const more = await photonSearch(stem, addrAbort ? addrAbort.signal : null);
+        if (seq !== addrSeq) return;
+        if (more.length) { items = more; note = T('addrSimilar').replace('{q}', q); }
+      }
+    }
     addrItems = items; addrSel = items.length ? 0 : -1;
-    renderAddrList(items.length ? null : T('addrNone'));
+    addrStale = false;
+    renderAddrList(items.length ? note : T('addrNone'));
   } catch (e) {
     if (seq !== addrSeq || (e && e.name === 'AbortError')) return;
     addrItems = []; addrSel = -1;
@@ -1611,18 +1629,49 @@ function onAddrInput() {
   const q = document.getElementById('addr-input').value.trim();
   if (addrTimer) clearTimeout(addrTimer);
   addrSeq++;
+  addrStale = true;
   if (addrAbort && addrAbort.abort) addrAbort.abort();
   if (q.length < 3) { addrItems = []; addrSel = -1; renderAddrList(null); return; }
+  // Koordinaten braucht keine Suche: ein Vorschlag mit dem erkannten Punkt, der Ort kommt erst beim Wählen
+  const c = parseCoordinates(q, typeof TERRAIN !== 'undefined' && TERRAIN ? TERRAIN.epsg : null);
+  if (c) {
+    addrStale = false;
+    addrItems = [{ coord: true, main: c.lat.toFixed(5) + ', ' + c.lon.toFixed(5), sub: T('addrCoordSub'), lat: c.lat, lon: c.lon }];
+    addrSel = 0;
+    renderAddrList(null);
+    return;
+  }
   addrTimer = setTimeout(function () { runAddrSearch(q); }, 350);
 }
 
-function chooseAddr(i) {
+async function chooseAddr(i) {
   const it = addrItems[i];
   if (!it) return;
+  if (addrTimer) clearTimeout(addrTimer);
+  addrSeq++;                 // eine noch laufende Suche darf die Liste nicht wieder öffnen
+  addrStale = false;
   addrPlace = it;
-  document.getElementById('addr-input').value = it.main + (it.sub ? ', ' + it.sub : '');
+  document.getElementById('addr-input').value = it.coord ? it.main : it.main + (it.sub ? ', ' + it.sub : '');
   addrItems = []; addrSel = -1;
   renderAddrList(null);
+  if (it.coord) {
+    // Ort und Bundesland zu den Koordinaten nachfragen
+    const place = { coord: true, main: it.main, sub: '', lat: it.lat, lon: it.lon, country: '', state: '', city: '', pending: true };
+    addrPlace = place;
+    renderAddrResult();
+    try {
+      const r = await photonReverse(it.lat, it.lon);
+      if (addrPlace !== place) return;
+      if (r) { place.country = r.country; place.state = r.state; place.city = r.city; place.sub = [r.postcode, r.city, r.state].filter(Boolean).join(' '); }
+      else place.failed = true;
+    } catch (e) {
+      if (addrPlace !== place) return;
+      place.failed = true;
+    }
+    place.pending = false;
+    renderAddrResult();
+    return;
+  }
   renderAddrResult();
 }
 
@@ -1633,7 +1682,7 @@ function onAddrKey(e) {
     renderAddrList(null);
     if (e.preventDefault) e.preventDefault();
   } else if (e.key === 'Enter') {
-    if (addrSel >= 0) chooseAddr(addrSel);
+    if (addrSel >= 0 && !addrStale) chooseAddr(addrSel);
     if (e.preventDefault) e.preventDefault();
   } else if (e.key === 'Escape') {
     addrItems = []; addrSel = -1;
@@ -1673,6 +1722,20 @@ function renderAddrResult() {
   title.className = 'addr-place';
   title.textContent = addrPlace.main;
   box.appendChild(title);
+  if (addrPlace.coord) {
+    const at = document.createElement('div');
+    at.className = 'addr-note';
+    at.textContent = addrPlace.pending ? T('addrSearching') : (addrPlace.sub || '');
+    box.appendChild(at);
+    if (addrPlace.pending) return;
+    if (addrPlace.failed) {
+      const f = document.createElement('div');
+      f.className = 'addr-note';
+      f.textContent = T('addrCoordFail');
+      box.appendChild(f);
+      return;
+    }
+  }
   const src = geoSourcesFor(addrPlace);
   if (!src) {
     const n = document.createElement('div');

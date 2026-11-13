@@ -1649,6 +1649,45 @@ test('Standortsuche: photonSearch fragt nur mit Suchtext, Sprache, Rahmen und Gr
   delete global.fetch;
 });
 
+test('Standortsuche: Namensstamm und Treffer-Prüfung - "Ohetalbrücke" wird zu "Ohetal", Teilwörter passen', function () {
+  assert.strictEqual(app.addrStem('Ohetalbrücke'), 'Ohetal');
+  assert.strictEqual(app.addrStem('Ohetalbruecke Grafenau'), 'Ohetal Grafenau');
+  assert.strictEqual(app.addrStem('Marienstraße'), 'Marien');
+  assert.strictEqual(app.addrStem('Brücke'), null, 'zu kurz zum Abschneiden');
+  assert.strictEqual(app.addrStem('Marienplatz'), 'Marien');
+  assert.strictEqual(app.addrStem('München'), null);
+  assert.strictEqual(app.addrNorm('Straße Ä'), 'strasse a');
+  assert.strictEqual(app.addrHasMatch([{ main: 'Ohrntalbrücke', sub: 'Öhringen' }], 'Ohetalbrücke'), false);
+  assert.strictEqual(app.addrHasMatch([{ main: 'Marienplatz', sub: '80331 München, Bayern' }], 'Marienplatz Münch'), true);
+  assert.strictEqual(app.addrHasMatch([], 'x'), false);
+});
+
+test('Standortsuche: Koordinaten werden erkannt - Breite/Länge in mehreren Schreibweisen, UTM mit Zone oder EPSG, Gauß-Krüger, Gelände-Bezugssystem', function () {
+  const near = function (c, lat, lon) { return c && Math.abs(c.lat - lat) < 1e-3 && Math.abs(c.lon - lon) < 1e-3; };
+  ['48.1366, 11.5771', '48.1366 11.5771', '48,1366; 11,5771', '11.5771 48.1366', '48.1366° N, 11.5771° E'].forEach(function (q) {
+    assert.ok(near(app.parseCoordinates(q), 48.1366, 11.5771), q);
+  });
+  assert.ok(near(app.parseCoordinates('32 692000 5336000'), 48.148, 11.581), 'UTM mit Zone');
+  assert.strictEqual(app.parseCoordinates('EPSG:25832 692000 5336000').epsg, 25832);
+  assert.ok(near(app.parseCoordinates('UTM 33N 380000 5800000'), 52.337, 13.239), 'UTM 33');
+  assert.strictEqual(app.parseCoordinates('3500000 5400000').epsg, 31467, 'Gauß-Krüger Streifen 3');
+  assert.strictEqual(app.parseCoordinates('692000 5336000'), null, 'ohne Zone und ohne Gelände unklar');
+  assert.strictEqual(app.parseCoordinates('692000 5336000', 25832).epsg, 25832, 'Bezugssystem des Geländes');
+  ['abc', '12 34', '', '48.1 11.5 3', '0 0', '10, 120'].forEach(function (q) { assert.strictEqual(app.parseCoordinates(q), null, q); });
+  assert.strictEqual(app.parseCoordinates('48.1366, 11.5771.5'), null);
+});
+
+test('Standortsuche: photonReverse liefert Land, Bundesland und Ort, bei leerem Ergebnis null', async function () {
+  const calls = [];
+  global.fetch = function (url) { calls.push(url); return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ features: [{ properties: { countrycode: 'de', state: 'Bayern', city: 'Perlesreut', postcode: '94157' } }] }); } }); };
+  const r = await app.photonReverse(48.7844, 13.4717);
+  assert.deepStrictEqual(r, { country: 'DE', state: 'Bayern', city: 'Perlesreut', postcode: '94157' });
+  assert.ok(calls[0].indexOf('https://photon.komoot.io/reverse?lon=13.4717&lat=48.7844') === 0, calls[0]);
+  global.fetch = function () { return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ features: [] }); } }); };
+  assert.strictEqual(await app.photonReverse(0, 0), null);
+  delete global.fetch;
+});
+
 test('Standortsuche: Datenquellen je Land - alle 16 Länder, Links stehen in der README-Tabelle, Österreich mit Bund', function () {
   const fs = require('fs');
   const readme = fs.readFileSync(require('path').join(__dirname, '../README.md'), 'utf8');

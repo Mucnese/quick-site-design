@@ -40,6 +40,16 @@ locked.
    (DGM) and building model (LoD2) pages of your German state; for Austria, the pages of the federal
    government and the state. The application downloads nothing here: you open the pages and
    download the files yourself. The same table is in the [README](README.en.md#where-to-get-the-data).
+   - **Nothing suitable found?** Structures such as valley bridges are often named differently or
+     missing in OpenStreetMap. If the search finds nothing that fits your input, the bar asks again with
+     the name stem (“Ohetalbrücke” becomes “Ohetal”) and writes “Nothing found for …. Similar:”
+     above the list.
+   - **Coordinates instead of an address.** You can also type coordinates: latitude and longitude
+     (`48.1366, 11.5771`, also with ° and N/E, with a semicolon and a decimal comma),
+     UTM with zone (`32 692000 5336000` or `EPSG:25832 692000 5336000`) or Gauss-Krüger
+     (`3500000 5400000`). Two large numbers without further information are taken in the coordinate
+     system of the loaded terrain. The bar shows the recognised point as the only suggestion; only
+     when you choose it does it ask Photon for the place and state and then show the links.
 2. **Load the terrain.** In the **Data** window click “Choose files” and select the terrain file.
    Several tiles can be selected together and are merged.
 3. **Load buildings (optional).** Also in the **Data** window, row “Buildings · CityGML”.
@@ -274,6 +284,7 @@ containers are not included.
 | Buildings are missing | They lie outside the terrain, or the coordinate system of the CityGML file differs |
 | Map does not load | Offline or blocked; or the coordinate system is not supported |
 | No suggestions in the address bar | Type at least three characters; the search service may not be reachable |
+| A structure (for example a bridge) is not found | It is missing or named differently in OpenStreetMap: search the place name or street, or type the coordinates |
 | Road curve tighter than wanted | The radius slider is coloured: set the points further apart or reduce the radius |
 | Excavation: “too narrow” | Widen the pit, make it shallower or set a steeper angle |
 

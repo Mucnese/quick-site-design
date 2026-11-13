@@ -42,6 +42,16 @@ gesperrt.
    Österreich die Seiten von Bund und Land. Die Anwendung lädt dabei nichts herunter, du
    öffnest die Seiten und lädst die Dateien selbst herunter. Die gleiche Tabelle steht in der
    [README](README.md#datenquellen).
+   - **Nichts Passendes gefunden?** Bauwerke wie Talbrücken stehen in OpenStreetMap oft anders oder
+     gar nicht. Findet die Suche nichts, was zu deiner Eingabe passt, fragt die Leiste mit dem
+     Namensstamm nach („Ohetalbrücke“ wird zu „Ohetal“) und schreibt „Nichts zu … gefunden.
+     Ähnlich:“ über die Liste.
+   - **Koordinaten statt Adresse.** Du kannst auch Koordinaten eintippen: Breite und Länge
+     (`48.1366, 11.5771`, auch mit ° und N/E, bei Semikolon mit Komma als Dezimalzeichen),
+     UTM mit Zone (`32 692000 5336000` oder `EPSG:25832 692000 5336000`) oder Gauß-Krüger
+     (`3500000 5400000`). Zwei große Zahlen ohne Angabe gelten im Bezugssystem des geladenen
+     Geländes. Die Leiste zeigt den erkannten Punkt als einzigen Vorschlag; erst wenn du ihn
+     wählst, fragt sie Photon nach Ort und Bundesland und zeigt dann die Links.
 2. **Gelände laden.** Im Fenster **Daten** auf „Dateien auswählen“ klicken und die
    Geländedatei wählen. Mehrere Kacheln lassen sich zusammen auswählen, sie werden verschmolzen.
 3. **Gebäude laden (optional).** Ebenfalls im Fenster **Daten**, Zeile „Gebäude · CityGML“.
@@ -276,6 +286,7 @@ enthalten.
 | Gebäude fehlen | Sie liegen außerhalb des Geländes, oder das Bezugssystem der CityGML-Datei weicht ab |
 | Karte lädt nicht | Offline oder von einer Sperre blockiert; oder das Bezugssystem wird nicht unterstützt |
 | Keine Vorschläge in der Adressleiste | Mindestens drei Zeichen tippen; der Suchdienst ist vielleicht nicht erreichbar |
+| Ein Bauwerk (zum Beispiel eine Brücke) wird nicht gefunden | In OpenStreetMap fehlt es oder heißt anders: den Ortsnamen oder die Straße suchen oder die Koordinaten eintippen |
 | Straßenkurve wird enger als gewünscht | Der Radiusregler ist rot: Punkte weiter auseinander setzen oder den Radius verkleinern |
 | Grube: „zu schmal“ | Grube verbreitern, flacher machen oder den Winkel steiler stellen |
 

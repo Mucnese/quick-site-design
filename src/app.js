@@ -766,6 +766,102 @@ function parsePhoton(json) {
   return out.slice(0, 5);
 }
 
+/* Vergleichsform: Kleinbuchstaben, ohne Akzente und Umlautpunkte, ß = ss, nur Buchstaben und Ziffern */
+function addrNorm(s) {
+  return String(s || '').toLowerCase().replace(/ß/g, 'ss').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/* Passt mindestens ein Vorschlag zur Eingabe? Jedes Wort der Eingabe muss im Text eines Vorschlags vorkommen
+   (als Teilwort, damit "Münch" auch "München" trifft). Photon liefert sonst auch bei Unbekanntem ähnlich klingende Treffer. */
+function addrHasMatch(items, q) {
+  const words = addrNorm(q).split(' ').filter(Boolean);
+  if (!words.length) return true;
+  return items.some(function (it) {
+    const text = addrNorm(it.main + ' ' + it.sub);
+    return words.every(function (w) { return text.indexOf(w) >= 0; });
+  });
+}
+
+const ADDR_SUFFIXES = ['bruecke', 'brucke', 'strasse', 'str', 'weg', 'platz', 'allee', 'gasse', 'tunnel', 'ring', 'damm', 'steg'];
+
+/* Namensstamm: hängt an einem Wort ein Endstück wie "brücke" oder "straße", wird es abgeschnitten
+   ("Ohetalbrücke" -> "Ohetal"). Gibt null zurück, wenn sich nichts abschneiden lässt. */
+function addrStem(q) {
+  const words = String(q || '').trim().split(/\s+/);
+  let changed = false;
+  const out = words.map(function (w) {
+    const n = addrNorm(w).replace(/ /g, '');
+    for (let i = 0; i < ADDR_SUFFIXES.length; i++) {
+      const suf = ADDR_SUFFIXES[i];
+      if (n.length - suf.length >= 3 && n.slice(-suf.length) === suf) {
+        // am Originalwort abschneiden: so viele Zeichen, wie das normalisierte Endstück lang ist (ü/ß ändern die Länge nicht)
+        const cut = suf === 'bruecke' ? 7 : (suf === 'strasse' ? 7 : suf.length);
+        const wl = w.length;
+        const origCut = /brücke$/i.test(w) ? 6 : (/straße$/i.test(w) ? 6 : cut);
+        if (wl - origCut >= 3) { changed = true; return w.slice(0, wl - origCut); }
+      }
+    }
+    return w;
+  });
+  return changed ? out.join(' ') : null;
+}
+
+/* Erkennt Koordinaten in der Eingabe. Geografisch: "48.1366, 11.5771" (auch mit ° und N/E, Komma als
+   Dezimalzeichen bei Semikolon-Trennung, Länge zuerst wird erkannt). Projiziert: "32 692000 5336000" (UTM-Zone),
+   "EPSG:25832 692000 5336000", Gauß-Krüger "3500000 5400000" (Streifen aus der ersten Ziffer); bei zwei
+   großen Zahlen ohne Angabe gilt das Bezugssystem des geladenen Geländes. Liefert {lat, lon, epsg?} oder null. */
+function parseCoordinates(text, defaultEpsg) {
+  let s = String(text || '').trim().replace(/[°º]/g, ' ').replace(/\b[NSEOWnseow]\b/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+  let epsg = null;
+  let m = s.match(/^EPSG\s*:?\s*(\d{4,5})\s+(.*)$/i);
+  if (m) { epsg = parseInt(m[1], 10); s = m[2]; }
+  else if ((m = s.match(/^(?:UTM\s*)?(\d{2})\s*[A-Za-z]?\s+(\d{5,7}(?:[.,]\d+)?)\s+(\d{6,8}(?:[.,]\d+)?)$/i)) && +m[1] >= 28 && +m[1] <= 38) {
+    epsg = 25800 + parseInt(m[1], 10); s = m[2] + ' ' + m[3];
+  }
+  // Zahlen: bei Semikolon gilt Komma als Dezimalzeichen, sonst trennt das Komma
+  const semicolon = s.indexOf(';') >= 0;
+  const parts = (semicolon ? s.split(';') : s.split(/[,\s]+/)).map(function (p) { return p.trim(); }).filter(Boolean);
+  if (parts.length !== 2) return null;
+  const nums = parts.map(function (p) {
+    if (!/^[+-]?\d+([.,]\d+)?$/.test(p)) return NaN;
+    return parseFloat(semicolon || p.indexOf('.') < 0 ? p.replace(',', '.') : p);
+  });
+  if (!nums.every(isFinite)) return null;
+  const a = nums[0], b = nums[1];
+  if (Math.abs(a) < 1000 && Math.abs(b) < 1000) {
+    let lat = a, lon = b;
+    if (lat < 20 && lon > 40) { lat = b; lon = a; }                 // Länge zuerst
+    if (lat < 40 || lat > 60 || lon < 3 || lon > 20) return null;     // nur Mitteleuropa
+    return { lat: lat, lon: lon };
+  }
+  // projizierte Koordinaten
+  let e = a, n = b;
+  if (!epsg) {
+    if (e > 2e6 && e < 6e6 && n > 4.9e6 && n < 6.3e6) {
+      const strip = Math.floor(e / 1e6);
+      if (strip >= 2 && strip <= 5) epsg = 31464 + strip;
+    } else if (defaultEpsg) epsg = defaultEpsg;
+  }
+  if (!epsg) return null;
+  const g = crsToLonLat(epsg, e, n);
+  if (!g || !isFinite(g.lat) || !isFinite(g.lon) || g.lat < 40 || g.lat > 60 || g.lon < 3 || g.lon > 20) return null;
+  return { lat: g.lat, lon: g.lon, epsg: epsg };
+}
+
+/* Fragt Photon zu Koordinaten nach Ort und Land (für das Bundesland); liefert einen Vorschlag oder null */
+async function photonReverse(lat, lon, signal) {
+  const url = PHOTON_URL.replace('/api/', '/reverse') + '?lon=' + lon + '&lat=' + lat + '&lang=de&limit=1';
+  const res = await fetch(url, signal ? { signal: signal } : undefined);
+  if (!res.ok) throw new Error('Photon: HTTP ' + res.status);
+  const json = await res.json();
+  const f = (json.features || [])[0];
+  if (!f) return null;
+  const p = f.properties || {};
+  return { country: String(p.countrycode || '').toUpperCase(), state: p.state || '',
+           city: p.city || p.town || p.village || p.district || '', postcode: p.postcode || '' };
+}
+
 /* Fragt Photon nach Vorschlägen; signal: AbortSignal zum Abbrechen veralteter Anfragen */
 async function photonSearch(query, signal) {
   const url = PHOTON_URL + '?q=' + encodeURIComponent(query) + '&lang=de&limit=10&bbox=' + PHOTON_BBOX;
@@ -4443,6 +4539,11 @@ if (typeof module !== 'undefined' && module.exports) {
     GEO_ENTRIES: GEO_ENTRIES,
     geoSourcesFor: geoSourcesFor,
     parsePhoton: parsePhoton,
+    addrNorm: addrNorm,
+    addrHasMatch: addrHasMatch,
+    addrStem: addrStem,
+    parseCoordinates: parseCoordinates,
+    photonReverse: photonReverse,
     photonSearch: photonSearch,
     crsToLonLat: crsToLonLat,
     crsGeoDefinition: crsGeoDefinition,

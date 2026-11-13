@@ -81,7 +81,9 @@ außerhalb Europas legt. Grenze `XYZ_MAX_POINTS` (30 Mio.). ESRI-ASCII-Raster we
 fragt `photon.komoot.io` (nur ab 3 Zeichen, 350 ms Entprellung, Ergebnisse auf DE/AT gefiltert,
 `lang=de`), `parsePhoton` macht Vorschläge, `geoSourcesFor` ordnet das Bundesland (Photon-Feld
 `state`) den Links aus `GEO_ENTRIES` zu (entspricht der README-Tabelle, ein Test prüft die Links).
-Es wird nichts heruntergeladen. Die Datenschutzerklärung nennt die Adressleiste als Einwilligung
+`addrHasMatch`/`addrStem` lösen die Nachfrage mit dem Namensstamm aus, wenn nichts Passendes kommt;
+`parseCoordinates` erkennt Koordinaten (Breite/Länge, UTM, Gauß-Krüger) ohne Suche, `photonReverse` ermittelt
+beim Wählen Ort und Bundesland. Es wird nichts heruntergeladen. Die Datenschutzerklärung nennt die Adressleiste als Einwilligung
 durch die Eingabe; der Hinweis steht unter dem Feld (`addr-note`) und darf nicht entfallen.
 Links in `GEO_ENTRIES` ändern, wenn sich die README-Tabelle ändert.
 

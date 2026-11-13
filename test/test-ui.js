@@ -1033,6 +1033,64 @@ await test('Adressleiste: Platzhalter, Vorschläge, Wahl zeigt Links zu DGM und 
   delete global.fetch;
 });
 
+await test('Adressleiste: findet die Suche nichts Passendes, folgt die Nachfrage mit dem Namensstamm und der Hinweis steht über der Liste', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  const queries = [];
+  global.fetch = function (url) {
+    queries.push(decodeURIComponent(url.split('q=')[1].split('&')[0]));
+    const features = queries.length === 1
+      ? [{ geometry: { coordinates: [9.49, 49.2] }, properties: { name: 'Ohrntalbrücke', city: 'Öhringen', state: 'Baden-Württemberg', countrycode: 'DE' } }]
+      : [{ geometry: { coordinates: [13.47, 48.78] }, properties: { name: 'Ohetal', city: 'Perlesreut', state: 'Bayern', countrycode: 'DE' } }];
+    return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ features: features }); } });
+  };
+  await s.runAddrSearch('Ohetalbrücke');
+  assert.deepStrictEqual(queries, ['Ohetalbrücke', 'Ohetal']);
+  const txt = g('addr-list').textContent;
+  assert.ok(txt.indexOf('Nichts zu „Ohetalbrücke“ gefunden') >= 0 && txt.indexOf('Perlesreut') > 0 && txt.indexOf('Ohrntal') < 0, txt);
+  delete global.fetch;
+});
+
+await test('Adressleiste: Koordinaten - ein Vorschlag ohne Suche, beim Wählen kommen Ort und Bundesland von der Rückwärtssuche', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  let calls = 0;
+  global.fetch = function (url) {
+    calls++;
+    return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ features: [{ properties: { countrycode: 'DE', state: 'Bayern', city: 'Perlesreut', postcode: '94157' } }] }); } });
+  };
+  g('addr-input').value = '48.7844, 13.4717';
+  s.onAddrInput();
+  assert.strictEqual(calls, 0, 'Koordinaten lösen keine Suche aus');
+  assert.ok(g('addr-list').textContent.indexOf('48.78440, 13.47170') >= 0, g('addr-list').textContent);
+  await s.chooseAddr(0);
+  const res = g('addr-result').textContent;
+  assert.strictEqual(calls, 1);
+  assert.ok(res.indexOf('94157 Perlesreut Bayern') >= 0 && res.indexOf('geodaten.bayern.de') >= 0, res);
+  // Rückwärtssuche scheitert: Hinweis statt Links
+  global.fetch = function () { return Promise.reject(new Error('offline')); };
+  g('addr-input').value = '48.7844, 13.4717';
+  s.onAddrInput();
+  await s.chooseAddr(0);
+  assert.ok(g('addr-result').textContent.indexOf('konnte nicht ermittelt werden') >= 0, g('addr-result').textContent);
+  delete global.fetch;
+});
+
+await test('Adressleiste: Enter wählt nichts aus einer veralteten Liste, solange die neue Eingabe noch nicht beantwortet ist', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  global.fetch = function () { return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ features: [
+    { geometry: { coordinates: [13.47, 48.78] }, properties: { name: 'Ohetal', city: 'Perlesreut', state: 'Bayern', countrycode: 'DE' } }] }); } }); };
+  await s.runAddrSearch('Ohetal');
+  g('addr-input').value = 'Marienplatz';
+  s.onAddrInput();                                   // neue Eingabe, Antwort steht aus (Entprellung)
+  let prevented = false;
+  s.onAddrKey({ key: 'Enter', preventDefault: function () { prevented = true; } });
+  assert.strictEqual(g('addr-result').style.display === 'block', false, 'der alte Vorschlag darf nicht gewählt werden');
+  assert.strictEqual(prevented, true);
+  delete global.fetch;
+});
+
 await test('Hilfe: Knopf öffnet das Hilfefenster mit sieben Abschnitten und Link zur Anleitung, schließt Darstellung, folgt der Sprache', function () {
   const s = newScope();
   const g = function (id) { return s.document.getElementById(id); };
