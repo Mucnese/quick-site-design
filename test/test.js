@@ -1649,6 +1649,20 @@ test('Standortsuche: photonSearch fragt nur mit Suchtext, Sprache, Rahmen und Gr
   delete global.fetch;
 });
 
+test('Standortsuche: Stadtstaaten - Berlin, Hamburg und Wien ohne state-Feld, Bremen als "Freie Hansestadt Bremen"', function () {
+  const mk = function (name, city, state, cc) { return { geometry: { coordinates: [10, 52] }, properties: { name: name, city: city, state: state, countrycode: cc } }; };
+  const r = app.parsePhoton({ features: [
+    mk('Alexanderplatz', 'Berlin', undefined, 'DE'), mk('Rathausmarkt', 'Hamburg', undefined, 'DE'),
+    mk('Marktplatz', 'Bremen', 'Freie Hansestadt Bremen', 'DE'), mk('Stephansplatz', 'Wien', undefined, 'AT'),
+    mk('Marienplatz', 'München', 'Freistaat Bayern', 'DE')] });
+  assert.deepStrictEqual(r.map(function (x) { return x.state; }), ['Berlin', 'Hamburg', 'Bremen', 'Wien', 'Bayern']);
+  assert.strictEqual(app.parsePhoton({ features: [mk('Hauptbahnhof', 'Bremerhaven', undefined, 'DE')] })[0].state, 'Bremen');
+  assert.strictEqual(r[0].sub, 'Berlin', 'Stadt und Land nicht doppelt');
+  assert.ok(app.geoSourcesFor(r[0]) && app.geoSourcesFor(r[1]) && app.geoSourcesFor(r[2]) && app.geoSourcesFor(r[3]), 'für Stadtstaaten gibt es Quellen');
+  assert.strictEqual(app.geoSourcesFor(r[3]).region, 'Wien');
+  assert.strictEqual(app.normalizeState('', 'Dresden', 'DE'), '');
+});
+
 test('Standortsuche: Namensstamm und Treffer-Prüfung - "Ohetalbrücke" wird zu "Ohetal", Teilwörter passen', function () {
   assert.strictEqual(app.addrStem('Ohetalbrücke'), 'Ohetal');
   assert.strictEqual(app.addrStem('Ohetalbruecke Grafenau'), 'Ohetal Grafenau');

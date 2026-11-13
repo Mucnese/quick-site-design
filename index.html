@@ -1428,6 +1428,19 @@ function geoSourcesFor(place) {
 const PHOTON_URL = 'https://photon.komoot.io/api/';
 const PHOTON_BBOX = '5.8,45.7,17.2,55.1';        // Deutschland, Österreich und Nachbarschaft
 
+/* Bundesland für die Zuordnung: Stadtstaaten (Berlin, Hamburg, Wien) haben bei Photon kein Feld `state`,
+   Bremen heißt dort "Freie Hansestadt Bremen"; Zusätze wie "Freistaat" fallen weg */
+function normalizeState(state, city, country) {
+  let st = String(state || '').replace(/^(Freie und Hansestadt|Freie Hansestadt|Freistaat|Land)\s+/i, '').trim();
+  if (!st) {
+    const c = String(city || '').trim();
+    if ((String(country).toUpperCase() === 'DE' && (c === 'Berlin' || c === 'Hamburg')) ||
+        (String(country).toUpperCase() === 'AT' && c === 'Wien')) st = c;
+    else if (c === 'Bremerhaven') st = 'Bremen';
+  }
+  return st;
+}
+
 /* Wandelt die Antwort von Photon in Vorschläge um; nur Deutschland und Österreich */
 function parsePhoton(json) {
   const out = [];
@@ -1438,13 +1451,15 @@ function parsePhoton(json) {
     if (!g || g.length < 2 || (cc !== 'DE' && cc !== 'AT')) return;
     const street = p.street ? p.street + (p.housenumber ? ' ' + p.housenumber : '') : '';
     const main = p.name && p.name !== p.street ? p.name + (street ? ', ' + street : '') : (street || p.name || p.city || '');
-    const place = [p.postcode, p.city || p.town || p.village || p.district || ''].filter(Boolean).join(' ');
-    const sub = [place, p.state].filter(Boolean).join(', ');
+    const city0 = p.city || p.town || p.village || '';
+    const state = normalizeState(p.state, city0, cc);
+    const place = [p.postcode, city0 || p.district || ''].filter(Boolean).join(' ');
+    const sub = [place, state && state !== city0 ? state : ''].filter(Boolean).join(', ');
     if (!main) return;
     const key = main + '|' + sub;
     if (out.some(function (o) { return o.key === key; })) return;
     out.push({ key: key, main: main, sub: sub, lon: g[0], lat: g[1],
-               country: cc, state: p.state || '', city: p.city || p.town || p.village || '' });
+               country: cc, state: state, city: city0 });
   });
   return out.slice(0, 5);
 }
@@ -1541,8 +1556,8 @@ async function photonReverse(lat, lon, signal) {
   const f = (json.features || [])[0];
   if (!f) return null;
   const p = f.properties || {};
-  return { country: String(p.countrycode || '').toUpperCase(), state: p.state || '',
-           city: p.city || p.town || p.village || p.district || '', postcode: p.postcode || '' };
+  const cc = String(p.countrycode || '').toUpperCase(), city = p.city || p.town || p.village || p.district || '';
+  return { country: cc, state: normalizeState(p.state, p.city || p.town || p.village || '', cc), city: city, postcode: p.postcode || '' };
 }
 
 /* Fragt Photon nach Vorschlägen; signal: AbortSignal zum Abbrechen veralteter Anfragen */
