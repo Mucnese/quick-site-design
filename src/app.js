@@ -4151,10 +4151,18 @@ function ifcString(s) {
    gelisteten Systeme bräuchte für die DHDN/Gauß-Krüger-Fälle ein
    Umrechnungsgitter, das hier nicht mitgeliefert wird; lieber gar keine
    Wahl anbieten als eine, die für einen Teil der Codes lautlos falsch
-   läge). Alle Geometrie-Koordinaten liegen relativ zur Rechteck-
-   Südwestecke (übliche IFC-Praxis, vermeidet Präzisionsverlust durch
-   große UTM-Werte direkt in der Geometrie). */
-function buildIfc(geo, rectMinX, rectMinZ, epsg) {
+   läge).
+   Zwei Arten der Koordinaten (opts.coords):
+   'local' (Standard von buildIfc): Geometrie relativ zur Rechteck-Südwestecke,
+   die Lage steckt in IfcMapConversion - übliche IFC4-Praxis, kleine Zahlen,
+   viele Betrachter zeigen aber dann Werte nahe 0.
+   'abs': die Koordinaten im Bezugssystem stehen direkt in der Geometrie
+   (Rechtswert, Hochwert, Höhe ü. NHN); IfcMapConversion bleibt als Nullversatz
+   erhalten, damit das Bezugssystem benannt ist, ohne doppelt zu verschieben.
+   Die Oberfläche bietet 'abs' als Voreinstellung an, weil sonst "nicht
+   georeferenziert" gemeldet wurde. */
+function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
+  const absolute = !!(opts && opts.coords === 'abs');
   if (!TERRAIN) throw new Error('Bitte zuerst ein Geländemodell laden.');
   if (!geo.terrain.length && !geo.buildings.length) {
     throw new Error('Der Ausschnitt enthält keine Geometrie.');
@@ -4182,7 +4190,18 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
   // das Modell auf der Seite. (x, y, z) -> (x, -z, y) ist eine echte
   // Drehung, die Dreiecksreihenfolge bleibt also erhalten.
   function localize(p) {
+    if (absolute) return [TERRAIN.originE + p[0], TERRAIN.originN - p[2], p[1] + TERRAIN.zmin];
     return [p[0] - rectMinX, -(p[2] - rectMinZ), p[1]];
+  }
+  // Längen- oder Breitengrad als IfcCompoundPlaneAngleMeasure (Grad, Minuten, Sekunden, Millionstel; alle mit dem Vorzeichen)
+  function dms(deg) {
+    const sg = deg < 0 ? -1 : 1, v = Math.abs(deg);
+    let d = Math.floor(v), m = Math.floor((v - d) * 60), s = Math.floor(((v - d) * 60 - m) * 60);
+    let u = Math.round((((v - d) * 60 - m) * 60 - s) * 1e6);
+    if (u >= 1e6) { u -= 1e6; s++; }
+    if (s >= 60) { s -= 60; m++; }
+    if (m >= 60) { m -= 60; d++; }
+    return '(' + [d, m, s, u].map(function (x) { return sg * x; }).join(',') + ')';
   }
 
   // Der Besitzernachweis ist in IFC4 formal optional, die Referenz-
@@ -4204,20 +4223,38 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
   const bodyContext = add('IFCGEOMETRICREPRESENTATIONSUBCONTEXT',
     str('Body') + ',' + str('Model') + ',*,*,*,*,' + context + ',$,.MODEL_VIEW.,$');
 
+  // Beschreibung, Datum, Abbildung und Zone nur, wo sie sich aus dem EPSG-Code ableiten lassen
+  const crsDef = crsGeoDefinition(epsg);
+  let datum = '$', zone = '$';
+  if (crsDef && !crsDef.merc) {
+    if (epsg >= 31466 && epsg <= 31469) datum = 'DHDN';
+    else if (epsg >= 31254 && epsg <= 31256) datum = 'MGI';
+    else if (epsg >= 32601 && epsg <= 32660) datum = 'WGS84';
+    else datum = 'ETRS89';
+    if (epsg >= 25828 && epsg <= 25838) zone = (epsg - 25800) + 'N';
+    else if (epsg >= 32601 && epsg <= 32660) zone = (epsg - 32600) + 'N';
+    else if (epsg === 4647) zone = '32N';
+    else if (epsg === 5650) zone = '33N';
+  }
   const projectedCrs = add('IFCPROJECTEDCRS',
-    str('EPSG:' + epsg) + ',$,$,$,$,$,' + lengthUnit);
+    str('EPSG:' + epsg) + ',' + (EPSG_NAMES[epsg] ? str(EPSG_NAMES[epsg]) : '$') + ',' +
+    (datum === '$' ? '$' : str(datum)) + ',$,' + (crsDef && !crsDef.merc ? str('TransverseMercator') : '$') + ',' +
+    (zone === '$' ? '$' : str(zone)) + ',' + lengthUnit);
   // OrthogonalHeight: die reale Höhe, die lokal Z=0 entspricht. Lokal Z=0
   // ist TERRAIN.zmin (dort setzt auch die Höhe im Szenengraphen auf 0),
   // nicht 0 m ü. NHN.
   add('IFCMAPCONVERSION',
-    context + ',' + projectedCrs + ',' + num(target.e) + ',' + num(target.n) + ',' +
-    num(TERRAIN.zmin) + ',1.,0.,1.');
+    context + ',' + projectedCrs + ',' +
+    (absolute ? '0.,0.,0.' : num(target.e) + ',' + num(target.n) + ',' + num(TERRAIN.zmin)) + ',1.,0.,1.');
 
   const siteLocalPlacement = add('IFCLOCALPLACEMENT', '$,' + worldPlacement);
   const project = add('IFCPROJECT',
     str(ifcGuid()) + ',' + owner + ',' + str('Quick-Site-Design Ausschnitt') + ',$,$,$,$,(' + context + '),' + unitAssignment);
+  // Breite, Länge und Höhe der Baustelle für Programme, die nicht IfcMapConversion, sondern IfcSite auswerten
+  const siteGeo = crsToLonLat(epsg, target.e, target.n);
   const site = add('IFCSITE',
-    str(ifcGuid()) + ',' + owner + ',' + str('Baustelle') + ',$,$,' + siteLocalPlacement + ',$,$,.ELEMENT.,$,$,$,$,$');
+    str(ifcGuid()) + ',' + owner + ',' + str('Baustelle') + ',$,$,' + siteLocalPlacement + ',$,$,.ELEMENT.,' +
+    (siteGeo ? dms(siteGeo.lat) + ',' + dms(siteGeo.lon) + ',' + num(TERRAIN.zmin) : '$,$,$') + ',$,$');
   add('IFCRELAGGREGATES', str(ifcGuid()) + ',' + owner + ',$,$,' + project + ',(' + site + ')');
 
   const elements = [];

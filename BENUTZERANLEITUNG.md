@@ -231,8 +231,13 @@ enthalten.
 
 1. Auf **IFC Export** klicken. Die Ansicht wechselt in die Draufsicht.
 2. Auf dem Gelände ein **Rechteck aufziehen**. Zoomen ist währenddessen möglich.
-3. Im Fenster **IFC-Export** erscheinen Ausdehnung und Koordinatenbezug. **Exportieren** lädt die
-   Datei herunter, **Abbrechen** oder **Esc** bricht ab.
+3. Im Fenster **IFC-Export** erscheinen Ausdehnung und Koordinatenbezug. Unter **Koordinaten**
+   wählst du, wie die Lage in die Datei kommt: **absolut im Bezugssystem** (Voreinstellung:
+   Rechtswert, Hochwert und Höhe ü. NHN stehen direkt im Modell, sichtbar in jedem Programm)
+   oder **lokal** (kleine Zahlen ab der Nordwestecke, die Lage steckt in der Georeferenz
+   `IfcMapConversion`). Die Datei nennt außerdem das Bezugssystem (EPSG-Code, Datum, Zone) und
+   trägt Breite und Länge der Baustelle ein, wo sich das System umrechnen lässt.
+   **Exportieren** lädt die Datei herunter, **Abbrechen** oder **Esc** bricht ab.
 
 ---
 

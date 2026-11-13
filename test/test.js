@@ -497,6 +497,39 @@ test('terrainGridInRect: Dreiecke zeigen nach oben (sonst blenden IFC-Betrachter
   });
 });
 
+test('buildIfc: absolute Koordinaten - Rechtswert, Hochwert und Höhe ü. NHN stehen in der Geometrie, IfcMapConversion ist Nullversatz', function () {
+  terrainForExportTests();
+  const e0 = 692000, n0 = 5336000;
+  const ring = [e0 - 3, n0 - 3, 505, e0 + 3, n0 - 3, 505, e0 + 3, n0 + 3, 512, e0 - 3, n0 + 3, 512];
+  const geo = app.collectExportGeometry([ring], -10, -10, 10, 10);
+  const abs = app.buildIfc(geo, -10, -10, 25832, { coords: 'abs' });
+  const loc = app.buildIfc(geo, -10, -10, 25832, { coords: 'local' });
+  const pointLists = function (ifc) { return ifc.split('\n').filter(function (l) { return /IFCCARTESIANPOINTLIST3D/.test(l); }); };
+  const nums = function (line) { return line.slice(line.indexOf('LIST3D(') + 7).match(/-?\d+\.?\d*/g).map(Number); };
+  const absPts = nums(pointLists(abs)[0]);
+  const xs = absPts.filter(function (v, i) { return i % 3 === 0; }), ys = absPts.filter(function (v, i) { return i % 3 === 1; });
+  assert.ok(Math.min.apply(null, xs) > 691900 && Math.max.apply(null, xs) < 692100, 'Rechtswerte absolut');
+  assert.ok(Math.min.apply(null, ys) > 5335900 && Math.max.apply(null, ys) < 5336100, 'Hochwerte absolut');
+  const locPts = nums(pointLists(loc)[0]);
+  assert.ok(Math.max.apply(null, locPts.filter(function (v, i) { return i % 3 === 0; })) < 100, 'lokal bleibt klein');
+  assert.ok(/IFCMAPCONVERSION\(#\d+,#\d+,0\.,0\.,0\.,1\.,0\.,1\.\)/.test(abs), 'Nullversatz in IfcMapConversion');
+  assert.ok(/IFCMAPCONVERSION\(#\d+,#\d+,691990\.,5336010\.,500\./.test(loc), 'lokal trägt den Versatz');
+});
+
+test('buildIfc: IfcProjectedCRS nennt Beschreibung, Datum, Abbildung und Zone, IfcSite trägt Breite, Länge und Höhe', function () {
+  const { ifc } = ifcForFormatTests();
+  const crs = ifc.split('\n').filter(function (l) { return /IFCPROJECTEDCRS/.test(l); })[0];
+  assert.ok(crs.indexOf("'EPSG:25832'") > 0 && crs.indexOf("'ETRS89 / UTM 32N'") > 0 && crs.indexOf("'ETRS89'") > 0 &&
+            crs.indexOf("'TransverseMercator'") > 0 && crs.indexOf("'32N'") > 0, crs);
+  const site = ifc.split('\n').filter(function (l) { return /IFCSITE/.test(l); })[0];
+  assert.ok(/\.ELEMENT\.,\(48,\d+,\d+,\d+\),\(11,\d+,\d+,\d+\),500\./.test(site), site);
+  const unknown = app.buildIfc(app.collectExportGeometry([[692000, 5336000, 505, 692003, 5336000, 505, 692003, 5336003, 505]], -10, -10, 10, 10), -10, -10, 12345);
+  const site2 = unknown.split('\n').filter(function (l) { return /IFCSITE/.test(l); })[0];
+  assert.ok(site2.indexOf('.ELEMENT.,$,$,$') > 0, 'ohne umrechenbares System bleiben Breite und Länge leer');
+  const crs2 = unknown.split('\n').filter(function (l) { return /IFCPROJECTEDCRS/.test(l); })[0];
+  assert.ok(crs2.indexOf("'EPSG:12345',$,$,$,$,$,") > 0, crs2);
+});
+
 test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function () {
   terrainForExportTests();
   assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832); }, /Geometrie/);

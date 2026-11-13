@@ -209,6 +209,12 @@ hält das fest: 90 % der Punkte der acht Kurven (22,5–180°, R = 10 m) lagen i
 innerhalb von 7 cm. Neue Fahrzeuge oder RBSV-Werte: nur `SEMI_TRUCK` ändern und den
 Abgleich wiederholen, nicht Werte raten.
 
+**IFC-Koordinaten.** `buildIfc(..., {coords})`: `'abs'` (Voreinstellung der Oberfläche, Auswahl `ifc-coords`)
+schreibt Rechtswert, Hochwert und Höhe ü. NHN in die Geometrie, IfcMapConversion ist dann Nullversatz;
+`'local'` ist die IFC4-übliche Form (Geometrie ab der Nordwestecke, Lage in IfcMapConversion). In beiden
+Fällen nennt IfcProjectedCRS Beschreibung, Datum, Abbildung und Zone (nur wo aus dem EPSG-Code ableitbar)
+und IfcSite trägt RefLatitude/RefLongitude/RefElevation (über `crsToLonLat`). Mit ifcopenshell geprüft.
+
 **IFC-Export** muss strenge Leser bestehen: reines ASCII (Umlaute als `\X2\`),
 GUIDs mit erstem Zeichen 0–3, genaue Attributzahl je Entität, Gelände-Dreiecke
 nach oben gewickelt. Nach Änderungen an `buildIfc` einmal mit ifcopenshell

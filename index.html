@@ -183,6 +183,8 @@
   .file-status.ok { color: var(--accent); }
   .file-status.err { color: var(--danger); }
   .file-status.busy { color: var(--text-dim); }
+  #ifc-coords-note { font-size: 0.76em; color: var(--text-dim2); line-height: 1.35; margin-top: 5px; }
+  #ifc-coords { max-width: 150px; }
   #xyz-crs-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
   #xyz-crs-row .xyz-label { flex: 0 0 100%; font-size: 0.78em; color: var(--text-dim2); }
   #xyz-crs { flex: 1 1 120px; min-width: 0; }
@@ -391,7 +393,7 @@
   #status {
     display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
     background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
-    padding: 6px 13px; font-size: 0.86em; color: var(--accent); z-index: 20; max-width: calc(100vw - 2 * (var(--panel-w) + 28px));
+    padding: 6px 13px; font-size: 0.86em; color: var(--accent); z-index: 20; max-width: max(220px, calc(100vw - 2 * (var(--panel-w) + 28px)));
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   #status.error { border-color: var(--danger); color: var(--danger); }
@@ -663,6 +665,9 @@
   <div class="body">
     <div class="kv"><span class="k" data-i18n="ifcExtent">Ausdehnung</span><span class="v" id="ifc-extent">–</span></div>
     <div class="kv"><span class="k" data-i18n="ifcCrs">Koordinatenbezug</span><span class="v" id="ifc-crs">–</span></div>
+    <div class="kv"><span class="k" data-i18n="ifcCoords">Koordinaten</span>
+      <select id="ifc-coords"><option value="abs" data-i18n="ifcCoordsAbs">absolut im Bezugssystem</option><option value="local" data-i18n="ifcCoordsLocal">lokal (mit IfcMapConversion)</option></select></div>
+    <div id="ifc-coords-note" data-i18n="ifcCoordsNote">Absolut: Rechtswert, Hochwert und Höhe stehen direkt im Modell. Lokal: kleine Zahlen, die Lage steckt in der Georeferenz (IfcMapConversion).</div>
     <div class="file-status err" id="ifc-error"></div>
     <div id="ifc-actions">
       <button class="btn-block" id="ifc-cancel-btn" data-i18n="cancel">Abbrechen</button>
@@ -4829,10 +4834,18 @@ function ifcString(s) {
    gelisteten Systeme bräuchte für die DHDN/Gauß-Krüger-Fälle ein
    Umrechnungsgitter, das hier nicht mitgeliefert wird; lieber gar keine
    Wahl anbieten als eine, die für einen Teil der Codes lautlos falsch
-   läge). Alle Geometrie-Koordinaten liegen relativ zur Rechteck-
-   Südwestecke (übliche IFC-Praxis, vermeidet Präzisionsverlust durch
-   große UTM-Werte direkt in der Geometrie). */
-function buildIfc(geo, rectMinX, rectMinZ, epsg) {
+   läge).
+   Zwei Arten der Koordinaten (opts.coords):
+   'local' (Standard von buildIfc): Geometrie relativ zur Rechteck-Südwestecke,
+   die Lage steckt in IfcMapConversion - übliche IFC4-Praxis, kleine Zahlen,
+   viele Betrachter zeigen aber dann Werte nahe 0.
+   'abs': die Koordinaten im Bezugssystem stehen direkt in der Geometrie
+   (Rechtswert, Hochwert, Höhe ü. NHN); IfcMapConversion bleibt als Nullversatz
+   erhalten, damit das Bezugssystem benannt ist, ohne doppelt zu verschieben.
+   Die Oberfläche bietet 'abs' als Voreinstellung an, weil sonst "nicht
+   georeferenziert" gemeldet wurde. */
+function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
+  const absolute = !!(opts && opts.coords === 'abs');
   if (!TERRAIN) throw new Error('Bitte zuerst ein Geländemodell laden.');
   if (!geo.terrain.length && !geo.buildings.length) {
     throw new Error('Der Ausschnitt enthält keine Geometrie.');
@@ -4860,7 +4873,18 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
   // das Modell auf der Seite. (x, y, z) -> (x, -z, y) ist eine echte
   // Drehung, die Dreiecksreihenfolge bleibt also erhalten.
   function localize(p) {
+    if (absolute) return [TERRAIN.originE + p[0], TERRAIN.originN - p[2], p[1] + TERRAIN.zmin];
     return [p[0] - rectMinX, -(p[2] - rectMinZ), p[1]];
+  }
+  // Längen- oder Breitengrad als IfcCompoundPlaneAngleMeasure (Grad, Minuten, Sekunden, Millionstel; alle mit dem Vorzeichen)
+  function dms(deg) {
+    const sg = deg < 0 ? -1 : 1, v = Math.abs(deg);
+    let d = Math.floor(v), m = Math.floor((v - d) * 60), s = Math.floor(((v - d) * 60 - m) * 60);
+    let u = Math.round((((v - d) * 60 - m) * 60 - s) * 1e6);
+    if (u >= 1e6) { u -= 1e6; s++; }
+    if (s >= 60) { s -= 60; m++; }
+    if (m >= 60) { m -= 60; d++; }
+    return '(' + [d, m, s, u].map(function (x) { return sg * x; }).join(',') + ')';
   }
 
   // Der Besitzernachweis ist in IFC4 formal optional, die Referenz-
@@ -4882,20 +4906,38 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg) {
   const bodyContext = add('IFCGEOMETRICREPRESENTATIONSUBCONTEXT',
     str('Body') + ',' + str('Model') + ',*,*,*,*,' + context + ',$,.MODEL_VIEW.,$');
 
+  // Beschreibung, Datum, Abbildung und Zone nur, wo sie sich aus dem EPSG-Code ableiten lassen
+  const crsDef = crsGeoDefinition(epsg);
+  let datum = '$', zone = '$';
+  if (crsDef && !crsDef.merc) {
+    if (epsg >= 31466 && epsg <= 31469) datum = 'DHDN';
+    else if (epsg >= 31254 && epsg <= 31256) datum = 'MGI';
+    else if (epsg >= 32601 && epsg <= 32660) datum = 'WGS84';
+    else datum = 'ETRS89';
+    if (epsg >= 25828 && epsg <= 25838) zone = (epsg - 25800) + 'N';
+    else if (epsg >= 32601 && epsg <= 32660) zone = (epsg - 32600) + 'N';
+    else if (epsg === 4647) zone = '32N';
+    else if (epsg === 5650) zone = '33N';
+  }
   const projectedCrs = add('IFCPROJECTEDCRS',
-    str('EPSG:' + epsg) + ',$,$,$,$,$,' + lengthUnit);
+    str('EPSG:' + epsg) + ',' + (EPSG_NAMES[epsg] ? str(EPSG_NAMES[epsg]) : '$') + ',' +
+    (datum === '$' ? '$' : str(datum)) + ',$,' + (crsDef && !crsDef.merc ? str('TransverseMercator') : '$') + ',' +
+    (zone === '$' ? '$' : str(zone)) + ',' + lengthUnit);
   // OrthogonalHeight: die reale Höhe, die lokal Z=0 entspricht. Lokal Z=0
   // ist TERRAIN.zmin (dort setzt auch die Höhe im Szenengraphen auf 0),
   // nicht 0 m ü. NHN.
   add('IFCMAPCONVERSION',
-    context + ',' + projectedCrs + ',' + num(target.e) + ',' + num(target.n) + ',' +
-    num(TERRAIN.zmin) + ',1.,0.,1.');
+    context + ',' + projectedCrs + ',' +
+    (absolute ? '0.,0.,0.' : num(target.e) + ',' + num(target.n) + ',' + num(TERRAIN.zmin)) + ',1.,0.,1.');
 
   const siteLocalPlacement = add('IFCLOCALPLACEMENT', '$,' + worldPlacement);
   const project = add('IFCPROJECT',
     str(ifcGuid()) + ',' + owner + ',' + str('Quick-Site-Design Ausschnitt') + ',$,$,$,$,(' + context + '),' + unitAssignment);
+  // Breite, Länge und Höhe der Baustelle für Programme, die nicht IfcMapConversion, sondern IfcSite auswerten
+  const siteGeo = crsToLonLat(epsg, target.e, target.n);
   const site = add('IFCSITE',
-    str(ifcGuid()) + ',' + owner + ',' + str('Baustelle') + ',$,$,' + siteLocalPlacement + ',$,$,.ELEMENT.,$,$,$,$,$');
+    str(ifcGuid()) + ',' + owner + ',' + str('Baustelle') + ',$,$,' + siteLocalPlacement + ',$,$,.ELEMENT.,' +
+    (siteGeo ? dms(siteGeo.lat) + ',' + dms(siteGeo.lon) + ',' + num(TERRAIN.zmin) : '$,$,$') + ',$,$');
   add('IFCRELAGGREGATES', str(ifcGuid()) + ',' + owner + ',$,$,' + project + ',(' + site + ')');
 
   const elements = [];
@@ -5059,6 +5101,8 @@ const STRINGS = {
     geoportals: 'Geoportale', geoportalsTip: 'Tabelle der Geoportale der Bundesländer (GitHub)',
     geoportalUrl: 'https://github.com/Mucnese/quick-site-design#datenquellen',
     tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände und Gebäude als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
+    ifcCoords: 'Koordinaten', ifcCoordsAbs: 'absolut im Bezugssystem', ifcCoordsLocal: 'lokal (mit IfcMapConversion)',
+    ifcCoordsNote: 'Absolut: Rechtswert, Hochwert und Höhe stehen direkt im Modell. Lokal: kleine Zahlen, die Lage steckt in der Georeferenz (IfcMapConversion).',
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'DGM-Rasterung', unit: 'Einheit', unitMeter: 'Meter',
@@ -5181,6 +5225,8 @@ const STRINGS = {
     geoportals: 'Geoportals', geoportalsTip: 'Table of the German state geoportals (GitHub)',
     geoportalUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/README.en.md#where-to-get-the-data',
     tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain and buildings as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
+    ifcCoords: 'Coordinates', ifcCoordsAbs: 'absolute in the CRS', ifcCoordsLocal: 'local (with IfcMapConversion)',
+    ifcCoordsNote: 'Absolute: easting, northing and height are written directly into the model. Local: small numbers, the position is in the georeference (IfcMapConversion).',
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'DTM grid', unit: 'Unit', unitMeter: 'Metre',
@@ -7030,7 +7076,9 @@ function getExportGeometry() { return exportGeometry; }
 function runIfcExport() {
   const errEl = document.getElementById('ifc-error');
   try {
-    const ifc = buildIfc(exportGeometry, exportRect.minX, exportRect.minZ, TERRAIN.epsg);
+    const modeEl = document.getElementById('ifc-coords');
+    const ifc = buildIfc(exportGeometry, exportRect.minX, exportRect.minZ, TERRAIN.epsg,
+                         { coords: modeEl && modeEl.value === 'local' ? 'local' : 'abs' });
     downloadText(ifc, 'quick-site-design-export.ifc');
     errEl.textContent = '';
     setStatus(T('msgIfcExported'));

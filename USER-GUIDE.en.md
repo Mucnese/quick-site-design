@@ -228,8 +228,13 @@ containers are not included.
 
 1. Click **IFC export**. The view switches to the top view.
 2. **Drag a rectangle** on the terrain. Zooming is possible meanwhile.
-3. The **IFC export** window shows the extent and the coordinate reference. **Export** downloads
-   the file, **Cancel** or **Esc** aborts.
+3. The **IFC export** window shows the extent and the coordinate reference. Under **Coordinates**
+   you choose how the position gets into the file: **absolute in the CRS** (default: easting,
+   northing and height above sea level are written directly into the model, visible in any
+   program) or **local** (small numbers from the north-west corner, the position is in the
+   georeference `IfcMapConversion`). The file also names the coordinate system (EPSG code, datum,
+   zone) and carries latitude and longitude of the site where the system can be converted.
+   **Export** downloads the file, **Cancel** or **Esc** aborts.
 
 ---
 

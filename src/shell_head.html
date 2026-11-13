@@ -183,6 +183,8 @@
   .file-status.ok { color: var(--accent); }
   .file-status.err { color: var(--danger); }
   .file-status.busy { color: var(--text-dim); }
+  #ifc-coords-note { font-size: 0.76em; color: var(--text-dim2); line-height: 1.35; margin-top: 5px; }
+  #ifc-coords { max-width: 150px; }
   #xyz-crs-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
   #xyz-crs-row .xyz-label { flex: 0 0 100%; font-size: 0.78em; color: var(--text-dim2); }
   #xyz-crs { flex: 1 1 120px; min-width: 0; }
@@ -391,7 +393,7 @@
   #status {
     display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
     background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
-    padding: 6px 13px; font-size: 0.86em; color: var(--accent); z-index: 20; max-width: calc(100vw - 2 * (var(--panel-w) + 28px));
+    padding: 6px 13px; font-size: 0.86em; color: var(--accent); z-index: 20; max-width: max(220px, calc(100vw - 2 * (var(--panel-w) + 28px)));
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   #status.error { border-color: var(--danger); color: var(--danger); }
@@ -663,6 +665,9 @@
   <div class="body">
     <div class="kv"><span class="k" data-i18n="ifcExtent">Ausdehnung</span><span class="v" id="ifc-extent">–</span></div>
     <div class="kv"><span class="k" data-i18n="ifcCrs">Koordinatenbezug</span><span class="v" id="ifc-crs">–</span></div>
+    <div class="kv"><span class="k" data-i18n="ifcCoords">Koordinaten</span>
+      <select id="ifc-coords"><option value="abs" data-i18n="ifcCoordsAbs">absolut im Bezugssystem</option><option value="local" data-i18n="ifcCoordsLocal">lokal (mit IfcMapConversion)</option></select></div>
+    <div id="ifc-coords-note" data-i18n="ifcCoordsNote">Absolut: Rechtswert, Hochwert und Höhe stehen direkt im Modell. Lokal: kleine Zahlen, die Lage steckt in der Georeferenz (IfcMapConversion).</div>
     <div class="file-status err" id="ifc-error"></div>
     <div id="ifc-actions">
       <button class="btn-block" id="ifc-cancel-btn" data-i18n="cancel">Abbrechen</button>
