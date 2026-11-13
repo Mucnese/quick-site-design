@@ -41,6 +41,8 @@ function makeElement() {
       contains: function () { return false; }
     },
     appendChild: function (c) { this.children.push(c); return c; },
+    setAttribute: function (k, v) { this['attr_' + k] = v; },
+    focus: function () {},
     _listeners: {},
     addEventListener: function (type, fn) { (this._listeners[type] = this._listeners[type] || []).push(fn); },
     removeEventListener: function () {},
@@ -130,7 +132,9 @@ function newScope() {
     },
     setTimeout: function () { return 0; },
     clearTimeout: function () {},
-    requestAnimationFrame: function () {}
+    requestAnimationFrame: function () {},
+    fetch: function () { return global.fetch.apply(null, arguments); },
+    AbortController: AbortController
   };
   vm.createContext(sandbox);
 
@@ -990,6 +994,43 @@ await test('XYZ-Datei: ein Code, der die Koordinaten weit außerhalb Europas leg
   g('xyz-epsg').value = '32660';                  // UTM 60N: Zone am anderen Ende der Welt
   await s.handleDemFiles([xyzFile('x.xyz', 4)]);
   assert.ok(g('dem-status').textContent.indexOf('außerhalb Europas') >= 0, g('dem-status').textContent);
+});
+
+await test('Adressleiste: Platzhalter, Vorschläge, Wahl zeigt Links zu DGM und Gebäudemodell, Hinweis zur Übertragung', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  s.renderAddrUi();
+  assert.strictEqual(g('addr-input').placeholder, 'Wo ist deine Baustelle?');
+  assert.ok(g('addr-note').textContent.indexOf('photon.komoot.io') >= 0 && g('addr-note').textContent.indexOf('IP-Adresse') > 0);
+  global.fetch = function () { return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ features: [
+    { geometry: { coordinates: [11.57, 48.13] }, properties: { name: 'Marienplatz', postcode: '80331', city: 'München', state: 'Bayern', countrycode: 'DE' } },
+    { geometry: { coordinates: [11.39, 47.26] }, properties: { street: 'Maria-Theresien-Straße', housenumber: '4', city: 'Innsbruck', state: 'Tirol', countrycode: 'AT' } }] }); } }); };
+  const ul = g('addr-list');
+  await s.runAddrSearch('Marienplatz');
+  assert.strictEqual(ul.style.display, 'block');
+  assert.ok(ul.textContent.indexOf('Marienplatz') >= 0 && ul.textContent.indexOf('80331 München, Bayern') > 0, ul.textContent);
+  s.chooseAddr(0);
+  const res = g('addr-result');
+  assert.strictEqual(res.style.display, 'block');
+  assert.ok(res.textContent.indexOf(s.T('addrDem')) >= 0 && res.textContent.indexOf(s.T('addrBldg')) >= 0, res.textContent);
+  assert.ok(res.textContent.indexOf('geodaten.bayern.de') >= 0, res.textContent);
+  assert.ok(res.textContent.indexOf('GeoTIFF') >= 0);
+  assert.strictEqual(ul.style.display, 'none');
+  // Österreich: Bund (BEV) und Hinweis zum Gebäudemodell
+  await s.runAddrSearch('Maria');
+  s.chooseAddr(1);
+  assert.ok(g('addr-result').textContent.indexOf('www.bev.gv.at') >= 0, g('addr-result').textContent);
+  assert.ok(g('addr-result').textContent.indexOf('kein landesweites') >= 0 || g('addr-result').textContent.indexOf('Gebäudemodell') > 0);
+  // Englisch
+  s.__bridge.SETTINGS.language = 'en';
+  s.renderAddrUi();
+  assert.strictEqual(g('addr-input').placeholder, 'Where is your construction site?');
+  assert.ok(g('addr-result').textContent.indexOf('Terrain model') >= 0);
+  // Fehler der Suche
+  global.fetch = function () { return Promise.reject(new Error('offline')); };
+  await s.runAddrSearch('Berlin');
+  assert.ok(ul.textContent.indexOf('not reachable') >= 0, ul.textContent);
+  delete global.fetch;
 });
 
 /* ---------- Punktkoordinaten-Fenster ---------- */

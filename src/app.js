@@ -627,6 +627,154 @@ function crsLabel(code) {
 }
 
 /* =========================================================
+   Standortsuche: Adresse -> Datenquellen
+   Die Anwendung lädt nichts herunter. Sie schlägt zu einer Adresse Orte vor
+   (Photon, photon.komoot.io, OpenStreetMap-Daten - nur auf Eingabe, siehe
+   Datenschutzerklärung) und nennt für das Bundesland bzw. Österreich die Seite
+   für das Geländemodell (DGM) und das Gebäudemodell (LoD2). Die Links entsprechen
+   der Tabelle in README.md (Stand November 2026).
+   fmt: 'tif' = GeoTIFF, 'xyz' = XYZ-Text (wird direkt geladen), 'unclear' = unklar.
+   note: Schlüssel für einen Hinweis (siehe STRINGS: geoNote_...). */
+const GEO_ENTRIES = {
+  'Baden-Württemberg': {
+    dem: { url: 'https://opengeodata.lgl-bw.de/', fmt: 'xyz', note: 'dgm025' },
+    bldg: { url: 'https://opengeodata.lgl-bw.de/' }
+  },
+  'Bayern': {
+    dem: { url: 'https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1', fmt: 'tif' },
+    bldg: { url: 'https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=lod2' }
+  },
+  'Berlin': {
+    dem: { url: 'https://data.geobasis-bb.de/geobasis/daten/dgm/', fmt: 'tif', note: 'berlin' },
+    bldg: { url: 'https://gdi.berlin.de/geonetwork/srv/api/records/3c7c49af-00a4-3bcd-bc00-20e7f0f1b7bf' }
+  },
+  'Brandenburg': {
+    dem: { url: 'https://data.geobasis-bb.de/geobasis/daten/dgm/tif/', fmt: 'tif' },
+    bldg: { url: 'https://data.geobasis-bb.de/geobasis/daten/3d_gebaeude/' }
+  },
+  'Bremen': {
+    dem: { url: 'https://gdk.gdi-de.org/geonetwork/srv/api/records/C448202A-0F15-413A-99E6-F22F10E190C9', fmt: 'xyz', note: 'catalog' },
+    bldg: { url: 'https://www.geo.bremen.de/produkte/3d-produkte/3d-gebaeudemodelle-11892' }
+  },
+  'Hamburg': {
+    dem: { url: 'https://metaver.de/trefferanzeige?docuuid=A39B4E86-15E2-4BF7-BA82-66F9913D5640', fmt: 'xyz' },
+    bldg: { url: 'https://metaver.de/trefferanzeige?docuuid=1F6E48EB-3B7B-4F61-AE3C-C03079ECCAEA' }
+  },
+  'Hessen': {
+    dem: { url: 'https://hvbg.hessen.de/landesvermessung/geotopographie/3d-daten/digitale-gelaendemodelle', fmt: 'tif' },
+    bldg: { url: 'https://hvbg.hessen.de/landesvermessung/geotopographie/3d-daten/3d-gebaeudemodelle' }
+  },
+  'Mecklenburg-Vorpommern': {
+    dem: { url: 'https://laiv.geodaten-mv.de/afgvk/Geotopographie/Download?produkt=DGM1', fmt: 'tif' },
+    bldg: { url: 'https://laiv.geodaten-mv.de/afgvk/Geotopographie/Beschreibung?produkt=3DGbm' }
+  },
+  'Niedersachsen': {
+    dem: { url: 'https://ni-lgln-opengeodata.hub.arcgis.com/pages/digitales-gel-ndemodell-dgm1', fmt: 'tif' },
+    bldg: { url: 'https://ni-lgln-opengeodata.hub.arcgis.com/pages/3d-geb-udemodell-lod2' }
+  },
+  'Nordrhein-Westfalen': {
+    dem: { url: 'https://www.opengeodata.nrw.de/produkte/geobasis/hm/dgm1_tiff/', fmt: 'tif' },
+    bldg: { url: 'https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/' }
+  },
+  'Rheinland-Pfalz': {
+    dem: { url: 'https://geoshop.rlp.de/opendata-dgm1.html', fmt: 'xyz' },
+    bldg: { url: 'https://geoshop.rlp.de/opendata-geb3dlo.html' }
+  },
+  'Saarland': {
+    dem: { url: 'https://www.saarland.de/lvgl/DE/themen-aufgaben/themen/geotopographie/digitalegelaendemodelle/digitalegelaendemodelle', fmt: 'unclear', note: 'saarland' },
+    bldg: null, bldgNote: 'servicesOnly'
+  },
+  'Sachsen': {
+    dem: { url: 'https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html', fmt: 'tif' },
+    bldg: { url: 'https://www.geodaten.sachsen.de/downloadbereich-digitale-3d-stadtmodelle-4875.html' }
+  },
+  'Sachsen-Anhalt': {
+    dem: { url: 'https://www.lvermgeo.sachsen-anhalt.de/de/gdp-dgm-dom-lsa.html', fmt: 'tif' },
+    bldg: { url: 'https://www.lvermgeo.sachsen-anhalt.de/de/gdp-3d-gebaeudemodell.html' }
+  },
+  'Schleswig-Holstein': {
+    dem: { url: 'https://opendata.schleswig-holstein.de/dataset/digitales-gelandemodell-1-dgm1', fmt: 'xyz' },
+    bldg: { url: 'https://www.schleswig-holstein.de/DE/landesregierung/ministerien-behoerden/LVERMGEOSH/Themen/themaOpenGbd', note: 'unverified' }
+  },
+  'Thüringen': {
+    dem: { url: 'https://tlbg.thueringen.de/geobasisdaten/3d-informationen/digitale-gelaendemodelle', fmt: 'tif' },
+    bldg: { url: 'https://tlbg.thueringen.de/geobasisdaten/3d-informationen/3d-gebaeudemodelle' }
+  }
+};
+
+// Österreich: Bund (BEV) für alle, dazu Länder bzw. Städte mit eigenem Angebot
+const GEO_AT_FEDERAL = [
+  { url: 'https://www.bev.gv.at/Services/Produkte/Digitales-Gelaendehoehenmodell/ALS-Hoehenraster.html', fmt: 'tif', note: 'epsg3035', label: 'BEV 1 m' },
+  { url: 'https://www.data.gv.at/katalog/dataset/d88a1246-9684-480b-a480-ff63286b35b7', fmt: 'tif', label: 'Österreich 10 m' }
+];
+const GEO_AT_STATES = {
+  'Wien': {
+    dem: { url: 'https://www.data.gv.at/katalog/dataset/1eda4b16-05e3-43c3-b5b0-ef8276df0701', fmt: 'tif' },
+    bldg: { url: 'https://www.data.gv.at/katalog/dataset/86d88cae-ad97-4476-bae5-73488a12776d' }
+  },
+  'Tirol': { dem: { url: 'https://www.data.gv.at/katalog/dataset/0454f5f3-1d8c-464e-847d-541901eb021a', fmt: 'tif' } },
+  'Salzburg': { dem: { url: 'https://www.data.gv.at/katalog/dataset/093d4dec-8397-4faf-b690-b8cbe9a9dc31', fmt: 'tif', note: 'asc' } },
+  'Oberösterreich': { dem: { url: 'https://www.data.gv.at/katalog/dataset/68cfe491-7cdf-4781-a1f1-603cd0738abd', fmt: 'tif' } },
+  'Burgenland': { dem: { url: 'https://geodaten.bgld.gv.at/de/downloads/hoehenmodelle-orthofotos.html', fmt: 'unclear', note: 'unverified' } }
+};
+const GEO_AT_LINZ_BLDG = { url: 'https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e' };
+
+/* Datenquellen zu einem Ort ({country: 'DE'|'AT'|..., state, city}); liefert
+   {country, region, dem: [...], bldg: [...], bldgNote} oder null, wenn nichts hinterlegt ist */
+function geoSourcesFor(place) {
+  if (!place) return null;
+  const cc = String(place.country || '').toUpperCase();
+  if (cc === 'DE') {
+    const e = GEO_ENTRIES[place.state];
+    if (!e) return null;
+    return { country: 'DE', region: place.state, dem: [e.dem], bldg: e.bldg ? [e.bldg] : [], bldgNote: e.bldgNote || null };
+  }
+  if (cc === 'AT') {
+    const e = GEO_AT_STATES[place.state] || {};
+    const dem = [];
+    if (e.dem) dem.push(Object.assign({ label: place.state }, e.dem));
+    GEO_AT_FEDERAL.forEach(function (f) { dem.push(f); });
+    const bldg = [];
+    if (e.bldg) bldg.push(Object.assign({ label: place.state }, e.bldg));
+    if (place.city === 'Linz') bldg.push(Object.assign({ label: 'Linz' }, GEO_AT_LINZ_BLDG));
+    return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: bldg.length ? null : 'noAtBldg' };
+  }
+  return null;
+}
+
+const PHOTON_URL = 'https://photon.komoot.io/api/';
+const PHOTON_BBOX = '5.8,45.7,17.2,55.1';        // Deutschland, Österreich und Nachbarschaft
+
+/* Wandelt die Antwort von Photon in Vorschläge um; nur Deutschland und Österreich */
+function parsePhoton(json) {
+  const out = [];
+  const feats = (json && json.features) || [];
+  feats.forEach(function (f) {
+    const p = f.properties || {}, g = f.geometry && f.geometry.coordinates;
+    const cc = String(p.countrycode || '').toUpperCase();
+    if (!g || g.length < 2 || (cc !== 'DE' && cc !== 'AT')) return;
+    const street = p.street ? p.street + (p.housenumber ? ' ' + p.housenumber : '') : '';
+    const main = p.name && p.name !== p.street ? p.name + (street ? ', ' + street : '') : (street || p.name || p.city || '');
+    const place = [p.postcode, p.city || p.town || p.village || p.district || ''].filter(Boolean).join(' ');
+    const sub = [place, p.state].filter(Boolean).join(', ');
+    if (!main) return;
+    const key = main + '|' + sub;
+    if (out.some(function (o) { return o.key === key; })) return;
+    out.push({ key: key, main: main, sub: sub, lon: g[0], lat: g[1],
+               country: cc, state: p.state || '', city: p.city || p.town || p.village || '' });
+  });
+  return out.slice(0, 5);
+}
+
+/* Fragt Photon nach Vorschlägen; signal: AbortSignal zum Abbrechen veralteter Anfragen */
+async function photonSearch(query, signal) {
+  const url = PHOTON_URL + '?q=' + encodeURIComponent(query) + '&lang=de&limit=10&bbox=' + PHOTON_BBOX;
+  const res = await fetch(url, signal ? { signal: signal } : undefined);
+  if (!res.ok) throw new Error('Photon: HTTP ' + res.status);
+  return parsePhoton(await res.json());
+}
+
+/* =========================================================
    Karte (OpenStreetMap) als Grundlage
    Nur auf Wunsch (Schalter, Standard aus): lädt Kartenkacheln von
    tile.openstreetmap.org und legt sie als Farbe über das Gelände. Dabei
@@ -4255,6 +4403,10 @@ if (typeof module !== 'undefined' && module.exports) {
     XYZ_MAX_POINTS: XYZ_MAX_POINTS,
     readTiffTile: readTiffTile,
     readTiffTiles: readTiffTiles,
+    GEO_ENTRIES: GEO_ENTRIES,
+    geoSourcesFor: geoSourcesFor,
+    parsePhoton: parsePhoton,
+    photonSearch: photonSearch,
     crsToLonLat: crsToLonLat,
     crsGeoDefinition: crsGeoDefinition,
     osmMapPlan: osmMapPlan,

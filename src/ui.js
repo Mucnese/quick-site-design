@@ -30,6 +30,21 @@ const STRINGS = {
     osmNoCrs: 'Das Bezugssystem {c} lässt sich nicht in Längen- und Breitengrad umrechnen.',
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
+    addrPlaceholder: 'Wo ist deine Baustelle?',
+    addrNote: 'Vorschläge von photon.komoot.io; Eingabe und IP-Adresse werden übertragen.',
+    addrSearching: 'Suche …', addrNone: 'Keine Treffer.', addrError: 'Die Suche ist gerade nicht erreichbar.',
+    addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Deutschland und Österreich).',
+    addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD2)',
+    geoFmtTif: 'GeoTIFF, direkt ladbar', geoFmtXyz: 'XYZ-Text, direkt ladbar (Bezugssystem wählen)', geoFmtUnclear: 'Format unklar',
+    geoNote_dgm025: 'Das DGM1 gibt es hier nur als XYZ-Text, GeoTIFF nur beim DGM025 (0,25 m).',
+    geoNote_berlin: 'Berlin liegt vermutlich in den Brandenburg-Daten (nicht geprüft).',
+    geoNote_catalog: 'Katalogeintrag, nicht selbst geprüft.',
+    geoNote_saarland: 'Seite ohne Download, Lizenz unklar.',
+    geoNote_epsg3035: 'Sehr große Kacheln, vorher Ausschnitt schneiden. Koordinaten in EPSG:3035, die Karte funktioniert damit nicht.',
+    geoNote_asc: 'Gemeindeweise als TIF und ASCII.',
+    geoNote_unverified: 'Nicht geprüft.',
+    geoNote_servicesOnly: 'Kein Download gefunden, nur Dienste.',
+    geoNote_noAtBldg: 'Es gibt kein landesweites 3D-Gebäudemodell.',
     xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
     xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
@@ -120,6 +135,21 @@ const STRINGS = {
     osmNoCrs: 'The coordinate system {c} cannot be converted to latitude and longitude.',
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
+    addrPlaceholder: 'Where is your construction site?',
+    addrNote: 'Suggestions from photon.komoot.io; input and IP address are transmitted.',
+    addrSearching: 'Searching …', addrNone: 'No results.', addrError: 'The search is not reachable right now.',
+    addrOnlyDeAt: 'No data sources are listed for this place (Germany and Austria only).',
+    addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD2)',
+    geoFmtTif: 'GeoTIFF, loads directly', geoFmtXyz: 'XYZ text, loads directly (choose the coordinate system)', geoFmtUnclear: 'Format unclear',
+    geoNote_dgm025: 'The DGM1 is only offered as XYZ text here, GeoTIFF only for the DGM025 (0.25 m).',
+    geoNote_berlin: 'Berlin is probably part of the Brandenburg data (not checked).',
+    geoNote_catalog: 'Catalogue entry, not checked myself.',
+    geoNote_saarland: 'Page without a download, licence unclear.',
+    geoNote_epsg3035: 'Very large tiles, cut out an area first. Coordinates in EPSG:3035, the map does not work with it.',
+    geoNote_asc: 'Per municipality as TIF and ASCII.',
+    geoNote_unverified: 'Not checked.',
+    geoNote_servicesOnly: 'No download found, services only.',
+    geoNote_noAtBldg: 'There is no nationwide 3D building model.',
     xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
     xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
@@ -528,6 +558,7 @@ function refreshTexts() {
   refreshAttribution();
   renderOsmUi();
   buildXyzCrsOptions();
+  renderAddrUi();
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -1440,6 +1471,155 @@ function demStatusText(t) {
   return st;
 }
 
+/* ---------- Standortsuche (Adressleiste) ----------
+   Vorschläge von Photon beim Tippen (mind. 3 Zeichen, 350 ms Pause); nach der Wahl
+   stehen Links zur DGM- und zur Gebäudemodell-Seite des Landes darunter. */
+let addrTimer = null, addrAbort = null, addrItems = [], addrSel = -1, addrSeq = 0, addrPlace = null;
+
+function addrHost(url) {
+  try { return new URL(url).hostname; } catch (e) { return url; }
+}
+
+function renderAddrUi() {
+  const inp = document.getElementById('addr-input');
+  if (!inp) return;
+  inp.placeholder = T('addrPlaceholder');
+  inp.setAttribute('aria-label', T('addrPlaceholder'));
+  document.getElementById('addr-note').textContent = T('addrNote');
+  renderAddrResult();
+}
+
+function renderAddrList(message) {
+  const ul = document.getElementById('addr-list');
+  ul.innerHTML = '';
+  const inp = document.getElementById('addr-input');
+  if (message) {
+    const li = document.createElement('li');
+    li.className = 'none';
+    li.textContent = message;
+    ul.appendChild(li);
+  } else {
+    addrItems.forEach(function (it, i) {
+      const li = document.createElement('li');
+      li.className = i === addrSel ? 'sel' : '';
+      li.setAttribute('role', 'option');
+      const m = document.createElement('span'); m.className = 'm'; m.textContent = it.main;
+      li.appendChild(m);
+      if (it.sub) { const s = document.createElement('span'); s.className = 's'; s.textContent = it.sub; li.appendChild(s); }
+      // mousedown statt click: das Eingabefeld darf den Fokus nicht vorher verlieren
+      li.addEventListener('mousedown', function (e) { if (e.preventDefault) e.preventDefault(); chooseAddr(i); });
+      ul.appendChild(li);
+    });
+  }
+  const open = !!message || addrItems.length > 0;
+  ul.style.display = open ? 'block' : 'none';
+  inp.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+async function runAddrSearch(q) {
+  const seq = ++addrSeq;
+  if (addrAbort && addrAbort.abort) addrAbort.abort();
+  addrAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  renderAddrList(T('addrSearching'));
+  try {
+    const items = await photonSearch(q, addrAbort ? addrAbort.signal : null);
+    if (seq !== addrSeq) return;
+    addrItems = items; addrSel = items.length ? 0 : -1;
+    renderAddrList(items.length ? null : T('addrNone'));
+  } catch (e) {
+    if (seq !== addrSeq || (e && e.name === 'AbortError')) return;
+    addrItems = []; addrSel = -1;
+    renderAddrList(T('addrError'));
+  }
+}
+
+function onAddrInput() {
+  const q = document.getElementById('addr-input').value.trim();
+  if (addrTimer) clearTimeout(addrTimer);
+  addrSeq++;
+  if (addrAbort && addrAbort.abort) addrAbort.abort();
+  if (q.length < 3) { addrItems = []; addrSel = -1; renderAddrList(null); return; }
+  addrTimer = setTimeout(function () { runAddrSearch(q); }, 350);
+}
+
+function chooseAddr(i) {
+  const it = addrItems[i];
+  if (!it) return;
+  addrPlace = it;
+  document.getElementById('addr-input').value = it.main + (it.sub ? ', ' + it.sub : '');
+  addrItems = []; addrSel = -1;
+  renderAddrList(null);
+  renderAddrResult();
+}
+
+function onAddrKey(e) {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!addrItems.length) return;
+    addrSel = (addrSel + (e.key === 'ArrowDown' ? 1 : addrItems.length - 1)) % addrItems.length;
+    renderAddrList(null);
+    if (e.preventDefault) e.preventDefault();
+  } else if (e.key === 'Enter') {
+    if (addrSel >= 0) chooseAddr(addrSel);
+    if (e.preventDefault) e.preventDefault();
+  } else if (e.key === 'Escape') {
+    addrItems = []; addrSel = -1;
+    renderAddrList(null);
+  }
+}
+
+function addrRow(src, kind) {
+  const row = document.createElement('div');
+  row.className = 'addr-row';
+  const a = document.createElement('a');
+  a.href = src.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  a.textContent = (src.label ? src.label + ' · ' : '') + addrHost(src.url) + ' ↗';
+  row.appendChild(a);
+  if (kind === 'dem' && src.fmt) {
+    const f = document.createElement('div');
+    f.className = 'addr-fmt' + (src.fmt === 'tif' ? '' : ' warn');
+    f.textContent = T(src.fmt === 'tif' ? 'geoFmtTif' : (src.fmt === 'xyz' ? 'geoFmtXyz' : 'geoFmtUnclear'));
+    row.appendChild(f);
+  }
+  if (src.note) {
+    const n = document.createElement('div');
+    n.className = 'addr-note';
+    n.textContent = T('geoNote_' + src.note);
+    row.appendChild(n);
+  }
+  return row;
+}
+
+function renderAddrResult() {
+  const box = document.getElementById('addr-result');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!addrPlace) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const title = document.createElement('div');
+  title.className = 'addr-place';
+  title.textContent = addrPlace.main;
+  box.appendChild(title);
+  const src = geoSourcesFor(addrPlace);
+  if (!src) {
+    const n = document.createElement('div');
+    n.className = 'addr-note';
+    n.textContent = T('addrOnlyDeAt');
+    box.appendChild(n);
+    return;
+  }
+  const grp = function (key) { const g = document.createElement('div'); g.className = 'addr-grp'; g.textContent = T(key); box.appendChild(g); };
+  grp('addrDem');
+  src.dem.forEach(function (d) { box.appendChild(addrRow(d, 'dem')); });
+  grp('addrBldg');
+  src.bldg.forEach(function (b) { box.appendChild(addrRow(b, 'bldg')); });
+  if (src.bldgNote) {
+    const n = document.createElement('div');
+    n.className = 'addr-note';
+    n.textContent = T('geoNote_' + src.bldgNote);
+    box.appendChild(n);
+  }
+}
+
 /* ---------- Bezugssystem für XYZ-Dateien ----------
    XYZ-Dateien tragen kein Bezugssystem. Auswahlfeld mit gängigen Systemen plus
    Eingabefeld für einen beliebigen EPSG-Code; bis eines gewählt ist, bleiben die
@@ -2118,6 +2298,11 @@ function initUI() {
     palette.appendChild(card);
   });
 
+  renderAddrUi();
+  const addr = document.getElementById('addr-input');
+  addr.addEventListener('input', onAddrInput);
+  addr.addEventListener('keydown', onAddrKey);
+  addr.addEventListener('blur', function () { addrItems = []; addrSel = -1; renderAddrList(null); });
   buildXyzCrsOptions();
   document.getElementById('xyz-crs').addEventListener('change', onXyzCrsChanged);
   document.getElementById('xyz-epsg').addEventListener('change', onXyzCrsChanged);

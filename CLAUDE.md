@@ -77,6 +77,14 @@ Rasterweite = häufigster Koordinatenabstand, Punkte gelten als Zellmitten, Lüc
 `getXyzEpsg`, vorgemerkte Dateien in `pendingDemFiles`) und warnt, wenn der Code die Mitte weit
 außerhalb Europas legt. Grenze `XYZ_MAX_POINTS` (30 Mio.). ESRI-ASCII-Raster werden abgelehnt.
 
+**Adressleiste (Photon).** Zweite Verbindung nach außen neben der OSM-Karte: `photonSearch`
+fragt `photon.komoot.io` (nur ab 3 Zeichen, 350 ms Entprellung, Ergebnisse auf DE/AT gefiltert,
+`lang=de`), `parsePhoton` macht Vorschläge, `geoSourcesFor` ordnet das Bundesland (Photon-Feld
+`state`) den Links aus `GEO_ENTRIES` zu (entspricht der README-Tabelle, ein Test prüft die Links).
+Es wird nichts heruntergeladen. Die Datenschutzerklärung nennt die Adressleiste als Einwilligung
+durch die Eingabe; der Hinweis steht unter dem Feld (`addr-note`) und darf nicht entfallen.
+Links in `GEO_ENTRIES` ändern, wenn sich die README-Tabelle ändert.
+
 **GeoTIFF-Größe.** `readTiffTile` liest ganze Dateien in den Speicher (4 Byte je Pixel).
 `checkTiffFiles` und `checkTiffPixels` lehnen vor dem Einlesen ab (`TIFF_MAX_*`: 1 GB je
 Datei, 100 Mio. Pixel je Kachel, 150 Mio. Pixel und 2 GB gesamt; Schätzwerte für etwa 8 GB

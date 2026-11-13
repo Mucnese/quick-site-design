@@ -85,8 +85,35 @@
   #col-left { left: 14px; }
   #col-right { right: 14px; display: none; }
   #col-left > *, #col-right > * { pointer-events: auto; }
+  /* Wird es zu eng (kleiner Bildschirm, Suchergebnis), scrollt die linke Spalte, statt dass sich Fenster überdecken */
+  #col-left { overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  #col-left::-webkit-scrollbar { display: none; }
+  #col-left > * { flex-shrink: 0; }
 
-  #overview { flex: 0 1 auto; display: flex; flex-direction: column; min-height: 0; }
+  #locate { flex: 0 0 auto; padding: 6px 8px; }
+  #addr-input {
+    width: 100%; box-sizing: border-box; padding: 6px 8px; background: var(--field);
+    border: 1px solid var(--border); color: var(--text); font: inherit; font-size: 0.92em;
+    border-radius: var(--radius-s, 3px);
+  }
+  #addr-input::placeholder { color: var(--text-dim2); }
+  #addr-input:focus { outline: none; border-color: var(--accent); }
+  #addr-list { list-style: none; margin: 4px 0 0; padding: 0; display: none; }
+  #addr-list li { padding: 5px 6px; cursor: pointer; font-size: 0.88em; line-height: 1.3; }
+  #addr-list li .m { display: block; word-break: break-word; }
+  #addr-list li .s { display: block; color: var(--text-dim2); font-size: 0.86em; }
+  #addr-list li.sel, #addr-list li:hover { background: var(--field); }
+  #addr-list li.none { cursor: default; color: var(--text-dim2); }
+  #addr-result { display: none; margin-top: 7px; border-top: 1px solid var(--border); padding-top: 6px; max-height: 38vh; overflow-y: auto; font-size: 0.86em; }
+  #addr-result .addr-place { font-weight: 600; margin-bottom: 4px; word-break: break-word; }
+  #addr-result .addr-grp { color: var(--text-dim2); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.84em; margin: 7px 0 2px; }
+  #addr-result .addr-row { margin-bottom: 4px; line-height: 1.35; }
+  #addr-result a { color: var(--accent); word-break: break-all; }
+  #addr-result .addr-fmt { color: var(--text-dim2); }
+  #addr-result .addr-fmt.warn { color: var(--danger); }
+  #addr-result .addr-note { color: var(--text-dim2); font-size: 0.94em; }
+  #addr-note { margin-top: 5px; font-size: 0.74em; color: var(--text-dim2); line-height: 1.35; }
+  #overview { flex: 0 0 auto; display: flex; flex-direction: column; }
   #tile-label {
     font-size: 0.86em; color: var(--text-dim); padding: 7px 11px 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -97,7 +124,7 @@
   .kv .k { color: var(--text-dim); }
   .kv .v { font-variant-numeric: tabular-nums; margin-left: auto; text-align: right; }
 
-  #overview-list { overflow-y: auto; border-top: 1px solid var(--border); margin-top: 7px; }
+  #overview-list { overflow-y: auto; max-height: 30vh; border-top: 1px solid var(--border); margin-top: 7px; }
   .grp-row {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 11px; cursor: pointer; font-size: 0.9em;
@@ -364,7 +391,7 @@
   #status {
     display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
     background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
-    padding: 6px 13px; font-size: 0.86em; color: var(--accent); z-index: 20; max-width: 50vw;
+    padding: 6px 13px; font-size: 0.86em; color: var(--accent); z-index: 20; max-width: calc(100vw - 2 * (var(--panel-w) + 28px));
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   #status.error { border-color: var(--danger); color: var(--danger); }
@@ -493,6 +520,12 @@
 <div id="canvas-container"></div>
 
 <div id="col-left">
+  <div id="locate" class="panel">
+    <input type="text" id="addr-input" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="addr-list">
+    <ul id="addr-list" role="listbox"></ul>
+    <div id="addr-result"></div>
+    <div id="addr-note"></div>
+  </div>
   <div id="overview" class="panel">
     <div class="sec"><span data-i18n="overview">Übersicht</span><span class="act" id="reset-view" data-i18n="reset">Zurücksetzen</span></div>
     <div id="tile-label">–</div>
@@ -1250,6 +1283,154 @@ function crsLabel(code) {
   if (!code) return 'unbekannt';
   const n = EPSG_NAMES[code];
   return n ? 'EPSG:' + code + ' · ' + n : 'EPSG:' + code;
+}
+
+/* =========================================================
+   Standortsuche: Adresse -> Datenquellen
+   Die Anwendung lädt nichts herunter. Sie schlägt zu einer Adresse Orte vor
+   (Photon, photon.komoot.io, OpenStreetMap-Daten - nur auf Eingabe, siehe
+   Datenschutzerklärung) und nennt für das Bundesland bzw. Österreich die Seite
+   für das Geländemodell (DGM) und das Gebäudemodell (LoD2). Die Links entsprechen
+   der Tabelle in README.md (Stand November 2026).
+   fmt: 'tif' = GeoTIFF, 'xyz' = XYZ-Text (wird direkt geladen), 'unclear' = unklar.
+   note: Schlüssel für einen Hinweis (siehe STRINGS: geoNote_...). */
+const GEO_ENTRIES = {
+  'Baden-Württemberg': {
+    dem: { url: 'https://opengeodata.lgl-bw.de/', fmt: 'xyz', note: 'dgm025' },
+    bldg: { url: 'https://opengeodata.lgl-bw.de/' }
+  },
+  'Bayern': {
+    dem: { url: 'https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1', fmt: 'tif' },
+    bldg: { url: 'https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=lod2' }
+  },
+  'Berlin': {
+    dem: { url: 'https://data.geobasis-bb.de/geobasis/daten/dgm/', fmt: 'tif', note: 'berlin' },
+    bldg: { url: 'https://gdi.berlin.de/geonetwork/srv/api/records/3c7c49af-00a4-3bcd-bc00-20e7f0f1b7bf' }
+  },
+  'Brandenburg': {
+    dem: { url: 'https://data.geobasis-bb.de/geobasis/daten/dgm/tif/', fmt: 'tif' },
+    bldg: { url: 'https://data.geobasis-bb.de/geobasis/daten/3d_gebaeude/' }
+  },
+  'Bremen': {
+    dem: { url: 'https://gdk.gdi-de.org/geonetwork/srv/api/records/C448202A-0F15-413A-99E6-F22F10E190C9', fmt: 'xyz', note: 'catalog' },
+    bldg: { url: 'https://www.geo.bremen.de/produkte/3d-produkte/3d-gebaeudemodelle-11892' }
+  },
+  'Hamburg': {
+    dem: { url: 'https://metaver.de/trefferanzeige?docuuid=A39B4E86-15E2-4BF7-BA82-66F9913D5640', fmt: 'xyz' },
+    bldg: { url: 'https://metaver.de/trefferanzeige?docuuid=1F6E48EB-3B7B-4F61-AE3C-C03079ECCAEA' }
+  },
+  'Hessen': {
+    dem: { url: 'https://hvbg.hessen.de/landesvermessung/geotopographie/3d-daten/digitale-gelaendemodelle', fmt: 'tif' },
+    bldg: { url: 'https://hvbg.hessen.de/landesvermessung/geotopographie/3d-daten/3d-gebaeudemodelle' }
+  },
+  'Mecklenburg-Vorpommern': {
+    dem: { url: 'https://laiv.geodaten-mv.de/afgvk/Geotopographie/Download?produkt=DGM1', fmt: 'tif' },
+    bldg: { url: 'https://laiv.geodaten-mv.de/afgvk/Geotopographie/Beschreibung?produkt=3DGbm' }
+  },
+  'Niedersachsen': {
+    dem: { url: 'https://ni-lgln-opengeodata.hub.arcgis.com/pages/digitales-gel-ndemodell-dgm1', fmt: 'tif' },
+    bldg: { url: 'https://ni-lgln-opengeodata.hub.arcgis.com/pages/3d-geb-udemodell-lod2' }
+  },
+  'Nordrhein-Westfalen': {
+    dem: { url: 'https://www.opengeodata.nrw.de/produkte/geobasis/hm/dgm1_tiff/', fmt: 'tif' },
+    bldg: { url: 'https://www.opengeodata.nrw.de/produkte/geobasis/3dg/lod2_gml/' }
+  },
+  'Rheinland-Pfalz': {
+    dem: { url: 'https://geoshop.rlp.de/opendata-dgm1.html', fmt: 'xyz' },
+    bldg: { url: 'https://geoshop.rlp.de/opendata-geb3dlo.html' }
+  },
+  'Saarland': {
+    dem: { url: 'https://www.saarland.de/lvgl/DE/themen-aufgaben/themen/geotopographie/digitalegelaendemodelle/digitalegelaendemodelle', fmt: 'unclear', note: 'saarland' },
+    bldg: null, bldgNote: 'servicesOnly'
+  },
+  'Sachsen': {
+    dem: { url: 'https://www.geodaten.sachsen.de/downloadbereich-digitale-hoehenmodelle-4851.html', fmt: 'tif' },
+    bldg: { url: 'https://www.geodaten.sachsen.de/downloadbereich-digitale-3d-stadtmodelle-4875.html' }
+  },
+  'Sachsen-Anhalt': {
+    dem: { url: 'https://www.lvermgeo.sachsen-anhalt.de/de/gdp-dgm-dom-lsa.html', fmt: 'tif' },
+    bldg: { url: 'https://www.lvermgeo.sachsen-anhalt.de/de/gdp-3d-gebaeudemodell.html' }
+  },
+  'Schleswig-Holstein': {
+    dem: { url: 'https://opendata.schleswig-holstein.de/dataset/digitales-gelandemodell-1-dgm1', fmt: 'xyz' },
+    bldg: { url: 'https://www.schleswig-holstein.de/DE/landesregierung/ministerien-behoerden/LVERMGEOSH/Themen/themaOpenGbd', note: 'unverified' }
+  },
+  'Thüringen': {
+    dem: { url: 'https://tlbg.thueringen.de/geobasisdaten/3d-informationen/digitale-gelaendemodelle', fmt: 'tif' },
+    bldg: { url: 'https://tlbg.thueringen.de/geobasisdaten/3d-informationen/3d-gebaeudemodelle' }
+  }
+};
+
+// Österreich: Bund (BEV) für alle, dazu Länder bzw. Städte mit eigenem Angebot
+const GEO_AT_FEDERAL = [
+  { url: 'https://www.bev.gv.at/Services/Produkte/Digitales-Gelaendehoehenmodell/ALS-Hoehenraster.html', fmt: 'tif', note: 'epsg3035', label: 'BEV 1 m' },
+  { url: 'https://www.data.gv.at/katalog/dataset/d88a1246-9684-480b-a480-ff63286b35b7', fmt: 'tif', label: 'Österreich 10 m' }
+];
+const GEO_AT_STATES = {
+  'Wien': {
+    dem: { url: 'https://www.data.gv.at/katalog/dataset/1eda4b16-05e3-43c3-b5b0-ef8276df0701', fmt: 'tif' },
+    bldg: { url: 'https://www.data.gv.at/katalog/dataset/86d88cae-ad97-4476-bae5-73488a12776d' }
+  },
+  'Tirol': { dem: { url: 'https://www.data.gv.at/katalog/dataset/0454f5f3-1d8c-464e-847d-541901eb021a', fmt: 'tif' } },
+  'Salzburg': { dem: { url: 'https://www.data.gv.at/katalog/dataset/093d4dec-8397-4faf-b690-b8cbe9a9dc31', fmt: 'tif', note: 'asc' } },
+  'Oberösterreich': { dem: { url: 'https://www.data.gv.at/katalog/dataset/68cfe491-7cdf-4781-a1f1-603cd0738abd', fmt: 'tif' } },
+  'Burgenland': { dem: { url: 'https://geodaten.bgld.gv.at/de/downloads/hoehenmodelle-orthofotos.html', fmt: 'unclear', note: 'unverified' } }
+};
+const GEO_AT_LINZ_BLDG = { url: 'https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e' };
+
+/* Datenquellen zu einem Ort ({country: 'DE'|'AT'|..., state, city}); liefert
+   {country, region, dem: [...], bldg: [...], bldgNote} oder null, wenn nichts hinterlegt ist */
+function geoSourcesFor(place) {
+  if (!place) return null;
+  const cc = String(place.country || '').toUpperCase();
+  if (cc === 'DE') {
+    const e = GEO_ENTRIES[place.state];
+    if (!e) return null;
+    return { country: 'DE', region: place.state, dem: [e.dem], bldg: e.bldg ? [e.bldg] : [], bldgNote: e.bldgNote || null };
+  }
+  if (cc === 'AT') {
+    const e = GEO_AT_STATES[place.state] || {};
+    const dem = [];
+    if (e.dem) dem.push(Object.assign({ label: place.state }, e.dem));
+    GEO_AT_FEDERAL.forEach(function (f) { dem.push(f); });
+    const bldg = [];
+    if (e.bldg) bldg.push(Object.assign({ label: place.state }, e.bldg));
+    if (place.city === 'Linz') bldg.push(Object.assign({ label: 'Linz' }, GEO_AT_LINZ_BLDG));
+    return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: bldg.length ? null : 'noAtBldg' };
+  }
+  return null;
+}
+
+const PHOTON_URL = 'https://photon.komoot.io/api/';
+const PHOTON_BBOX = '5.8,45.7,17.2,55.1';        // Deutschland, Österreich und Nachbarschaft
+
+/* Wandelt die Antwort von Photon in Vorschläge um; nur Deutschland und Österreich */
+function parsePhoton(json) {
+  const out = [];
+  const feats = (json && json.features) || [];
+  feats.forEach(function (f) {
+    const p = f.properties || {}, g = f.geometry && f.geometry.coordinates;
+    const cc = String(p.countrycode || '').toUpperCase();
+    if (!g || g.length < 2 || (cc !== 'DE' && cc !== 'AT')) return;
+    const street = p.street ? p.street + (p.housenumber ? ' ' + p.housenumber : '') : '';
+    const main = p.name && p.name !== p.street ? p.name + (street ? ', ' + street : '') : (street || p.name || p.city || '');
+    const place = [p.postcode, p.city || p.town || p.village || p.district || ''].filter(Boolean).join(' ');
+    const sub = [place, p.state].filter(Boolean).join(', ');
+    if (!main) return;
+    const key = main + '|' + sub;
+    if (out.some(function (o) { return o.key === key; })) return;
+    out.push({ key: key, main: main, sub: sub, lon: g[0], lat: g[1],
+               country: cc, state: p.state || '', city: p.city || p.town || p.village || '' });
+  });
+  return out.slice(0, 5);
+}
+
+/* Fragt Photon nach Vorschlägen; signal: AbortSignal zum Abbrechen veralteter Anfragen */
+async function photonSearch(query, signal) {
+  const url = PHOTON_URL + '?q=' + encodeURIComponent(query) + '&lang=de&limit=10&bbox=' + PHOTON_BBOX;
+  const res = await fetch(url, signal ? { signal: signal } : undefined);
+  if (!res.ok) throw new Error('Photon: HTTP ' + res.status);
+  return parsePhoton(await res.json());
 }
 
 /* =========================================================
@@ -4794,6 +4975,21 @@ const STRINGS = {
     osmNoCrs: 'Das Bezugssystem {c} lässt sich nicht in Längen- und Breitengrad umrechnen.',
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
+    addrPlaceholder: 'Wo ist deine Baustelle?',
+    addrNote: 'Vorschläge von photon.komoot.io; Eingabe und IP-Adresse werden übertragen.',
+    addrSearching: 'Suche …', addrNone: 'Keine Treffer.', addrError: 'Die Suche ist gerade nicht erreichbar.',
+    addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Deutschland und Österreich).',
+    addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD2)',
+    geoFmtTif: 'GeoTIFF, direkt ladbar', geoFmtXyz: 'XYZ-Text, direkt ladbar (Bezugssystem wählen)', geoFmtUnclear: 'Format unklar',
+    geoNote_dgm025: 'Das DGM1 gibt es hier nur als XYZ-Text, GeoTIFF nur beim DGM025 (0,25 m).',
+    geoNote_berlin: 'Berlin liegt vermutlich in den Brandenburg-Daten (nicht geprüft).',
+    geoNote_catalog: 'Katalogeintrag, nicht selbst geprüft.',
+    geoNote_saarland: 'Seite ohne Download, Lizenz unklar.',
+    geoNote_epsg3035: 'Sehr große Kacheln, vorher Ausschnitt schneiden. Koordinaten in EPSG:3035, die Karte funktioniert damit nicht.',
+    geoNote_asc: 'Gemeindeweise als TIF und ASCII.',
+    geoNote_unverified: 'Nicht geprüft.',
+    geoNote_servicesOnly: 'Kein Download gefunden, nur Dienste.',
+    geoNote_noAtBldg: 'Es gibt kein landesweites 3D-Gebäudemodell.',
     xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
     xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
@@ -4884,6 +5080,21 @@ const STRINGS = {
     osmNoCrs: 'The coordinate system {c} cannot be converted to latitude and longitude.',
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
+    addrPlaceholder: 'Where is your construction site?',
+    addrNote: 'Suggestions from photon.komoot.io; input and IP address are transmitted.',
+    addrSearching: 'Searching …', addrNone: 'No results.', addrError: 'The search is not reachable right now.',
+    addrOnlyDeAt: 'No data sources are listed for this place (Germany and Austria only).',
+    addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD2)',
+    geoFmtTif: 'GeoTIFF, loads directly', geoFmtXyz: 'XYZ text, loads directly (choose the coordinate system)', geoFmtUnclear: 'Format unclear',
+    geoNote_dgm025: 'The DGM1 is only offered as XYZ text here, GeoTIFF only for the DGM025 (0.25 m).',
+    geoNote_berlin: 'Berlin is probably part of the Brandenburg data (not checked).',
+    geoNote_catalog: 'Catalogue entry, not checked myself.',
+    geoNote_saarland: 'Page without a download, licence unclear.',
+    geoNote_epsg3035: 'Very large tiles, cut out an area first. Coordinates in EPSG:3035, the map does not work with it.',
+    geoNote_asc: 'Per municipality as TIF and ASCII.',
+    geoNote_unverified: 'Not checked.',
+    geoNote_servicesOnly: 'No download found, services only.',
+    geoNote_noAtBldg: 'There is no nationwide 3D building model.',
     xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
     xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
@@ -5292,6 +5503,7 @@ function refreshTexts() {
   refreshAttribution();
   renderOsmUi();
   buildXyzCrsOptions();
+  renderAddrUi();
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -6204,6 +6416,155 @@ function demStatusText(t) {
   return st;
 }
 
+/* ---------- Standortsuche (Adressleiste) ----------
+   Vorschläge von Photon beim Tippen (mind. 3 Zeichen, 350 ms Pause); nach der Wahl
+   stehen Links zur DGM- und zur Gebäudemodell-Seite des Landes darunter. */
+let addrTimer = null, addrAbort = null, addrItems = [], addrSel = -1, addrSeq = 0, addrPlace = null;
+
+function addrHost(url) {
+  try { return new URL(url).hostname; } catch (e) { return url; }
+}
+
+function renderAddrUi() {
+  const inp = document.getElementById('addr-input');
+  if (!inp) return;
+  inp.placeholder = T('addrPlaceholder');
+  inp.setAttribute('aria-label', T('addrPlaceholder'));
+  document.getElementById('addr-note').textContent = T('addrNote');
+  renderAddrResult();
+}
+
+function renderAddrList(message) {
+  const ul = document.getElementById('addr-list');
+  ul.innerHTML = '';
+  const inp = document.getElementById('addr-input');
+  if (message) {
+    const li = document.createElement('li');
+    li.className = 'none';
+    li.textContent = message;
+    ul.appendChild(li);
+  } else {
+    addrItems.forEach(function (it, i) {
+      const li = document.createElement('li');
+      li.className = i === addrSel ? 'sel' : '';
+      li.setAttribute('role', 'option');
+      const m = document.createElement('span'); m.className = 'm'; m.textContent = it.main;
+      li.appendChild(m);
+      if (it.sub) { const s = document.createElement('span'); s.className = 's'; s.textContent = it.sub; li.appendChild(s); }
+      // mousedown statt click: das Eingabefeld darf den Fokus nicht vorher verlieren
+      li.addEventListener('mousedown', function (e) { if (e.preventDefault) e.preventDefault(); chooseAddr(i); });
+      ul.appendChild(li);
+    });
+  }
+  const open = !!message || addrItems.length > 0;
+  ul.style.display = open ? 'block' : 'none';
+  inp.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+async function runAddrSearch(q) {
+  const seq = ++addrSeq;
+  if (addrAbort && addrAbort.abort) addrAbort.abort();
+  addrAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  renderAddrList(T('addrSearching'));
+  try {
+    const items = await photonSearch(q, addrAbort ? addrAbort.signal : null);
+    if (seq !== addrSeq) return;
+    addrItems = items; addrSel = items.length ? 0 : -1;
+    renderAddrList(items.length ? null : T('addrNone'));
+  } catch (e) {
+    if (seq !== addrSeq || (e && e.name === 'AbortError')) return;
+    addrItems = []; addrSel = -1;
+    renderAddrList(T('addrError'));
+  }
+}
+
+function onAddrInput() {
+  const q = document.getElementById('addr-input').value.trim();
+  if (addrTimer) clearTimeout(addrTimer);
+  addrSeq++;
+  if (addrAbort && addrAbort.abort) addrAbort.abort();
+  if (q.length < 3) { addrItems = []; addrSel = -1; renderAddrList(null); return; }
+  addrTimer = setTimeout(function () { runAddrSearch(q); }, 350);
+}
+
+function chooseAddr(i) {
+  const it = addrItems[i];
+  if (!it) return;
+  addrPlace = it;
+  document.getElementById('addr-input').value = it.main + (it.sub ? ', ' + it.sub : '');
+  addrItems = []; addrSel = -1;
+  renderAddrList(null);
+  renderAddrResult();
+}
+
+function onAddrKey(e) {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!addrItems.length) return;
+    addrSel = (addrSel + (e.key === 'ArrowDown' ? 1 : addrItems.length - 1)) % addrItems.length;
+    renderAddrList(null);
+    if (e.preventDefault) e.preventDefault();
+  } else if (e.key === 'Enter') {
+    if (addrSel >= 0) chooseAddr(addrSel);
+    if (e.preventDefault) e.preventDefault();
+  } else if (e.key === 'Escape') {
+    addrItems = []; addrSel = -1;
+    renderAddrList(null);
+  }
+}
+
+function addrRow(src, kind) {
+  const row = document.createElement('div');
+  row.className = 'addr-row';
+  const a = document.createElement('a');
+  a.href = src.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  a.textContent = (src.label ? src.label + ' · ' : '') + addrHost(src.url) + ' ↗';
+  row.appendChild(a);
+  if (kind === 'dem' && src.fmt) {
+    const f = document.createElement('div');
+    f.className = 'addr-fmt' + (src.fmt === 'tif' ? '' : ' warn');
+    f.textContent = T(src.fmt === 'tif' ? 'geoFmtTif' : (src.fmt === 'xyz' ? 'geoFmtXyz' : 'geoFmtUnclear'));
+    row.appendChild(f);
+  }
+  if (src.note) {
+    const n = document.createElement('div');
+    n.className = 'addr-note';
+    n.textContent = T('geoNote_' + src.note);
+    row.appendChild(n);
+  }
+  return row;
+}
+
+function renderAddrResult() {
+  const box = document.getElementById('addr-result');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!addrPlace) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const title = document.createElement('div');
+  title.className = 'addr-place';
+  title.textContent = addrPlace.main;
+  box.appendChild(title);
+  const src = geoSourcesFor(addrPlace);
+  if (!src) {
+    const n = document.createElement('div');
+    n.className = 'addr-note';
+    n.textContent = T('addrOnlyDeAt');
+    box.appendChild(n);
+    return;
+  }
+  const grp = function (key) { const g = document.createElement('div'); g.className = 'addr-grp'; g.textContent = T(key); box.appendChild(g); };
+  grp('addrDem');
+  src.dem.forEach(function (d) { box.appendChild(addrRow(d, 'dem')); });
+  grp('addrBldg');
+  src.bldg.forEach(function (b) { box.appendChild(addrRow(b, 'bldg')); });
+  if (src.bldgNote) {
+    const n = document.createElement('div');
+    n.className = 'addr-note';
+    n.textContent = T('geoNote_' + src.bldgNote);
+    box.appendChild(n);
+  }
+}
+
 /* ---------- Bezugssystem für XYZ-Dateien ----------
    XYZ-Dateien tragen kein Bezugssystem. Auswahlfeld mit gängigen Systemen plus
    Eingabefeld für einen beliebigen EPSG-Code; bis eines gewählt ist, bleiben die
@@ -6882,6 +7243,11 @@ function initUI() {
     palette.appendChild(card);
   });
 
+  renderAddrUi();
+  const addr = document.getElementById('addr-input');
+  addr.addEventListener('input', onAddrInput);
+  addr.addEventListener('keydown', onAddrKey);
+  addr.addEventListener('blur', function () { addrItems = []; addrSel = -1; renderAddrList(null); });
   buildXyzCrsOptions();
   document.getElementById('xyz-crs').addEventListener('change', onXyzCrsChanged);
   document.getElementById('xyz-epsg').addEventListener('change', onXyzCrsChanged);

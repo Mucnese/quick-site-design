@@ -1582,5 +1582,72 @@ test('XYZ: zwei Kacheln werden verschmolzen und tragen den gewählten EPSG-Code,
   await assert.rejects(app.readTiffTiles(items, null), /Bezugssystem/);
 });
 
+/* ---------- Standortsuche ---------- */
+
+const photonSample = { features: [
+  { geometry: { coordinates: [11.5771547, 48.1366223] }, properties: { name: 'Marienplatz', street: undefined, postcode: '80331', city: 'München', state: 'Bayern', countrycode: 'DE' } },
+  { geometry: { coordinates: [11.5759, 48.137] }, properties: { name: 'Marienplatz', postcode: '80331', city: 'München', state: 'Bayern', countrycode: 'DE' } },
+  { geometry: { coordinates: [8.5, 47.3] }, properties: { name: 'Marienplatz', city: 'Zürich', state: 'Zürich', countrycode: 'CH' } },
+  { geometry: { coordinates: [11.39, 47.26] }, properties: { street: 'Maria-Theresien-Straße', housenumber: '4', postcode: '6020', city: 'Innsbruck', state: 'Tirol', countrycode: 'AT' } }
+] };
+
+test('Standortsuche: Photon-Antwort wird zu Vorschlägen - nur Deutschland und Österreich, ohne Doppelte, mit Adresse und Ort', function () {
+  const r = app.parsePhoton(photonSample);
+  assert.strictEqual(r.length, 2, JSON.stringify(r.map(function (x) { return x.main; })));
+  assert.strictEqual(r[0].main, 'Marienplatz');
+  assert.strictEqual(r[0].sub, '80331 München, Bayern');
+  assert.strictEqual(r[0].state, 'Bayern');
+  assert.ok(Math.abs(r[0].lat - 48.1366223) < 1e-9 && Math.abs(r[0].lon - 11.5771547) < 1e-9);
+  assert.strictEqual(r[1].main, 'Maria-Theresien-Straße 4');
+  assert.strictEqual(r[1].country, 'AT');
+  assert.deepStrictEqual(app.parsePhoton(null), []);
+});
+
+test('Standortsuche: photonSearch fragt nur mit Suchtext, Sprache, Rahmen und Grenze - und bricht bei Fehlern ab', async function () {
+  const calls = [];
+  global.fetch = function (url, opt) { calls.push(url); return Promise.resolve({ ok: true, json: function () { return Promise.resolve(photonSample); } }); };
+  const r = await app.photonSearch('Marienplatz München');
+  assert.strictEqual(r.length, 2);
+  assert.strictEqual(calls.length, 1);
+  assert.ok(calls[0].indexOf('https://photon.komoot.io/api/?q=Marienplatz%20M%C3%BCnchen') === 0, calls[0]);
+  assert.ok(/lang=de/.test(calls[0]) && /limit=10/.test(calls[0]) && /bbox=/.test(calls[0]));
+  global.fetch = function () { return Promise.resolve({ ok: false, status: 429 }); };
+  await assert.rejects(app.photonSearch('x'), /429/);
+  delete global.fetch;
+});
+
+test('Standortsuche: Datenquellen je Land - alle 16 Länder, Links stehen in der README-Tabelle, Österreich mit Bund', function () {
+  const fs = require('fs');
+  const readme = fs.readFileSync(require('path').join(__dirname, '../README.md'), 'utf8');
+  const states = Object.keys(app.GEO_ENTRIES);
+  assert.strictEqual(states.length, 16);
+  // README nennt die Hauptlinks; Ausnahmen sind Tiefenlinks, die nur hier stehen
+  const onlyHere = ['https://data.geobasis-bb.de/geobasis/daten/dgm/', 'https://data.geobasis-bb.de/geobasis/daten/dgm/tif/'];
+  states.forEach(function (st) {
+    const e = app.GEO_ENTRIES[st];
+    [e.dem, e.bldg].forEach(function (x) {
+      if (x && onlyHere.indexOf(x.url) < 0) assert.ok(readme.indexOf(x.url) >= 0, st + ': ' + x.url + ' fehlt in der README');
+    });
+  });
+  const by = app.geoSourcesFor({ country: 'DE', state: 'Bayern' });
+  assert.strictEqual(by.dem[0].fmt, 'tif');
+  assert.ok(by.bldg[0].url.indexOf('pn=lod2') > 0);
+  assert.strictEqual(app.geoSourcesFor({ country: 'DE', state: 'Hamburg' }).dem[0].fmt, 'xyz');
+  const sl = app.geoSourcesFor({ country: 'DE', state: 'Saarland' });
+  assert.deepStrictEqual(sl.bldg, []);
+  assert.strictEqual(sl.bldgNote, 'servicesOnly');
+  const wien = app.geoSourcesFor({ country: 'AT', state: 'Wien', city: 'Wien' });
+  assert.strictEqual(wien.dem.length, 3);
+  assert.strictEqual(wien.bldg.length, 1);
+  const tirol = app.geoSourcesFor({ country: 'AT', state: 'Tirol', city: 'Innsbruck' });
+  assert.strictEqual(tirol.bldg.length, 0);
+  assert.strictEqual(tirol.bldgNote, 'noAtBldg');
+  assert.strictEqual(tirol.dem[tirol.dem.length - 1].note === undefined, true);
+  const linz = app.geoSourcesFor({ country: 'AT', state: 'Oberösterreich', city: 'Linz' });
+  assert.strictEqual(linz.bldg[0].label, 'Linz');
+  assert.strictEqual(app.geoSourcesFor({ country: 'CH', state: 'Zürich' }), null);
+  assert.strictEqual(app.geoSourcesFor({ country: 'DE', state: 'Atlantis' }), null);
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);
