@@ -30,6 +30,21 @@ const STRINGS = {
     osmNoCrs: 'Das Bezugssystem {c} lässt sich nicht in Längen- und Breitengrad umrechnen.',
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
+    ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
+    ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
+    ifcWhyNoGeo: 'Das Bauwerk ist nicht georeferenziert.', ifcWhyCrs: 'Das Bauwerk liegt in EPSG:{a}, das Gelände in EPSG:{b}.',
+    ifcWhyNoCrs: 'Das Bauwerk nennt kein Bezugssystem (EPSG-Code).', ifcWhyTerrainCrs: 'Das Gelände hat kein bekanntes Bezugssystem.',
+    ifcStep0: 'Punkt A am Bauwerk anklicken (zum Beispiel eine Ecke).', ifcStep1: 'Punkt B am Bauwerk anklicken, möglichst weit von A entfernt.',
+    ifcStep2: 'Jetzt im Gelände den Punkt anklicken, der A am Bauwerk entspricht.', ifcStep3: 'Im Gelände den Punkt anklicken, der B entspricht.',
+    ifcStepSub: 'Schritt {n} von 4 · Esc bricht ab · Die Ansicht lässt sich zwischendurch drehen und zoomen.',
+    ifcPlacedManual: 'Bauwerk platziert. Abstand A–B: Bauwerk {m} m, Gelände {t} m.',
+    ifcDistWarn: 'Die Abstände weichen um {d} m ab; stimmen die Punkte?',
+    ifcOutside: 'Das Bauwerk liegt außerhalb des Geländes. „Manuell platzieren“ setzt es neu.',
+    ifcTooBig: '{n}: {s} MB sind zu groß für den Browser (Grenze {m} MB).',
+    ifcFail: 'IFC konnte nicht gelesen werden: {e}', ifcEmpty: 'Die IFC-Datei enthält keine darstellbare Geometrie.',
+    ifcLibFail: 'Die IFC-Bibliothek (lib/web-ifc-api-iife.js) konnte nicht geladen werden.',
+    ifcNeedTerrain: 'Zuerst ein Geländemodell laden.', ifcCancelled: 'Platzierung abgebrochen.', ifcRemoved: 'Bauwerk entfernt.',
+    ifcInfo: '{n} · {t} Dreiecke',
     helpBtn: 'Hilfe', helpGuide: 'Vollständige Anleitung auf GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/BENUTZERANLEITUNG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers.',
@@ -44,7 +59,7 @@ const STRINGS = {
     helpS5T: 'Mengen und Prüfungen',
     helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.',
     helpS6T: 'Karte und Export',
-    helpS6B: '- „Karte · OpenStreetMap“ (Fenster „Daten“) legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände und Gebäude als IFC-Datei mit Koordinatenbezug heruntergeladen.',
+    helpS6B: '- „Karte · OpenStreetMap“ (Fenster „Daten“) legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände und Gebäude als IFC-Datei mit Koordinatenbezug heruntergeladen.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
     helpS7T: 'Tastatur',
     helpS7B: '- Esc: abbrechen und Auswahl aufheben.\n- Leertaste: Straße oder Baugrube abschließen.\n- Entf oder Rücktaste: ausgewählte Objekte löschen (nicht beim Tippen in Feldern).',
     addrPlaceholder: 'Wo ist deine Baustelle?',
@@ -156,6 +171,21 @@ const STRINGS = {
     osmNoCrs: 'The coordinate system {c} cannot be converted to latitude and longitude.',
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
+    ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
+    ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
+    ifcWhyNoGeo: 'The structure is not georeferenced.', ifcWhyCrs: 'The structure is in EPSG:{a}, the terrain in EPSG:{b}.',
+    ifcWhyNoCrs: 'The structure names no coordinate system (EPSG code).', ifcWhyTerrainCrs: 'The terrain has no known coordinate system.',
+    ifcStep0: 'Click point A on the structure (for example a corner).', ifcStep1: 'Click point B on the structure, as far from A as possible.',
+    ifcStep2: 'Now click the point in the terrain that matches A on the structure.', ifcStep3: 'Click the point in the terrain that matches B.',
+    ifcStepSub: 'Step {n} of 4 · Esc cancels · You can rotate and zoom the view in between.',
+    ifcPlacedManual: 'Structure placed. Distance A–B: structure {m} m, terrain {t} m.',
+    ifcDistWarn: 'The distances differ by {d} m; do the points match?',
+    ifcOutside: 'The structure lies outside the terrain. “Place manually” sets it again.',
+    ifcTooBig: '{n}: {s} MB is too large for the browser (limit {m} MB).',
+    ifcFail: 'The IFC could not be read: {e}', ifcEmpty: 'The IFC file contains no displayable geometry.',
+    ifcLibFail: 'The IFC library (lib/web-ifc-api-iife.js) could not be loaded.',
+    ifcNeedTerrain: 'Load a terrain model first.', ifcCancelled: 'Placement cancelled.', ifcRemoved: 'Structure removed.',
+    ifcInfo: '{n} · {t} triangles',
     helpBtn: 'Help', helpGuide: 'Full user guide on GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/USER-GUIDE.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts.',
@@ -170,7 +200,7 @@ const STRINGS = {
     helpS5T: 'Quantities and checks',
     helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.',
     helpS6T: 'Map and export',
-    helpS6B: '- “Map · OpenStreetMap” (“Data” window) puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain and buildings are downloaded as an IFC file with coordinate reference.',
+    helpS6B: '- “Map · OpenStreetMap” (“Data” window) puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain and buildings are downloaded as an IFC file with coordinate reference.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
     helpS7T: 'Keyboard',
     helpS7B: '- Esc: cancel and clear the selection.\n- Space: finish a road or excavation.\n- Delete or Backspace: delete the selected objects (not while typing in fields).',
     addrPlaceholder: 'Where is your construction site?',
@@ -602,6 +632,7 @@ function refreshTexts() {
   renderOsmUi();
   buildXyzCrsOptions();
   renderAddrUi();
+  if (ifcPick) showIfcHint(ifcPick.step);
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -1757,6 +1788,215 @@ function renderAddrResult() {
   }
 }
 
+/* ---------- IFC-Import ----------
+   Datei wählen -> mit web-ifc lesen -> automatisch platzieren, wenn Bauwerk und Gelände dasselbe Bezugssystem
+   haben, sonst von Hand: zwei Punkte am Bauwerk (A, B), dann zwei Punkte im Gelände. */
+let ifcPick = null;        // { step 0..3, p: [Punkt am Bauwerk], t: [Punkt im Gelände], markers, before, fresh }
+
+function setIfcStatus(msg, kind) {
+  const el = document.getElementById('ifc-status');
+  el.textContent = msg;
+  el.className = 'file-status' + (kind ? ' ' + kind : '');
+}
+
+function ifcFormat(key, vars) {
+  let t = T(key);
+  Object.keys(vars || {}).forEach(function (k) { t = t.replace('{' + k + '}', vars[k]); });
+  return t;
+}
+
+function renderIfcUi() {
+  const tools = document.getElementById('ifc-tools');
+  if (tools) tools.style.display = ifcModel ? 'block' : 'none';
+}
+
+function showIfcHint(step) {
+  const el = document.getElementById('ifc-hint');
+  if (step === null || step === undefined) { el.style.display = 'none'; return; }
+  el.textContent = '';
+  const main = document.createElement('div');
+  main.textContent = T('ifcStep' + step);
+  const sub = document.createElement('div');
+  sub.className = 'sub';
+  sub.textContent = ifcFormat('ifcStepSub', { n: step + 1 });
+  el.appendChild(main); el.appendChild(sub);
+  el.style.display = 'block';
+}
+
+function clearIfcMarkers() {
+  if (ifcPick && ifcPick.markers) ifcPick.markers.forEach(function (m) { scene.remove(m); });
+  if (ifcPick) ifcPick.markers = [];
+}
+
+function addIfcMarker(pt, step) {
+  const m = new THREE.Mesh(GEO.sphere, MAT.measure);
+  m.position.set(pt.x, pt.y, pt.z);
+  m.scale.set(0.9, 0.9, 0.9);
+  m.renderOrder = 10;
+  scene.add(m);
+  ifcPick.markers.push(m);
+}
+
+/* Startet die Platzierung von Hand; fresh = das Bauwerk ist neu und hat noch keine Lage */
+function startIfcManual(fresh, why) {
+  if (!ifcModel) return;
+  ifcPick = { step: 0, p: [], t: [], markers: [], fresh: !!fresh,
+              before: ifcModel.placement ? { pl: ifcModel.placement, dz: ifcModel.dz } : null };
+  selectTool(null);
+  ifcPreviewPlacement(ifcModel);
+  frameIfcModel();
+  showIfcHint(0);
+  if (why) setIfcStatus(why + ' ' + T('ifcManualBtn') + ' …', 'busy');
+}
+
+function frameIfcModel() {
+  const b = ifcModel.bbox, pl = ifcModel.placement;
+  const cx = pl.x + (b.minX + b.maxX) / 2, cz = pl.z + (b.minZ + b.maxZ) / 2;
+  const cy = pl.y + (b.minY + b.maxY) / 2;
+  const size = Math.max(b.maxX - b.minX, b.maxZ - b.minZ, b.maxY - b.minY, 5);
+  // Blickrichtung beibehalten, Abstand nach der Größe des Bauwerks
+  let dx = camera.position.x - controls.target.x, dy = camera.position.y - controls.target.y, dz = camera.position.z - controls.target.z;
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  controls.target.set(cx, cy, cz);
+  if (len > 0) {
+    const k = (size * 2.2 + 20) / len;
+    camera.position.set(cx + dx * k, cy + dy * k, cz + dz * k);
+  }
+  controls.update();
+}
+
+function cancelIfcPick(silent) {
+  if (!ifcPick) return;
+  clearIfcMarkers();
+  const p = ifcPick;
+  ifcPick = null;
+  showIfcHint(null);
+  if (p.fresh && !p.before) { ifcRemoveModel(); renderIfcUi(); setIfcStatus(T('noFile')); }
+  else if (p.before && ifcModel) ifcApplyPlacement(ifcModel, p.before.pl, p.before.dz);
+  if (!silent) setStatus(T('ifcCancelled'));
+}
+
+/* Klick im Platzierungsmodus: Schritt 0/1 am Bauwerk, Schritt 2/3 im Gelände */
+function handleIfcPick(event) {
+  const p = ifcPick;
+  if (p.step < 2) {
+    pointerToNDC(event);
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObject(ifcModel.group, true);
+    if (!hits.length) return;
+    const wp = hits[0].point;
+    const local = ifcModel.group.worldToLocal(wp.clone());
+    p.p.push({ x: local.x, y: local.y, z: local.z });
+    addIfcMarker(wp, p.step);
+  } else {
+    const pt = raycastTerrain(event);
+    if (!pt) return;
+    p.t.push({ x: pt.x, y: pt.y, z: pt.z });
+    addIfcMarker(pt, p.step);
+  }
+  p.step++;
+  if (p.step < 4) { showIfcHint(p.step); return; }
+  finishIfcPick();
+}
+
+/* Vier Punkte sind gewählt: Bauwerk auf die beiden Geländepunkte legen und die Abstände prüfen */
+function finishIfcPick() {
+  const p = ifcPick;
+  const pl = ifcTwoPointPlacement(p.p[0], p.p[1], p.t[0], p.t[1], getHeightAt);
+  clearIfcMarkers();
+  ifcPick = null;
+  showIfcHint(null);
+  ifcModel.dz = 0;
+  document.getElementById('ifc-dz').value = '0';
+  ifcApplyPlacement(ifcModel, pl, 0);
+  ifcModel.how = 'manual';
+  let msg = ifcFormat('ifcPlacedManual', { m: pl.distModel.toFixed(2), t: pl.distTerrain.toFixed(2) });
+  const diff = Math.abs(pl.distModel - pl.distTerrain);
+  if (diff > Math.max(0.5, 0.02 * pl.distTerrain)) msg += ' ' + ifcFormat('ifcDistWarn', { d: diff.toFixed(2) });
+  setIfcStatus(msg, diff > Math.max(0.5, 0.02 * pl.distTerrain) ? 'err' : 'ok');
+  setStatus(msg, diff > Math.max(0.5, 0.02 * pl.distTerrain));
+}
+
+async function handleIfcFile(file) {
+  if (!file) return;
+  if (!TERRAIN) { setIfcStatus(T('ifcNeedTerrain'), 'err'); return; }
+  if (file.size > IFC_MAX_BYTES) {
+    setIfcStatus(ifcFormat('ifcTooBig', { n: file.name, s: (file.size / 1e6).toFixed(0), m: IFC_MAX_BYTES / 1e6 }), 'err');
+    return;
+  }
+  if (ifcPick) cancelIfcPick(true);
+  setIfcStatus(T('ifcReading'), 'busy');
+  // dem Browser Zeit geben, die Meldung zu zeigen, bevor das Lesen blockiert
+  await new Promise(function (r) { setTimeout(r, 30); });
+  try {
+    const m = await ifcReadModel(await file.arrayBuffer(), file.name);
+    const model = ifcSetModel(m);
+    renderIfcUi();
+    document.getElementById('ifc-dz').value = '0';
+    const g = model.georef;
+    let why = '';
+    if (!g) why = T('ifcWhyNoGeo');
+    else if (!g.epsg) why = T('ifcWhyNoCrs');
+    else if (!TERRAIN.epsg) why = T('ifcWhyTerrainCrs');
+    else if (g.epsg !== TERRAIN.epsg) why = ifcFormat('ifcWhyCrs', { a: g.epsg, b: TERRAIN.epsg });
+    if (!why) {
+      ifcApplyPlacement(model, ifcAutoPlacement(g, model.coord, TERRAIN), 0);
+      model.how = 'auto';
+      if (!ifcInsideTerrain(model, TERRAIN)) {
+        setIfcStatus(T('ifcOutside'), 'err');
+        setStatus(T('ifcOutside'), true);
+      } else {
+        setIfcStatus(ifcFormat('ifcPlacedAuto', { c: g.epsg }) + ' ' + ifcFormat('ifcInfo', { n: m.name, t: m.triangles }), 'ok');
+        setStatus(ifcFormat('ifcPlacedAuto', { c: g.epsg }));
+      }
+      focusOnIfc();
+      return;
+    }
+    startIfcManual(true, why);
+  } catch (e) {
+    const code = e && e.message;
+    const msg = code === 'ifcLibFail' ? T('ifcLibFail') : code === 'ifcEmpty' ? T('ifcEmpty') : ifcFormat('ifcFail', { e: code });
+    setIfcStatus(msg, 'err');
+    setStatus(msg, true);
+  }
+}
+
+/* Nach einem neuen Gelände: automatisch platzierte Bauwerke mit demselben Bezugssystem neu einpassen,
+   alles andere entfernen (die Lage gilt nur für das alte Gelände) */
+function refreshIfcAfterTerrain() {
+  if (ifcPick) cancelIfcPick(true);
+  if (!ifcModel) return;
+  const g = ifcModel.georef;
+  if (ifcModel.how === 'auto' && g && g.epsg && g.epsg === TERRAIN.epsg) {
+    ifcApplyPlacement(ifcModel, ifcAutoPlacement(g, ifcModel.coord, TERRAIN), ifcModel.dz || 0);
+    return;
+  }
+  ifcRemoveModel();
+  renderIfcUi();
+  setIfcStatus(T('noFile'));
+}
+
+/* Höhenversatz des Bauwerks in m (Feld "Höhe ±") */
+function applyIfcDz(value) {
+  if (!ifcModel || !ifcModel.placement) return;
+  const v = parseFloat(value);
+  if (!isFinite(v)) return;
+  ifcModel.dz = v;
+  ifcModel.group.position.y = ifcModel.baseY + v;
+}
+
+function focusOnIfc() {
+  if (ifcModel && ifcModel.placement) frameIfcModel();
+}
+
+function removeIfc() {
+  cancelIfcPick(true);
+  ifcRemoveModel();
+  renderIfcUi();
+  setIfcStatus(T('noFile'));
+  setStatus(T('ifcRemoved'));
+}
+
 /* ---------- Bezugssystem für XYZ-Dateien ----------
    XYZ-Dateien tragen kein Bezugssystem. Auswahlfeld mit gängigen Systemen plus
    Eingabefeld für einen beliebigen EPSG-Code; bis eines gewählt ist, bleiben die
@@ -1839,6 +2079,7 @@ async function handleDemFiles(files, isDemo) {
 
     hideMeasure();
     buildTerrain(t);
+    refreshIfcAfterTerrain();
     frameTerrain();
     const removed = pruneObjectsOutside();
     reseatAllObjects();
@@ -2277,6 +2518,9 @@ function onCanvasMove(event) {
 }
 
 function onCanvasClick(event) {
+  // IFC-Platzierung von Hand: jeder Klick gehört dazu
+  if (ifcPick) { handleIfcPick(event); return; }
+
   // Punkt hinzufügen: hat Vorrang vor dem Anklicken vorhandener Stützpunkte
   if (addNodeMode) {
     const obj = findObject(getSelectedId());
@@ -2385,6 +2629,7 @@ function onKeyDown(event) {
     return;
   }
   if (event.key === 'Escape') {
+    if (ifcPick) { cancelIfcPick(); return; }
     if (rectSelectActive) { cancelRectExport(); return; }
     if (isIfcPanelOpen()) { clearExportPreview(); setStatus(''); return; }
     // Erst die Knotenauswahl lösen, die Objektauswahl bleibt bestehen
@@ -2398,6 +2643,7 @@ function onKeyDown(event) {
     toggleHelp(false);
     setStatus('');
   } else if (event.key === 'Delete' || event.key === 'Backspace') {
+    if (ifcPick) return;
     const ids = selectedIds.slice();
     if (!ids.length) return;
     ids.forEach(function (i) { removeObject(i); });
@@ -2451,6 +2697,15 @@ function initUI() {
     if (demInput.files && demInput.files.length) handleDemFiles(demInput.files);
   });
 
+  const ifcInput = document.getElementById('ifc-input');
+  ifcInput.addEventListener('change', function () {
+    if (ifcInput.files && ifcInput.files.length) handleIfcFile(ifcInput.files[0]);
+  });
+  document.getElementById('ifc-clear').addEventListener('click', removeIfc);
+  document.getElementById('ifc-manual-btn').addEventListener('click', function () { startIfcManual(false); });
+  document.getElementById('ifc-dz').addEventListener('input', function (e) {
+    applyIfcDz((e && e.target ? e.target : this).value);
+  });
   const gmlInput = document.getElementById('gml-input');
   gmlInput.addEventListener('change', function () {
     if (gmlInput.files && gmlInput.files.length) handleGmlFiles(gmlInput.files);
@@ -2574,6 +2829,14 @@ if (typeof module !== 'undefined' && module.exports) {
     buildTweakPanel: buildTweakPanel,
     toggleTweak: toggleTweak,
     toggleHelp: toggleHelp,
+    handleIfcFile: handleIfcFile,
+    startIfcManual: startIfcManual,
+    cancelIfcPick: cancelIfcPick,
+    finishIfcPick: finishIfcPick,
+    removeIfc: removeIfc,
+    refreshIfcAfterTerrain: refreshIfcAfterTerrain,
+    getIfcPick: function () { return ifcPick; },
+    setIfcPick: function (p) { ifcPick = p; },
     buildHelpPanel: buildHelpPanel,
 
     // Werkzeuge und Editoren

@@ -382,6 +382,17 @@
   @media (max-width: 1650px) { #hints .long { display: none; } }
   @media (max-width: 1500px) { #unit-info { display: none; } }
 
+  #ifc-tools { display: none; }
+  #ifc-tools .btn-block { margin-top: 6px; }
+  #ifc-dz { width: 64px; text-align: right; }
+  #ifc-hint {
+    display: none; position: fixed; top: max(170px, 18vh); left: 50%; transform: translateX(-50%);
+    background: var(--panel-bg); border: 1px dashed var(--accent); border-radius: var(--radius);
+    padding: 11px 20px; font-size: 1.02em; color: var(--accent); z-index: 8; text-align: center;
+    max-width: min(520px, 90vw); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  #ifc-hint .sub { color: var(--text-dim2); font-size: 0.82em; margin-top: 4px; }
   #road-hint {
     display: none; position: fixed; top: max(170px, 18vh); left: 50%; transform: translateX(-50%);
     background: var(--panel-bg); border: 1px dashed var(--accent); border-radius: var(--radius);
@@ -569,6 +580,15 @@
         <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,text/xml">
         <div class="file-status" id="gml-status">Keine Datei</div>
       </div>
+      <div class="file-row" id="ifc-row">
+        <div class="file-head"><span data-i18n="ifcFile">Bauwerk · IFC</span><span class="act" id="ifc-clear" data-i18n="remove">Entfernen</span></div>
+        <input type="file" id="ifc-input" accept=".ifc">
+        <div class="file-status" id="ifc-status">Keine Datei</div>
+        <div id="ifc-tools">
+          <button class="btn-block" id="ifc-manual-btn" data-i18n="ifcManualBtn">Manuell platzieren</button>
+          <div class="kv"><span class="k" data-i18n="ifcDz">Höhe ±</span><span class="v"><input type="number" id="ifc-dz" step="0.1" value="0"> m</span></div>
+        </div>
+      </div>
       <div class="file-row" id="osm-row">
         <div class="file-head"><span data-i18n="osmMap">Karte · OpenStreetMap</span>
           <label class="osm-switch"><input type="checkbox" id="osm-toggle" disabled><span data-i18n="osmShow">anzeigen</span></label></div>
@@ -615,6 +635,7 @@
 </div>
 
 <div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
+<div id="ifc-hint"></div>
 
 <div id="point-label">
   <div class="mrow"><span class="mk">R</span><span class="mv" id="measure-r">–</span></div>
@@ -676,7 +697,7 @@
   </div>
 </div>
 
-<!-- Bibliotheken liegen lokal bei, damit beim Aufruf keine Daten an fremde
+<!-- Bibliotheken liegen lokal bei (web-ifc wird erst beim IFC-Import nachgeladen), damit beim Aufruf keine Daten an fremde
      Server gehen. Siehe lib/LIESMICH.txt -->
 <script src="lib/three.min.js"></script>
 <script src="lib/OrbitControls.js"></script>

@@ -233,7 +233,29 @@ Gelände. Er ist **standardmäßig aus**. Beim Einschalten lädt dein Browser Ka
 
 ---
 
-## 8. IFC-Export
+## 8. IFC-Import und IFC-Export
+
+### Bauwerk als IFC einlesen
+
+Im Fenster **Daten** liest die Zeile **Bauwerk · IFC** ein Bauwerk (Neubau, Gebäude, Brücke) als
+IFC-Datei ein. Voraussetzung ist ein geladenes Gelände. Die Bibliothek zum Lesen wird erst jetzt
+nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Größe bis 300 MB.
+
+- **Automatisch:** Ist die Datei georeferenziert (`IfcMapConversion`) und hat **dasselbe
+  Bezugssystem (EPSG)** wie das Gelände, steht das Bauwerk sofort an der richtigen Stelle,
+  gedreht und in der richtigen Höhe. Maßstab und Längeneinheit der Datei werden berücksichtigt.
+- **Manuell (2 + 2 Punkte):** Fehlt die Georeferenz oder weicht das Bezugssystem ab, nennt die Meldung
+  den Grund und startet das Verfahren: zwei Punkte am **Bauwerk** anklicken, danach die **zugehörigen
+  zwei Punkte im Gelände**. Aus den Punktpaaren ergeben sich Lage und Drehung. Das Bauwerk bleibt
+  immer **waagerecht**; die Höhe richtet sich nach dem Gelände am ersten Punkt. Stimmen die beiden
+  Abstände nicht überein, erscheint eine Warnung. **Esc** bricht ab. Mit **Manuell platzieren** lässt sich
+  das Verfahren später wiederholen.
+- Mit **Höhe ±** hebt oder senkt man das Bauwerk, **✕** entfernt es.
+- Liegt das Bauwerk außerhalb des Geländes, erscheint ein Hinweis. Wird ein anderes Gelände geladen,
+  wird ein automatisch platziertes Bauwerk neu gesetzt, ein manuell platziertes entfernt.
+- Nicht unterstützt: Längeneinheiten wie Fuß und Zoll (IfcConversionBasedUnit).
+
+### IFC-Export
 
 Die Karte **IFC Export** (unten bei den Bausteinen) gibt **Gelände und Gebäude** als IFC-Datei aus,
 georeferenziert im Bezugssystem des geladenen Geländes. Bausteine wie Krane und Container sind nicht

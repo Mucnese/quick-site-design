@@ -1,7 +1,7 @@
 # Quick-Site-Design
 
 Baustelleneinrichtungsplanung im Browser auf Grundlage amtlicher Geobasisdaten.
-Eine HTML-Datei plus drei Bibliotheken, kein Server, kein Framework.
+Eine HTML-Datei plus vier Bibliotheken, kein Server, kein Framework.
 
 **Sprache: Deutsch.** Kommentare, Meldungen, Dokumente und Antworten auf Deutsch.
 
@@ -98,7 +98,7 @@ Kurzabschnitte aus `STRINGS` (`helpS1T`..`helpS7B`, beide Sprachen) und verlinkt
 `BENUTZERANLEITUNG.md` bzw. `USER-GUIDE.en.md` im Hauptzweig. Wer eine Funktion ändert, die dort
 beschrieben ist, passt Anleitung (beide Sprachen) und Kurzhilfe mit an.
 
-**Keine CDN-Verweise.** Die drei Bibliotheken liegen in `lib/`. Ein neuer
+**Keine CDN-Verweise.** Die vier Bibliotheken liegen in `lib/` (web-ifc nur lokal und unverändert, Lizenztext `lib/LICENSE-web-ifc.txt`; es steht nicht als `<script>` im HTML, `getWebIfc` lädt es erst beim ersten IFC-Import). Ein neuer
 `<script src>` auf einen fremden Server würde die Datenschutzerklärung
 unrichtig machen.
 
@@ -216,6 +216,15 @@ schreibt Rechtswert, Hochwert und Höhe ü. NHN in die Geometrie, IfcMapConversi
 `'local'` ist die IFC4-übliche Form (Geometrie ab der Nordwestecke, Lage in IfcMapConversion). In beiden
 Fällen nennt IfcProjectedCRS Beschreibung, Datum, Abbildung und Zone (nur wo aus dem EPSG-Code ableitbar)
 und IfcSite trägt RefLatitude/RefLongitude/RefElevation (über `crsToLonLat`). Mit ifcopenshell geprüft.
+
+**IFC-Import** (`ifcReadModel`, `handleIfcFile`, Abschnitt „IFC-Import“ in `app.js` und `ui.js`): web-ifc liest
+die Meshes (Meter, Y oben, `COORDINATE_TO_ORIGIN`); `ifcReadGeoref` holt IfcMapConversion und Längeneinheiten
+(wirksamer Maßstab = Scale × Kartenmaßeinheit / Projekteinheit). Stimmt der EPSG-Code mit `TERRAIN.epsg`
+überein, platziert `ifcAutoPlacement` das Modell absolut (Drehung aus Abszisse/Ordinate, Höhe über
+`TERRAIN.zmin`). Sonst führt `startIfcManual` durch vier Klicks (2 Punkte am Modell, 2 im Gelände);
+`ifcTwoPointPlacement` rechnet nur Drehung um die Hochachse, Verschiebung und optional den Maßstab, das
+Modell bleibt waagerecht. IfcConversionBasedUnit (z. B. Fuß) wird nicht ausgewertet. Nach dem Wechsel des
+Geländes setzt `refreshIfcAfterTerrain` automatisch platzierte Modelle neu, manuell platzierte entfallen.
 
 **IFC-Export** muss strenge Leser bestehen: reines ASCII (Umlaute als `\X2\`),
 GUIDs mit erstem Zeichen 0–3, genaue Attributzahl je Entität, Gelände-Dreiecke

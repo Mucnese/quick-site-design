@@ -1761,5 +1761,87 @@ test('Standortsuche: Datenquellen je Land - alle 16 Länder, Links stehen in der
   assert.strictEqual(app.geoSourcesFor({ country: 'DE', state: 'Atlantis' }), null);
 });
 
+/* ---------- IFC-Import: Platzierung ---------- */
+
+/* Wendet die Gruppen-Transformation (Drehung um y, Maßstab, Verschiebung) auf einen Punkt an */
+function ifcApply(pl, o) {
+  const c = Math.cos(pl.rotY), s = Math.sin(pl.rotY);
+  return { x: pl.x + pl.scale * (c * o.x + s * o.z), y: pl.y + pl.scale * o.y, z: pl.z + pl.scale * (-s * o.x + c * o.z) };
+}
+
+test('IFC-Import: automatische Platzierung stimmt mit der Formel der IfcMapConversion überein (Drehung, Versatz, Koordinationsverschiebung)', function () {
+  const terrain = { originE: 692500, originN: 5336500, zmin: 503.084 };
+  const g = { E0: 692440, N0: 5336440, H0: 505, a: Math.cos(0.5), b: Math.sin(0.5), scale: 1, mapUnit: 1, projUnit: 1 };
+  const coord = [-12, -3.5, 40];                    // Verschiebung der Koordinationsmatrix von web-ifc (y oben, z = -Nord)
+  const pl = app.ifcAutoPlacement(g, coord, terrain);
+  // ein Punkt im Gruppenformat (web-ifc-Ausgabe) -> Ingenieurkoordinaten -> Karte -> Szene
+  const out = { x: 7, y: 2, z: -9 };
+  const ux = out.x - coord[0], up = out.y - coord[1], uz = out.z - coord[2];
+  const xi = ux, yi = -uz, zi = up;
+  const E = g.E0 + g.a * xi - g.b * yi, N = g.N0 + g.b * xi + g.a * yi, H = g.H0 + zi;
+  const want = { x: E - terrain.originE, y: H - terrain.zmin, z: terrain.originN - N };
+  const got = ifcApply(pl, out);
+  ['x', 'y', 'z'].forEach(function (k) { assert.ok(Math.abs(got[k] - want[k]) < 1e-6, k + ': ' + got[k] + ' statt ' + want[k]); });
+});
+
+test('IFC-Import: Einheiten - Millimeter-Projekt mit Scale 0.001 und Meter-Projekt mit Scale 1 geben dieselbe Lage', function () {
+  const terrain = { originE: 0, originN: 0, zmin: 0 };
+  const mm = app.ifcAutoPlacement({ E0: 100, N0: 200, H0: 5, a: 1, b: 0, scale: 0.001, mapUnit: 1, projUnit: 0.001 }, [0, 0, 0], terrain);
+  const m = app.ifcAutoPlacement({ E0: 100, N0: 200, H0: 5, a: 1, b: 0, scale: 1, mapUnit: 1, projUnit: 1 }, [0, 0, 0], terrain);
+  assert.ok(Math.abs(mm.scale - 1) < 1e-12 && Math.abs(m.scale - 1) < 1e-12);
+  assert.ok(Math.abs(mm.x - m.x) < 1e-9 && Math.abs(mm.z - m.z) < 1e-9);
+  // wörtlich gelesen: Millimeter-Projekt mit Scale 1 -> Faktor 1000 (das Bauwerk wird riesig, die Prüfung "außerhalb" meldet es)
+  assert.ok(Math.abs(app.ifcAutoPlacement({ E0: 0, N0: 0, H0: 0, a: 1, b: 0, scale: 1, mapUnit: 1, projUnit: 0.001 }, [0, 0, 0], terrain).scale - 1000) < 1e-9);
+});
+
+test('IFC-Import: zwei Punkte am Bauwerk auf zwei Punkte im Gelände - Punkte treffen genau, Höhe von A liegt auf dem Gelände, Abstände werden gemeldet', function () {
+  const p1 = { x: 3, y: 1.5, z: -2 }, p2 = { x: 12, y: 1.5, z: -6 };
+  const t1 = { x: -40, z: 25 }, t2 = { x: -34, z: 14 };
+  const heightAt = function (x, z) { return 7 + 0.1 * x; };
+  const pl = app.ifcTwoPointPlacement(p1, p2, t1, t2, heightAt);
+  const a = ifcApply(pl, p1), b = ifcApply(pl, p2);
+  assert.ok(Math.abs(a.x - t1.x) < 1e-9 && Math.abs(a.z - t1.z) < 1e-9, 'A trifft');
+  const lenM = Math.hypot(p2.x - p1.x, p2.z - p1.z), lenT = Math.hypot(t2.x - t1.x, t2.z - t1.z);
+  // B liegt auf der Richtung von A nach B im Gelände, im Abstand des Bauwerks (Maßstab 1)
+  assert.ok(Math.abs(Math.hypot(b.x - t1.x, b.z - t1.z) - lenM) < 1e-9);
+  assert.ok(Math.abs((b.x - t1.x) / lenM - (t2.x - t1.x) / lenT) < 1e-9 && Math.abs((b.z - t1.z) / lenM - (t2.z - t1.z) / lenT) < 1e-9, 'Richtung stimmt');
+  assert.ok(Math.abs(a.y - heightAt(t1.x, t1.z)) < 1e-9, 'Höhe von A = Gelände bei A');
+  assert.ok(Math.abs(pl.distModel - lenM) < 1e-9 && Math.abs(pl.distTerrain - lenT) < 1e-9);
+  assert.strictEqual(pl.scale, 1);
+  // Drehung gegen den Uhrzeigersinn von oben (Norden = -z): Bauwerk-Richtung +x auf Gelände-Richtung -z (Norden) = 90 Grad
+  const q = app.ifcTwoPointPlacement({ x: 0, y: 0, z: 0 }, { x: 5, y: 0, z: 0 }, { x: 0, z: 0 }, { x: 0, z: -5 }, function () { return 0; });
+  assert.ok(Math.abs(q.rotY - Math.PI / 2) < 1e-9, 'rotY ' + q.rotY);
+});
+
+test('IFC-Import: Georeferenz wird aus IfcMapConversion und IfcProjectedCRS gelesen (EPSG-Code, Einheiten), ohne Georeferenz null', function () {
+  const W = { IFCMAPCONVERSION: 1, IFCSIUNIT: 2 };
+  const vec = function (a) { return { size: function () { return a.length; }, get: function (i) { return a[i]; } }; };
+  const v = function (x) { return { value: x }; };
+  const lines = {
+    10: { Eastings: v(692440), Northings: v(5336440), OrthogonalHeight: v(505), XAxisAbscissa: v(1), XAxisOrdinate: v(0), Scale: v(0.001), TargetCRS: v(20) },
+    20: { Name: v('EPSG:25832'), Description: v('ETRS89 / UTM 32N'), MapUnit: null },
+    30: { UnitType: v('LENGTHUNIT'), Prefix: v('MILLI'), Name: v('METRE') }
+  };
+  const api = {
+    GetLineIDsWithType: function (id, t) { return vec(t === 1 ? [10] : t === 2 ? [30] : []); },
+    GetLine: function (id, eid) { return lines[eid]; }
+  };
+  const g = app.ifcReadGeoref(api, 1, W);
+  assert.strictEqual(g.epsg, 25832);
+  assert.strictEqual(g.E0, 692440); assert.strictEqual(g.scale, 0.001); assert.strictEqual(g.projUnit, 0.001); assert.strictEqual(g.mapUnit, 1);
+  const none = { GetLineIDsWithType: function () { return vec([]); } };
+  assert.strictEqual(app.ifcReadGeoref(none, 1, W), null);
+  // Name ohne EPSG-Code: kein Code, aber die Zahlen sind da
+  lines[20].Name = v('ETRS89 / UTM 32N'); lines[20].Description = null;
+  assert.strictEqual(app.ifcReadGeoref(api, 1, W).epsg, null);
+});
+
+test('IFC-Import: liegt die Mitte des Bauwerks außerhalb des Geländes, wird das erkannt', function () {
+  const model = { bbox: { minX: 0, maxX: 10, minZ: 0, maxZ: 10 }, placement: { rotY: 0, scale: 1, x: 0, y: 0, z: 0 } };
+  assert.strictEqual(app.ifcInsideTerrain(model, { w: 100, d: 100 }), true);
+  model.placement.x = 200;
+  assert.strictEqual(app.ifcInsideTerrain(model, { w: 100, d: 100 }), false);
+});
+
 console.log(pass + ' bestanden, ' + fail + ' fehlgeschlagen');
 process.exit(fail ? 1 : 0);

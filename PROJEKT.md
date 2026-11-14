@@ -26,7 +26,7 @@ Beide Dateien liegen im Browser deshalb im selben Scope und teilen sich ihre
 Variablen (`scene`, `TERRAIN`, `objects`, `activeTool`, `SETTINGS`).
 
 **Bibliotheken** liegen lokal in `lib/`: three.js r128, OrbitControls r128,
-geotiff.js 2.1.3. Alle MIT, mit der GPLv3 verträglich. Bewusst kein CDN, damit
+geotiff.js 2.1.3, web-ifc 0.0.79 (nur IFC-Import, lazy geladen, MPL-2.0). Alle mit der GPLv3 verträglich. Bewusst kein CDN, damit
 beim Aufruf keine Besucherdaten an Dritte gehen — das hält die
 Datenschutzerklärung kurz. Die Dateien sind nicht im Repository; Bezugsquellen
 in `lib/LIESMICH.txt`. **Version nicht wechseln**, die Anwendung ist gegen

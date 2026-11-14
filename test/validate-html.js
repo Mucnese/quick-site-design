@@ -68,6 +68,13 @@ test('die drei Bibliotheken aus lib/ werden eingebunden und liegen vor', functio
   });
 });
 
+test('web-ifc liegt lokal vor, mit Lizenztext, und steht nicht fest im HTML', function () {
+  ['lib/web-ifc-api-iife.js', 'lib/web-ifc.wasm', 'lib/LICENSE-web-ifc.txt'].forEach(function (rel) {
+    assert.ok(fs.existsSync(path.join(ROOT, rel)), rel + ' fehlt im Projekt');
+  });
+  assert.ok(indexHtml.indexOf('<script src="lib/web-ifc') < 0, 'web-ifc darf nur nachgeladen werden');
+});
+
 test('keine CDN-Verweise', function () {
   assert.ok(!/<script[^>]+src=["']https?:\/\//.test(indexHtml), 'ein <script src> zeigt auf einen fremden Server');
 });

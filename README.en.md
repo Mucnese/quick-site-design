@@ -14,7 +14,7 @@ visible: whether the radius reaches, whether two crane radii overlap, whether
 the office block fits the available area, and how the haul road sits in the
 terrain. It does not replace detailed design.
 
-Technically one HTML file of roughly 150 KB plus three libraries next to it. No
+Technically one HTML file of roughly 150 KB plus four libraries next to it. No
 server, no installation, no build step. Once opened, all data stays in the
 browser.
 
@@ -35,6 +35,9 @@ browser.
   64 × 64 cells). There is no slider for it. Height lookups, objects and the IFC
   export always use the same data.
 - The coordinate reference system is read from the GeoKeys.
+- Import a structure as an IFC file: if the file is georeferenced and uses the same CRS as the
+  terrain, it is placed automatically. Otherwise a two-point procedure fixes it (two points on the
+  structure, two on the terrain; the structure always stays level).
 
 **Site elements**
 - Container blocks up to 25 side by side, 2 rows, 5 storeys. With two rows a
@@ -225,6 +228,9 @@ quick-site-design/
 │   ├── three.min.js      libraries, local instead of CDN
 │   ├── OrbitControls.js
 │   ├── geotiff.js
+│   ├── web-ifc-api-iife.js   IFC reader (loaded only on the first IFC import)
+│   ├── web-ifc.wasm
+│   ├── LICENSE-web-ifc.txt
 │   └── LIESMICH.txt      which file comes from where
 ├── demo/
 │   ├── demo_dgm.tif      terrain model for the demo link
@@ -254,15 +260,16 @@ Details are in `PROJEKT.md` (German).
 
 ## Running it yourself
 
-The application requires three libraries:
+The application requires four libraries:
 
 | Library | Licence |
 |---|---|
 | three.js r128 | MIT |
 | OrbitControls (three.js examples) | MIT |
 | geotiff.js 2.1.3 | MIT |
+| web-ifc 0.0.79 (IFC import only) | MPL-2.0 |
 
-All three are compatible with the GPLv3 and live in the `lib/` folder. They are
+All four are compatible with the GPLv3 and live in the `lib/` folder. They are
 **not** loaded from a CDN, so opening the page creates no connections to third
 parties and the application also works offline.
 

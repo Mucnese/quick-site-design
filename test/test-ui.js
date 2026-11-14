@@ -1091,6 +1091,154 @@ await test('Adressleiste: Enter wählt nichts aus einer veralteten Liste, solang
   delete global.fetch;
 });
 
+/* ---------- IFC-Import ---------- */
+
+/* Minimaler Ersatz für web-ifc: ein Quader 10 x 6 x 8 m (y oben), optional mit IfcMapConversion */
+function fakeWebIfc(conv, opts) {
+  opts = opts || {};
+  const v = function (x) { return { value: x }; };
+  const vec = function (a) { return { size: function () { return a.length; }, get: function (i) { return a[i]; } }; };
+  const W = { IFCMAPCONVERSION: 1, IFCSIUNIT: 2 };
+  const verts = new Float32Array(8 * 6), idx = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 2, 3, 7, 2, 7, 6, 1, 2, 6, 1, 6, 5, 0, 3, 7, 0, 7, 4]);
+  [[0, 0, 0], [10, 0, 0], [10, 0, 8], [0, 0, 8], [0, 6, 0], [10, 6, 0], [10, 6, 8], [0, 6, 8]].forEach(function (p, i) { verts.set([p[0], p[1], p[2], 0, 1, 0], i * 6); });
+  W.IfcAPI = function () {
+    this.SetWasmPath = function () {};
+    this.Init = function () { return opts.initFails ? Promise.reject(new Error('ifcLibFail')) : Promise.resolve(); };
+    this.OpenModel = function () { return 1; };
+    this.CloseModel = function () { W.closed = (W.closed || 0) + 1; };
+    this.GetLineIDsWithType = function (id, t) { return vec(t === 1 && conv ? [10] : t === 2 ? [30] : []); };
+    this.GetLine = function (id, eid) {
+      if (eid === 10) return { Eastings: v(conv.E), Northings: v(conv.N), OrthogonalHeight: v(conv.H), XAxisAbscissa: v(1), XAxisOrdinate: v(0), Scale: v(1), TargetCRS: v(20) };
+      if (eid === 20) return { Name: v('EPSG:' + conv.epsg), Description: null, MapUnit: null };
+      return { UnitType: v('LENGTHUNIT'), Prefix: null, Name: v('METRE') };
+    };
+    this.StreamAllMeshes = function (id, cb) {
+      const pg = { geometryExpressID: 5, color: { x: 0.8, y: 0.6, z: 0.5, w: 1 }, flatTransformation: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] };
+      cb({ geometries: vec(opts.empty ? [] : [pg]) });
+    };
+    this.GetGeometry = function () { return { GetVertexData: function () { return 0; }, GetVertexDataSize: function () { return verts.length; }, GetIndexData: function () { return 0; }, GetIndexDataSize: function () { return idx.length; } }; };
+    this.GetVertexArray = function () { return verts; };
+    this.GetIndexArray = function () { return idx; };
+    this.GetCoordinationMatrix = function () { return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; };
+  };
+  return W;
+}
+
+function ifcScope(conv, opts) {
+  const s = newScope();
+  s.setTimeout = function (fn) { fn(); return 0; };          // die kurze Pause vor dem Lesen entfällt im Test
+  s.WebIFC = fakeWebIfc(conv, opts);
+  // Gelände wie im Demo-Fall: 100 x 100 m, Mitte bei E 692500 / N 5336500, EPSG:25832
+  const terr = s.terrainFromEmbedded({ n: 5, heights: new Array(25).fill(1000), scale: 100, zmin: 500, zmax: 520, width: 100, depth: 100, originE: 692500, originN: 5336500, epsg: 25832 });
+  s.buildTerrain(terr);
+  s.updateTerrainInfo();
+  return s;
+}
+const ifcFile = function (name, size) { return { name: name, size: size || 1000, arrayBuffer: function () { return Promise.resolve(new ArrayBuffer(8)); } }; };
+const ifcModelOf = function (s) { return vm.runInContext('ifcModel', s); };
+const ifcPickOf = function (s) { return vm.runInContext('ifcPick', s); };
+
+await test('IFC-Import: gleiches Bezugssystem - automatisch platziert, Lage aus der IfcMapConversion', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  const g = function (id) { return s.document.getElementById(id); };
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  const m = ifcModelOf(s);
+  assert.ok(m, 'Modell fehlt');
+  assert.strictEqual(m.how, 'auto');
+  assert.ok(g('ifc-status').textContent.indexOf('Automatisch platziert (EPSG:25832)') === 0, g('ifc-status').textContent);
+  assert.strictEqual(g('ifc-tools').style.display, 'block');
+  // Ursprung des Bauwerks (Gruppe) bei E 692480 -> x = -20, N 5336520 -> z = -20, Höhe 501 - zmin(500) = 1
+  assert.ok(Math.abs(m.group.position.x - (-20)) < 1e-6 && Math.abs(m.group.position.z - (-20)) < 1e-6 && Math.abs(m.group.position.y - 1) < 1e-6,
+            JSON.stringify(m.group.position));
+  assert.strictEqual(ifcPickOf(s), null, 'keine manuelle Platzierung');
+  assert.strictEqual(m.group.children.length, 1, 'ein Netz je Farbe');
+  assert.strictEqual(s.WebIFC.closed, 1, 'Modell im Leser wieder freigegeben');
+  // Höhenversatz
+  s.applyIfcDz('2.5');
+  assert.ok(Math.abs(m.group.position.y - 3.5) < 1e-6);
+});
+
+await test('IFC-Import: anderes Bezugssystem oder keine Georeferenz - Platzierung von Hand mit vier Schritten', async function () {
+  const s = ifcScope({ E: 500000, N: 5400000, H: 501, epsg: 25833 });
+  const g = function (id) { return s.document.getElementById(id); };
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  let pick = ifcPickOf(s);
+  assert.ok(pick && pick.step === 0, 'manueller Modus');
+  assert.ok(g('ifc-status').textContent.indexOf('EPSG:25833') >= 0 && g('ifc-status').textContent.indexOf('EPSG:25832') >= 0, g('ifc-status').textContent);
+  assert.strictEqual(g('ifc-hint').style.display, 'block');
+  assert.ok(g('ifc-hint').textContent.indexOf('Punkt A am Bauwerk') >= 0);
+  // vier Punkte (Bauwerkskoordinaten, Gelände) wie nach vier Klicks; Gelände ist eben bei Höhe 10 m über zmin
+  pick.p = [{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }];
+  pick.t = [{ x: -20, y: 0, z: 10 }, { x: -20, y: 0, z: 0 }];     // Richtung +x des Bauwerks zeigt nach Norden (-z)
+  pick.markers = []; pick.step = 4;
+  s.finishIfcPick();
+  const m = ifcModelOf(s);
+  assert.strictEqual(m.how, 'manual');
+  assert.strictEqual(ifcPickOf(s), null);
+  assert.strictEqual(g('ifc-hint').style.display, 'none');
+  assert.ok(Math.abs(m.placement.rotY - Math.PI / 2) < 1e-9, 'um 90 Grad gedreht');
+  assert.ok(g('ifc-status').textContent.indexOf('Abstand A–B: Bauwerk 10.00 m, Gelände 10.00 m') >= 0, g('ifc-status').textContent);
+  assert.strictEqual(g('ifc-status').className.indexOf('err') < 0, true, 'Abstände passen: keine Warnung');
+  // Abstände weichen stark ab: Warnung
+  s.startIfcManual(false);
+  const p2 = ifcPickOf(s);
+  p2.p = [{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }]; p2.t = [{ x: 0, y: 0, z: 0 }, { x: 25, y: 0, z: 0 }]; p2.markers = []; p2.step = 4;
+  s.finishIfcPick();
+  assert.ok(g('ifc-status').textContent.indexOf('weichen um 15.00 m ab') >= 0 && g('ifc-status').className.indexOf('err') > 0, g('ifc-status').textContent);
+});
+
+await test('IFC-Import: Abbrechen mit Esc entfernt ein neues Bauwerk, ein schon platziertes behält seine Lage', async function () {
+  const s = ifcScope(null);                                    // ohne Georeferenz
+  const g = function (id) { return s.document.getElementById(id); };
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  assert.ok(g('ifc-status').textContent.indexOf('nicht georeferenziert') >= 0);
+  assert.ok(ifcModelOf(s));
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(ifcModelOf(s), null, 'neues Bauwerk ohne Lage wird entfernt');
+  assert.strictEqual(g('ifc-tools').style.display, 'none');
+  // platziertes Bauwerk: Neuplatzierung abbrechen lässt die Lage unverändert
+  const s2 = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  await s2.handleIfcFile(ifcFile('haus.ifc'));
+  const before = JSON.stringify(ifcModelOf(s2).group.position);
+  s2.startIfcManual(false);
+  assert.notStrictEqual(JSON.stringify(ifcModelOf(s2).group.position), before, 'Vorschau steht woanders');
+  s2.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(JSON.stringify(ifcModelOf(s2).group.position), before);
+  s2.removeIfc();
+  assert.strictEqual(ifcModelOf(s2), null);
+});
+
+await test('IFC-Import: Fehler - kein Gelände, zu große Datei, leere Geometrie, Bibliothek lädt nicht', async function () {
+  const s0 = newScope();
+  s0.setTimeout = function (fn) { fn(); return 0; };
+  s0.WebIFC = fakeWebIfc(null);
+  await s0.handleIfcFile(ifcFile('a.ifc'));
+  assert.ok(s0.document.getElementById('ifc-status').textContent.indexOf('Geländemodell laden') >= 0);
+  const s = ifcScope(null);
+  await s.handleIfcFile(ifcFile('riesig.ifc', 400e6));
+  assert.ok(s.document.getElementById('ifc-status').textContent.indexOf('zu groß') > 0 && ifcModelOf(s) === null);
+  const se = ifcScope(null, { empty: true });
+  await se.handleIfcFile(ifcFile('leer.ifc'));
+  assert.ok(se.document.getElementById('ifc-status').textContent.indexOf('keine darstellbare Geometrie') >= 0);
+  const sl = ifcScope(null, { initFails: true });
+  await sl.handleIfcFile(ifcFile('x.ifc'));
+  assert.ok(sl.document.getElementById('ifc-status').textContent.indexOf('IFC-Bibliothek') >= 0, sl.document.getElementById('ifc-status').textContent);
+});
+
+await test('IFC-Import: neues Gelände - automatisch platziertes Bauwerk wird neu eingepasst, von Hand platziertes entfernt', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  const m = ifcModelOf(s);
+  // anderes Gelände mit verschobenem Ursprung
+  const t2 = s.terrainFromEmbedded({ n: 5, heights: new Array(25).fill(1000), scale: 100, zmin: 500, zmax: 520, width: 100, depth: 100, originE: 692400, originN: 5336500, epsg: 25832 });
+  s.buildTerrain(t2);
+  s.refreshIfcAfterTerrain();
+  assert.ok(Math.abs(ifcModelOf(s).group.position.x - 80) < 1e-6, 'x = 692480 - 692400');
+  ifcModelOf(s).how = 'manual';
+  s.refreshIfcAfterTerrain();
+  assert.strictEqual(ifcModelOf(s), null);
+});
+
 await test('Hilfe: Knopf öffnet das Hilfefenster mit sieben Abschnitten und Link zur Anleitung, schließt Darstellung, folgt der Sprache', function () {
   const s = newScope();
   const g = function (id) { return s.document.getElementById(id); };

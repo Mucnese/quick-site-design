@@ -230,7 +230,28 @@ transmitted (see [privacy](datenschutz.html)). At the bottom left the attributio
 
 ---
 
-## 8. IFC export
+## 8. IFC import and export
+
+### Importing a structure as IFC
+
+In the **Data** window, the **Structure · IFC** row loads a structure (new building, building,
+bridge) from an IFC file. Terrain must be loaded first. The reading library is loaded only now; the
+file stays in the browser and is not transmitted. Size up to 300 MB.
+
+- **Automatic:** If the file is georeferenced (`IfcMapConversion`) and uses the **same coordinate
+  system (EPSG)** as the terrain, the structure appears at the right place, rotated and at the right
+  height. Scale and length unit of the file are taken into account.
+- **Manual (2 + 2 points):** If the georeference is missing or the coordinate system differs, the
+  message names the reason and starts the procedure: click two points on the **structure**, then the
+  **matching two points on the terrain**. The point pairs give position and rotation. The structure
+  always stays **level**; its height follows the terrain at the first point. If the two distances do
+  not match, a warning appears. **Esc** cancels. **Place manually** repeats the procedure later.
+- **Height ±** raises or lowers the structure, **✕** removes it.
+- If the structure lies outside the terrain, a note appears. When other terrain is loaded, an
+  automatically placed structure is placed again, a manually placed one is removed.
+- Not supported: length units such as feet and inches (IfcConversionBasedUnit).
+
+### IFC export
 
 The **IFC export** card (at the bottom, among the blocks) writes **terrain and buildings** to an
 IFC file, georeferenced in the coordinate system of the loaded terrain. Blocks such as cranes and

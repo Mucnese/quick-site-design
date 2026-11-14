@@ -15,7 +15,7 @@ Kranradien überschneiden, ob die Containeranlage auf die verfügbare Fläche pa
 und wie die Baustraße im Gelände liegt. Eine Ausführungsplanung ersetzt das
 nicht.
 
-Technisch eine HTML-Datei von rund 150 KB und drei Bibliotheken daneben. Kein
+Technisch eine HTML-Datei von rund 150 KB und vier Bibliotheken daneben. Kein
 Server, keine Installation, kein Build. Nach dem Öffnen bleiben alle Daten im
 Browser.
 
@@ -36,6 +36,9 @@ Browser.
   64 × 64 Zellen). Es gibt keinen Regler dafür. Höhenabfragen, Objekte und
   IFC-Export nutzen immer dieselben Daten.
 - Koordinatenbezugssystem wird aus den GeoKeys gelesen.
+- Bauwerk als IFC-Datei einlesen: Ist die Datei georeferenziert und hat dasselbe Bezugssystem wie das
+  Gelände, wird sie automatisch platziert. Sonst legt man sie in einem Zwei-Punkt-Verfahren fest
+  (zwei Punkte am Bauwerk, zwei im Gelände; das Bauwerk steht dabei immer waagerecht).
 
 **Bausteine**
 - Containeranlagen bis 25 nebeneinander, 2 Reihen, 5 Stockwerke. Bei zwei Reihen
@@ -223,6 +226,9 @@ quick-site-design/
 │   ├── three.min.js      Bibliotheken, lokal statt vom CDN
 │   ├── OrbitControls.js
 │   ├── geotiff.js
+│   ├── web-ifc-api-iife.js   IFC-Leser (wird erst beim IFC-Import geladen)
+│   ├── web-ifc.wasm
+│   ├── LICENSE-web-ifc.txt
 │   └── LIESMICH.txt      welche Datei woher kommt
 ├── demo/
 │   ├── demo_dgm.tif      Geländemodell für den Demo-Link
@@ -252,15 +258,16 @@ Browser. Einzelheiten stehen in `PROJEKT.md`.
 
 ## Selbst betreiben
 
-Die Anwendung braucht drei Bibliotheken:
+Die Anwendung braucht vier Bibliotheken:
 
 | Bibliothek | Lizenz |
 |---|---|
 | three.js r128 | MIT |
 | OrbitControls (three.js examples) | MIT |
 | geotiff.js 2.1.3 | MIT |
+| web-ifc 0.0.79 (nur für den IFC-Import) | MPL-2.0 |
 
-Alle drei sind mit der GPLv3 verträglich und liegen im Ordner `lib/`. Sie
+Alle vier sind mit der GPLv3 verträglich und liegen im Ordner `lib/`. Sie
 werden **nicht** von einem CDN nachgeladen: so entstehen beim Aufruf keine
 Verbindungen zu fremden Servern, und die Anwendung läuft auch ohne
 Internetverbindung.

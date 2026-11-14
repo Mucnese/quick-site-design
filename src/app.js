@@ -3975,6 +3975,7 @@ function raycastPivot(event) {
   const roots = objects.map(function (o) { return o.group; });
   if (terrainMesh) roots.push(terrainMesh);
   if (buildingsMesh) roots.push(buildingsMesh);
+  if (ifcModel) roots.push(ifcModel.group);
   if (!roots.length) return null;
   const hit = firstVisibleHit(raycaster.intersectObjects(roots, true));
   if (!hit) return null;
@@ -4443,6 +4444,256 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
 }
 
 /* =========================================================
+   IFC-Import
+   Ein Bauwerk als IFC-Datei auf dem Gelände platzieren. Gelesen wird mit
+   web-ifc (lib/, MPL-2.0, erst beim ersten Import nachgeladen). web-ifc liefert
+   die Geometrie in Metern und im Szenenformat dieser Anwendung (+x Ost, y oben,
+   -z Nord), verschoben um eine "Koordinationsmatrix" (nur Verschiebung), damit
+   große Koordinaten nicht die Genauigkeit der Fließkommazahlen sprengen.
+   Platzierung:
+   - automatisch, wenn das Bauwerk eine IfcMapConversion mit demselben EPSG-Code
+     wie das Gelände trägt (ifcAutoPlacement);
+   - sonst von Hand über zwei Punkte am Bauwerk und zwei Punkte im Gelände
+     (ifcTwoPointPlacement). Das Bauwerk steht dabei immer waagerecht: es wird nur um
+     die Hochachse gedreht und verschoben, nicht gekippt oder skaliert.
+   ========================================================= */
+const IFC_MAX_BYTES = 300e6;
+const IFC_LIB_SCRIPT = 'lib/web-ifc-api-iife.js';
+const IFC_LIB_DIR = 'lib/';
+let webIfcApi = null;               // IfcAPI nach Init
+let webIfcLoading = null;           // laufendes Laden der Bibliothek
+let ifcModel = null;                // { group, name, coord, georef, placement, baseY, bbox }
+
+const IFC_PREFIX = { MILLI: 0.001, CENTI: 0.01, DECI: 0.1, KILO: 1000 };
+
+function ifcVal(x) { return x && typeof x === 'object' && 'value' in x ? x.value : x; }
+
+/* Lädt web-ifc aus lib/ (nur im Browser, nur einmal) */
+function getWebIfc() {
+  if (webIfcApi) return Promise.resolve(webIfcApi);
+  if (webIfcLoading) return webIfcLoading;
+  webIfcLoading = new Promise(function (resolve, reject) {
+    function init() {
+      try {
+        const api = new WebIFC.IfcAPI();
+        let dir = IFC_LIB_DIR;
+        try { dir = new URL(IFC_LIB_DIR, document.baseURI).href; } catch (e) { /* relativ lassen */ }
+        api.SetWasmPath(dir, dir !== IFC_LIB_DIR);
+        Promise.resolve(api.Init()).then(function () { webIfcApi = api; resolve(api); }, reject);
+      } catch (e) { reject(e); }
+    }
+    if (typeof WebIFC !== 'undefined') { init(); return; }
+    const s = document.createElement('script');
+    s.src = IFC_LIB_SCRIPT;
+    s.onload = init;
+    s.onerror = function () { webIfcLoading = null; reject(new Error('ifcLibFail')); };
+    document.head.appendChild(s);
+  }).catch(function (e) { webIfcLoading = null; throw e; });
+  return webIfcLoading;
+}
+
+/* Lesen der Georeferenz: IfcMapConversion und IfcProjectedCRS. Liefert null, wenn keine da ist.
+   Die Einheiten: web-ifc rechnet die Geometrie in Meter um; die Umrechnung der Karte
+   (Eastings, Northings, Höhe) steht in der Kartenmaßeinheit des Koordinatensystems, Scale
+   rechnet von den Projekteinheiten dorthin. Wirksamer Faktor von Geometrie-Metern in
+   Kartenmeter: Scale * Kartenmeter je Karteneinheit / Meter je Projekteinheit. */
+function ifcReadGeoref(api, modelId, W) {
+  const ids = api.GetLineIDsWithType(modelId, W.IFCMAPCONVERSION);
+  if (!ids || !ids.size || !ids.size()) return null;
+  const l = api.GetLine(modelId, ids.get(0));
+  const crs = l.TargetCRS ? api.GetLine(modelId, ifcVal(l.TargetCRS)) : null;
+  let epsg = null, crsName = '';
+  if (crs) {
+    crsName = String(ifcVal(crs.Name) || '');
+    const m = (crsName + ' ' + String(ifcVal(crs.Description) || '')).match(/EPSG\s*:?\s*(\d{4,5})/i);
+    if (m) epsg = parseInt(m[1], 10);
+  }
+  function unitFactor(unitRef) {
+    const r = ifcVal(unitRef);
+    if (!r) return 1;
+    try {
+      const u = api.GetLine(modelId, r);
+      const pre = String(ifcVal(u.Prefix) || '').toUpperCase();
+      return IFC_PREFIX[pre] || 1;
+    } catch (e) { return 1; }
+  }
+  const mapUnit = crs && crs.MapUnit ? unitFactor(crs.MapUnit) : 1;
+  let projUnit = 1;
+  try {
+    const us = api.GetLineIDsWithType(modelId, W.IFCSIUNIT);
+    for (let i = 0; i < us.size(); i++) {
+      const u = api.GetLine(modelId, us.get(i));
+      if (String(ifcVal(u.UnitType)) === 'LENGTHUNIT') { projUnit = IFC_PREFIX[String(ifcVal(u.Prefix) || '').toUpperCase()] || 1; break; }
+    }
+  } catch (e) { projUnit = 1; }
+  const num = function (x, d) { const v = ifcVal(x); return (v === null || v === undefined || !isFinite(v)) ? d : Number(v); };
+  return {
+    epsg: epsg, crsName: crsName,
+    E0: num(l.Eastings, 0), N0: num(l.Northings, 0), H0: num(l.OrthogonalHeight, 0),
+    a: num(l.XAxisAbscissa, 1), b: num(l.XAxisOrdinate, 0), scale: num(l.Scale, 1),
+    mapUnit: mapUnit, projUnit: projUnit
+  };
+}
+
+/* Gruppen-Transformation (Drehung um die Hochachse, Maßstab, Position) aus der Georeferenz.
+   coord = Verschiebung der Koordinationsmatrix [tx,ty,tz]; terrain = TERRAIN. */
+function ifcAutoPlacement(g, coord, terrain) {
+  const mag = Math.hypot(g.a, g.b) || 1;
+  const ca = g.a / mag, sb = g.b / mag;
+  const s = g.scale * g.mapUnit / g.projUnit;
+  const E0 = g.E0 * g.mapUnit, N0 = g.N0 * g.mapUnit, H0 = g.H0 * g.mapUnit;
+  const tx = coord[0], ty = coord[1], tz = coord[2];
+  return {
+    rotY: Math.atan2(sb, ca), scale: s,
+    x: E0 - terrain.originE - s * (ca * tx + sb * tz),
+    y: H0 - terrain.zmin - s * ty,
+    z: terrain.originN - N0 + s * (sb * tx - ca * tz)
+  };
+}
+
+/* Drehung um die Hochachse in der Szene: der Winkel eines Vektors (vx, vz) ist atan2(-vz, vx) */
+function ifcAngle(vx, vz) { return Math.atan2(-vz, vx); }
+
+/* Zwei Punkte am Bauwerk (p1, p2 in den Koordinaten der Gruppe) auf zwei Punkte im Gelände (t1, t2) legen;
+   die Höhe von p1 liegt auf der Geländehöhe bei t1. Liefert auch die beiden Abstände zur Kontrolle. */
+function ifcTwoPointPlacement(p1, p2, t1, t2, heightAt) {
+  const th = ifcAngle(t2.x - t1.x, t2.z - t1.z) - ifcAngle(p2.x - p1.x, p2.z - p1.z);
+  const c = Math.cos(th), s = Math.sin(th);
+  return {
+    rotY: th, scale: 1,
+    x: t1.x - (c * p1.x + s * p1.z),
+    y: heightAt(t1.x, t1.z) - p1.y,
+    z: t1.z - (-s * p1.x + c * p1.z),
+    distModel: Math.hypot(p2.x - p1.x, p2.z - p1.z),
+    distTerrain: Math.hypot(t2.x - t1.x, t2.z - t1.z)
+  };
+}
+
+function ifcApplyPlacement(model, pl, dz) {
+  const g = model.group;
+  g.rotation.y = pl.rotY;
+  g.scale.set(pl.scale, pl.scale, pl.scale);
+  model.baseY = pl.y;
+  g.position.set(pl.x, pl.y + (dz || 0), pl.z);
+  model.placement = pl;
+}
+
+/* Liegt der Mittelpunkt des Bauwerks (Gruppenkoordinaten) nach der Platzierung innerhalb des Geländes? */
+function ifcInsideTerrain(model, terrain) {
+  const b = model.bbox;
+  const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+  const pl = model.placement, c = Math.cos(pl.rotY), s = Math.sin(pl.rotY);
+  const x = pl.x + pl.scale * (c * cx + s * cz), z = pl.z + pl.scale * (-s * cx + c * cz);
+  return Math.abs(x) <= terrain.w / 2 && Math.abs(z) <= terrain.d / 2;
+}
+
+/* Liest eine IFC-Datei und baut daraus eine Gruppe (je Farbe ein Netz). Gibt {group, coord, georef, bbox, count}
+   zurück. Die Gruppe wird noch nicht in die Szene gesetzt. */
+async function ifcReadModel(arrayBuffer, fileName) {
+  const api = await getWebIfc();
+  const W = WebIFC;
+  const id = api.OpenModel(new Uint8Array(arrayBuffer), { COORDINATE_TO_ORIGIN: true });
+  if (id < 0) throw new Error('ifcNoModel');
+  try {
+    const georef = ifcReadGeoref(api, id, W);
+    const byColor = new Map();
+    let tris = 0;
+    api.StreamAllMeshes(id, function (mesh) {
+      const gs = mesh.geometries;
+      for (let i = 0; i < gs.size(); i++) {
+        const pg = gs.get(i);
+        const geo = api.GetGeometry(id, pg.geometryExpressID);
+        const verts = api.GetVertexArray(geo.GetVertexData(), geo.GetVertexDataSize());
+        const idx = api.GetIndexArray(geo.GetIndexData(), geo.GetIndexDataSize());
+        const m = pg.flatTransformation;
+        const col = pg.color || { x: 0.7, y: 0.7, z: 0.7, w: 1 };
+        const key = [col.x, col.y, col.z, col.w].map(function (v) { return Math.round(v * 255); }).join(',');
+        let e = byColor.get(key);
+        if (!e) { e = { color: col, pos: [], nrm: [], idx: [], base: 0 }; byColor.set(key, e); }
+        const nv = verts.length / 6;
+        const pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3);
+        for (let k = 0; k < nv; k++) {
+          const x = verts[k * 6], y = verts[k * 6 + 1], z = verts[k * 6 + 2];
+          pos[k * 3] = m[0] * x + m[4] * y + m[8] * z + m[12];
+          pos[k * 3 + 1] = m[1] * x + m[5] * y + m[9] * z + m[13];
+          pos[k * 3 + 2] = m[2] * x + m[6] * y + m[10] * z + m[14];
+          const nx = verts[k * 6 + 3], ny = verts[k * 6 + 4], nz = verts[k * 6 + 5];
+          nrm[k * 3] = m[0] * nx + m[4] * ny + m[8] * nz;
+          nrm[k * 3 + 1] = m[1] * nx + m[5] * ny + m[9] * nz;
+          nrm[k * 3 + 2] = m[2] * nx + m[6] * ny + m[10] * nz;
+        }
+        const ix = new Uint32Array(idx.length);
+        for (let k = 0; k < idx.length; k++) ix[k] = idx[k] + e.base;
+        e.pos.push(pos); e.nrm.push(nrm); e.idx.push(ix); e.base += nv;
+        tris += idx.length / 3;
+        if (geo.delete) geo.delete();
+      }
+      if (mesh.delete) mesh.delete();
+    });
+    if (!tris) throw new Error('ifcEmpty');
+    const cm = api.GetCoordinationMatrix(id);
+    const coord = [cm[12] || 0, cm[13] || 0, cm[14] || 0];
+    const group = new THREE.Group();
+    group.name = 'ifc-import';
+    const bbox = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity };
+    function cat(arrs, Type) {
+      let n = 0; arrs.forEach(function (a) { n += a.length; });
+      const out = new Type(n); let o = 0;
+      arrs.forEach(function (a) { out.set(a, o); o += a.length; });
+      return out;
+    }
+    byColor.forEach(function (e) {
+      const pos = cat(e.pos, Float32Array);
+      for (let k = 0; k < pos.length; k += 3) {
+        if (pos[k] < bbox.minX) bbox.minX = pos[k]; if (pos[k] > bbox.maxX) bbox.maxX = pos[k];
+        if (pos[k + 1] < bbox.minY) bbox.minY = pos[k + 1]; if (pos[k + 1] > bbox.maxY) bbox.maxY = pos[k + 1];
+        if (pos[k + 2] < bbox.minZ) bbox.minZ = pos[k + 2]; if (pos[k + 2] > bbox.maxZ) bbox.maxZ = pos[k + 2];
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      g.setAttribute('normal', new THREE.BufferAttribute(cat(e.nrm, Float32Array), 3));
+      g.setIndex(new THREE.BufferAttribute(cat(e.idx, Uint32Array), 1));
+      const a = e.color.w === undefined ? 1 : e.color.w;
+      const mat = new THREE.MeshLambertMaterial({
+        color: (Math.round(e.color.x * 255) << 16) | (Math.round(e.color.y * 255) << 8) | Math.round(e.color.z * 255),
+        side: THREE.DoubleSide, transparent: a < 0.99, opacity: a, depthWrite: a >= 0.99
+      });
+      const mesh = new THREE.Mesh(g, mat);
+      mesh.castShadow = true;
+      group.add(mesh);
+    });
+    return { group: group, name: fileName, coord: coord, georef: georef, bbox: bbox, triangles: tris };
+  } finally {
+    api.CloseModel(id);
+  }
+}
+
+function ifcRemoveModel() {
+  if (!ifcModel) return;
+  scene.remove(ifcModel.group);
+  disposeGroup(ifcModel.group);
+  ifcModel = null;
+}
+
+/* Setzt ein gelesenes Modell in die Szene (ersetzt ein vorhandenes) */
+function ifcSetModel(m) {
+  ifcRemoveModel();
+  ifcModel = { group: m.group, name: m.name, coord: m.coord, georef: m.georef, bbox: m.bbox, triangles: m.triangles,
+               placement: null, baseY: 0, dz: 0, how: null };
+  scene.add(ifcModel.group);
+  return ifcModel;
+}
+
+/* Vorläufige Lage für das Anklicken von Punkten am Bauwerk: Mitte des Blickzentrums, unten auf dem Gelände */
+function ifcPreviewPlacement(model) {
+  const b = model.bbox;
+  const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+  const tx = controls ? controls.target.x : 0, tz = controls ? controls.target.z : 0;
+  ifcApplyPlacement(model, { rotY: 0, scale: 1, x: tx - cx, y: getHeightAt(tx, tz) - b.minY, z: tz - cz }, 0);
+}
+
+
+/* =========================================================
    Export für Tests
    ========================================================= */
 
@@ -4577,6 +4828,17 @@ if (typeof module !== 'undefined' && module.exports) {
     parseCoordinates: parseCoordinates,
     photonReverse: photonReverse,
     photonSearch: photonSearch,
+    ifcReadGeoref: ifcReadGeoref,
+    ifcAutoPlacement: ifcAutoPlacement,
+    ifcTwoPointPlacement: ifcTwoPointPlacement,
+    ifcApplyPlacement: ifcApplyPlacement,
+    ifcReadModel: ifcReadModel,
+    ifcSetModel: ifcSetModel,
+    ifcRemoveModel: ifcRemoveModel,
+    getIfcModel: function () { return ifcModel; },
+    ifcInsideTerrain: ifcInsideTerrain,
+    ifcAngle: ifcAngle,
+    IFC_MAX_BYTES: IFC_MAX_BYTES,
     crsToLonLat: crsToLonLat,
     crsGeoDefinition: crsGeoDefinition,
     osmMapPlan: osmMapPlan,
@@ -4632,6 +4894,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getSelectedIds: function () { return selectedIds; },
     resetState: function () {
       objects.length = 0;
+      ifcModel = null;
       updatePitHoles();
       nextId = 1;
       selectedIds = [];

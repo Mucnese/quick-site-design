@@ -2,6 +2,8 @@ Bibliotheken
 ============
 
 Diese drei Dateien muessen hier liegen, sonst startet die Anwendung nicht.
+Dazu kommt web-ifc fuer den IFC-Import (siehe unten); es wird erst beim ersten
+IFC-Import nachgeladen und ist fuer den Start nicht noetig.
 Sie liegen bewusst lokal bei und werden nicht von einem CDN geladen: so
 gehen beim Aufruf der Seite keine Besucherdaten an fremde Server.
 
@@ -20,6 +22,16 @@ Herunterzuladen
    https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js
    -> hier als  geotiff.js  speichern
 
+4. web-ifc (nur fuer den IFC-Import), Version 0.0.79
+   npm-Paket web-ifc: https://registry.npmjs.org/web-ifc/-/web-ifc-0.0.79.tgz
+   aus dem Paket (Ordner package/) zwei Dateien hier ablegen:
+     web-ifc-api-iife.js  -> hier als  web-ifc-api-iife.js
+     web-ifc.wasm         -> hier als  web-ifc.wasm
+   (die Dateien sind unveraendert; SHA-256 der Fassung im Repository:
+    web-ifc-api-iife.js  e472e5d856342ff5be74a9f0906ba7df9cd10a0f1c809715f8315af3c3dbf5c2
+    web-ifc.wasm         5f28f448c35c47b87010a51a8812b4301a58330b6affdb1485f23f6aef6f9e07)
+   Quelltext: https://github.com/ThatOpen/engine_web-ifc
+
 Wichtig: Die Versionen nicht wechseln. Die Anwendung ist gegen three.js r128
 gebaut; neuere Fassungen haben eine andere Schnittstelle.
 
@@ -32,7 +44,10 @@ Im Browser: Link oeffnen, dann Ablage -> Sichern unter. Oder im Terminal:
 Lizenzen
 --------
 
-Alle drei stehen unter der MIT-Lizenz und sind mit der GPLv3 vertraeglich.
+three.js und geotiff.js stehen unter der MIT-Lizenz, web-ifc unter der Mozilla
+Public License 2.0; alle sind mit der GPLv3 vertraeglich (MPL 2.0 erlaubt die
+Kombination mit GPL-Code, solange die web-ifc-Dateien unveraendert und mit
+ihrer Lizenz beiliegen).
 Die MIT-Lizenz verlangt, dass ihr Lizenztext mitgeliefert wird. Lade deshalb
 zusaetzlich die LICENSE-Datei des jeweiligen Projekts herunter und lege sie
 hier ab:
@@ -43,5 +58,8 @@ hier ab:
 
   geotiff.js https://github.com/geotiffjs/geotiff.js/blob/master/LICENSE
              -> LICENSE-geotiff.txt
+
+  web-ifc    LICENSE.md aus dem Paket (MPL 2.0)
+             -> LICENSE-web-ifc.txt
 
 Diese Datei kann im Repository bleiben.
