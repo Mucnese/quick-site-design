@@ -231,7 +231,12 @@ Geländes setzt `refreshIfcAfterTerrain` automatisch platzierte Modelle neu, man
 Straße bleiben draußen); `runIfcExport` ruft es erst beim Exportieren (Häkchen `ifc-objects`). `opts.targetEpsg`
 rechnet jeden Punkt mit `crsTransformer` um (Krüger-Reihe vor und zurück, Helmert für Bessel-Systeme DHDN/MGI,
 dort nur etwa 1 bis 2 m, Höhen unverändert); bei anderem Ziel immer absolute Koordinaten. Zielsysteme: `IFC_TARGET_CRS`.
+Farben: `objectTriangles` gibt je Dreieck `col` (Materialfarbe mal Instanzfarbe); `addGroup` schreibt je Farbe eine
+IfcTriangulatedFaceSet mit IfcStyledItem und gemeinsamem IfcSurfaceStyle (`IFC_COLOR_*` für gleichfarbiges Gelände/Gebäude).
 Neue Systeme nur mit nachgeprüften Parametern (der Test vergleicht über `crsToLonLat` mit PROJ-Referenzwerten).
+
+**Klick ohne Drehen.** Ein Klick bleibt ruhig: `onOrbitPointerMove` dreht erst nach `DRAG_TOLERANCE` Pixeln Weg (Handzittern),
+und `updateControls` fährt Kamera und Drehzentrum mit demselben Schritt, sonst kippt die Blickrichtung kurz und schwingt zurück.
 
 **IFC-Export** muss strenge Leser bestehen: reines ASCII (Umlaute als `\X2\`),
 GUIDs mit erstem Zeichen 0–3, genaue Attributzahl je Entität, Gelände-Dreiecke

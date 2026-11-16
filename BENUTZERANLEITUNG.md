@@ -260,7 +260,7 @@ nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Grö�
 
 Die Karte **IFC Export** (unten bei den Bausteinen) gibt **Gelände und Gebäude** als IFC-Datei aus,
 auf Wunsch mit **Straßen, Baugruben, Kranen und Containern** (Häkchen im Fenster, Voreinstellung an;
-jeder Baustein ist ein eigenes Bauteil). Das Gelände wird nicht ausgeschnitten: eine Baugrube liegt
+jeder Baustein ist ein eigenes Bauteil). Die Teile tragen **Farben**: Bausteine wie in der Anwendung (gelber Kran, bunte Container, grauer Asphalt, braune Böschung), Gelände grün-braun, Gebäude hellgrau. Das Gelände wird nicht ausgeschnitten: eine Baugrube liegt
 unter der Geländefläche.
 
 1. Auf **IFC Export** klicken. Die Ansicht wechselt in die Draufsicht.

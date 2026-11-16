@@ -1483,6 +1483,31 @@ await test('Linke Taste auf einen Punkt: OrbitControls pausiert, die Kamera dreh
   assert.strictEqual(s.__bridge.controls.enabled, true);
 });
 
+await test('Klick mit zitternder Hand: wenige Pixel Weg drehen die Ansicht nicht, erst größere Bewegung dreht ohne Sprung', async function () {
+  const s = await scopeWithTerrain();
+  const cam = s.__bridge.camera;
+  s.__bridge.controls.target.set(0, 0, 0);
+  cam.position.set(0, 100, 100);
+  setTerrainHit(s, 30, 5, -20);
+  s.onOrbitPointerDown(orbitEvent(s));                       // Start bei (100, 100)
+  const before = [cam.position.x, cam.position.y, cam.position.z];
+  s.onOrbitPointerMove({ clientX: 102, clientY: 101 });
+  s.onOrbitPointerMove({ clientX: 98, clientY: 99 });
+  assert.deepStrictEqual([cam.position.x, cam.position.y, cam.position.z], before, 'Zittern dreht nicht');
+  s.onOrbitPointerMove({ clientX: 160, clientY: 100 });      // echte Bewegung: 60 px, voller Weg ab dem Start
+  const moved = Math.hypot(cam.position.x - before[0], cam.position.z - before[2]);
+  s.endOrbitDrag();
+  const s2 = await scopeWithTerrain();
+  const cam2 = s2.__bridge.camera;
+  s2.__bridge.controls.target.set(0, 0, 0);
+  cam2.position.set(0, 100, 100);
+  setTerrainHit(s2, 30, 5, -20);
+  s2.onOrbitPointerDown(orbitEvent(s2));
+  s2.onOrbitPointerMove({ clientX: 160, clientY: 100 });     // gleich weit ohne Zittern davor
+  s2.endOrbitDrag();
+  assert.ok(Math.abs(moved - Math.hypot(cam2.position.x - 0, cam2.position.z - 100)) < 1e-6, 'gleicher Drehwinkel mit und ohne Zittern davor');
+});
+
 await test('Verlorenes Loslassen: ohne gedrückte linke Taste beendet die nächste Mausbewegung die Drehung, statt weiterzudrehen', async function () {
   const s = await scopeWithTerrain();
   const cam = s.__bridge.camera;

@@ -4462,9 +4462,14 @@ function frameObjects(objs) {
 
 /* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
 function updateControls() {
+  // Fahren Zentrum und Kamera gemeinsam (Klick auf einen Punkt, Einrahmen), mit demselben Schritt: dann
+  // verschiebt sich die Ansicht starr. Mit unterschiedlichen Schritten kippte die Blickrichtung kurz
+  // und schwang wieder zurück - die Karte "verdrehte" sich bei jedem Klick.
+  const together = !!(focusGoal && camGoal);
+  const step = together ? 0.15 : null;
   if (focusGoal) {
-    controls.target.lerp(focusGoal, 0.16);
-    if (controls.target.distanceTo(focusGoal) < 0.08) {
+    controls.target.lerp(focusGoal, step || 0.16);
+    if (controls.target.distanceTo(focusGoal) < 0.08 && !together) {
       controls.target.copy(focusGoal);
       focusGoal = null;
     }
@@ -4478,10 +4483,11 @@ function updateControls() {
   // bleibt möglich, nur die Trägheit danach entfällt.
   controls.enableDamping = !topView;
   if (camGoal) {
-    camera.position.lerp(camGoal, 0.14);
-    if (camera.position.distanceTo(camGoal) < 0.2) {
+    camera.position.lerp(camGoal, step || 0.14);
+    if (camera.position.distanceTo(camGoal) < 0.2 && (!together || controls.target.distanceTo(focusGoal) < 0.2)) {
       camera.position.copy(camGoal);
       camGoal = null;
+      if (together) { controls.target.copy(focusGoal); focusGoal = null; }
     }
   }
   controls.update();
@@ -4971,6 +4977,11 @@ function trianglesInRect(triangles, minX, minZ, maxX, maxZ) {
   });
 }
 
+/* Farben im IFC (Rot, Grün, Blau, 0 bis 1): Gelände und Gebäude einheitlich; Bausteine nehmen ihre Farben aus den Materialien */
+const IFC_COLOR_TERRAIN = [0.56, 0.62, 0.42];
+const IFC_COLOR_BUILDING = [0.82, 0.8, 0.76];
+const IFC_COLOR_OBJECT = [0.65, 0.65, 0.65];
+
 /* Darstellungshilfen der Straße (blaue Schleppkurve, Überlagerungen im Abtrag): kein Bauteil, nicht exportieren */
 const IFC_SKIP_KINDS = { sweptFill: 1, sweptLine: 1, sweptOver: 1, cutOverlay: 1, roadOverlay: 1, cutCrest: 1 };
 
@@ -4981,7 +4992,14 @@ function objectTriangles(root) {
   root.updateMatrixWorld(true);
   const tris = [];
   const inst = new THREE.Matrix4(), full = new THREE.Matrix4();
-  function emit(geo, m) {
+  // Farbe = Materialfarbe mal Instanzfarbe (Container: weißes Material, Farbe je Instanz)
+  function rgbOf(c) {
+    if (!c) return [1, 1, 1];
+    if (typeof c.r === 'number') return [c.r, c.g, c.b];
+    const h = c.hex !== undefined ? c.hex : 0xffffff;
+    return [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
+  }
+  function emit(geo, m, col) {
     const pos = geo && geo.attributes && geo.attributes.position;
     if (!pos || !pos.array) return;
     const idx = geo.index && geo.index.array ? geo.index.array : null;
@@ -4990,19 +5008,28 @@ function objectTriangles(root) {
       const k = (idx ? idx[i] : i) * 3, x = P[k], y = P[k + 1], z = P[k + 2];
       return [e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]];
     }
-    for (let i = 0; i + 2 < count; i += 3) tris.push({ a: at(i), b: at(i + 1), c: at(i + 2) });
+    for (let i = 0; i + 2 < count; i += 3) tris.push({ a: at(i), b: at(i + 1), c: at(i + 2), col: col });
   }
   root.traverse(function (o) {
     const isInst = o instanceof THREE.InstancedMesh;
     if (!(o instanceof THREE.Mesh) && !isInst) return;
     if (o.visible === false || (o.userData && IFC_SKIP_KINDS[o.userData.kind])) return;
+    const base = rgbOf(o.material && o.material.color);
     if (isInst) {
       for (let i = 0; i < o.count; i++) {
         o.getMatrixAt(i, inst);
         full.multiplyMatrices(o.matrixWorld, inst);
-        emit(o.geometry, full);
+        let col = base;
+        if (o.instanceColor && o.instanceColor.array) {
+          const k = i * 3, ic = o.instanceColor.array;
+          col = [base[0] * ic[k], base[1] * ic[k + 1], base[2] * ic[k + 2]];
+        } else if (o.instanceColors && o.instanceColors[i] !== null && o.instanceColors[i] !== undefined) {
+          const ic = rgbOf({ hex: o.instanceColors[i] });
+          col = [base[0] * ic[0], base[1] * ic[1], base[2] * ic[2]];
+        }
+        emit(o.geometry, full, col);
       }
-    } else emit(o.geometry, o.matrixWorld);
+    } else emit(o.geometry, o.matrixWorld, base);
   });
   return tris;
 }
@@ -5272,30 +5299,57 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
   // Punkt zwischen bis zu sechs Dreiecken, ohne Zusammenfassen wird die
   // Datei viermal so groß und die eine Zeile mit der Punktliste sprengt
   // manche Leser.
-  function addGroup(triangles, name, entityType, predefinedType) {
+  // Je Farbe ein Oberflächenstil (IfcSurfaceStyle), gemeinsam für alle Bauteile mit dieser Farbe
+  const styles = new Map();
+  function styleFor(rgb) {
+    const c = rgb.map(function (v) { return Math.max(0, Math.min(1, Math.round(v * 1000) / 1000)); });
+    const key = c.join(',');
+    if (!styles.has(key)) {
+      const col = add('IFCCOLOURRGB', '$,' + c.map(function (v) { return num(v); }).join(','));
+      const rend = add('IFCSURFACESTYLERENDERING', col + ',$,$,$,$,$,$,$,.NOTDEFINED.');
+      styles.set(key, add('IFCSURFACESTYLE', '$,.BOTH.,(' + rend + ')'));
+    }
+    return styles.get(key);
+  }
+  // Ein Bauteil mit einer Fläche je Farbe (tri.col; fehlt sie, gilt defaultColor)
+  function addGroup(triangles, name, entityType, predefinedType, defaultColor) {
     if (!triangles.length) return;
-    const index = new Map();
-    const pts = [];
-    const faces = [];
+    const parts = new Map();
     triangles.forEach(function (tri) {
-      const f = [];
-      [tri.a, tri.b, tri.c].forEach(function (p) {
-        const q = localize(p).map(function (v) { return num(v); });
-        const key = q.join(',');
-        let i = index.get(key);
-        if (i === undefined) {
-          pts.push('(' + key + ')');
-          i = pts.length;
-          index.set(key, i);
-        }
-        f.push(i);
-      });
-      if (f[0] !== f[1] && f[1] !== f[2] && f[0] !== f[2]) faces.push('(' + f.join(',') + ')');
+      const c = tri.col || defaultColor;
+      const k = c.map(function (v) { return Math.round(v * 1000); }).join(',');
+      if (!parts.has(k)) parts.set(k, { col: c, tris: [] });
+      parts.get(k).tris.push(tri);
     });
-    if (!faces.length) return;
-    const coordList = add('IFCCARTESIANPOINTLIST3D', '(' + pts.join(',') + ')');
-    const faceSet = add('IFCTRIANGULATEDFACESET', coordList + ',$,.F.,(' + faces.join(',') + '),$');
-    const shapeRep = add('IFCSHAPEREPRESENTATION', bodyContext + ',' + str('Body') + ',' + str('Tessellation') + ',(' + faceSet + ')');
+    const faceSets = [];
+    parts.forEach(function (part) {
+      // Gleiche Eckpunkte nur einmal je Fläche
+      const index = new Map();
+      const pts = [];
+      const faces = [];
+      part.tris.forEach(function (tri) {
+        const f = [];
+        [tri.a, tri.b, tri.c].forEach(function (p) {
+          const q = localize(p).map(function (v) { return num(v); });
+          const key = q.join(',');
+          let i = index.get(key);
+          if (i === undefined) {
+            pts.push('(' + key + ')');
+            i = pts.length;
+            index.set(key, i);
+          }
+          f.push(i);
+        });
+        if (f[0] !== f[1] && f[1] !== f[2] && f[0] !== f[2]) faces.push('(' + f.join(',') + ')');
+      });
+      if (!faces.length) return;
+      const coordList = add('IFCCARTESIANPOINTLIST3D', '(' + pts.join(',') + ')');
+      const faceSet = add('IFCTRIANGULATEDFACESET', coordList + ',$,.F.,(' + faces.join(',') + '),$');
+      add('IFCSTYLEDITEM', faceSet + ',(' + styleFor(part.col) + '),$');
+      faceSets.push(faceSet);
+    });
+    if (!faceSets.length) return;
+    const shapeRep = add('IFCSHAPEREPRESENTATION', bodyContext + ',' + str('Body') + ',' + str('Tessellation') + ',(' + faceSets.join(',') + ')');
     const productShape = add('IFCPRODUCTDEFINITIONSHAPE', '$,$,(' + shapeRep + ')');
     const placement = add('IFCLOCALPLACEMENT', siteLocalPlacement + ',' + worldPlacement);
     // Beide Elementarten haben neun Attribute; das Tag steht vor dem
@@ -5306,9 +5360,9 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
     elements.push(el);
   }
 
-  addGroup(geo.terrain, 'Gelände (Ausschnitt)', 'IFCGEOGRAPHICELEMENT', '.TERRAIN.');
-  addGroup(geo.buildings, 'Gebäude (Ausschnitt)', 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.');
-  objs.forEach(function (o) { addGroup(o.triangles, o.name, 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.'); });
+  addGroup(geo.terrain, 'Gelände (Ausschnitt)', 'IFCGEOGRAPHICELEMENT', '.TERRAIN.', IFC_COLOR_TERRAIN);
+  addGroup(geo.buildings, 'Gebäude (Ausschnitt)', 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.', IFC_COLOR_BUILDING);
+  objs.forEach(function (o) { addGroup(o.triangles, o.name, 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.', IFC_COLOR_OBJECT); });
 
   if (elements.length) {
     add('IFCRELCONTAINEDINSPATIALSTRUCTURE', str(ifcGuid()) + ',' + owner + ',$,$,(' + elements.join(',') + '),' + site);
@@ -8124,7 +8178,7 @@ function onOrbitPointerDown(event) {
   if (rectSelectActive) return;               // Rechteck ziehen sperrt das Drehen
   const p = raycastPivot(event);
   if (!p) return;
-  pivotDrag = { pivot: p, x: event.clientX, y: event.clientY };
+  pivotDrag = { pivot: p, x: event.clientX, y: event.clientY, sx: event.clientX, sy: event.clientY, active: false };
   controls.enabled = false;                    // OrbitControls aussetzen
   if (event.preventDefault) event.preventDefault();
   window.addEventListener('pointermove', onOrbitPointerMove);
@@ -8137,6 +8191,11 @@ function onOrbitPointerMove(event) {
   // Ging das Loslassen verloren (außerhalb des Fensters, Fensterwechsel), würde jede
   // weitere Mausbewegung die Ansicht drehen: ohne gedrückte linke Taste Geste beenden
   if (event.buttons !== undefined && !(event.buttons & 1)) { endOrbitDrag(); return; }
+  // Erst ab einigen Pixeln Weg drehen: das Zittern der Hand beim Klicken soll die Ansicht nicht verdrehen
+  if (!pivotDrag.active) {
+    if (Math.abs(event.clientX - pivotDrag.sx) + Math.abs(event.clientY - pivotDrag.sy) <= DRAG_TOLERANCE) return;
+    pivotDrag.active = true;
+  }
   const h = renderer.domElement.clientHeight || window.innerHeight || 1;
   const dx = event.clientX - pivotDrag.x, dy = event.clientY - pivotDrag.y;
   pivotDrag.x = event.clientX;

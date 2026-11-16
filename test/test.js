@@ -602,10 +602,11 @@ test('objectTriangles: Weltkoordinaten über Gruppe und Instanzmatrizen, Linien 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 1]), 3));
   geo.setIndex([0, 1, 2]);
-  const plain = new THREE.Mesh(geo, {});
+  const plain = new THREE.Mesh(geo, { color: new THREE.Color(0xff0000) });
   plain.position.set(1, 0, 0);
   g.add(plain);
-  const inst = new THREE.InstancedMesh(geo, {}, 2);
+  const inst = new THREE.InstancedMesh(geo, { color: new THREE.Color(0xffffff) }, 2);
+  inst.setColorAt(0, new THREE.Color(0x00ff00));
   const d = new THREE.Object3D();
   d.position.set(0, 1, 0); d.updateMatrix(); inst.setMatrixAt(0, d.matrix);
   d.position.set(4, 1, 0); d.scale.set(2, 2, 2); d.updateMatrix(); inst.setMatrixAt(1, d.matrix);
@@ -619,6 +620,33 @@ test('objectTriangles: Weltkoordinaten über Gruppe und Instanzmatrizen, Linien 
   assert.deepStrictEqual(tris[1].a, [10, 6, -3], 'Instanz 1');
   assert.deepStrictEqual(tris[1].c, [10, 6, -2]);
   assert.deepStrictEqual(tris[2].b, [16, 6, -3], 'Instanz 2 mit Maßstab 2: x = 10 + 4 + 2');
+  assert.deepStrictEqual(tris[0].col, [1, 0, 0], 'Materialfarbe');
+  assert.deepStrictEqual(tris[1].col, [0, 1, 0], 'Instanzfarbe mal weißes Material');
+  assert.deepStrictEqual(tris[2].col, [1, 1, 1], 'Instanz ohne eigene Farbe: Material');
+});
+
+test('buildIfc: Farben - je Farbe ein Oberflächenstil, Flächen eines Bauteils mit verschiedenen Farben als getrennte Teile', function () {
+  terrainForExportTests();
+  const red = [0.9, 0.1, 0.1], blue = [0.1, 0.1, 0.9];
+  const T = function (x, col) { return { a: [x, 1, 0], b: [x + 1, 1, 0], c: [x, 1, 1], col: col }; };
+  const geo = { terrain: app.collectExportGeometry([], -10, -10, 10, 10).terrain, buildings: [],
+                objects: [{ name: 'Zweifarbig', type: 'tower', triangles: [T(0, red), T(2, blue), T(4, red)] }, { name: 'Ohne', type: 'road', triangles: [T(6)] }] };
+  const ifc = app.buildIfc(geo, -10, -10, 25832);
+  const lines = ifc.split('\n');
+  const count = function (re) { return lines.filter(function (l) { return re.test(l); }).length; };
+  assert.strictEqual(count(/^#\d+=IFCCOLOURRGB\(/), 4, 'Gelände, Rot, Blau, Standardgrau');
+  assert.strictEqual(count(/^#\d+=IFCSURFACESTYLE\(/), 4);
+  assert.strictEqual(count(/^#\d+=IFCSURFACESTYLERENDERING\(/), 4);
+  assert.strictEqual(count(/^#\d+=IFCSTYLEDITEM\(/), 4, 'eines je Fläche: Gelände, Rot, Blau, Standard');
+  assert.ok(lines.some(function (l) { return /IFCCOLOURRGB\(\$,0\.9,0\.1,0\.1\)/.test(l); }), 'Rot');
+  assert.strictEqual(count(/^#\d+=IFCTRIANGULATEDFACESET\(/), 4);
+  assert.strictEqual(checkStepReferencesResolve(ifc).missing.length, 0);
+  // Attributanzahl: Rendering 9, Stil 3, Styled Item 3, Farbe 4
+  const attrs = function (re) { return stepArgs(lines.filter(function (x) { return re.test(x); })[0]).length; };
+  assert.strictEqual(attrs(/IFCSURFACESTYLERENDERING/), 9);
+  assert.strictEqual(attrs(/=IFCSURFACESTYLE\(/), 3);
+  assert.strictEqual(attrs(/IFCSTYLEDITEM/), 3);
+  assert.strictEqual(attrs(/IFCCOLOURRGB/), 4);
 });
 
 test('IFC-Export mit Bausteinen: Straße und Baugrube kommen als eigene Bauteile, nur wenn sie das Rechteck berühren', function () {
@@ -1481,6 +1509,28 @@ test('Zeichenvorschau: je Strecke die waagerechte Länge, auch am Hang, bei der 
   assert.ok(!l[0].live);
   app.clearRoadPreview();
   assert.strictEqual(app.getRoadPreviewLabels().length, 0, 'nach dem Abbruch keine Schilder');
+});
+
+test('Kamerafahrt auf einen Punkt (Klick): Kamera und Drehzentrum bewegen sich gleich schnell, die Blickrichtung kippt zwischendurch nicht', function () {
+  terrainForExportTests();
+  const cam = app.getCamera(), ctl = app.getControls();
+  ctl.target.set(0, 0, 0);
+  cam.position.set(100, 80, 140);
+  const dir = function () {
+    const v = [cam.position.x - ctl.target.x, cam.position.y - ctl.target.y, cam.position.z - ctl.target.z];
+    const l = Math.hypot(v[0], v[1], v[2]);
+    return v.map(function (c) { return c / l; });
+  };
+  const d0 = dir();
+  app.focusOnPoint(-60, 10, -40);
+  let worst = 0;
+  for (let i = 0; i < 160; i++) {
+    app.updateControls();
+    const d = dir();
+    worst = Math.max(worst, Math.acos(Math.min(1, d0[0] * d[0] + d0[1] * d[1] + d0[2] * d[2])));
+  }
+  assert.ok(worst < 1e-6, 'Blickrichtung weicht um ' + (worst * 180 / Math.PI).toFixed(3) + '° ab');
+  assert.ok(Math.abs(ctl.target.x - (-60)) < 1e-6 && Math.abs(ctl.target.z - (-40)) < 1e-6, 'Zentrum steht am Punkt');
 });
 
 /* ---------- Draufsicht: keine Trägheitsdrehung ---------- */

@@ -2541,7 +2541,7 @@ function onOrbitPointerDown(event) {
   if (rectSelectActive) return;               // Rechteck ziehen sperrt das Drehen
   const p = raycastPivot(event);
   if (!p) return;
-  pivotDrag = { pivot: p, x: event.clientX, y: event.clientY };
+  pivotDrag = { pivot: p, x: event.clientX, y: event.clientY, sx: event.clientX, sy: event.clientY, active: false };
   controls.enabled = false;                    // OrbitControls aussetzen
   if (event.preventDefault) event.preventDefault();
   window.addEventListener('pointermove', onOrbitPointerMove);
@@ -2554,6 +2554,11 @@ function onOrbitPointerMove(event) {
   // Ging das Loslassen verloren (außerhalb des Fensters, Fensterwechsel), würde jede
   // weitere Mausbewegung die Ansicht drehen: ohne gedrückte linke Taste Geste beenden
   if (event.buttons !== undefined && !(event.buttons & 1)) { endOrbitDrag(); return; }
+  // Erst ab einigen Pixeln Weg drehen: das Zittern der Hand beim Klicken soll die Ansicht nicht verdrehen
+  if (!pivotDrag.active) {
+    if (Math.abs(event.clientX - pivotDrag.sx) + Math.abs(event.clientY - pivotDrag.sy) <= DRAG_TOLERANCE) return;
+    pivotDrag.active = true;
+  }
   const h = renderer.domElement.clientHeight || window.innerHeight || 1;
   const dx = event.clientX - pivotDrag.x, dy = event.clientY - pivotDrag.y;
   pivotDrag.x = event.clientX;
