@@ -221,10 +221,17 @@ und IfcSite trägt RefLatitude/RefLongitude/RefElevation (über `crsToLonLat`). 
 die Meshes (Meter, Y oben, `COORDINATE_TO_ORIGIN`); `ifcReadGeoref` holt IfcMapConversion und Längeneinheiten
 (wirksamer Maßstab = Scale × Kartenmaßeinheit / Projekteinheit). Stimmt der EPSG-Code mit `TERRAIN.epsg`
 überein, platziert `ifcAutoPlacement` das Modell absolut (Drehung aus Abszisse/Ordinate, Höhe über
-`TERRAIN.zmin`). Sonst führt `startIfcManual` durch vier Klicks (2 Punkte am Modell, 2 im Gelände);
+`TERRAIN.zmin`). Sonst führt `startIfcManual` durch vier Klicks, abwechselnd Modell/Gelände (A Modell, A Gelände, B Modell, B Gelände);
 `ifcTwoPointPlacement` rechnet nur Drehung um die Hochachse, Verschiebung und optional den Maßstab, das
 Modell bleibt waagerecht. IfcConversionBasedUnit (z. B. Fuß) wird nicht ausgewertet. Nach dem Wechsel des
 Geländes setzt `refreshIfcAfterTerrain` automatisch platzierte Modelle neu, manuell platzierte entfallen.
+
+**IFC-Export mit Bausteinen und Zielsystem.** `collectExportObjects` holt je Baustein die Dreiecke
+(`objectTriangles`: Meshes und Instanzen in Weltkoordinaten; Linien und `IFC_SKIP_KINDS`-Hilfsflächen der
+Straße bleiben draußen); `runIfcExport` ruft es erst beim Exportieren (Häkchen `ifc-objects`). `opts.targetEpsg`
+rechnet jeden Punkt mit `crsTransformer` um (Krüger-Reihe vor und zurück, Helmert für Bessel-Systeme DHDN/MGI,
+dort nur etwa 1 bis 2 m, Höhen unverändert); bei anderem Ziel immer absolute Koordinaten. Zielsysteme: `IFC_TARGET_CRS`.
+Neue Systeme nur mit nachgeprüften Parametern (der Test vergleicht über `crsToLonLat` mit PROJ-Referenzwerten).
 
 **IFC-Export** muss strenge Leser bestehen: reines ASCII (Umlaute als `\X2\`),
 GUIDs mit erstem Zeichen 0–3, genaue Attributzahl je Entität, Gelände-Dreiecke

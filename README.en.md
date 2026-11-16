@@ -36,8 +36,9 @@ browser.
   export always use the same data.
 - The coordinate reference system is read from the GeoKeys.
 - Import a structure as an IFC file: if the file is georeferenced and uses the same CRS as the
-  terrain, it is placed automatically. Otherwise a two-point procedure fixes it (two points on the
-  structure, two on the terrain; the structure always stays level).
+  terrain, it is placed automatically. Otherwise a two-point procedure fixes it (two point pairs: one point on the
+  structure and its match on the
+  terrain; the structure always stays level).
 
 **Site elements**
 - Container blocks up to 25 side by side, 2 rows, 5 storeys. With two rows a

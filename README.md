@@ -38,7 +38,7 @@ Browser.
 - Koordinatenbezugssystem wird aus den GeoKeys gelesen.
 - Bauwerk als IFC-Datei einlesen: Ist die Datei georeferenziert und hat dasselbe Bezugssystem wie das
   Gelände, wird sie automatisch platziert. Sonst legt man sie in einem Zwei-Punkt-Verfahren fest
-  (zwei Punkte am Bauwerk, zwei im Gelände; das Bauwerk steht dabei immer waagerecht).
+  (zwei Punktpaare: je ein Punkt am Bauwerk und der zugehörige im Gelände; das Bauwerk steht dabei immer waagerecht).
 
 **Bausteine**
 - Containeranlagen bis 25 nebeneinander, 2 Reihen, 5 Stockwerke. Bei zwei Reihen

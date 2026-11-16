@@ -413,6 +413,38 @@ await test('Exportieren löst den Download aus und meldet Erfolg', async functio
   assert.strictEqual(s.document.getElementById('status').textContent, s.T('msgIfcExported'));
 });
 
+await test('IFC-Panel: Bezugssystem der Datei wählbar, anderes System sperrt "lokal", Bessel-Hinweis, Bausteine abwählbar', async function () {
+  const s = await scopeWithTerrain();
+  const g = function (id) { return s.document.getElementById(id); };
+  dragRect(s, -10, -10, 10, 10);
+  const opts = g('ifc-target').children.map(function (o) { return o.value; });
+  assert.strictEqual(opts[0], '', 'erste Wahl: wie Gelände');
+  assert.ok(opts.indexOf('25833') >= 0 && opts.indexOf('31467') >= 0 && opts.indexOf('25832') < 0, 'das eigene System fehlt in der Liste: ' + opts.join(','));
+  const labels = g('ifc-target').children.map(function (o) { return o.textContent; });
+  assert.ok(labels[opts.indexOf('31467')].indexOf('≈') > 0 && labels[opts.indexOf('25833')].indexOf('≈') < 0, 'Bessel mit ≈ markiert');
+  // anderes System: Koordinaten absolut und gesperrt
+  g('ifc-target').value = '25833';
+  s.updateIfcTargetUi();
+  assert.strictEqual(g('ifc-coords').disabled, true);
+  assert.strictEqual(g('ifc-coords').value, 'abs');
+  assert.ok(g('ifc-target-note').textContent.indexOf('umgerechnet') >= 0 && g('ifc-target-note').textContent.indexOf('1 bis 2 m') < 0);
+  g('ifc-target').value = '31467';
+  s.updateIfcTargetUi();
+  assert.ok(g('ifc-target-note').textContent.indexOf('1 bis 2 m') > 0, 'Bessel: Genauigkeitshinweis');
+  let saved = null;
+  s.downloadText = function (t) { saved = t; };
+  s.runIfcExport();
+  assert.strictEqual(g('ifc-error').textContent, '');
+  assert.ok(saved && saved.indexOf("'EPSG:31467'") > 0, 'Datei im Zielsystem');
+  // zurück auf "wie Gelände"
+  g('ifc-target').value = '';
+  s.updateIfcTargetUi();
+  assert.strictEqual(g('ifc-coords').disabled, false);
+  assert.strictEqual(g('ifc-target-note').textContent, '');
+  s.runIfcExport();
+  assert.ok(saved.indexOf("'EPSG:25832'") > 0);
+});
+
 /* ---------- Baustraße: Eigenschaftsfenster ---------- */
 
 function roadObject(s, slope) {
@@ -1167,6 +1199,12 @@ await test('IFC-Import: anderes Bezugssystem oder keine Georeferenz - Platzierun
   assert.ok(g('ifc-status').textContent.indexOf('EPSG:25833') >= 0 && g('ifc-status').textContent.indexOf('EPSG:25832') >= 0, g('ifc-status').textContent);
   assert.strictEqual(g('ifc-hint').style.display, 'block');
   assert.ok(g('ifc-hint').textContent.indexOf('Punkt A am Bauwerk') >= 0);
+  // Reihenfolge abwechselnd: A Bauwerk, A Gelände, B Bauwerk, B Gelände
+  const hintAt = function (n) { s.showIfcHint(n); return g('ifc-hint').textContent; };
+  assert.ok(hintAt(1).indexOf('im Gelände den Punkt') >= 0 && hintAt(1).indexOf('A am Bauwerk') >= 0);
+  assert.ok(hintAt(2).indexOf('Punkt B am Bauwerk') >= 0);
+  assert.ok(hintAt(3).indexOf('Gelände den Punkt') >= 0 && hintAt(3).indexOf('B entspricht') >= 0);
+  s.showIfcHint(0);
   // vier Punkte (Bauwerkskoordinaten, Gelände) wie nach vier Klicks; Gelände ist eben bei Höhe 10 m über zmin
   pick.p = [{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }];
   pick.t = [{ x: -20, y: 0, z: 10 }, { x: -20, y: 0, z: 0 }];     // Richtung +x des Bauwerks zeigt nach Norden (-z)

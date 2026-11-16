@@ -33,9 +33,9 @@
     --panel-bg: rgba(45, 45, 48, 0.78);
     --border: #3f3f46;
     --border-strong: #5a5a62;
-    --text: #dcdcdc;
-    --text-dim: #a0a0a6;
-    --text-dim2: #75757c;
+    --text: #eef1f4;
+    --text-dim: #b4bcc4;
+    --text-dim2: #8d97a1;
     --accent: #4aa3df;
     --danger: #d9534f;
     --field: #333337;
@@ -164,6 +164,16 @@
   #point-label .mv { font-variant-numeric: tabular-nums; flex: 1 1 auto; text-align: right; }
   #point-label .msrc { color: var(--text-dim2); font-size: 0.9em; margin-top: 2px; }
 
+  /* Streckenlängen beim Zeichnen */
+  #seg-labels { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 5; pointer-events: none; }
+  .seg-label {
+    display: none; position: fixed; left: 0; top: 0; pointer-events: none; will-change: transform;
+    background: var(--panel-bg); color: var(--text); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 1px 6px; font-size: 0.82em; line-height: 1.4;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .seg-label.live { border-color: var(--accent); }
+
   /* ---------- Dateien ---------- */
   .file-row { margin-bottom: 9px; }
   .file-row:last-child { margin-bottom: 0; }
@@ -184,7 +194,12 @@
   .file-status.err { color: var(--danger); }
   .file-status.busy { color: var(--text-dim); }
   #ifc-coords-note { font-size: 0.76em; color: var(--text-dim2); line-height: 1.35; margin-top: 5px; }
-  #ifc-coords { max-width: 150px; }
+  #ifc-coords, #ifc-target { max-width: 150px; }
+  #ifc-target-note { font-size: 0.76em; color: var(--text-dim2); line-height: 1.35; margin: 4px 0 6px; }
+  #ifc-target-note:empty { display: none; }
+  #ifc-target-note.warn { color: var(--danger); }
+  .ifc-objects-row { display: flex; gap: 6px; align-items: flex-start; font-size: 0.86em; line-height: 1.35; margin-top: 8px; cursor: pointer; }
+  .ifc-objects-row input { margin: 2px 0 0; }
   #xyz-crs-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
   #xyz-crs-row .xyz-label { flex: 0 0 100%; font-size: 0.78em; color: var(--text-dim2); }
   #xyz-crs { flex: 1 1 120px; min-width: 0; }
@@ -637,6 +652,7 @@
 <div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
 <div id="ifc-hint"></div>
 
+<div id="seg-labels"></div>
 <div id="point-label">
   <div class="mrow"><span class="mk">R</span><span class="mv" id="measure-r">–</span></div>
   <div class="mrow"><span class="mk">H</span><span class="mv" id="measure-h">–</span></div>
@@ -686,9 +702,13 @@
   <div class="body">
     <div class="kv"><span class="k" data-i18n="ifcExtent">Ausdehnung</span><span class="v" id="ifc-extent">–</span></div>
     <div class="kv"><span class="k" data-i18n="ifcCrs">Koordinatenbezug</span><span class="v" id="ifc-crs">–</span></div>
+    <div class="kv" id="ifc-target-row"><span class="k" data-i18n="ifcTarget">Bezugssystem der Datei</span>
+      <select id="ifc-target"><option value="" data-i18n="ifcTargetSame">wie Gelände</option></select></div>
+    <div id="ifc-target-note"></div>
     <div class="kv"><span class="k" data-i18n="ifcCoords">Koordinaten</span>
       <select id="ifc-coords"><option value="abs" data-i18n="ifcCoordsAbs">absolut im Bezugssystem</option><option value="local" data-i18n="ifcCoordsLocal">lokal (mit IfcMapConversion)</option></select></div>
     <div id="ifc-coords-note" data-i18n="ifcCoordsNote">Absolut: Rechtswert, Hochwert und Höhe stehen direkt im Modell. Lokal: kleine Zahlen, die Lage steckt in der Georeferenz (IfcMapConversion).</div>
+    <label class="ifc-objects-row"><input type="checkbox" id="ifc-objects" checked><span data-i18n="ifcObjects">Straßen, Baugruben und Bausteine mitnehmen</span></label>
     <div class="file-status err" id="ifc-error"></div>
     <div id="ifc-actions">
       <button class="btn-block" id="ifc-cancel-btn" data-i18n="cancel">Abbrechen</button>

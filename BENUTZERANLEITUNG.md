@@ -17,7 +17,7 @@ Seite, ist die Planung weg.
 5. [Container, Krane, Baustraße, Baugrube im Einzelnen](#5-die-bausteine-im-einzelnen)
 6. [Mengen und Prüfungen](#6-mengen-und-prüfungen)
 7. [Karte (OpenStreetMap)](#7-karte-openstreetmap)
-8. [IFC-Export](#8-ifc-export)
+8. [IFC-Import und IFC-Export](#8-ifc-import-und-ifc-export)
 9. [Tastatur](#9-tastatur)
 10. [Grenzen und Hinweise](#10-grenzen-und-hinweise)
 11. [Wenn etwas nicht klappt](#11-wenn-etwas-nicht-klappt)
@@ -100,7 +100,7 @@ Das betrifft vor allem Österreich, wo die BEV-Raster sehr groß sind.
 - **Linke Maustaste ziehen:** umkreisen. Wer auf Gelände, Gebäude oder einen Baustein klickt und
   zieht, dreht um genau diesen Punkt. Wer auf den Hintergrund klickt, kreist die ganze Szene
   um das Zentrum.
-- **Rechte oder mittlere Taste ziehen:** verschieben.
+- **Rechte oder mittlere Taste ziehen:** verschieben (zügig: etwa doppelt so schnell wie der Mauszeiger auf dem Boden).
 - **Mausrad:** zoomen.
 - **Linksklick** auf Gelände oder Gebäude: setzt einen **Messpunkt**. Er zeigt Rechtswert, Hochwert
   und Höhe und wird zum Dreh- und Zoomzentrum.
@@ -121,7 +121,8 @@ gröber. Dafür gibt es keinen Regler, die Höhen für Objekte und Mengen sind d
   Der Baustein sitzt auf der Geländehöhe.
 - **Baustraße und Baugrube:** Punkt für Punkt ins Gelände klicken, dann **Rechtsklick** oder
   **Leertaste**, um abzuschließen. Eine Straße braucht mindestens 2 Punkte, eine Baugrube 3
-  (höchstens 32 Eckpunkte). **Esc** bricht ab.
+  (höchstens 32 Eckpunkte). **Esc** bricht ab. Beim Zeichnen steht an jeder Strecke ihre
+  **waagerechte Länge** in Metern mit zwei Nachkommastellen, auch an der Strecke zur Maus.
 
 Nach dem Setzen öffnet sich rechts das Fenster **Eigenschaften**. Jeder Regler hat in der
 Kopfzeile ein Zahlenfeld: Wert anklicken und tippen, Enter oder Verlassen übernimmt ihn, ein
@@ -245,8 +246,8 @@ nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Grö�
   Bezugssystem (EPSG)** wie das Gelände, steht das Bauwerk sofort an der richtigen Stelle,
   gedreht und in der richtigen Höhe. Maßstab und Längeneinheit der Datei werden berücksichtigt.
 - **Manuell (2 + 2 Punkte):** Fehlt die Georeferenz oder weicht das Bezugssystem ab, nennt die Meldung
-  den Grund und startet das Verfahren: zwei Punkte am **Bauwerk** anklicken, danach die **zugehörigen
-  zwei Punkte im Gelände**. Aus den Punktpaaren ergeben sich Lage und Drehung. Das Bauwerk bleibt
+  den Grund und startet das Verfahren: abwechselnd **Punkt A am Bauwerk**, dann der **zugehörige
+  Punkt A im Gelände**, danach ebenso Punkt B. Aus den Punktpaaren ergeben sich Lage und Drehung. Das Bauwerk bleibt
   immer **waagerecht**; die Höhe richtet sich nach dem Gelände am ersten Punkt. Stimmen die beiden
   Abstände nicht überein, erscheint eine Warnung. **Esc** bricht ab. Mit **Manuell platzieren** lässt sich
   das Verfahren später wiederholen.
@@ -258,8 +259,9 @@ nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Grö�
 ### IFC-Export
 
 Die Karte **IFC Export** (unten bei den Bausteinen) gibt **Gelände und Gebäude** als IFC-Datei aus,
-georeferenziert im Bezugssystem des geladenen Geländes. Bausteine wie Krane und Container sind nicht
-enthalten.
+auf Wunsch mit **Straßen, Baugruben, Kranen und Containern** (Häkchen im Fenster, Voreinstellung an;
+jeder Baustein ist ein eigenes Bauteil). Das Gelände wird nicht ausgeschnitten: eine Baugrube liegt
+unter der Geländefläche.
 
 1. Auf **IFC Export** klicken. Die Ansicht wechselt in die Draufsicht.
 2. Auf dem Gelände ein **Rechteck aufziehen**. Zoomen ist währenddessen möglich.
@@ -267,7 +269,11 @@ enthalten.
    wählst du, wie die Lage in die Datei kommt: **absolut im Bezugssystem** (Voreinstellung:
    Rechtswert, Hochwert und Höhe ü. NHN stehen direkt im Modell, sichtbar in jedem Programm)
    oder **lokal** (kleine Zahlen ab der Nordwestecke, die Lage steckt in der Georeferenz
-   `IfcMapConversion`). Die Datei nennt außerdem das Bezugssystem (EPSG-Code, Datum, Zone) und
+   `IfcMapConversion`). Unter **Bezugssystem der Datei** lässt sich die Lage in ein **anderes
+   Koordinatensystem** umrechnen (UTM 31N bis 33N, Gauß-Krüger 2 bis 5, Gauß-Krüger Österreich). Alle
+   Punkte werden dann einzeln umgerechnet und absolut geschrieben; die Höhen bleiben unverändert. Bei den
+   Bessel-Systemen (DHDN, MGI, mit ≈ markiert) stimmt die Lage nur auf etwa 1 bis 2 m, weil
+   kein Umrechnungsgitter beiliegt. Die Datei nennt außerdem das Bezugssystem (EPSG-Code, Datum, Zone) und
    trägt Breite und Länge der Baustelle ein, wo sich das System umrechnen lässt.
    **Exportieren** lädt die Datei herunter, **Abbrechen** oder **Esc** bricht ab.
 
@@ -288,7 +294,7 @@ enthalten.
 - **Keine Statik.** Die Anwendung ersetzt keine statische Prüfung, keine Standsicherheits- und
   keine Traglastberechnung. Für Krane gilt allein die Traglasttabelle des Herstellers.
 - **Daten.** Die Qualität der Mengen hängt vom Geländemodell ab. Grobe Raster glätten Böschungen.
-- **Kein Speichern.** Es gibt keinen Speicherstand. Das IFC-Modell enthält nur Gelände und Gebäude.
+- **Kein Speichern.** Es gibt keinen Speicherstand. Das IFC-Modell enthält Gelände, Gebäude und auf Wunsch die Bausteine.
 - **Datenschutz.** Alle Daten bleiben im Browser. Zwei Funktionen nehmen Verbindung nach außen auf,
   beide nur auf deine Eingabe: die **Adressleiste** (Vorschläge von `photon.komoot.io`) und die
   **Karte** (Kacheln von `tile.openstreetmap.org`). Näheres in der [Datenschutzerklärung](datenschutz.html).

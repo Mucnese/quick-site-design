@@ -155,6 +155,7 @@ function initScene(container) {
   // Links drehen, rechts UND Mitte verschieben, Rad zoomt. (Standard von
   // OrbitControls ist Mitte = Zoomen; das Rad macht das ohnehin.)
   controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
+  controls.panSpeed = 2.2;   // Verschieben mit Mitte/Rechts war zu zäh
 
   raycaster = new THREE.Raycaster();
   pointer = new THREE.Vector2();
@@ -617,6 +618,7 @@ const EPSG_NAMES = {
   25831: 'ETRS89 / UTM 31N', 25832: 'ETRS89 / UTM 32N', 25833: 'ETRS89 / UTM 33N',
   5650: 'ETRS89 / UTM 33N (Zone)', 4647: 'ETRS89 / UTM 32N (Zone)',
   31466: 'DHDN / GK 2', 31467: 'DHDN / GK 3', 31468: 'DHDN / GK 4', 31469: 'DHDN / GK 5',
+  31254: 'MGI / Austria GK West', 31255: 'MGI / Austria GK Central', 31256: 'MGI / Austria GK East',
   4326: 'WGS 84', 4258: 'ETRS89', 3857: 'Web Mercator'
 };
 
@@ -967,6 +969,71 @@ function helmertToWgs84(lat, lon, ell, h) {
   return { lat: ph / rad, lon: Math.atan2(y2, x2) / rad };
 }
 
+/* Transversale Mercator-Abbildung (Krüger-Reihe), Breite/Länge in Grad -> {e, n} */
+function transverseMercatorForward(lat, lon, d) {
+  const f = d.ell.f, a = d.ell.a, nn = f / (2 - f);
+  const n2 = nn * nn, n3 = n2 * nn, n4 = n3 * nn;
+  const A = a / (1 + nn) * (1 + n2 / 4 + n4 / 64);
+  const alpha = [nn / 2 - 2 * n2 / 3 + 5 * n3 / 16 + 41 * n4 / 180, 13 * n2 / 48 - 3 * n3 / 5 + 557 * n4 / 1440,
+                 61 * n3 / 240 - 103 * n4 / 140, 49561 * n4 / 161280];
+  const rad = Math.PI / 180, phi = lat * rad, dl = lon * rad - d.lon0 * rad;
+  const c = 2 * Math.sqrt(nn) / (1 + nn);
+  const sp = Math.sin(phi);
+  const t = Math.sinh(Math.atanh(sp) - c * Math.atanh(c * sp));
+  const xi0 = Math.atan2(t, Math.cos(dl)), eta0 = Math.atanh(Math.sin(dl) / Math.sqrt(1 + t * t));
+  let xi = xi0, eta = eta0;
+  for (let j = 1; j <= 4; j++) {
+    xi += alpha[j - 1] * Math.sin(2 * j * xi0) * Math.cosh(2 * j * eta0);
+    eta += alpha[j - 1] * Math.cos(2 * j * xi0) * Math.sinh(2 * j * eta0);
+  }
+  return { e: d.fe + d.k0 * A * eta, n: d.fn + d.k0 * A * xi };
+}
+
+/* Umkehrung von helmertToWgs84: WGS 84 -> Datum der Ellipsoids ell (Höhe 0). Die Drehungen sind
+   klein, daher genügt es, die Parameter umzukehren (Fehler weit unter einem Millimeter). */
+function helmertFromWgs84(lat, lon, ell, h) {
+  const rad = Math.PI / 180, as = Math.PI / 648000;
+  const w = GEO_ELL.wgs84, we2 = w.f * (2 - w.f);
+  const phi = lat * rad, lam = lon * rad;
+  const N = w.a / Math.sqrt(1 - we2 * Math.sin(phi) * Math.sin(phi));
+  const X = N * Math.cos(phi) * Math.cos(lam), Y = N * Math.cos(phi) * Math.sin(lam), Z = N * (1 - we2) * Math.sin(phi);
+  const rx = -h[3] * as, ry = -h[4] * as, rz = -h[5] * as, s = 1 - h[6] * 1e-6;
+  const X0 = X - h[0], Y0 = Y - h[1], Z0 = Z - h[2];
+  const x2 = s * (X0 - rz * Y0 + ry * Z0), y2 = s * (rz * X0 + Y0 - rx * Z0), z2 = s * (-ry * X0 + rx * Y0 + Z0);
+  const e2 = ell.f * (2 - ell.f), p = Math.hypot(x2, y2);
+  let ph = Math.atan2(z2, p * (1 - e2));
+  for (let i = 0; i < 6; i++) {
+    const Nb = ell.a / Math.sqrt(1 - e2 * Math.sin(ph) * Math.sin(ph));
+    ph = Math.atan2(z2 + e2 * Nb * Math.sin(ph), p);
+  }
+  return { lat: ph / rad, lon: Math.atan2(y2, x2) / rad };
+}
+
+/* Zielsysteme für die Umrechnung der Koordinaten im IFC-Export (Reihenfolge wie in der Auswahl) */
+const IFC_TARGET_CRS = [25832, 25833, 25831, 4647, 5650, 31466, 31467, 31468, 31469, 31254, 31255, 31256];
+
+/* Rechnet Rechts-/Hochwerte von einem Bezugssystem in ein anderes um: Funktion (e, n) -> {e, n},
+   oder null, wenn eines der beiden Systeme nicht bekannt ist. Der Weg führt über Breite/Länge
+   (WGS 84 gleich ETRS89 auf Dezimeter genau); bei Bessel-Systemen (DHDN, MGI) kommt die
+   Helmert-Transformation dazu, die Lage stimmt dann auf etwa 1 bis 2 m. Höhen bleiben unverändert. */
+function crsTransformer(fromEpsg, toEpsg) {
+  const from = crsGeoDefinition(fromEpsg), to = crsGeoDefinition(toEpsg);
+  if (!from || !to || from.merc || to.merc) return null;
+  if (fromEpsg === toEpsg) return function (e, n) { return { e: e, n: n }; };
+  return function (e, n) {
+    let g = transverseMercatorInverse(e, n, from);
+    if (from.helmert) g = helmertToWgs84(g.lat, g.lon, from.ell, from.helmert);
+    if (to.helmert) g = helmertFromWgs84(g.lat, g.lon, to.ell, to.helmert);
+    return transverseMercatorForward(g.lat, g.lon, to);
+  };
+}
+
+/* Gibt es bei dieser Umrechnung eine Helmert-Transformation (Lagegenauigkeit nur etwa 1 bis 2 m)? */
+function crsTransformIsApprox(fromEpsg, toEpsg) {
+  const a = crsGeoDefinition(fromEpsg), b = crsGeoDefinition(toEpsg);
+  return !!((a && a.helmert) || (b && b.helmert)) && fromEpsg !== toEpsg;
+}
+
 /* Koordinaten im Bezugssystem des Geländes (Rechts-/Hochwert) -> {lat, lon} in Grad, oder null */
 function crsToLonLat(epsg, e, n) {
   const d = crsGeoDefinition(epsg);
@@ -980,7 +1047,9 @@ function crsToLonLat(epsg, e, n) {
 }
 
 const OSM_TILE = 256;
-const OSM_MAX_TILES = 36;       // höchstens 6 x 6 Kacheln, das Bild bleibt unter 1536 px
+// höchstens 12 x 12 Kacheln, das Bild bleibt unter 3100 px. Je feiner die Stufe, desto kleiner erscheint die
+// Beschriftung der Karte auf dem Gelände (die Schrift ist in jeder Kachel gleich groß in Pixeln).
+const OSM_MAX_TILES = 144;
 const OSM_MAX_ZOOM = 19;
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -3382,12 +3451,28 @@ function roadCentroid(pts) {
 
 /* ---------- Vorschau während des Setzens ---------- */
 let roadPreview = null;
+// Beschriftung der Strecken beim Zeichnen: Mitte (x, y, z) und waagerechte Länge in m; live = Strecke zur Maus
+let roadPreviewLabels = [];
+
+/* Waagerechte Länge der Strecken eines Linienzugs (nur x/z, die Neigung bleibt außen vor) */
+function segmentLabels(all, close, liveLast) {
+  const out = [];
+  const count = close ? all.length : all.length - 1;
+  for (let i = 0; i < count; i++) {
+    const p = all[i], q = all[(i + 1) % all.length];
+    const mx = (p.x + q.x) / 2, mz = (p.z + q.z) / 2;
+    out.push({ x: mx, y: getHeightAt(mx, mz) + 0.4, z: mz, len: Math.hypot(q.x - p.x, q.z - p.z),
+               live: !!liveLast && i === all.length - 2 });
+  }
+  return out;
+}
 
 function setRoadPreview(pts, hover, closed) {
   clearRoadPreview();
   if (!pts || !pts.length) return;
   const g = new THREE.Group();
   const all = hover ? pts.concat([hover]) : pts;
+  roadPreviewLabels = segmentLabels(all, !!closed && all.length >= 3, !!hover);
 
   if (all.length >= 2) {
     // Linie dem Gelände folgen lassen: Zwischenpunkte alle 2 m, sonst schneidet die gerade
@@ -3419,6 +3504,7 @@ function setRoadPreview(pts, hover, closed) {
 }
 
 function clearRoadPreview() {
+  roadPreviewLabels = [];
   if (roadPreview) {
     disposeGroup(roadPreview);
     scene.remove(roadPreview);
@@ -4161,16 +4247,79 @@ function trianglesInRect(triangles, minX, minZ, maxX, maxZ) {
   });
 }
 
-/* Geländeraster + Gebäude-Dreiecke innerhalb des Rechtecks. rings kommt
-   vom Aufrufer (in ui.js liegt lastGmlRings), damit app.js wie überall
+/* Darstellungshilfen der Straße (blaue Schleppkurve, Überlagerungen im Abtrag): kein Bauteil, nicht exportieren */
+const IFC_SKIP_KINDS = { sweptFill: 1, sweptLine: 1, sweptOver: 1, cutOverlay: 1, roadOverlay: 1, cutCrest: 1 };
+
+/* Alle Dreiecke eines Bausteins (Straße, Baugrube, Kran, Container) in Weltkoordinaten [x, y, z].
+   Linien (Kranradius, Kanten) und Darstellungshilfen bleiben draußen; bei Instanzen (Container, Kranteile)
+   wird jede Instanz mit ihrer Matrix gesetzt. */
+function objectTriangles(root) {
+  root.updateMatrixWorld(true);
+  const tris = [];
+  const inst = new THREE.Matrix4(), full = new THREE.Matrix4();
+  function emit(geo, m) {
+    const pos = geo && geo.attributes && geo.attributes.position;
+    if (!pos || !pos.array) return;
+    const idx = geo.index && geo.index.array ? geo.index.array : null;
+    const P = pos.array, e = m.elements, count = idx ? idx.length : Math.floor(pos.array.length / 3);
+    function at(i) {
+      const k = (idx ? idx[i] : i) * 3, x = P[k], y = P[k + 1], z = P[k + 2];
+      return [e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]];
+    }
+    for (let i = 0; i + 2 < count; i += 3) tris.push({ a: at(i), b: at(i + 1), c: at(i + 2) });
+  }
+  root.traverse(function (o) {
+    const isInst = o instanceof THREE.InstancedMesh;
+    if (!(o instanceof THREE.Mesh) && !isInst) return;
+    if (o.visible === false || (o.userData && IFC_SKIP_KINDS[o.userData.kind])) return;
+    if (isInst) {
+      for (let i = 0; i < o.count; i++) {
+        o.getMatrixAt(i, inst);
+        full.multiplyMatrices(o.matrixWorld, inst);
+        emit(o.geometry, full);
+      }
+    } else emit(o.geometry, o.matrixWorld);
+  });
+  return tris;
+}
+
+/* Name eines Bausteins im IFC */
+function objectIfcName(obj) {
+  const names = { road: 'Baustraße', pit: 'Baugrube', container: 'Container', tower: 'Turmdrehkran', mobile: 'Mobilkran' };
+  const base = names[obj.type] || obj.type;
+  const sub = obj.type === 'mobile' && obj.params && obj.params.model ? ' (' + getModel(obj.params.model).name + ')' : '';
+  return base + sub + ' ' + obj.id;
+}
+
+/* Bausteine, die das Rechteck berühren, mit ihren Dreiecken: [{ name, type, triangles }] */
+function collectExportObjects(minX, minZ, maxX, maxZ) {
+  const out = [];
+  (objects || []).forEach(function (obj) {
+    const tris = objectTriangles(obj.group);
+    if (!tris.length) return;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    tris.forEach(function (t) {
+      [t.a, t.b, t.c].forEach(function (p) {
+        if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
+        if (p[2] < z0) z0 = p[2]; if (p[2] > z1) z1 = p[2];
+      });
+    });
+    if (x1 < minX || x0 > maxX || z1 < minZ || z0 > maxZ) return;
+    out.push({ name: objectIfcName(obj), type: obj.type, triangles: tris });
+  });
+  return out;
+}
+
+/* Geländeraster + Gebäude-Dreiecke innerhalb des Rechtecks, auf Wunsch (withObjects) auch die Bausteine.
+   rings kommt vom Aufrufer (in ui.js liegt lastGmlRings), damit app.js wie überall
    sonst auch hier keine Kenntnis vom Dateiimport-Zustand braucht. */
-function collectExportGeometry(rings, minX, minZ, maxX, maxZ) {
+function collectExportGeometry(rings, minX, minZ, maxX, maxZ, withObjects) {
   const terrain = terrainGridInRect(minX, minZ, maxX, maxZ);
   let buildings = [];
   if (rings && rings.length) {
     buildings = trianglesInRect(triangulateBuildingRings(rings).triangles, minX, minZ, maxX, maxZ);
   }
-  return { terrain: terrain, buildings: buildings };
+  return { terrain: terrain, buildings: buildings, objects: withObjects ? collectExportObjects(minX, minZ, maxX, maxZ) : [] };
 }
 
 function trianglesToGeometry(triangles) {
@@ -4272,12 +4421,12 @@ function ifcString(s) {
 /* Schreibt ein minimales, gültiges IFC4-STEP-Dokument von Hand (der
    benötigte Entity-Umfang ist klein genug, dass sich eine externe
    IFC-Bibliothek dafür nicht lohnt). Georeferenz über IfcProjectedCRS +
-   IfcMapConversion, immer im EPSG-Code des geladenen Geländes – keine
-   Ziel-EPSG-Wahl (eine korrekte Umrechnung für alle in EPSG_NAMES
-   gelisteten Systeme bräuchte für die DHDN/Gauß-Krüger-Fälle ein
-   Umrechnungsgitter, das hier nicht mitgeliefert wird; lieber gar keine
-   Wahl anbieten als eine, die für einen Teil der Codes lautlos falsch
-   läge).
+   IfcMapConversion, im EPSG-Code des geladenen Geländes oder (opts.targetEpsg) in einem
+   anderen der Liste IFC_TARGET_CRS: dann werden alle Punkte mit crsTransformer umgerechnet
+   (nur absolute Koordinaten). Bei Bessel-Systemen (DHDN, MGI) gilt eine Helmert-Transformation,
+   die Lage stimmt auf etwa 1 bis 2 m - die Oberfläche sagt das dazu; ein Umrechnungsgitter
+   (NTv2) liegt nicht bei.
+   Bausteine (geo.objects: Straße, Baugrube, Kran, Container) kommen als eigene Bauteile mit.
    Zwei Arten der Koordinaten (opts.coords):
    'local' (Standard von buildIfc): Geometrie relativ zur Rechteck-Südwestecke,
    die Lage steckt in IfcMapConversion - übliche IFC4-Praxis, kleine Zahlen,
@@ -4288,11 +4437,17 @@ function ifcString(s) {
    Die Oberfläche bietet 'abs' als Voreinstellung an, weil sonst "nicht
    georeferenziert" gemeldet wurde. */
 function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
-  const absolute = !!(opts && opts.coords === 'abs');
+  const outEpsg = opts && opts.targetEpsg ? opts.targetEpsg : epsg;
+  // Anderes Zielsystem: nur absolute Koordinaten (jeder Punkt wird umgerechnet; die Drehung der
+  // Achsen gegenüber dem Gelände steckt dann in den Koordinaten, nicht in einer Georeferenz)
+  const absolute = !!(opts && opts.coords === 'abs') || outEpsg !== epsg;
   if (!TERRAIN) throw new Error('Bitte zuerst ein Geländemodell laden.');
-  if (!geo.terrain.length && !geo.buildings.length) {
+  const objs = geo.objects || [];
+  if (!geo.terrain.length && !geo.buildings.length && !objs.length) {
     throw new Error('Der Ausschnitt enthält keine Geometrie.');
   }
+  const transform = outEpsg !== epsg ? crsTransformer(epsg, outEpsg) : null;
+  if (outEpsg !== epsg && !transform) throw new Error('Diese Umrechnung ist nicht möglich: EPSG:' + epsg + ' nach EPSG:' + outEpsg + '.');
 
   const target = worldToUTM(rectMinX, rectMinZ);
 
@@ -4316,6 +4471,10 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
   // das Modell auf der Seite. (x, y, z) -> (x, -z, y) ist eine echte
   // Drehung, die Dreiecksreihenfolge bleibt also erhalten.
   function localize(p) {
+    if (transform) {
+      const q = transform(TERRAIN.originE + p[0], TERRAIN.originN - p[2]);
+      return [q.e, q.n, p[1] + TERRAIN.zmin];
+    }
     if (absolute) return [TERRAIN.originE + p[0], TERRAIN.originN - p[2], p[1] + TERRAIN.zmin];
     return [p[0] - rectMinX, -(p[2] - rectMinZ), p[1]];
   }
@@ -4350,20 +4509,20 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
     str('Body') + ',' + str('Model') + ',*,*,*,*,' + context + ',$,.MODEL_VIEW.,$');
 
   // Beschreibung, Datum, Abbildung und Zone nur, wo sie sich aus dem EPSG-Code ableiten lassen
-  const crsDef = crsGeoDefinition(epsg);
+  const crsDef = crsGeoDefinition(outEpsg);
   let datum = '$', zone = '$';
   if (crsDef && !crsDef.merc) {
-    if (epsg >= 31466 && epsg <= 31469) datum = 'DHDN';
-    else if (epsg >= 31254 && epsg <= 31256) datum = 'MGI';
-    else if (epsg >= 32601 && epsg <= 32660) datum = 'WGS84';
+    if (outEpsg >= 31466 && outEpsg <= 31469) datum = 'DHDN';
+    else if (outEpsg >= 31254 && outEpsg <= 31256) datum = 'MGI';
+    else if (outEpsg >= 32601 && outEpsg <= 32660) datum = 'WGS84';
     else datum = 'ETRS89';
-    if (epsg >= 25828 && epsg <= 25838) zone = (epsg - 25800) + 'N';
-    else if (epsg >= 32601 && epsg <= 32660) zone = (epsg - 32600) + 'N';
-    else if (epsg === 4647) zone = '32N';
-    else if (epsg === 5650) zone = '33N';
+    if (outEpsg >= 25828 && outEpsg <= 25838) zone = (outEpsg - 25800) + 'N';
+    else if (outEpsg >= 32601 && outEpsg <= 32660) zone = (outEpsg - 32600) + 'N';
+    else if (outEpsg === 4647) zone = '32N';
+    else if (outEpsg === 5650) zone = '33N';
   }
   const projectedCrs = add('IFCPROJECTEDCRS',
-    str('EPSG:' + epsg) + ',' + (EPSG_NAMES[epsg] ? str(EPSG_NAMES[epsg]) : '$') + ',' +
+    str('EPSG:' + outEpsg) + ',' + (EPSG_NAMES[outEpsg] ? str(EPSG_NAMES[outEpsg]) : '$') + ',' +
     (datum === '$' ? '$' : str(datum)) + ',$,' + (crsDef && !crsDef.merc ? str('TransverseMercator') : '$') + ',' +
     (zone === '$' ? '$' : str(zone)) + ',' + lengthUnit);
   // OrthogonalHeight: die reale Höhe, die lokal Z=0 entspricht. Lokal Z=0
@@ -4425,6 +4584,7 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
 
   addGroup(geo.terrain, 'Gelände (Ausschnitt)', 'IFCGEOGRAPHICELEMENT', '.TERRAIN.');
   addGroup(geo.buildings, 'Gebäude (Ausschnitt)', 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.');
+  objs.forEach(function (o) { addGroup(o.triangles, o.name, 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.'); });
 
   if (elements.length) {
     add('IFCRELCONTAINEDINSPATIALSTRUCTURE', str(ifcGuid()) + ',' + owner + ',$,$,(' + elements.join(',') + '),' + site);
@@ -4731,6 +4891,8 @@ if (typeof module !== 'undefined' && module.exports) {
     buildTerrain: buildTerrain,
     terrainFromEmbedded: terrainFromEmbedded,
     getHeightAt: getHeightAt,
+    segmentLabels: segmentLabels,
+    getRoadPreviewLabels: function () { return roadPreviewLabels; },
     setRoadPreview: setRoadPreview,
     clearRoadPreview: clearRoadPreview,
     getAbsoluteHeightAt: getAbsoluteHeightAt,
@@ -4808,6 +4970,8 @@ if (typeof module !== 'undefined' && module.exports) {
     ROAD_SLOPE_MAX: ROAD_SLOPE_MAX,
     buildRoad: buildRoad,
     roadInfo: roadInfo,
+    segmentLabels: segmentLabels,
+    getRoadPreviewLabels: function () { return roadPreviewLabels; },
     TIFF_MAX_PIXELS: TIFF_MAX_PIXELS,
     TIFF_MAX_TOTAL_PIXELS: TIFF_MAX_TOTAL_PIXELS,
     TIFF_MAX_FILE_BYTES: TIFF_MAX_FILE_BYTES,
@@ -4840,6 +5004,12 @@ if (typeof module !== 'undefined' && module.exports) {
     ifcAngle: ifcAngle,
     IFC_MAX_BYTES: IFC_MAX_BYTES,
     crsToLonLat: crsToLonLat,
+    crsTransformer: crsTransformer,
+    crsTransformIsApprox: crsTransformIsApprox,
+    transverseMercatorForward: transverseMercatorForward,
+    IFC_TARGET_CRS: IFC_TARGET_CRS,
+    objectTriangles: objectTriangles,
+    collectExportObjects: collectExportObjects,
     crsGeoDefinition: crsGeoDefinition,
     osmMapPlan: osmMapPlan,
     mapShader: mapShader,

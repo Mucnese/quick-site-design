@@ -43,6 +43,32 @@ class Color {
   setHex(hex) { this.hex = hex; return this; }
 }
 
+/* Matrix4 (spaltenweise wie three.js): nur, was der Export der Bausteine braucht */
+class Matrix4 {
+  constructor() { this.elements = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; }
+  multiplyMatrices(a, b) {
+    const A = a.elements, B = b.elements, r = new Array(16);
+    for (let c = 0; c < 4; c++) for (let rr = 0; rr < 4; rr++) {
+      let s = 0;
+      for (let k = 0; k < 4; k++) s += A[k * 4 + rr] * B[c * 4 + k];
+      r[c * 4 + rr] = s;
+    }
+    this.elements = r;
+    return this;
+  }
+  /* aus Position, Euler (Reihenfolge XYZ) und Maßstab, wie Object3D.updateMatrix */
+  compose(p, rot, s) {
+    const cx = Math.cos(rot.x), sx = Math.sin(rot.x), cy = Math.cos(rot.y), sy = Math.sin(rot.y), cz = Math.cos(rot.z), sz = Math.sin(rot.z);
+    // R = Rx * Ry * Rz
+    const r00 = cy * cz, r01 = -cy * sz, r02 = sy;
+    const r10 = cx * sz + sx * sy * cz, r11 = cx * cz - sx * sy * sz, r12 = -sx * cy;
+    const r20 = sx * sz - cx * sy * cz, r21 = sx * cz + cx * sy * sz, r22 = cx * cy;
+    this.elements = [r00 * s.x, r10 * s.x, r20 * s.x, 0, r01 * s.y, r11 * s.y, r21 * s.y, 0,
+                     r02 * s.z, r12 * s.z, r22 * s.z, 0, p.x, p.y, p.z, 1];
+    return this;
+  }
+}
+
 class Euler {
   constructor(x = 0, y = 0, z = 0) { this.x = num(x); this.y = num(y); this.z = num(z); }
   set(x, y, z) { this.x = num(x); this.y = num(y); this.z = num(z); return this; }
@@ -78,6 +104,11 @@ class Object3D {
     fn(this);
     this.children.slice().forEach(function (c) { c.traverse(fn); });
   }
+  updateMatrixWorld() {
+    const local = new Matrix4().compose(this.position, this.rotation, this.scale);
+    this.matrixWorld = this.parent && this.parent.matrixWorld ? new Matrix4().multiplyMatrices(this.parent.matrixWorld, local) : local;
+    this.children.forEach(function (c) { c.updateMatrixWorld(); });
+  }
   updateMatrix() {
     this.matrix = {
       px: this.position.x, py: this.position.y, pz: this.position.z,
@@ -99,7 +130,7 @@ class Geometry {
   }
   setAttribute(name, attr) { this.attributes[name] = attr; return this; }
   getAttribute(name) { return this.attributes[name]; }
-  setIndex(indices) { this.indices = indices; return this; }
+  setIndex(indices) { this.indices = indices; this.index = { array: indices }; return this; }
   setFromPoints(points) {
     assert(Array.isArray(points), 'setFromPoints() erwartet ein Array von Vector3');
     points.forEach(function (p) { assert(p instanceof Vector3, 'setFromPoints(): Punkt ist kein Vector3'); });
@@ -197,6 +228,12 @@ class InstancedMesh extends Object3D {
     this.count = count;
     this.instanceMatrices = new Array(count).fill(null);
     this.instanceMatrix = { needsUpdate: false, setUsage: function () {} };
+  }
+  getMatrixAt(i, target) {
+    const m = this.instanceMatrices[i];
+    assert(m, 'InstancedMesh.getMatrixAt: Instanz ' + i + ' ohne Matrix');
+    target.compose({ x: m.px, y: m.py, z: m.pz }, { x: m.rx, y: m.ry, z: m.rz }, { x: m.sx, y: m.sy, z: m.sz });
+    return target;
   }
   setMatrixAt(i, matrix) {
     assert(i >= 0 && i < this.count, 'InstancedMesh.setMatrixAt: Index ' + i + ' außerhalb von 0..' + (this.count - 1));
@@ -297,7 +334,7 @@ class OrbitControls {
 }
 
 module.exports = {
-  Vector2, Vector3, Color,
+  Vector2, Vector3, Color, Matrix4,
   Object3D, Group, Mesh, Line, LineLoop, LineSegments, InstancedMesh,
   BoxGeometry, CylinderGeometry, SphereGeometry, PlaneGeometry, BufferGeometry, EdgesGeometry,
   BufferAttribute,

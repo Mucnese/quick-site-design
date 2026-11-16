@@ -32,6 +32,7 @@ function start() {
     requestAnimationFrame(animate);
     updateControls();
     updatePointLabel();
+    updateSegLabels();
     updateCompass();
     renderer.render(scene, camera);
   }

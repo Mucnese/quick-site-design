@@ -33,9 +33,9 @@
     --panel-bg: rgba(45, 45, 48, 0.78);
     --border: #3f3f46;
     --border-strong: #5a5a62;
-    --text: #dcdcdc;
-    --text-dim: #a0a0a6;
-    --text-dim2: #75757c;
+    --text: #eef1f4;
+    --text-dim: #b4bcc4;
+    --text-dim2: #8d97a1;
     --accent: #4aa3df;
     --danger: #d9534f;
     --field: #333337;
@@ -164,6 +164,16 @@
   #point-label .mv { font-variant-numeric: tabular-nums; flex: 1 1 auto; text-align: right; }
   #point-label .msrc { color: var(--text-dim2); font-size: 0.9em; margin-top: 2px; }
 
+  /* Streckenlängen beim Zeichnen */
+  #seg-labels { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 5; pointer-events: none; }
+  .seg-label {
+    display: none; position: fixed; left: 0; top: 0; pointer-events: none; will-change: transform;
+    background: var(--panel-bg); color: var(--text); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 1px 6px; font-size: 0.82em; line-height: 1.4;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .seg-label.live { border-color: var(--accent); }
+
   /* ---------- Dateien ---------- */
   .file-row { margin-bottom: 9px; }
   .file-row:last-child { margin-bottom: 0; }
@@ -184,7 +194,12 @@
   .file-status.err { color: var(--danger); }
   .file-status.busy { color: var(--text-dim); }
   #ifc-coords-note { font-size: 0.76em; color: var(--text-dim2); line-height: 1.35; margin-top: 5px; }
-  #ifc-coords { max-width: 150px; }
+  #ifc-coords, #ifc-target { max-width: 150px; }
+  #ifc-target-note { font-size: 0.76em; color: var(--text-dim2); line-height: 1.35; margin: 4px 0 6px; }
+  #ifc-target-note:empty { display: none; }
+  #ifc-target-note.warn { color: var(--danger); }
+  .ifc-objects-row { display: flex; gap: 6px; align-items: flex-start; font-size: 0.86em; line-height: 1.35; margin-top: 8px; cursor: pointer; }
+  .ifc-objects-row input { margin: 2px 0 0; }
   #xyz-crs-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
   #xyz-crs-row .xyz-label { flex: 0 0 100%; font-size: 0.78em; color: var(--text-dim2); }
   #xyz-crs { flex: 1 1 120px; min-width: 0; }
@@ -637,6 +652,7 @@
 <div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
 <div id="ifc-hint"></div>
 
+<div id="seg-labels"></div>
 <div id="point-label">
   <div class="mrow"><span class="mk">R</span><span class="mv" id="measure-r">–</span></div>
   <div class="mrow"><span class="mk">H</span><span class="mv" id="measure-h">–</span></div>
@@ -686,9 +702,13 @@
   <div class="body">
     <div class="kv"><span class="k" data-i18n="ifcExtent">Ausdehnung</span><span class="v" id="ifc-extent">–</span></div>
     <div class="kv"><span class="k" data-i18n="ifcCrs">Koordinatenbezug</span><span class="v" id="ifc-crs">–</span></div>
+    <div class="kv" id="ifc-target-row"><span class="k" data-i18n="ifcTarget">Bezugssystem der Datei</span>
+      <select id="ifc-target"><option value="" data-i18n="ifcTargetSame">wie Gelände</option></select></div>
+    <div id="ifc-target-note"></div>
     <div class="kv"><span class="k" data-i18n="ifcCoords">Koordinaten</span>
       <select id="ifc-coords"><option value="abs" data-i18n="ifcCoordsAbs">absolut im Bezugssystem</option><option value="local" data-i18n="ifcCoordsLocal">lokal (mit IfcMapConversion)</option></select></div>
     <div id="ifc-coords-note" data-i18n="ifcCoordsNote">Absolut: Rechtswert, Hochwert und Höhe stehen direkt im Modell. Lokal: kleine Zahlen, die Lage steckt in der Georeferenz (IfcMapConversion).</div>
+    <label class="ifc-objects-row"><input type="checkbox" id="ifc-objects" checked><span data-i18n="ifcObjects">Straßen, Baugruben und Bausteine mitnehmen</span></label>
     <div class="file-status err" id="ifc-error"></div>
     <div id="ifc-actions">
       <button class="btn-block" id="ifc-cancel-btn" data-i18n="cancel">Abbrechen</button>
@@ -859,6 +879,7 @@ function initScene(container) {
   // Links drehen, rechts UND Mitte verschieben, Rad zoomt. (Standard von
   // OrbitControls ist Mitte = Zoomen; das Rad macht das ohnehin.)
   controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
+  controls.panSpeed = 2.2;   // Verschieben mit Mitte/Rechts war zu zäh
 
   raycaster = new THREE.Raycaster();
   pointer = new THREE.Vector2();
@@ -1321,6 +1342,7 @@ const EPSG_NAMES = {
   25831: 'ETRS89 / UTM 31N', 25832: 'ETRS89 / UTM 32N', 25833: 'ETRS89 / UTM 33N',
   5650: 'ETRS89 / UTM 33N (Zone)', 4647: 'ETRS89 / UTM 32N (Zone)',
   31466: 'DHDN / GK 2', 31467: 'DHDN / GK 3', 31468: 'DHDN / GK 4', 31469: 'DHDN / GK 5',
+  31254: 'MGI / Austria GK West', 31255: 'MGI / Austria GK Central', 31256: 'MGI / Austria GK East',
   4326: 'WGS 84', 4258: 'ETRS89', 3857: 'Web Mercator'
 };
 
@@ -1671,6 +1693,71 @@ function helmertToWgs84(lat, lon, ell, h) {
   return { lat: ph / rad, lon: Math.atan2(y2, x2) / rad };
 }
 
+/* Transversale Mercator-Abbildung (Krüger-Reihe), Breite/Länge in Grad -> {e, n} */
+function transverseMercatorForward(lat, lon, d) {
+  const f = d.ell.f, a = d.ell.a, nn = f / (2 - f);
+  const n2 = nn * nn, n3 = n2 * nn, n4 = n3 * nn;
+  const A = a / (1 + nn) * (1 + n2 / 4 + n4 / 64);
+  const alpha = [nn / 2 - 2 * n2 / 3 + 5 * n3 / 16 + 41 * n4 / 180, 13 * n2 / 48 - 3 * n3 / 5 + 557 * n4 / 1440,
+                 61 * n3 / 240 - 103 * n4 / 140, 49561 * n4 / 161280];
+  const rad = Math.PI / 180, phi = lat * rad, dl = lon * rad - d.lon0 * rad;
+  const c = 2 * Math.sqrt(nn) / (1 + nn);
+  const sp = Math.sin(phi);
+  const t = Math.sinh(Math.atanh(sp) - c * Math.atanh(c * sp));
+  const xi0 = Math.atan2(t, Math.cos(dl)), eta0 = Math.atanh(Math.sin(dl) / Math.sqrt(1 + t * t));
+  let xi = xi0, eta = eta0;
+  for (let j = 1; j <= 4; j++) {
+    xi += alpha[j - 1] * Math.sin(2 * j * xi0) * Math.cosh(2 * j * eta0);
+    eta += alpha[j - 1] * Math.cos(2 * j * xi0) * Math.sinh(2 * j * eta0);
+  }
+  return { e: d.fe + d.k0 * A * eta, n: d.fn + d.k0 * A * xi };
+}
+
+/* Umkehrung von helmertToWgs84: WGS 84 -> Datum der Ellipsoids ell (Höhe 0). Die Drehungen sind
+   klein, daher genügt es, die Parameter umzukehren (Fehler weit unter einem Millimeter). */
+function helmertFromWgs84(lat, lon, ell, h) {
+  const rad = Math.PI / 180, as = Math.PI / 648000;
+  const w = GEO_ELL.wgs84, we2 = w.f * (2 - w.f);
+  const phi = lat * rad, lam = lon * rad;
+  const N = w.a / Math.sqrt(1 - we2 * Math.sin(phi) * Math.sin(phi));
+  const X = N * Math.cos(phi) * Math.cos(lam), Y = N * Math.cos(phi) * Math.sin(lam), Z = N * (1 - we2) * Math.sin(phi);
+  const rx = -h[3] * as, ry = -h[4] * as, rz = -h[5] * as, s = 1 - h[6] * 1e-6;
+  const X0 = X - h[0], Y0 = Y - h[1], Z0 = Z - h[2];
+  const x2 = s * (X0 - rz * Y0 + ry * Z0), y2 = s * (rz * X0 + Y0 - rx * Z0), z2 = s * (-ry * X0 + rx * Y0 + Z0);
+  const e2 = ell.f * (2 - ell.f), p = Math.hypot(x2, y2);
+  let ph = Math.atan2(z2, p * (1 - e2));
+  for (let i = 0; i < 6; i++) {
+    const Nb = ell.a / Math.sqrt(1 - e2 * Math.sin(ph) * Math.sin(ph));
+    ph = Math.atan2(z2 + e2 * Nb * Math.sin(ph), p);
+  }
+  return { lat: ph / rad, lon: Math.atan2(y2, x2) / rad };
+}
+
+/* Zielsysteme für die Umrechnung der Koordinaten im IFC-Export (Reihenfolge wie in der Auswahl) */
+const IFC_TARGET_CRS = [25832, 25833, 25831, 4647, 5650, 31466, 31467, 31468, 31469, 31254, 31255, 31256];
+
+/* Rechnet Rechts-/Hochwerte von einem Bezugssystem in ein anderes um: Funktion (e, n) -> {e, n},
+   oder null, wenn eines der beiden Systeme nicht bekannt ist. Der Weg führt über Breite/Länge
+   (WGS 84 gleich ETRS89 auf Dezimeter genau); bei Bessel-Systemen (DHDN, MGI) kommt die
+   Helmert-Transformation dazu, die Lage stimmt dann auf etwa 1 bis 2 m. Höhen bleiben unverändert. */
+function crsTransformer(fromEpsg, toEpsg) {
+  const from = crsGeoDefinition(fromEpsg), to = crsGeoDefinition(toEpsg);
+  if (!from || !to || from.merc || to.merc) return null;
+  if (fromEpsg === toEpsg) return function (e, n) { return { e: e, n: n }; };
+  return function (e, n) {
+    let g = transverseMercatorInverse(e, n, from);
+    if (from.helmert) g = helmertToWgs84(g.lat, g.lon, from.ell, from.helmert);
+    if (to.helmert) g = helmertFromWgs84(g.lat, g.lon, to.ell, to.helmert);
+    return transverseMercatorForward(g.lat, g.lon, to);
+  };
+}
+
+/* Gibt es bei dieser Umrechnung eine Helmert-Transformation (Lagegenauigkeit nur etwa 1 bis 2 m)? */
+function crsTransformIsApprox(fromEpsg, toEpsg) {
+  const a = crsGeoDefinition(fromEpsg), b = crsGeoDefinition(toEpsg);
+  return !!((a && a.helmert) || (b && b.helmert)) && fromEpsg !== toEpsg;
+}
+
 /* Koordinaten im Bezugssystem des Geländes (Rechts-/Hochwert) -> {lat, lon} in Grad, oder null */
 function crsToLonLat(epsg, e, n) {
   const d = crsGeoDefinition(epsg);
@@ -1684,7 +1771,9 @@ function crsToLonLat(epsg, e, n) {
 }
 
 const OSM_TILE = 256;
-const OSM_MAX_TILES = 36;       // höchstens 6 x 6 Kacheln, das Bild bleibt unter 1536 px
+// höchstens 12 x 12 Kacheln, das Bild bleibt unter 3100 px. Je feiner die Stufe, desto kleiner erscheint die
+// Beschriftung der Karte auf dem Gelände (die Schrift ist in jeder Kachel gleich groß in Pixeln).
+const OSM_MAX_TILES = 144;
 const OSM_MAX_ZOOM = 19;
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -4086,12 +4175,28 @@ function roadCentroid(pts) {
 
 /* ---------- Vorschau während des Setzens ---------- */
 let roadPreview = null;
+// Beschriftung der Strecken beim Zeichnen: Mitte (x, y, z) und waagerechte Länge in m; live = Strecke zur Maus
+let roadPreviewLabels = [];
+
+/* Waagerechte Länge der Strecken eines Linienzugs (nur x/z, die Neigung bleibt außen vor) */
+function segmentLabels(all, close, liveLast) {
+  const out = [];
+  const count = close ? all.length : all.length - 1;
+  for (let i = 0; i < count; i++) {
+    const p = all[i], q = all[(i + 1) % all.length];
+    const mx = (p.x + q.x) / 2, mz = (p.z + q.z) / 2;
+    out.push({ x: mx, y: getHeightAt(mx, mz) + 0.4, z: mz, len: Math.hypot(q.x - p.x, q.z - p.z),
+               live: !!liveLast && i === all.length - 2 });
+  }
+  return out;
+}
 
 function setRoadPreview(pts, hover, closed) {
   clearRoadPreview();
   if (!pts || !pts.length) return;
   const g = new THREE.Group();
   const all = hover ? pts.concat([hover]) : pts;
+  roadPreviewLabels = segmentLabels(all, !!closed && all.length >= 3, !!hover);
 
   if (all.length >= 2) {
     // Linie dem Gelände folgen lassen: Zwischenpunkte alle 2 m, sonst schneidet die gerade
@@ -4123,6 +4228,7 @@ function setRoadPreview(pts, hover, closed) {
 }
 
 function clearRoadPreview() {
+  roadPreviewLabels = [];
   if (roadPreview) {
     disposeGroup(roadPreview);
     scene.remove(roadPreview);
@@ -4865,16 +4971,79 @@ function trianglesInRect(triangles, minX, minZ, maxX, maxZ) {
   });
 }
 
-/* Geländeraster + Gebäude-Dreiecke innerhalb des Rechtecks. rings kommt
-   vom Aufrufer (in ui.js liegt lastGmlRings), damit app.js wie überall
+/* Darstellungshilfen der Straße (blaue Schleppkurve, Überlagerungen im Abtrag): kein Bauteil, nicht exportieren */
+const IFC_SKIP_KINDS = { sweptFill: 1, sweptLine: 1, sweptOver: 1, cutOverlay: 1, roadOverlay: 1, cutCrest: 1 };
+
+/* Alle Dreiecke eines Bausteins (Straße, Baugrube, Kran, Container) in Weltkoordinaten [x, y, z].
+   Linien (Kranradius, Kanten) und Darstellungshilfen bleiben draußen; bei Instanzen (Container, Kranteile)
+   wird jede Instanz mit ihrer Matrix gesetzt. */
+function objectTriangles(root) {
+  root.updateMatrixWorld(true);
+  const tris = [];
+  const inst = new THREE.Matrix4(), full = new THREE.Matrix4();
+  function emit(geo, m) {
+    const pos = geo && geo.attributes && geo.attributes.position;
+    if (!pos || !pos.array) return;
+    const idx = geo.index && geo.index.array ? geo.index.array : null;
+    const P = pos.array, e = m.elements, count = idx ? idx.length : Math.floor(pos.array.length / 3);
+    function at(i) {
+      const k = (idx ? idx[i] : i) * 3, x = P[k], y = P[k + 1], z = P[k + 2];
+      return [e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]];
+    }
+    for (let i = 0; i + 2 < count; i += 3) tris.push({ a: at(i), b: at(i + 1), c: at(i + 2) });
+  }
+  root.traverse(function (o) {
+    const isInst = o instanceof THREE.InstancedMesh;
+    if (!(o instanceof THREE.Mesh) && !isInst) return;
+    if (o.visible === false || (o.userData && IFC_SKIP_KINDS[o.userData.kind])) return;
+    if (isInst) {
+      for (let i = 0; i < o.count; i++) {
+        o.getMatrixAt(i, inst);
+        full.multiplyMatrices(o.matrixWorld, inst);
+        emit(o.geometry, full);
+      }
+    } else emit(o.geometry, o.matrixWorld);
+  });
+  return tris;
+}
+
+/* Name eines Bausteins im IFC */
+function objectIfcName(obj) {
+  const names = { road: 'Baustraße', pit: 'Baugrube', container: 'Container', tower: 'Turmdrehkran', mobile: 'Mobilkran' };
+  const base = names[obj.type] || obj.type;
+  const sub = obj.type === 'mobile' && obj.params && obj.params.model ? ' (' + getModel(obj.params.model).name + ')' : '';
+  return base + sub + ' ' + obj.id;
+}
+
+/* Bausteine, die das Rechteck berühren, mit ihren Dreiecken: [{ name, type, triangles }] */
+function collectExportObjects(minX, minZ, maxX, maxZ) {
+  const out = [];
+  (objects || []).forEach(function (obj) {
+    const tris = objectTriangles(obj.group);
+    if (!tris.length) return;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    tris.forEach(function (t) {
+      [t.a, t.b, t.c].forEach(function (p) {
+        if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
+        if (p[2] < z0) z0 = p[2]; if (p[2] > z1) z1 = p[2];
+      });
+    });
+    if (x1 < minX || x0 > maxX || z1 < minZ || z0 > maxZ) return;
+    out.push({ name: objectIfcName(obj), type: obj.type, triangles: tris });
+  });
+  return out;
+}
+
+/* Geländeraster + Gebäude-Dreiecke innerhalb des Rechtecks, auf Wunsch (withObjects) auch die Bausteine.
+   rings kommt vom Aufrufer (in ui.js liegt lastGmlRings), damit app.js wie überall
    sonst auch hier keine Kenntnis vom Dateiimport-Zustand braucht. */
-function collectExportGeometry(rings, minX, minZ, maxX, maxZ) {
+function collectExportGeometry(rings, minX, minZ, maxX, maxZ, withObjects) {
   const terrain = terrainGridInRect(minX, minZ, maxX, maxZ);
   let buildings = [];
   if (rings && rings.length) {
     buildings = trianglesInRect(triangulateBuildingRings(rings).triangles, minX, minZ, maxX, maxZ);
   }
-  return { terrain: terrain, buildings: buildings };
+  return { terrain: terrain, buildings: buildings, objects: withObjects ? collectExportObjects(minX, minZ, maxX, maxZ) : [] };
 }
 
 function trianglesToGeometry(triangles) {
@@ -4976,12 +5145,12 @@ function ifcString(s) {
 /* Schreibt ein minimales, gültiges IFC4-STEP-Dokument von Hand (der
    benötigte Entity-Umfang ist klein genug, dass sich eine externe
    IFC-Bibliothek dafür nicht lohnt). Georeferenz über IfcProjectedCRS +
-   IfcMapConversion, immer im EPSG-Code des geladenen Geländes – keine
-   Ziel-EPSG-Wahl (eine korrekte Umrechnung für alle in EPSG_NAMES
-   gelisteten Systeme bräuchte für die DHDN/Gauß-Krüger-Fälle ein
-   Umrechnungsgitter, das hier nicht mitgeliefert wird; lieber gar keine
-   Wahl anbieten als eine, die für einen Teil der Codes lautlos falsch
-   läge).
+   IfcMapConversion, im EPSG-Code des geladenen Geländes oder (opts.targetEpsg) in einem
+   anderen der Liste IFC_TARGET_CRS: dann werden alle Punkte mit crsTransformer umgerechnet
+   (nur absolute Koordinaten). Bei Bessel-Systemen (DHDN, MGI) gilt eine Helmert-Transformation,
+   die Lage stimmt auf etwa 1 bis 2 m - die Oberfläche sagt das dazu; ein Umrechnungsgitter
+   (NTv2) liegt nicht bei.
+   Bausteine (geo.objects: Straße, Baugrube, Kran, Container) kommen als eigene Bauteile mit.
    Zwei Arten der Koordinaten (opts.coords):
    'local' (Standard von buildIfc): Geometrie relativ zur Rechteck-Südwestecke,
    die Lage steckt in IfcMapConversion - übliche IFC4-Praxis, kleine Zahlen,
@@ -4992,11 +5161,17 @@ function ifcString(s) {
    Die Oberfläche bietet 'abs' als Voreinstellung an, weil sonst "nicht
    georeferenziert" gemeldet wurde. */
 function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
-  const absolute = !!(opts && opts.coords === 'abs');
+  const outEpsg = opts && opts.targetEpsg ? opts.targetEpsg : epsg;
+  // Anderes Zielsystem: nur absolute Koordinaten (jeder Punkt wird umgerechnet; die Drehung der
+  // Achsen gegenüber dem Gelände steckt dann in den Koordinaten, nicht in einer Georeferenz)
+  const absolute = !!(opts && opts.coords === 'abs') || outEpsg !== epsg;
   if (!TERRAIN) throw new Error('Bitte zuerst ein Geländemodell laden.');
-  if (!geo.terrain.length && !geo.buildings.length) {
+  const objs = geo.objects || [];
+  if (!geo.terrain.length && !geo.buildings.length && !objs.length) {
     throw new Error('Der Ausschnitt enthält keine Geometrie.');
   }
+  const transform = outEpsg !== epsg ? crsTransformer(epsg, outEpsg) : null;
+  if (outEpsg !== epsg && !transform) throw new Error('Diese Umrechnung ist nicht möglich: EPSG:' + epsg + ' nach EPSG:' + outEpsg + '.');
 
   const target = worldToUTM(rectMinX, rectMinZ);
 
@@ -5020,6 +5195,10 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
   // das Modell auf der Seite. (x, y, z) -> (x, -z, y) ist eine echte
   // Drehung, die Dreiecksreihenfolge bleibt also erhalten.
   function localize(p) {
+    if (transform) {
+      const q = transform(TERRAIN.originE + p[0], TERRAIN.originN - p[2]);
+      return [q.e, q.n, p[1] + TERRAIN.zmin];
+    }
     if (absolute) return [TERRAIN.originE + p[0], TERRAIN.originN - p[2], p[1] + TERRAIN.zmin];
     return [p[0] - rectMinX, -(p[2] - rectMinZ), p[1]];
   }
@@ -5054,20 +5233,20 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
     str('Body') + ',' + str('Model') + ',*,*,*,*,' + context + ',$,.MODEL_VIEW.,$');
 
   // Beschreibung, Datum, Abbildung und Zone nur, wo sie sich aus dem EPSG-Code ableiten lassen
-  const crsDef = crsGeoDefinition(epsg);
+  const crsDef = crsGeoDefinition(outEpsg);
   let datum = '$', zone = '$';
   if (crsDef && !crsDef.merc) {
-    if (epsg >= 31466 && epsg <= 31469) datum = 'DHDN';
-    else if (epsg >= 31254 && epsg <= 31256) datum = 'MGI';
-    else if (epsg >= 32601 && epsg <= 32660) datum = 'WGS84';
+    if (outEpsg >= 31466 && outEpsg <= 31469) datum = 'DHDN';
+    else if (outEpsg >= 31254 && outEpsg <= 31256) datum = 'MGI';
+    else if (outEpsg >= 32601 && outEpsg <= 32660) datum = 'WGS84';
     else datum = 'ETRS89';
-    if (epsg >= 25828 && epsg <= 25838) zone = (epsg - 25800) + 'N';
-    else if (epsg >= 32601 && epsg <= 32660) zone = (epsg - 32600) + 'N';
-    else if (epsg === 4647) zone = '32N';
-    else if (epsg === 5650) zone = '33N';
+    if (outEpsg >= 25828 && outEpsg <= 25838) zone = (outEpsg - 25800) + 'N';
+    else if (outEpsg >= 32601 && outEpsg <= 32660) zone = (outEpsg - 32600) + 'N';
+    else if (outEpsg === 4647) zone = '32N';
+    else if (outEpsg === 5650) zone = '33N';
   }
   const projectedCrs = add('IFCPROJECTEDCRS',
-    str('EPSG:' + epsg) + ',' + (EPSG_NAMES[epsg] ? str(EPSG_NAMES[epsg]) : '$') + ',' +
+    str('EPSG:' + outEpsg) + ',' + (EPSG_NAMES[outEpsg] ? str(EPSG_NAMES[outEpsg]) : '$') + ',' +
     (datum === '$' ? '$' : str(datum)) + ',$,' + (crsDef && !crsDef.merc ? str('TransverseMercator') : '$') + ',' +
     (zone === '$' ? '$' : str(zone)) + ',' + lengthUnit);
   // OrthogonalHeight: die reale Höhe, die lokal Z=0 entspricht. Lokal Z=0
@@ -5129,6 +5308,7 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
 
   addGroup(geo.terrain, 'Gelände (Ausschnitt)', 'IFCGEOGRAPHICELEMENT', '.TERRAIN.');
   addGroup(geo.buildings, 'Gebäude (Ausschnitt)', 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.');
+  objs.forEach(function (o) { addGroup(o.triangles, o.name, 'IFCBUILDINGELEMENTPROXY', '.NOTDEFINED.'); });
 
   if (elements.length) {
     add('IFCRELCONTAINEDINSPATIALSTRUCTURE', str(ifcGuid()) + ',' + owner + ',$,$,(' + elements.join(',') + '),' + site);
@@ -5437,8 +5617,8 @@ const STRINGS = {
     ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
     ifcWhyNoGeo: 'Das Bauwerk ist nicht georeferenziert.', ifcWhyCrs: 'Das Bauwerk liegt in EPSG:{a}, das Gelände in EPSG:{b}.',
     ifcWhyNoCrs: 'Das Bauwerk nennt kein Bezugssystem (EPSG-Code).', ifcWhyTerrainCrs: 'Das Gelände hat kein bekanntes Bezugssystem.',
-    ifcStep0: 'Punkt A am Bauwerk anklicken (zum Beispiel eine Ecke).', ifcStep1: 'Punkt B am Bauwerk anklicken, möglichst weit von A entfernt.',
-    ifcStep2: 'Jetzt im Gelände den Punkt anklicken, der A am Bauwerk entspricht.', ifcStep3: 'Im Gelände den Punkt anklicken, der B entspricht.',
+    ifcStep0: 'Punkt A am Bauwerk anklicken (zum Beispiel eine Ecke).', ifcStep1: 'Jetzt im Gelände den Punkt anklicken, der A am Bauwerk entspricht.',
+    ifcStep2: 'Punkt B am Bauwerk anklicken, möglichst weit von A entfernt.', ifcStep3: 'Im Gelände den Punkt anklicken, der B entspricht.',
     ifcStepSub: 'Schritt {n} von 4 · Esc bricht ab · Die Ansicht lässt sich zwischendurch drehen und zoomen.',
     ifcPlacedManual: 'Bauwerk platziert. Abstand A–B: Bauwerk {m} m, Gelände {t} m.',
     ifcDistWarn: 'Die Abstände weichen um {d} m ab; stimmen die Punkte?',
@@ -5462,7 +5642,7 @@ const STRINGS = {
     helpS5T: 'Mengen und Prüfungen',
     helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.',
     helpS6T: 'Karte und Export',
-    helpS6B: '- „Karte · OpenStreetMap“ (Fenster „Daten“) legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände und Gebäude als IFC-Datei mit Koordinatenbezug heruntergeladen.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
+    helpS6B: '- „Karte · OpenStreetMap“ (Fenster „Daten“) legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände, Gebäude und auf Wunsch die Bausteine als IFC-Datei heruntergeladen, auch in einem anderen Koordinatensystem.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
     helpS7T: 'Tastatur',
     helpS7B: '- Esc: abbrechen und Auswahl aufheben.\n- Leertaste: Straße oder Baugrube abschließen.\n- Entf oder Rücktaste: ausgewählte Objekte löschen (nicht beim Tippen in Feldern).',
     addrPlaceholder: 'Wo ist deine Baustelle?',
@@ -5514,10 +5694,13 @@ const STRINGS = {
     noManufacturerValue: 'keine Herstellerangabe',
     geoportals: 'Geoportale', geoportalsTip: 'Tabelle der Geoportale der Bundesländer (GitHub)',
     geoportalUrl: 'https://github.com/Mucnese/quick-site-design#datenquellen',
-    tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände und Gebäude als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
+    tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände, Gebäude und Bausteine als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
     ifcCoords: 'Koordinaten', ifcCoordsAbs: 'absolut im Bezugssystem', ifcCoordsLocal: 'lokal (mit IfcMapConversion)',
     ifcCoordsNote: 'Absolut: Rechtswert, Hochwert und Höhe stehen direkt im Modell. Lokal: kleine Zahlen, die Lage steckt in der Georeferenz (IfcMapConversion).',
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
+    ifcTarget: 'Bezugssystem der Datei', ifcTargetSame: 'wie Gelände', ifcObjects: 'Straßen, Baugruben und Bausteine mitnehmen',
+    ifcTargetNote: 'Die Punkte werden umgerechnet und absolut geschrieben.',
+    ifcTargetApprox: 'Bessel-System (DHDN/MGI): Umrechnung nur auf etwa 1 bis 2 m genau, ohne Höhenänderung.',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'DGM-Rasterung', unit: 'Einheit', unitMeter: 'Meter',
     hintClick: 'Linksklick', hintMeasure: 'Messpunkt', hintDrag: 'Links', hintDragX: ' ziehen',
@@ -5578,8 +5761,8 @@ const STRINGS = {
     ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
     ifcWhyNoGeo: 'The structure is not georeferenced.', ifcWhyCrs: 'The structure is in EPSG:{a}, the terrain in EPSG:{b}.',
     ifcWhyNoCrs: 'The structure names no coordinate system (EPSG code).', ifcWhyTerrainCrs: 'The terrain has no known coordinate system.',
-    ifcStep0: 'Click point A on the structure (for example a corner).', ifcStep1: 'Click point B on the structure, as far from A as possible.',
-    ifcStep2: 'Now click the point in the terrain that matches A on the structure.', ifcStep3: 'Click the point in the terrain that matches B.',
+    ifcStep0: 'Click point A on the structure (for example a corner).', ifcStep1: 'Now click the point in the terrain that matches A on the structure.',
+    ifcStep2: 'Click point B on the structure, as far from A as possible.', ifcStep3: 'Click the point in the terrain that matches B.',
     ifcStepSub: 'Step {n} of 4 · Esc cancels · You can rotate and zoom the view in between.',
     ifcPlacedManual: 'Structure placed. Distance A–B: structure {m} m, terrain {t} m.',
     ifcDistWarn: 'The distances differ by {d} m; do the points match?',
@@ -5603,7 +5786,7 @@ const STRINGS = {
     helpS5T: 'Quantities and checks',
     helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.',
     helpS6T: 'Map and export',
-    helpS6B: '- “Map · OpenStreetMap” (“Data” window) puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain and buildings are downloaded as an IFC file with coordinate reference.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
+    helpS6B: '- “Map · OpenStreetMap” (“Data” window) puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain, buildings and, optionally, the blocks are downloaded as an IFC file, also in another coordinate system.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
     helpS7T: 'Keyboard',
     helpS7B: '- Esc: cancel and clear the selection.\n- Space: finish a road or excavation.\n- Delete or Backspace: delete the selected objects (not while typing in fields).',
     addrPlaceholder: 'Where is your construction site?',
@@ -5655,10 +5838,13 @@ const STRINGS = {
     noManufacturerValue: 'no manufacturer figure',
     geoportals: 'Geoportals', geoportalsTip: 'Table of the German state geoportals (GitHub)',
     geoportalUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/README.en.md#where-to-get-the-data',
-    tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain and buildings as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
+    tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain, buildings and blocks as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
     ifcCoords: 'Coordinates', ifcCoordsAbs: 'absolute in the CRS', ifcCoordsLocal: 'local (with IfcMapConversion)',
     ifcCoordsNote: 'Absolute: easting, northing and height are written directly into the model. Local: small numbers, the position is in the georeference (IfcMapConversion).',
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
+    ifcTarget: 'CRS of the file', ifcTargetSame: 'same as terrain', ifcObjects: 'Include roads, excavations and blocks',
+    ifcTargetNote: 'Points are converted and written as absolute coordinates.',
+    ifcTargetApprox: 'Bessel system (DHDN/MGI): conversion accurate to about 1 to 2 m only, heights unchanged.',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'DTM grid', unit: 'Unit', unitMeter: 'Metre',
     hintClick: 'Left click', hintMeasure: 'Measure point', hintDrag: 'Left', hintDragX: ' drag',
@@ -5790,9 +5976,9 @@ const THEMES = {
     name: 'dark',
     vars: {
       '--bg': '#191c1f', '--scene': '#1f2429',
-      '--panel-bg': 'rgba(32, 36, 40, 0.78)',
-      '--border': '#3a4047', '--border-strong': '#586069',
-      '--text': '#e2e6ea', '--text-dim': '#9aa3ac', '--text-dim2': '#6d7681',
+      '--panel-bg': 'rgba(32, 36, 40, 0.85)',
+      '--border': '#4a525a', '--border-strong': '#6a737c',
+      '--text': '#eef1f4', '--text-dim': '#b4bcc4', '--text-dim2': '#8d97a1',
       '--accent': '#4da3d9', '--danger': '#e0655a',
       '--field': '#262b30', '--radius': '2px'
     }
@@ -5801,9 +5987,9 @@ const THEMES = {
     name: 'light',
     vars: {
       '--bg': '#cfd5db', '--scene': '#dde2e7',
-      '--panel-bg': 'rgba(250, 251, 252, 0.62)',
-      '--border': '#ccd2d8', '--border-strong': '#98a1aa',
-      '--text': '#1b1f23', '--text-dim': '#515a63', '--text-dim2': '#7d868f',
+      '--panel-bg': 'rgba(250, 251, 252, 0.85)',
+      '--border': '#b3bbc3', '--border-strong': '#8a949d',
+      '--text': '#14181c', '--text-dim': '#3d454d', '--text-dim2': '#5f6872',
       '--accent': '#1f6feb', '--danger': '#c4362c',
       '--field': '#ffffff', '--radius': '2px'
     }
@@ -6913,6 +7099,38 @@ function updateCompass() {
   if (b && b.classList) b.classList.toggle('on', isTopView());
 }
 
+/* Längen der Strecken beim Zeichnen von Straße und Baugrube: ein kleines Schild je Strecke,
+   waagerechte Länge mit zwei Nachkommastellen. Die Schilder liegen im Container #seg-labels und
+   werden pro Bild neu an die Bildschirmstelle gesetzt (wie die Beschriftung am Messpunkt). */
+let segLabelEls = [];
+
+function updateSegLabels() {
+  const box = document.getElementById('seg-labels');
+  if (!box) return;
+  const list = roadPreviewLabels;
+  const show = list.length && isDrawTool(activeTool);
+  const n = show ? list.length : 0;
+  while (segLabelEls.length < n) {
+    const d = document.createElement('div');
+    d.className = 'seg-label';
+    box.appendChild(d);
+    segLabelEls.push(d);
+  }
+  if (n) camera.updateMatrixWorld();
+  const v = new THREE.Vector3();
+  segLabelEls.forEach(function (el, i) {
+    if (i >= n) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
+    v.set(list[i].x, list[i].y, list[i].z).project(camera);
+    if (v.z > 1) { el.style.display = 'none'; return; }
+    const txt = list[i].len.toFixed(2) + ' m';
+    if (el.textContent !== txt) el.textContent = txt;
+    el.className = 'seg-label' + (list[i].live ? ' live' : '');
+    el.style.display = 'block';
+    el.style.transform = 'translate(' + Math.round((v.x * 0.5 + 0.5) * window.innerWidth) + 'px, ' +
+      Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, -130%)';
+  });
+}
+
 /* Hält die Beschriftung am Messpunkt; wird pro Bild aufgerufen */
 function updatePointLabel() {
   const el = document.getElementById('point-label');
@@ -7193,7 +7411,7 @@ function renderAddrResult() {
 
 /* ---------- IFC-Import ----------
    Datei wählen -> mit web-ifc lesen -> automatisch platzieren, wenn Bauwerk und Gelände dasselbe Bezugssystem
-   haben, sonst von Hand: zwei Punkte am Bauwerk (A, B), dann zwei Punkte im Gelände. */
+   haben, sonst von Hand: je Punktpaar erst der Punkt am Bauwerk, dann der entsprechende im Gelände (A, dann B). */
 let ifcPick = null;        // { step 0..3, p: [Punkt am Bauwerk], t: [Punkt im Gelände], markers, before, fresh }
 
 function setIfcStatus(msg, kind) {
@@ -7279,10 +7497,11 @@ function cancelIfcPick(silent) {
   if (!silent) setStatus(T('ifcCancelled'));
 }
 
-/* Klick im Platzierungsmodus: Schritt 0/1 am Bauwerk, Schritt 2/3 im Gelände */
+/* Klick im Platzierungsmodus, abwechselnd: Schritt 0 = A am Bauwerk, 1 = A im Gelände,
+   2 = B am Bauwerk, 3 = B im Gelände */
 function handleIfcPick(event) {
   const p = ifcPick;
-  if (p.step < 2) {
+  if (p.step % 2 === 0) {
     pointerToNDC(event);
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObject(ifcModel.group, true);
@@ -7757,8 +7976,45 @@ function showIfcPanel() {
   document.getElementById('ifc-extent').textContent =
     Math.round(r.maxX - r.minX) + ' × ' + Math.round(r.maxZ - r.minZ) + ' m';
   document.getElementById('ifc-crs').textContent = crsLabel(TERRAIN.epsg);
+  fillIfcTargets();
   document.getElementById('ifc-error').textContent = '';
   document.getElementById('ifc-panel').style.display = 'block';
+}
+
+/* Auswahl des Bezugssystems der Datei: "wie Gelände" und die Zielsysteme, die sich umrechnen lassen */
+function fillIfcTargets() {
+  const sel = document.getElementById('ifc-target');
+  const def = crsGeoDefinition(TERRAIN.epsg);
+  const can = !!def && !def.merc;
+  document.getElementById('ifc-target-row').style.display = can ? '' : 'none';
+  sel.innerHTML = '';
+  const add = function (value, label, i18n) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    if (i18n) o.setAttribute('data-i18n', i18n);
+    sel.appendChild(o);
+  };
+  add('', T('ifcTargetSame'), 'ifcTargetSame');
+  if (can) IFC_TARGET_CRS.forEach(function (c) {
+    if (c !== TERRAIN.epsg) add(String(c), crsLabel(c) + (crsTransformIsApprox(TERRAIN.epsg, c) ? ' ≈' : ''));
+  });
+  sel.value = '';
+  updateIfcTargetUi();
+}
+
+/* Anderes Bezugssystem: nur absolute Koordinaten, und bei Bessel-Systemen ein Hinweis zur Genauigkeit */
+function updateIfcTargetUi() {
+  const v = document.getElementById('ifc-target').value;
+  const coords = document.getElementById('ifc-coords');
+  const note = document.getElementById('ifc-target-note');
+  const other = v !== '';
+  if (other) coords.value = 'abs';
+  coords.disabled = other;
+  note.className = '';
+  if (!other) { note.textContent = ''; return; }
+  const approx = crsTransformIsApprox(TERRAIN.epsg, parseInt(v, 10));
+  note.textContent = T('ifcTargetNote') + (approx ? ' ' + T('ifcTargetApprox') : '');
+  if (approx) note.className = 'warn';
 }
 
 function hideIfcPanel() {
@@ -7778,8 +8034,14 @@ function runIfcExport() {
   const errEl = document.getElementById('ifc-error');
   try {
     const modeEl = document.getElementById('ifc-coords');
-    const ifc = buildIfc(exportGeometry, exportRect.minX, exportRect.minZ, TERRAIN.epsg,
-                         { coords: modeEl && modeEl.value === 'local' ? 'local' : 'abs' });
+    const objEl = document.getElementById('ifc-objects'), r = exportRect;
+    const targetEl = document.getElementById('ifc-target');
+    const geo = Object.assign({}, exportGeometry, {
+      objects: objEl && objEl.checked ? collectExportObjects(r.minX, r.minZ, r.maxX, r.maxZ) : []
+    });
+    const ifc = buildIfc(geo, r.minX, r.minZ, TERRAIN.epsg,
+                         { coords: modeEl && modeEl.value === 'local' ? 'local' : 'abs',
+                           targetEpsg: targetEl && targetEl.value ? parseInt(targetEl.value, 10) : 0 });
     downloadText(ifc, 'quick-site-design-export.ifc');
     errEl.textContent = '';
     setStatus(T('msgIfcExported'));
@@ -8140,6 +8402,7 @@ function initUI() {
     setStatus(T('msgViewReset'));
   });
 
+  document.getElementById('ifc-target').addEventListener('change', updateIfcTargetUi);
   document.getElementById('ifc-export-btn').addEventListener('click', function () {
     runIfcExport();
   });
@@ -8236,6 +8499,7 @@ function start() {
     requestAnimationFrame(animate);
     updateControls();
     updatePointLabel();
+    updateSegLabels();
     updateCompass();
     renderer.render(scene, camera);
   }

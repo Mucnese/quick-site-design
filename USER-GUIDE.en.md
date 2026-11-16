@@ -16,7 +16,7 @@ browser, there is no login and no save: when you close the page, the plan is gon
 5. [The building blocks in detail](#5-the-building-blocks-in-detail)
 6. [Quantities and checks](#6-quantities-and-checks)
 7. [Map (OpenStreetMap)](#7-map-openstreetmap)
-8. [IFC export](#8-ifc-export)
+8. [IFC import and export](#8-ifc-import-and-export)
 9. [Keyboard](#9-keyboard)
 10. [Limits and notes](#10-limits-and-notes)
 11. [If something does not work](#11-if-something-does-not-work)
@@ -119,7 +119,8 @@ There is no slider for it; the heights used for objects and quantities do not de
   terrain. The block sits at ground height.
 - **Haul road and excavation:** click point after point into the terrain, then **right-click** or
   press **space** to finish. A road needs at least 2 points, an excavation 3 (at most 32 corners).
-  **Esc** cancels.
+  **Esc** cancels. While drawing, every segment shows its **horizontal length** in metres with two
+  decimals, including the segment to the mouse.
 
 After placing, the **Properties** window opens on the right. Every slider has a number field in
 its header: click the value and type, Enter or leaving the field applies it, a value outside the
@@ -242,8 +243,8 @@ file stays in the browser and is not transmitted. Size up to 300 MB.
   system (EPSG)** as the terrain, the structure appears at the right place, rotated and at the right
   height. Scale and length unit of the file are taken into account.
 - **Manual (2 + 2 points):** If the georeference is missing or the coordinate system differs, the
-  message names the reason and starts the procedure: click two points on the **structure**, then the
-  **matching two points on the terrain**. The point pairs give position and rotation. The structure
+  message names the reason and starts the procedure: click alternately **point A on the structure**, then the
+  **matching point A on the terrain**, then point B the same way. The point pairs give position and rotation. The structure
   always stays **level**; its height follows the terrain at the first point. If the two distances do
   not match, a warning appears. **Esc** cancels. **Place manually** repeats the procedure later.
 - **Height ±** raises or lowers the structure, **✕** removes it.
@@ -254,8 +255,9 @@ file stays in the browser and is not transmitted. Size up to 300 MB.
 ### IFC export
 
 The **IFC export** card (at the bottom, among the blocks) writes **terrain and buildings** to an
-IFC file, georeferenced in the coordinate system of the loaded terrain. Blocks such as cranes and
-containers are not included.
+IFC file, optionally with **roads, excavations, cranes and containers** (checkbox in the window,
+on by default; every block is a building element of its own). The terrain is not cut out: an
+excavation lies below the terrain surface.
 
 1. Click **IFC export**. The view switches to the top view.
 2. **Drag a rectangle** on the terrain. Zooming is possible meanwhile.
@@ -263,7 +265,11 @@ containers are not included.
    you choose how the position gets into the file: **absolute in the CRS** (default: easting,
    northing and height above sea level are written directly into the model, visible in any
    program) or **local** (small numbers from the north-west corner, the position is in the
-   georeference `IfcMapConversion`). The file also names the coordinate system (EPSG code, datum,
+   georeference `IfcMapConversion`). Under **CRS of the file** the position can be converted to
+   **another coordinate system** (UTM 31N to 33N, Gauss-Krüger 2 to 5, Gauss-Krüger Austria). Every
+   point is then converted individually and written as absolute coordinates; heights stay unchanged.
+   For the Bessel systems (DHDN, MGI, marked ≈) the position is accurate to about 1 to 2 m only,
+   because no conversion grid is included. The file also names the coordinate system (EPSG code, datum,
    zone) and carries latitude and longitude of the site where the system can be converted.
    **Export** downloads the file, **Cancel** or **Esc** aborts.
 
@@ -285,7 +291,7 @@ containers are not included.
   check or a load-capacity calculation. For cranes only the manufacturer’s load chart counts.
 - **Data.** The quality of the quantities depends on the terrain model. Coarse grids smooth
   embankments.
-- **No saving.** There is no save. The IFC model contains only terrain and buildings.
+- **No saving.** There is no save. The IFC model contains terrain, buildings and, optionally, the blocks.
 - **Privacy.** All data stays in the browser. Two functions connect to the outside, both only on
   your input: the **address bar** (suggestions from `photon.komoot.io`) and the **map** (tiles from
   `tile.openstreetmap.org`). Details in the [privacy statement](datenschutz.html) (German).

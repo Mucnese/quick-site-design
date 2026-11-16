@@ -535,6 +535,112 @@ test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function (
   assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832); }, /Geometrie/);
 });
 
+test('crsTransformer: gleiche Ellipsoide und Mittelmeridiane ergeben nur den Versatz, Hin- und Rückweg stimmen auf Millimeter', function () {
+  // ETRS89 / UTM 32N und die Zonenvariante 4647 unterscheiden sich nur im Rechtswert (+32 000 000)
+  const q = app.crsTransformer(25832, 4647)(692480, 5336520);
+  assert.ok(Math.abs(q.e - (692480 + 32000000)) < 0.001 && Math.abs(q.n - 5336520) < 0.001, JSON.stringify(q));
+  // Zone 33 und zurück
+  const to33 = app.crsTransformer(25832, 25833), back = app.crsTransformer(25833, 25832);
+  const r = to33(692480, 5336520), b = back(r.e, r.n);
+  assert.ok(Math.abs(b.e - 692480) < 0.001 && Math.abs(b.n - 5336520) < 0.001, 'Rückweg ' + JSON.stringify(b));
+  assert.ok(r.e < 400000 && r.e > 200000, 'liegt westlich des Mittelmeridians von Zone 33: ' + r.e);
+  // Bessel-Systeme (Helmert): Hin- und Rückweg stimmen, der Versatz gegenüber UTM liegt bei der bekannten Größenordnung
+  [31466, 31467, 31468, 31469].forEach(function (z) {
+    const f = app.crsTransformer(25832, z), g = app.crsTransformer(z, 25832);
+    const p = f(692480, 5336520), s = g(p.e, p.n);
+    assert.ok(Math.hypot(s.e - 692480, s.n - 5336520) < 0.005, 'EPSG:' + z + ' Rückweg ' + JSON.stringify(s));
+  });
+  // Gegenprobe über crsToLonLat (dessen Werte stimmen mit PROJ überein, siehe Test zur Karte): jedes Ziel
+  // muss denselben Ort ergeben wie der Ausgangspunkt, bei Bessel-Systemen auf 1 m
+  [[25832, 713500, 5420500], [25832, 500000, 5400000], [25833, 380000, 5800000]].forEach(function (p) {
+    const g0 = app.crsToLonLat(p[0], p[1], p[2]);
+    app.IFC_TARGET_CRS.forEach(function (c) {
+      const t = app.crsTransformer(p[0], c)(p[1], p[2]);
+      const g1 = app.crsToLonLat(c, t.e, t.n);
+      const dm = Math.hypot((g1.lon - g0.lon) * 111320 * Math.cos(g0.lat * Math.PI / 180), (g1.lat - g0.lat) * 110540);
+      assert.ok(dm < (app.crsTransformIsApprox(p[0], c) ? 1 : 0.02), 'EPSG:' + p[0] + ' -> ' + c + ' weicht ' + dm.toFixed(3) + ' m ab');
+    });
+  });
+  // Österreich
+  const at = app.crsTransformer(25833, 31256), at2 = app.crsTransformer(31256, 25833);
+  const ap = at(600000, 5340000), as = at2(ap.e, ap.n);
+  assert.ok(Math.hypot(as.e - 600000, as.n - 5340000) < 0.005, 'Österreich Rückweg');
+  // nicht umrechenbar
+  assert.strictEqual(app.crsTransformer(25832, 3857), null);
+  assert.strictEqual(app.crsTransformer(25832, 12345), null);
+  assert.strictEqual(app.crsTransformer(12345, 25832), null);
+  assert.ok(app.crsTransformIsApprox(25832, 31467) && app.crsTransformIsApprox(31467, 25832) && !app.crsTransformIsApprox(25832, 25833));
+  app.IFC_TARGET_CRS.forEach(function (c) { assert.ok(app.crsTransformer(25832, c), 'Ziel EPSG:' + c); assert.ok(app.crsLabel(c).indexOf('·') > 0, 'Name für ' + c); });
+});
+
+test('buildIfc: anderes Bezugssystem - alle Punkte umgerechnet, absolut, IfcProjectedCRS nennt das Ziel', function () {
+  terrainForExportTests();
+  const geo = app.collectExportGeometry([], -10, -10, 10, 10);
+  const nums = function (ifc) {
+    const l = ifc.split('\n').filter(function (x) { return /IFCCARTESIANPOINTLIST3D/.test(x); })[0];
+    return l.slice(l.indexOf('LIST3D(') + 7).match(/-?\d+\.?\d*/g).map(Number);
+  };
+  const same = nums(app.buildIfc(geo, -10, -10, 25832, { coords: 'abs' }));
+  const zone = app.buildIfc(geo, -10, -10, 25832, { coords: 'local', targetEpsg: 4647 });   // lokal wird bei anderem Ziel ignoriert
+  const moved = nums(zone);
+  assert.strictEqual(moved.length, same.length);
+  for (let i = 0; i < same.length; i += 3) {
+    assert.ok(Math.abs(moved[i] - (same[i] + 32000000)) < 0.002 && Math.abs(moved[i + 1] - same[i + 1]) < 0.002 && moved[i + 2] === same[i + 2], 'Punkt ' + i / 3);
+  }
+  assert.ok(/IFCMAPCONVERSION\(#\d+,#\d+,0\.,0\.,0\.,1\.,0\.,1\.\)/.test(zone), 'Nullversatz');
+  const crs = zone.split('\n').filter(function (l) { return /IFCPROJECTEDCRS/.test(l); })[0];
+  assert.ok(crs.indexOf("'EPSG:4647'") > 0 && crs.indexOf("'32N'") > 0, crs);
+  assert.throws(function () { app.buildIfc(geo, -10, -10, 25832, { targetEpsg: 3857 }); }, /Umrechnung/);
+  const gk = app.buildIfc(geo, -10, -10, 25832, { targetEpsg: 31467 });
+  assert.ok(/'EPSG:31467','DHDN \/ GK 3','DHDN'/.test(gk), 'Datum DHDN');
+});
+
+test('objectTriangles: Weltkoordinaten über Gruppe und Instanzmatrizen, Linien und Darstellungshilfen bleiben draußen', function () {
+  freshScene();
+  const g = new THREE.Group();
+  g.position.set(10, 5, -3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 1]), 3));
+  geo.setIndex([0, 1, 2]);
+  const plain = new THREE.Mesh(geo, {});
+  plain.position.set(1, 0, 0);
+  g.add(plain);
+  const inst = new THREE.InstancedMesh(geo, {}, 2);
+  const d = new THREE.Object3D();
+  d.position.set(0, 1, 0); d.updateMatrix(); inst.setMatrixAt(0, d.matrix);
+  d.position.set(4, 1, 0); d.scale.set(2, 2, 2); d.updateMatrix(); inst.setMatrixAt(1, d.matrix);
+  g.add(inst);
+  const help = new THREE.Mesh(geo, {}); help.userData.kind = 'sweptFill'; g.add(help);
+  const hidden = new THREE.Mesh(geo, {}); hidden.visible = false; g.add(hidden);
+  g.add(new THREE.Line(geo, {}));
+  const tris = app.objectTriangles(g);
+  assert.strictEqual(tris.length, 3, 'Mesh + zwei Instanzen, sonst nichts: ' + tris.length);
+  assert.deepStrictEqual(tris[0].a, [11, 5, -3], 'Gruppen- und Meshposition');
+  assert.deepStrictEqual(tris[1].a, [10, 6, -3], 'Instanz 1');
+  assert.deepStrictEqual(tris[1].c, [10, 6, -2]);
+  assert.deepStrictEqual(tris[2].b, [16, 6, -3], 'Instanz 2 mit Maßstab 2: x = 10 + 4 + 2');
+});
+
+test('IFC-Export mit Bausteinen: Straße und Baugrube kommen als eigene Bauteile, nur wenn sie das Rechteck berühren', function () {
+  terrainForExportTests();
+  const road = app.addObject('road', 0, 0, (function () { const p = app.defaultRoadParams(); p.points = [{ x: -30, z: 0 }, { x: 30, z: 0 }]; p.width = 6; return p; })());
+  const pit = app.addObject('pit', 0, 0, (function () { const p = app.defaultPitParams(); p.points = [{ x: -10, z: 20 }, { x: 10, z: 20 }, { x: 10, z: 40 }, { x: -10, z: 40 }]; return p; })());
+  const far = app.addObject('road', 0, 0, (function () { const p = app.defaultRoadParams(); p.points = [{ x: 80, z: 80 }, { x: 90, z: 80 }]; p.width = 6; return p; })());
+  const objs = app.collectExportObjects(-50, -10, 50, 50);
+  const names = objs.map(function (o) { return o.name; });
+  assert.deepStrictEqual(names, ['Baustraße ' + road.id, 'Baugrube ' + pit.id], 'die ferne Straße fehlt: ' + names.join(', '));
+  objs.forEach(function (o) { assert.ok(o.triangles.length > 0, o.name + ' hat Dreiecke'); });
+  const geo = app.collectExportGeometry([], -50, -10, 50, 50, true);
+  assert.strictEqual(geo.objects.length, 2);
+  const ifc = app.buildIfc(geo, -50, -10, 25832);
+  assert.strictEqual((ifc.match(/IFCBUILDINGELEMENTPROXY\(/g) || []).length, 2);
+  assert.ok(ifc.indexOf("'Baustra\\X2\\00DF\\X0\\e " + road.id + "'") > 0, 'Name mit ß als \\X2\\-Escape');
+  assert.strictEqual(checkStepReferencesResolve(ifc).missing.length, 0, 'alle Verweise lösen auf');
+  // ohne Bausteine und ohne Gelände nichts mehr zu schreiben
+  assert.strictEqual(app.collectExportGeometry([], -50, -10, 50, 50, false).objects.length, 0);
+  assert.ok(far);
+});
+
 /* ---------- Gelände: Kacheln mit Detailstufe nach Zoom ---------- */
 
 function lodTerrain(cells) {
@@ -1350,6 +1456,31 @@ test('Zeichenvorschau (Straße, Baugrube): die Linie folgt dem Gelände, auch ü
   assert.ok(Math.hypot(lastBox.position.x - (-10), lastBox.position.z - (-10)) < 2, 'letzte Kante führt zurück zum Startpunkt');
   assert.ok(first);
   app.clearRoadPreview();
+});
+
+test('Zeichenvorschau: je Strecke die waagerechte Länge, auch am Hang, bei der Baugrube mit der schließenden Kante', function () {
+  roadTerrain(0.1);                                   // 10-%-Rampe in +x: die räumliche Länge wäre größer
+  app.setRoadPreview([{ x: 0, z: 0 }, { x: 30, z: 0 }, { x: 30, z: 40 }], { x: 33, z: 44 }, false);
+  let l = app.getRoadPreviewLabels();
+  assert.strictEqual(l.length, 3, 'zwei gesetzte Strecken und die zur Maus');
+  assert.strictEqual(l[0].len.toFixed(2), '30.00', 'waagerecht, nicht entlang der Neigung');
+  assert.strictEqual(l[1].len.toFixed(2), '40.00');
+  assert.strictEqual(l[2].len.toFixed(2), '5.00');
+  assert.ok(!l[0].live && !l[1].live && l[2].live, 'nur die Strecke zur Maus ist live');
+  assert.ok(Math.abs(l[0].x - 15) < 1e-9 && Math.abs(l[0].z) < 1e-9, 'Schild in der Streckenmitte');
+  // Baugrube: Dreieck mit Maus als vierter Ecke = vier Kanten, die letzte schließt zum Startpunkt
+  app.setRoadPreview([{ x: 0, z: 0 }, { x: 10, z: 0 }, { x: 10, z: 10 }], { x: 0, z: 10 }, true);
+  l = app.getRoadPreviewLabels();
+  assert.strictEqual(l.length, 4);
+  assert.strictEqual(l[3].len.toFixed(2), '10.00');
+  // ohne Maus (nach dem Klick): keine live-Strecke
+  app.setRoadPreview([{ x: 0, z: 0 }, { x: 3, z: 4 }], null, false);
+  l = app.getRoadPreviewLabels();
+  assert.strictEqual(l.length, 1);
+  assert.strictEqual(l[0].len.toFixed(2), '5.00');
+  assert.ok(!l[0].live);
+  app.clearRoadPreview();
+  assert.strictEqual(app.getRoadPreviewLabels().length, 0, 'nach dem Abbruch keine Schilder');
 });
 
 /* ---------- Draufsicht: keine Trägheitsdrehung ---------- */

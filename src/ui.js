@@ -34,8 +34,8 @@ const STRINGS = {
     ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
     ifcWhyNoGeo: 'Das Bauwerk ist nicht georeferenziert.', ifcWhyCrs: 'Das Bauwerk liegt in EPSG:{a}, das Gelände in EPSG:{b}.',
     ifcWhyNoCrs: 'Das Bauwerk nennt kein Bezugssystem (EPSG-Code).', ifcWhyTerrainCrs: 'Das Gelände hat kein bekanntes Bezugssystem.',
-    ifcStep0: 'Punkt A am Bauwerk anklicken (zum Beispiel eine Ecke).', ifcStep1: 'Punkt B am Bauwerk anklicken, möglichst weit von A entfernt.',
-    ifcStep2: 'Jetzt im Gelände den Punkt anklicken, der A am Bauwerk entspricht.', ifcStep3: 'Im Gelände den Punkt anklicken, der B entspricht.',
+    ifcStep0: 'Punkt A am Bauwerk anklicken (zum Beispiel eine Ecke).', ifcStep1: 'Jetzt im Gelände den Punkt anklicken, der A am Bauwerk entspricht.',
+    ifcStep2: 'Punkt B am Bauwerk anklicken, möglichst weit von A entfernt.', ifcStep3: 'Im Gelände den Punkt anklicken, der B entspricht.',
     ifcStepSub: 'Schritt {n} von 4 · Esc bricht ab · Die Ansicht lässt sich zwischendurch drehen und zoomen.',
     ifcPlacedManual: 'Bauwerk platziert. Abstand A–B: Bauwerk {m} m, Gelände {t} m.',
     ifcDistWarn: 'Die Abstände weichen um {d} m ab; stimmen die Punkte?',
@@ -59,7 +59,7 @@ const STRINGS = {
     helpS5T: 'Mengen und Prüfungen',
     helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.',
     helpS6T: 'Karte und Export',
-    helpS6B: '- „Karte · OpenStreetMap“ (Fenster „Daten“) legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände und Gebäude als IFC-Datei mit Koordinatenbezug heruntergeladen.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
+    helpS6B: '- „Karte · OpenStreetMap“ (Fenster „Daten“) legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände, Gebäude und auf Wunsch die Bausteine als IFC-Datei heruntergeladen, auch in einem anderen Koordinatensystem.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
     helpS7T: 'Tastatur',
     helpS7B: '- Esc: abbrechen und Auswahl aufheben.\n- Leertaste: Straße oder Baugrube abschließen.\n- Entf oder Rücktaste: ausgewählte Objekte löschen (nicht beim Tippen in Feldern).',
     addrPlaceholder: 'Wo ist deine Baustelle?',
@@ -111,10 +111,13 @@ const STRINGS = {
     noManufacturerValue: 'keine Herstellerangabe',
     geoportals: 'Geoportale', geoportalsTip: 'Tabelle der Geoportale der Bundesländer (GitHub)',
     geoportalUrl: 'https://github.com/Mucnese/quick-site-design#datenquellen',
-    tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände und Gebäude als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
+    tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände, Gebäude und Bausteine als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
     ifcCoords: 'Koordinaten', ifcCoordsAbs: 'absolut im Bezugssystem', ifcCoordsLocal: 'lokal (mit IfcMapConversion)',
     ifcCoordsNote: 'Absolut: Rechtswert, Hochwert und Höhe stehen direkt im Modell. Lokal: kleine Zahlen, die Lage steckt in der Georeferenz (IfcMapConversion).',
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
+    ifcTarget: 'Bezugssystem der Datei', ifcTargetSame: 'wie Gelände', ifcObjects: 'Straßen, Baugruben und Bausteine mitnehmen',
+    ifcTargetNote: 'Die Punkte werden umgerechnet und absolut geschrieben.',
+    ifcTargetApprox: 'Bessel-System (DHDN/MGI): Umrechnung nur auf etwa 1 bis 2 m genau, ohne Höhenänderung.',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'DGM-Rasterung', unit: 'Einheit', unitMeter: 'Meter',
     hintClick: 'Linksklick', hintMeasure: 'Messpunkt', hintDrag: 'Links', hintDragX: ' ziehen',
@@ -175,8 +178,8 @@ const STRINGS = {
     ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
     ifcWhyNoGeo: 'The structure is not georeferenced.', ifcWhyCrs: 'The structure is in EPSG:{a}, the terrain in EPSG:{b}.',
     ifcWhyNoCrs: 'The structure names no coordinate system (EPSG code).', ifcWhyTerrainCrs: 'The terrain has no known coordinate system.',
-    ifcStep0: 'Click point A on the structure (for example a corner).', ifcStep1: 'Click point B on the structure, as far from A as possible.',
-    ifcStep2: 'Now click the point in the terrain that matches A on the structure.', ifcStep3: 'Click the point in the terrain that matches B.',
+    ifcStep0: 'Click point A on the structure (for example a corner).', ifcStep1: 'Now click the point in the terrain that matches A on the structure.',
+    ifcStep2: 'Click point B on the structure, as far from A as possible.', ifcStep3: 'Click the point in the terrain that matches B.',
     ifcStepSub: 'Step {n} of 4 · Esc cancels · You can rotate and zoom the view in between.',
     ifcPlacedManual: 'Structure placed. Distance A–B: structure {m} m, terrain {t} m.',
     ifcDistWarn: 'The distances differ by {d} m; do the points match?',
@@ -200,7 +203,7 @@ const STRINGS = {
     helpS5T: 'Quantities and checks',
     helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.',
     helpS6T: 'Map and export',
-    helpS6B: '- “Map · OpenStreetMap” (“Data” window) puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain and buildings are downloaded as an IFC file with coordinate reference.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
+    helpS6B: '- “Map · OpenStreetMap” (“Data” window) puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain, buildings and, optionally, the blocks are downloaded as an IFC file, also in another coordinate system.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
     helpS7T: 'Keyboard',
     helpS7B: '- Esc: cancel and clear the selection.\n- Space: finish a road or excavation.\n- Delete or Backspace: delete the selected objects (not while typing in fields).',
     addrPlaceholder: 'Where is your construction site?',
@@ -252,10 +255,13 @@ const STRINGS = {
     noManufacturerValue: 'no manufacturer figure',
     geoportals: 'Geoportals', geoportalsTip: 'Table of the German state geoportals (GitHub)',
     geoportalUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/README.en.md#where-to-get-the-data',
-    tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain and buildings as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
+    tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain, buildings and blocks as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
     ifcCoords: 'Coordinates', ifcCoordsAbs: 'absolute in the CRS', ifcCoordsLocal: 'local (with IfcMapConversion)',
     ifcCoordsNote: 'Absolute: easting, northing and height are written directly into the model. Local: small numbers, the position is in the georeference (IfcMapConversion).',
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
+    ifcTarget: 'CRS of the file', ifcTargetSame: 'same as terrain', ifcObjects: 'Include roads, excavations and blocks',
+    ifcTargetNote: 'Points are converted and written as absolute coordinates.',
+    ifcTargetApprox: 'Bessel system (DHDN/MGI): conversion accurate to about 1 to 2 m only, heights unchanged.',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'DTM grid', unit: 'Unit', unitMeter: 'Metre',
     hintClick: 'Left click', hintMeasure: 'Measure point', hintDrag: 'Left', hintDragX: ' drag',
@@ -387,9 +393,9 @@ const THEMES = {
     name: 'dark',
     vars: {
       '--bg': '#191c1f', '--scene': '#1f2429',
-      '--panel-bg': 'rgba(32, 36, 40, 0.78)',
-      '--border': '#3a4047', '--border-strong': '#586069',
-      '--text': '#e2e6ea', '--text-dim': '#9aa3ac', '--text-dim2': '#6d7681',
+      '--panel-bg': 'rgba(32, 36, 40, 0.85)',
+      '--border': '#4a525a', '--border-strong': '#6a737c',
+      '--text': '#eef1f4', '--text-dim': '#b4bcc4', '--text-dim2': '#8d97a1',
       '--accent': '#4da3d9', '--danger': '#e0655a',
       '--field': '#262b30', '--radius': '2px'
     }
@@ -398,9 +404,9 @@ const THEMES = {
     name: 'light',
     vars: {
       '--bg': '#cfd5db', '--scene': '#dde2e7',
-      '--panel-bg': 'rgba(250, 251, 252, 0.62)',
-      '--border': '#ccd2d8', '--border-strong': '#98a1aa',
-      '--text': '#1b1f23', '--text-dim': '#515a63', '--text-dim2': '#7d868f',
+      '--panel-bg': 'rgba(250, 251, 252, 0.85)',
+      '--border': '#b3bbc3', '--border-strong': '#8a949d',
+      '--text': '#14181c', '--text-dim': '#3d454d', '--text-dim2': '#5f6872',
       '--accent': '#1f6feb', '--danger': '#c4362c',
       '--field': '#ffffff', '--radius': '2px'
     }
@@ -1510,6 +1516,38 @@ function updateCompass() {
   if (b && b.classList) b.classList.toggle('on', isTopView());
 }
 
+/* Längen der Strecken beim Zeichnen von Straße und Baugrube: ein kleines Schild je Strecke,
+   waagerechte Länge mit zwei Nachkommastellen. Die Schilder liegen im Container #seg-labels und
+   werden pro Bild neu an die Bildschirmstelle gesetzt (wie die Beschriftung am Messpunkt). */
+let segLabelEls = [];
+
+function updateSegLabels() {
+  const box = document.getElementById('seg-labels');
+  if (!box) return;
+  const list = roadPreviewLabels;
+  const show = list.length && isDrawTool(activeTool);
+  const n = show ? list.length : 0;
+  while (segLabelEls.length < n) {
+    const d = document.createElement('div');
+    d.className = 'seg-label';
+    box.appendChild(d);
+    segLabelEls.push(d);
+  }
+  if (n) camera.updateMatrixWorld();
+  const v = new THREE.Vector3();
+  segLabelEls.forEach(function (el, i) {
+    if (i >= n) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
+    v.set(list[i].x, list[i].y, list[i].z).project(camera);
+    if (v.z > 1) { el.style.display = 'none'; return; }
+    const txt = list[i].len.toFixed(2) + ' m';
+    if (el.textContent !== txt) el.textContent = txt;
+    el.className = 'seg-label' + (list[i].live ? ' live' : '');
+    el.style.display = 'block';
+    el.style.transform = 'translate(' + Math.round((v.x * 0.5 + 0.5) * window.innerWidth) + 'px, ' +
+      Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, -130%)';
+  });
+}
+
 /* Hält die Beschriftung am Messpunkt; wird pro Bild aufgerufen */
 function updatePointLabel() {
   const el = document.getElementById('point-label');
@@ -1790,7 +1828,7 @@ function renderAddrResult() {
 
 /* ---------- IFC-Import ----------
    Datei wählen -> mit web-ifc lesen -> automatisch platzieren, wenn Bauwerk und Gelände dasselbe Bezugssystem
-   haben, sonst von Hand: zwei Punkte am Bauwerk (A, B), dann zwei Punkte im Gelände. */
+   haben, sonst von Hand: je Punktpaar erst der Punkt am Bauwerk, dann der entsprechende im Gelände (A, dann B). */
 let ifcPick = null;        // { step 0..3, p: [Punkt am Bauwerk], t: [Punkt im Gelände], markers, before, fresh }
 
 function setIfcStatus(msg, kind) {
@@ -1876,10 +1914,11 @@ function cancelIfcPick(silent) {
   if (!silent) setStatus(T('ifcCancelled'));
 }
 
-/* Klick im Platzierungsmodus: Schritt 0/1 am Bauwerk, Schritt 2/3 im Gelände */
+/* Klick im Platzierungsmodus, abwechselnd: Schritt 0 = A am Bauwerk, 1 = A im Gelände,
+   2 = B am Bauwerk, 3 = B im Gelände */
 function handleIfcPick(event) {
   const p = ifcPick;
-  if (p.step < 2) {
+  if (p.step % 2 === 0) {
     pointerToNDC(event);
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObject(ifcModel.group, true);
@@ -2354,8 +2393,45 @@ function showIfcPanel() {
   document.getElementById('ifc-extent').textContent =
     Math.round(r.maxX - r.minX) + ' × ' + Math.round(r.maxZ - r.minZ) + ' m';
   document.getElementById('ifc-crs').textContent = crsLabel(TERRAIN.epsg);
+  fillIfcTargets();
   document.getElementById('ifc-error').textContent = '';
   document.getElementById('ifc-panel').style.display = 'block';
+}
+
+/* Auswahl des Bezugssystems der Datei: "wie Gelände" und die Zielsysteme, die sich umrechnen lassen */
+function fillIfcTargets() {
+  const sel = document.getElementById('ifc-target');
+  const def = crsGeoDefinition(TERRAIN.epsg);
+  const can = !!def && !def.merc;
+  document.getElementById('ifc-target-row').style.display = can ? '' : 'none';
+  sel.innerHTML = '';
+  const add = function (value, label, i18n) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    if (i18n) o.setAttribute('data-i18n', i18n);
+    sel.appendChild(o);
+  };
+  add('', T('ifcTargetSame'), 'ifcTargetSame');
+  if (can) IFC_TARGET_CRS.forEach(function (c) {
+    if (c !== TERRAIN.epsg) add(String(c), crsLabel(c) + (crsTransformIsApprox(TERRAIN.epsg, c) ? ' ≈' : ''));
+  });
+  sel.value = '';
+  updateIfcTargetUi();
+}
+
+/* Anderes Bezugssystem: nur absolute Koordinaten, und bei Bessel-Systemen ein Hinweis zur Genauigkeit */
+function updateIfcTargetUi() {
+  const v = document.getElementById('ifc-target').value;
+  const coords = document.getElementById('ifc-coords');
+  const note = document.getElementById('ifc-target-note');
+  const other = v !== '';
+  if (other) coords.value = 'abs';
+  coords.disabled = other;
+  note.className = '';
+  if (!other) { note.textContent = ''; return; }
+  const approx = crsTransformIsApprox(TERRAIN.epsg, parseInt(v, 10));
+  note.textContent = T('ifcTargetNote') + (approx ? ' ' + T('ifcTargetApprox') : '');
+  if (approx) note.className = 'warn';
 }
 
 function hideIfcPanel() {
@@ -2375,8 +2451,14 @@ function runIfcExport() {
   const errEl = document.getElementById('ifc-error');
   try {
     const modeEl = document.getElementById('ifc-coords');
-    const ifc = buildIfc(exportGeometry, exportRect.minX, exportRect.minZ, TERRAIN.epsg,
-                         { coords: modeEl && modeEl.value === 'local' ? 'local' : 'abs' });
+    const objEl = document.getElementById('ifc-objects'), r = exportRect;
+    const targetEl = document.getElementById('ifc-target');
+    const geo = Object.assign({}, exportGeometry, {
+      objects: objEl && objEl.checked ? collectExportObjects(r.minX, r.minZ, r.maxX, r.maxZ) : []
+    });
+    const ifc = buildIfc(geo, r.minX, r.minZ, TERRAIN.epsg,
+                         { coords: modeEl && modeEl.value === 'local' ? 'local' : 'abs',
+                           targetEpsg: targetEl && targetEl.value ? parseInt(targetEl.value, 10) : 0 });
     downloadText(ifc, 'quick-site-design-export.ifc');
     errEl.textContent = '';
     setStatus(T('msgIfcExported'));
@@ -2737,6 +2819,7 @@ function initUI() {
     setStatus(T('msgViewReset'));
   });
 
+  document.getElementById('ifc-target').addEventListener('change', updateIfcTargetUi);
   document.getElementById('ifc-export-btn').addEventListener('click', function () {
     runIfcExport();
   });
