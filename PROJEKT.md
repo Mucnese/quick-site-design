@@ -34,8 +34,17 @@ three.js r128 gebaut.
 
 **Rechtliche Seiten** `impressum.html` und `datenschutz.html` liegen neben
 `index.html` und werden nicht mitgebaut. Ändert sich etwas an den geladenen
-Fremdinhalten, muss die Datenschutzerklärung nachgezogen werden — derzeit
-beschreibt sie den Zustand ohne jede CDN-Verbindung.
+Fremdinhalten, muss die Datenschutzerklärung nachgezogen werden. Sie beschreibt
+keine CDN-Verbindung, aber zwei zuschaltbare Dienste: die OSM-Karte (Kacheln von
+`tile.openstreetmap.org`) und die Adresssuche (Photon).
+
+**Abhängigkeit Photon.** `photon.komoot.io` ist laut README von komoot/photon ein
+öffentlicher Demo-Server: Nutzung erlaubt, solange die Anfragen „in vernünftigem Rahmen“
+bleiben; starke Nutzung wird gedrosselt oder gesperrt, keine Zusage zur Verfügbarkeit,
+Änderungen ohne Ankündigung. Zu Serverstandort und Speicherdauer macht Komoot dort keine
+Angaben (die Datenschutzerklärung sagt das offen). Fällt die Suche aus, bleiben
+Koordinateneingabe und alles andere nutzbar. Bei vielen Nutzern: eigene Photon-Instanz
+(für Deutschland und Österreich deutlich kleiner als die 95 GB der Weltdatei) oder anderer Dienst.
 
 **Namensnennung.** Die Beispieldaten stehen unter CC BY 4.0. `showAttribution`
 blendet Herausgeber und Lizenz ein, solange sie geladen sind, und wieder aus,

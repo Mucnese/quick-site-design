@@ -169,7 +169,7 @@
   .seg-label {
     display: none; position: fixed; left: 0; top: 0; pointer-events: none; will-change: transform;
     background: var(--panel-bg); color: var(--text); border: 1px solid var(--border-strong);
-    border-radius: var(--radius); padding: 1px 6px; font-size: 0.82em; line-height: 1.4;
+    border-radius: var(--radius); padding: 1px 6px; font-size: 12px; line-height: 1.4;
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
   .seg-label.live { border-color: var(--accent); }
@@ -400,28 +400,21 @@
   #ifc-tools { display: none; }
   #ifc-tools .btn-block { margin-top: 6px; }
   #ifc-dz { width: 64px; text-align: right; }
-  #ifc-hint {
-    display: none; position: fixed; top: max(170px, 18vh); left: 50%; transform: translateX(-50%);
-    background: var(--panel-bg); border: 1px dashed var(--accent); border-radius: var(--radius);
-    padding: 11px 20px; font-size: 1.02em; color: var(--accent); z-index: 8; text-align: center;
-    max-width: min(520px, 90vw); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  /* Hinweise und Meldungen: immer oben in der Mitte, untereinander, überall 12 px. Gestrichelt = Anleitung
+     für den laufenden Schritt (Zeichnen, IFC), durchgezogen = kurze Meldung. */
+  #notices {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 20;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none;
+    max-width: max(220px, calc(100vw - 2 * (var(--panel-w) + 28px)));
   }
-  #ifc-hint .sub { color: var(--text-dim2); font-size: 0.82em; margin-top: 4px; }
-  #road-hint {
-    display: none; position: fixed; top: max(170px, 18vh); left: 50%; transform: translateX(-50%);
-    background: var(--panel-bg); border: 1px dashed var(--accent); border-radius: var(--radius);
-    padding: 11px 24px; font-size: 1.12em; letter-spacing: 0.01em; color: var(--accent); z-index: 8; white-space: nowrap;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  }
-
-  #status {
-    display: none; position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+  #status, #road-hint, #ifc-hint {
+    display: none; box-sizing: border-box; max-width: 100%;
     background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
-    padding: 6px 13px; font-size: 0.86em; color: var(--accent); z-index: 20; max-width: max(220px, calc(100vw - 2 * (var(--panel-w) + 28px)));
+    padding: 6px 13px; font-size: 12px; line-height: 1.4; color: var(--accent); text-align: center;
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
+  #road-hint, #ifc-hint { border-style: dashed; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+  #ifc-hint .sub { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
   #status.error { border-color: var(--danger); color: var(--danger); }
 
   /* ---------- Tweak ---------- */
@@ -649,8 +642,11 @@
   <div id="hints"><span class="long"><b data-i18n="hintClick">Linksklick</b> <span data-i18n="hintMeasure">Messpunkt</span> · </span><b><span data-i18n="hintDrag">Links</span><span class="long" data-i18n="hintDragX"> ziehen</span></b> <span data-i18n="hintRotate">Drehen</span> · <b><span data-i18n="hintPan">Rechts/Mitte</span><span class="long" data-i18n="hintPanX"> ziehen</span></b> <span data-i18n="hintPanDo">Verschieben</span> · <b data-i18n="hintWheel">Mausrad</b> <span data-i18n="hintZoom">Zoom</span><span class="long"> · <b data-i18n="hintEsc">Esc</b> <span data-i18n="hintCancel">Abbrechen</span></span></div>
 </div>
 
-<div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
-<div id="ifc-hint"></div>
+<div id="notices">
+  <div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
+  <div id="ifc-hint"></div>
+  <div id="status"></div>
+</div>
 
 <div id="seg-labels"></div>
 <div id="point-label">
@@ -659,8 +655,6 @@
   <div class="mrow"><span class="mk">Z</span><span class="mv" id="measure-z">–</span></div>
   <div class="msrc" id="measure-src">–</div>
 </div>
-
-<div id="status"></div>
 
 <div id="btnbar">
   <button class="lang-btn" id="lang-de">DE</button>

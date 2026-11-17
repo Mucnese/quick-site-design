@@ -77,6 +77,10 @@ Rasterweite = häufigster Koordinatenabstand, Punkte gelten als Zellmitten, Lüc
 `getXyzEpsg`, vorgemerkte Dateien in `pendingDemFiles`) und warnt, wenn der Code die Mitte weit
 außerhalb Europas legt. Grenze `XYZ_MAX_POINTS` (30 Mio.). ESRI-ASCII-Raster werden abgelehnt.
 
+**Hinweise und Meldungen** stehen immer oben in der Mitte, untereinander im Container `#notices`
+(`#road-hint`, `#ifc-hint`, `#status`), alle mit 12 px. Neue Hinweise dort einsetzen, nicht als eigenes
+`position: fixed` an anderer Stelle.
+
 **Adressleiste (Photon).** Zweite Verbindung nach außen neben der OSM-Karte: `photonSearch`
 fragt `photon.komoot.io` (nur ab 3 Zeichen, 350 ms Entprellung, Ergebnisse auf DE/AT gefiltert,
 `lang=de`), `parsePhoton` macht Vorschläge, `geoSourcesFor` ordnet das Bundesland (Photon-Feld
