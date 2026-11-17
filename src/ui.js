@@ -448,7 +448,6 @@ function applySettings() {
   // Szenenhintergrund an das Design angleichen
   const sceneHex = parseInt((th.vars['--scene'] || '#0c2438').slice(1), 16);
   if (scene && scene.background && scene.background.setHex) scene.background.setHex(sceneHex);
-  if (scene && scene.fog && scene.fog.color && scene.fog.color.setHex) scene.fog.color.setHex(sceneHex);
 }
 
 /* ---------- Tweak-Fenster ---------- */

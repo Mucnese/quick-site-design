@@ -133,7 +133,7 @@ let activeNode = null;       // gerade zur Bearbeitung gewählter Stützpunkt
 function initScene(container) {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0a1013);
-  scene.fog = new THREE.FogExp2(0x0a1013, 0.00035);
+  // Kein Nebel: weit herausgezoomt soll das Gelände nicht ausblassen
 
   camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 1, 20000);
   camera.position.set(420, 300, 460);
@@ -478,7 +478,6 @@ function buildTerrain(t) {
   sc.far = span * 4;
   MAT.__sun.position.set(-span * 0.42, span * 0.62, span * 0.38);
   controls.maxDistance = span * 3;
-  scene.fog.density = 0.35 / span;
 
   return { mesh: terrainMesh, material: terrainMat };
 }
