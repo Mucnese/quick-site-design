@@ -97,6 +97,8 @@
     flex: 0 1 auto; min-height: 72px; overflow-y: auto; overflow-x: hidden; pointer-events: auto;
     scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
   }
+  /* Adresseingabe und Übersicht zeigen immer alles und scrollen nicht: Platz gibt zuerst das Datenfenster ab */
+  #col-left-body > #locate, #col-left-body > #overview { flex: 0 0 auto; overflow: visible; }
 
   #locate { flex: 0 0 auto; padding: 6px 8px; }
   #addr-input {
@@ -132,7 +134,7 @@
   .kv .k { color: var(--text-dim); }
   .kv .v { font-variant-numeric: tabular-nums; margin-left: auto; text-align: right; }
 
-  #overview-list { overflow-y: auto; max-height: 30vh; border-top: 1px solid var(--border); margin-top: 7px; }
+  #overview-list { border-top: 1px solid var(--border); margin-top: 7px; }
   .grp-row {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 11px; cursor: pointer; font-size: 0.9em;

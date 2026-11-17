@@ -77,7 +77,7 @@ Rasterweite = häufigster Koordinatenabstand, Punkte gelten als Zellmitten, Lüc
 `getXyzEpsg`, vorgemerkte Dateien in `pendingDemFiles`) und warnt, wenn der Code die Mitte weit
 außerhalb Europas legt. Grenze `XYZ_MAX_POINTS` (30 Mio.). ESRI-ASCII-Raster werden abgelehnt.
 
-**Linke Spalte.** Suche, Übersicht und Daten (`#col-left-body > .panel`) schrumpfen bei Platzmangel und scrollen jedes für sich; `#about` (Quellen, Recht) steht fest darunter.
+**Linke Spalte.** Suche, Übersicht und Daten (`#col-left-body > .panel`) schrumpfen bei Platzmangel; nur das Datenfenster scrollt, Adresseingabe (`#locate`) und Übersicht (`#overview`) nie; `#about` (Quellen, Recht) steht fest darunter.
 
 **Hinweise und Meldungen** stehen immer oben in der Mitte, untereinander im Container `#notices`
 (`#road-hint`, `#ifc-hint`, `#busy-hint`, `#status`), alle mit 12 px. Lange Arbeit (CityGML, IFC) zeigt `showBusy`/`hideBusy`; davor `await yieldToPaint()`, sonst blockiert die Arbeit, bevor der Hinweis gezeichnet ist (Tests ersetzen `yieldToPaint`). Neue Hinweise dort einsetzen, nicht als eigenes
