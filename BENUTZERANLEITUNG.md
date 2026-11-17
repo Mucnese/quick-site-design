@@ -294,6 +294,10 @@ unter der Geländefläche.
 
 - **Keine Statik.** Die Anwendung ersetzt keine statische Prüfung, keine Standsicherheits- und
   keine Traglastberechnung. Für Krane gilt allein die Traglasttabelle des Herstellers.
+- **Keine Gewähr, keine Haftung.** Alle Ergebnisse (Mengen, Abstände, Kranradien, Schleppkurven,
+  Koordinaten, IFC-Dateien) sind überschlägige Hilfen und müssen vor jeder Verwendung fachkundig geprüft
+  werden. Die Haftung des Betreibers ist ausgeschlossen, soweit gesetzlich zulässig (siehe
+  [Impressum](impressum.html)).
 - **Daten.** Die Qualität der Mengen hängt vom Geländemodell ab. Grobe Raster glätten Böschungen.
 - **Kein Speichern.** Es gibt keinen Speicherstand. Das IFC-Modell enthält Gelände, Gebäude und auf Wunsch die Bausteine.
 - **Datenschutz.** Alle Daten bleiben im Browser. Zwei Funktionen nehmen Verbindung nach außen auf,

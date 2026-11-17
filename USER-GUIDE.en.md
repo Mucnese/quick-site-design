@@ -290,6 +290,10 @@ excavation lies below the terrain surface.
 
 - **No structural design.** The application does not replace a structural check, a stability
   check or a load-capacity calculation. For cranes only the manufacturer’s load chart counts.
+- **No warranty, no liability.** All results (quantities, distances, crane radii, swept paths,
+  coordinates, IFC files) are rough aids and must be checked by a qualified person before any use.
+  The operator's liability is excluded to the extent permitted by law (see the
+  [legal notice](impressum.html), in German).
 - **Data.** The quality of the quantities depends on the terrain model. Coarse grids smooth
   embankments.
 - **No saving.** There is no save. The IFC model contains terrain, buildings and, optionally, the blocks.
