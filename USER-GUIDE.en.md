@@ -227,6 +227,7 @@ transmitted (see [privacy](datenschutz.html)). At the bottom left the attributio
   (ETRS89 and WGS 84), Gauss-Krüger (DHDN) and Gauss-Krüger Austria (MGI, EPSG:31254 to 31256).
   For other systems, for example EPSG:3035 of the BEV, the map switches itself off with a message.
 - For Bessel systems (DHDN, MGI) the map is accurate to about 1 to 2 m.
+- Depending on the terrain size the map loads up to 144 tiles at once. The smaller the terrain, the finer the zoom level and the smaller the labels look.
 - After a new terrain the map reloads on its own.
 
 ---

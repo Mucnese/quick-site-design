@@ -230,6 +230,7 @@ Gelände. Er ist **standardmäßig aus**. Beim Einschalten lädt dein Browser Ka
   UTM (ETRS89 und WGS 84), Gauß-Krüger (DHDN) und Gauß-Krüger Österreich (MGI, EPSG:31254 bis 31256).
   Bei anderen Systemen, zum Beispiel EPSG:3035 des BEV, schaltet sich die Karte mit einer Meldung ab.
 - Bei Bessel-Systemen (DHDN, MGI) liegt die Karte auf etwa 1 bis 2 m genau.
+- Die Karte lädt je nach Größe des Geländes bis zu 144 Kacheln auf einmal. Je kleiner das Gelände, desto feiner die Stufe und desto kleiner wirkt die Beschriftung.
 - Nach einem neuen Gelände lädt sich die Karte von selbst neu.
 
 ---
