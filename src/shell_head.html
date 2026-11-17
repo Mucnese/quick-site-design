@@ -213,6 +213,20 @@
   .osm-switch input { margin: 0; accent-color: var(--accent); cursor: pointer; }
   .osm-switch input:disabled { cursor: default; }
   #osm-attribution { display: none; }
+  /* Kartenknopf unten links, über der Fußleiste und unter der linken Spalte */
+  #osm-ctl { position: fixed; left: 14px; bottom: 52px; z-index: 6; }
+  #osm-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    width: 58px; height: 52px; padding: 0; cursor: pointer;
+    background: var(--panel-bg); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius);
+    font-family: inherit; font-size: 11px; line-height: 1.1;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  #osm-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #osm-btn.on { border-color: var(--accent); color: var(--accent); }
+  #osm-card { display: none; position: absolute; left: 0; bottom: 60px; width: var(--panel-w); padding: 9px 11px; z-index: 7; }
+  #osm-card.open { display: block; }
+
 
   #data.needs { border-color: var(--accent); }
   #data.needs .sec { color: var(--accent); }
@@ -556,6 +570,10 @@
 
   @media (max-width: 1000px) {
     #footer { display: none; }
+    /* Ohne Fußleiste rutscht der Kartenknopf nach unten, bleibt aber unter der Bausteinleiste (#dock, bottom: 56px) */
+    #osm-ctl { bottom: 10px; }
+    #osm-btn { height: 42px; flex-direction: row; gap: 5px; width: auto; padding: 0 10px; }
+    #osm-card { bottom: 50px; }
   }
 </style>
 </head>
@@ -609,11 +627,6 @@
           <div class="kv"><span class="k" data-i18n="ifcDz">Höhe ±</span><span class="v"><input type="number" id="ifc-dz" step="0.1" value="0"> m</span></div>
         </div>
       </div>
-      <div class="file-row" id="osm-row">
-        <div class="file-head"><span data-i18n="osmMap">Karte · OpenStreetMap</span>
-          <label class="osm-switch"><input type="checkbox" id="osm-toggle" disabled><span data-i18n="osmShow">anzeigen</span></label></div>
-        <div class="file-status" id="osm-status"></div>
-      </div>
       <div id="data-note" data-i18n="loadFirst">Zum Starten ein Geländemodell laden</div>
     </div>
   </div>
@@ -645,6 +658,21 @@
 <div id="dock">
   <div id="palette"></div>
   <button class="dock-act" id="clear-all" data-i18n="clear">Leeren</button>
+</div>
+
+<!-- Kartenknopf unten links wie bei Kartendiensten; das Fenster darüber trägt den Datenschutzhinweis und den Schalter -->
+<div id="osm-ctl">
+  <div id="osm-card" class="panel">
+    <div class="file-head"><span data-i18n="osmMap">Karte · OpenStreetMap</span>
+      <label class="osm-switch"><input type="checkbox" id="osm-toggle" disabled><span data-i18n="osmShow">anzeigen</span></label></div>
+    <div class="file-status" id="osm-status"></div>
+  </div>
+  <button type="button" id="osm-btn" aria-expanded="false" aria-controls="osm-card">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3 3 8l9 5 9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5" opacity="0.55"/>
+    </svg>
+    <span data-i18n="osmBtn">Karte</span>
+  </button>
 </div>
 
 <div id="footer">

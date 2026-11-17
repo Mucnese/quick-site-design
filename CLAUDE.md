@@ -107,7 +107,7 @@ beschrieben ist, passt Anleitung (beide Sprachen) und Kurzhilfe mit an.
 unrichtig machen.
 
 **Verbindungen nach außen: die Karte (OpenStreetMap) und die Adressleiste.** Die Karte läuft nur auf Schalter im
-Datenfenster, Standard aus (`osmMap`, `setOsmMap`): der Browser lädt dann Kacheln von
+Fenster am Kartenknopf unten links (`#osm-btn`, `#osm-card`, `toggleOsmCard`), Standard aus (`osmMap`, `setOsmMap`): der Browser lädt dann Kacheln von
 `tile.openstreetmap.org` (`OSM_TILE_URL`), die als Farbe über das Gelände gelegt
 werden (`mapShader` in `terrainShader`, `osmMapPlan` rechnet die Kachelauswahl und die
 affine Abbildung Welt -> Bild; `crsToLonLat` rechnet UTM, Gauß-Krüger DHDN und Österreich

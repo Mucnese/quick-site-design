@@ -22,7 +22,7 @@ const STRINGS = {
     clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
-    osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen',
+    osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
     osmNote: 'Aus. Beim Einschalten lädt Ihr Browser Kartenkacheln von tile.openstreetmap.org; dabei wird Ihre IP-Adresse übertragen.',
     osmLoading: 'Lade Kacheln …', osmLoaded: 'Karte geladen ({n} Kacheln).',
     osmPartial: 'Karte geladen, {m} von {n} Kacheln fehlen.',
@@ -61,7 +61,7 @@ const STRINGS = {
     helpS5T: 'Mengen und Prüfungen',
     helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.',
     helpS6T: 'Karte und Export',
-    helpS6B: '- „Karte · OpenStreetMap“ (Fenster „Daten“) legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände, Gebäude und auf Wunsch die Bausteine als IFC-Datei heruntergeladen, auch in einem anderen Koordinatensystem.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
+    helpS6B: '- Knopf „Karte“ (unten links) → „Karte · OpenStreetMap“ legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände, Gebäude und auf Wunsch die Bausteine als IFC-Datei heruntergeladen, auch in einem anderen Koordinatensystem.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
     helpS7T: 'Tastatur',
     helpS7B: '- Esc: abbrechen und Auswahl aufheben.\n- Leertaste: Straße oder Baugrube abschließen.\n- Entf oder Rücktaste: ausgewählte Objekte löschen (nicht beim Tippen in Feldern).',
     addrPlaceholder: 'Wo ist deine Baustelle?',
@@ -168,7 +168,7 @@ const STRINGS = {
     clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
-    osmMap: 'Map · OpenStreetMap', osmShow: 'show',
+    osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
     osmNote: 'Off. Turning it on makes your browser load map tiles from tile.openstreetmap.org; your IP address is transmitted.',
     osmLoading: 'Loading tiles …', osmLoaded: 'Map loaded ({n} tiles).',
     osmPartial: 'Map loaded, {m} of {n} tiles are missing.',
@@ -207,7 +207,7 @@ const STRINGS = {
     helpS5T: 'Quantities and checks',
     helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.',
     helpS6T: 'Map and export',
-    helpS6B: '- “Map · OpenStreetMap” (“Data” window) puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain, buildings and, optionally, the blocks are downloaded as an IFC file, also in another coordinate system.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
+    helpS6B: '- “Map” button (bottom left) → “Map · OpenStreetMap” puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain, buildings and, optionally, the blocks are downloaded as an IFC file, also in another coordinate system.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
     helpS7T: 'Keyboard',
     helpS7B: '- Esc: cancel and clear the selection.\n- Space: finish a road or excavation.\n- Delete or Backspace: delete the selected objects (not while typing in fields).',
     addrPlaceholder: 'Where is your construction site?',
@@ -1614,6 +1614,17 @@ function renderOsmUi() {
   st.textContent = txt;
   st.className = 'file-status' + (osmStatus.cls ? ' ' + osmStatus.cls : '');
   if (at) at.style.display = tg.checked ? 'block' : 'none';
+  const btn = document.getElementById('osm-btn');
+  if (btn && btn.classList) btn.classList.toggle('on', !!tg.checked);
+}
+
+/* Fenster am Kartenknopf auf/zu (Klick auf den Knopf, Klick daneben oder Esc schließt es) */
+function toggleOsmCard(open) {
+  const card = document.getElementById('osm-card'), btn = document.getElementById('osm-btn');
+  if (!card) return;
+  const want = open === undefined ? !card.classList.contains('open') : !!open;
+  card.classList.toggle('open', want);
+  btn.setAttribute('aria-expanded', want ? 'true' : 'false');
 }
 
 async function onOsmToggle() {
@@ -2834,6 +2845,12 @@ function initUI() {
   });
 
   document.getElementById('osm-toggle').addEventListener('change', onOsmToggle);
+  document.getElementById('osm-btn').addEventListener('click', function (e) { if (e && e.stopPropagation) e.stopPropagation(); toggleOsmCard(); });
+  window.addEventListener('click', function (e) {
+    const t = e && e.target, card = document.getElementById('osm-card');
+    if (t && t.closest && card && card.classList.contains('open') && !t.closest('#osm-ctl')) toggleOsmCard(false);
+  });
+  window.addEventListener('keydown', function (e) { if (e && e.key === 'Escape') toggleOsmCard(false); });
   // Neues Gelände bei eingeschalteter Karte: die Karte lädt sich neu, bei Fehlern geht sie aus
   osmMap.onChange = function (s) {
     const tg = document.getElementById('osm-toggle');

@@ -83,7 +83,8 @@ Das betrifft vor allem Österreich, wo die BEV-Raster sehr groß sind.
 |---|---|---|
 | **Adressleiste** | ganz oben links | Ort suchen, Links zu den Geodaten |
 | **Übersicht** | links | Gelände, Höhenbereich, Objektzahl, Liste der Bausteine mit Mengen |
-| **Daten** | links | Gelände, Gebäude, Bezugssystem für XYZ, Karte |
+| **Daten** | links | Gelände, Gebäude, Bauwerk (IFC), Bezugssystem für XYZ |
+| **Karte** | unten links | Knopf für die OpenStreetMap-Karte |
 | **Eigenschaften** | rechts | Maße und Werte des gewählten Bausteins |
 | **Bausteine** | unten | Container, Turmdrehkran, Mobilkran, Baustraße, Baugrube, IFC Export |
 | **DE / EN, 2D, Darstellung, Hilfe** | unten rechts | Sprache, Draufsicht, Aussehen, Kurzhilfe |
@@ -220,7 +221,7 @@ Beteiligten.
 
 ## 7. Karte (OpenStreetMap)
 
-Im Fenster **Daten** legt der Schalter **Karte · OpenStreetMap** eine Karte als Farbe über das
+Der Knopf **Karte** unten links öffnet ein kleines Fenster mit dem Schalter **Karte · OpenStreetMap**. Er legt eine Karte als Farbe über das
 Gelände. Er ist **standardmäßig aus**. Beim Einschalten lädt dein Browser Kartenkacheln von
 `tile.openstreetmap.org`; dabei werden deine IP-Adresse und der ungefähre Standort des Geländes
 übertragen (siehe [Datenschutz](datenschutz.html)). Unten links erscheint der Quellenhinweis

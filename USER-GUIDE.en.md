@@ -81,7 +81,8 @@ This mainly concerns Austria, where the BEV rasters are very large.
 |---|---|---|
 | **Address bar** | top left | search a place, links to the geodata |
 | **Overview** | left | terrain, height range, object count, list of blocks with quantities |
-| **Data** | left | terrain, buildings, coordinate system for XYZ, map |
+| **Data** | left | terrain, buildings, structure (IFC), coordinate system for XYZ |
+| **Map** | bottom left | button for the OpenStreetMap map |
 | **Properties** | right | sizes and values of the selected block |
 | **Building blocks** | bottom | container, tower crane, mobile crane, haul road, excavation, IFC export |
 | **DE / EN, 2D, Appearance, Help** | bottom right | language, top view, looks, short help |
@@ -217,7 +218,7 @@ the parties involved.
 
 ## 7. Map (OpenStreetMap)
 
-In the **Data** window the switch **Map · OpenStreetMap** puts a map as colour on the terrain. It
+The **Map** button at the bottom left opens a small window with the switch **Map · OpenStreetMap**. It puts a map as colour on the terrain. It
 is **off by default**. When you turn it on, your browser loads map tiles from
 `tile.openstreetmap.org`; your IP address and the approximate location of the terrain are
 transmitted (see [privacy](datenschutz.html)). At the bottom left the attribution
