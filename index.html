@@ -412,7 +412,7 @@
     display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none;
     max-width: max(220px, calc(100vw - 2 * (var(--panel-w) + 28px)));
   }
-  #status, #road-hint, #ifc-hint {
+  #status, #road-hint, #ifc-hint, #busy-hint {
     display: none; box-sizing: border-box; max-width: 100%;
     background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
     padding: 6px 13px; font-size: 12px; line-height: 1.4; color: var(--accent); text-align: center;
@@ -421,6 +421,12 @@
   #road-hint, #ifc-hint { border-style: dashed; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
   #ifc-hint .sub { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
   #status.error { border-color: var(--danger); color: var(--danger); }
+  #busy-hint::before {
+    content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 8px; vertical-align: -1px;
+    border: 2px solid var(--accent); border-right-color: transparent; border-radius: 50%;
+    animation: busy-spin 0.8s linear infinite;
+  }
+  @keyframes busy-spin { to { transform: rotate(360deg); } }
 
   /* ---------- Tweak ---------- */
   #btnbar {
@@ -652,6 +658,7 @@
 <div id="notices">
   <div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
   <div id="ifc-hint"></div>
+  <div id="busy-hint"></div>
   <div id="status"></div>
 </div>
 
@@ -5699,6 +5706,8 @@ const STRINGS = {
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
     ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
+    busyGml: 'Gebäudemodell wird verarbeitet … bei großen Dateien kann das einige Sekunden dauern.', busyGmlRender: 'Gebäudemodell wird gerendert …',
+    busyIfc: 'IFC-Datei wird gelesen und gerendert … bei großen Dateien kann das einige Sekunden dauern.',
     ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
     ifcWhyNoGeo: 'Das Bauwerk ist nicht georeferenziert.', ifcWhyCrs: 'Das Bauwerk liegt in EPSG:{a}, das Gelände in EPSG:{b}.',
     ifcWhyNoCrs: 'Das Bauwerk nennt kein Bezugssystem (EPSG-Code).', ifcWhyTerrainCrs: 'Das Gelände hat kein bekanntes Bezugssystem.',
@@ -5843,6 +5852,8 @@ const STRINGS = {
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
     ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
+    busyGml: 'Building model is being processed … large files can take a few seconds.', busyGmlRender: 'Building model is being rendered …',
+    busyIfc: 'IFC file is being read and rendered … large files can take a few seconds.',
     ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
     ifcWhyNoGeo: 'The structure is not georeferenced.', ifcWhyCrs: 'The structure is in EPSG:{a}, the terrain in EPSG:{b}.',
     ifcWhyNoCrs: 'The structure names no coordinate system (EPSG code).', ifcWhyTerrainCrs: 'The terrain has no known coordinate system.',
@@ -7112,6 +7123,27 @@ function setStatus(msg, isError) {
   if (msg) statusTimer = setTimeout(function () { el.style.display = 'none'; }, isError ? 8000 : 3000);
 }
 
+/* Dauerhinweis "wird verarbeitet" oben in der Mitte (gemeinsam mit den anderen Hinweisen), solange eine lange
+   Arbeit läuft (große Gebäudemodelle, IFC). Der Browser muss die Meldung erst zeichnen dürfen, bevor die Arbeit
+   den Hauptthread blockiert: yieldToPaint wartet ein Bild und eine Runde der Ereignisschleife ab. */
+function showBusy(key) {
+  const el = document.getElementById('busy-hint');
+  if (!el) return;
+  el.textContent = T(key);
+  el.style.display = 'block';
+}
+
+function hideBusy() {
+  const el = document.getElementById('busy-hint');
+  if (el) el.style.display = 'none';
+}
+
+function yieldToPaint() {
+  return new Promise(function (resolve) {
+    requestAnimationFrame(function () { setTimeout(resolve, 0); });
+  });
+}
+
 function setNeedsData(on) {
   const data = document.getElementById('data');
   data.className = 'panel' + (on ? ' needs' : '');
@@ -7633,6 +7665,7 @@ async function handleIfcFile(file) {
   }
   if (ifcPick) cancelIfcPick(true);
   setIfcStatus(T('ifcReading'), 'busy');
+  showBusy('busyIfc');
   // dem Browser Zeit geben, die Meldung zu zeigen, bevor das Lesen blockiert
   await new Promise(function (r) { setTimeout(r, 30); });
   try {
@@ -7665,6 +7698,8 @@ async function handleIfcFile(file) {
     const msg = code === 'ifcLibFail' ? T('ifcLibFail') : code === 'ifcEmpty' ? T('ifcEmpty') : ifcFormat('ifcFail', { e: code });
     setIfcStatus(msg, 'err');
     setStatus(msg, true);
+  } finally {
+    hideBusy();
   }
 }
 
@@ -7821,6 +7856,8 @@ async function handleGmlFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
   setFileStatus('gml', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Dateien', 'busy');
+  showBusy('busyGml');
+  await yieldToPaint();
   try {
     const texts = [];
     for (let i = 0; i < list.length; i++) {
@@ -7829,8 +7866,11 @@ async function handleGmlFiles(files, isDemo) {
     const merged = mergeCityGML(texts);
     lastGmlRings = merged.rings;
 
+    showBusy('busyGmlRender');
+    await yieldToPaint();
     const mesh = buildBuildingsMesh(merged.rings);
     setBuildings(mesh);
+    await yieldToPaint();                    // das erste Bild mit den Gebäuden ist gezeichnet
 
     demoAttribGml = !!isDemo;
     refreshAttribution();
@@ -7847,6 +7887,8 @@ async function handleGmlFiles(files, isDemo) {
   } catch (err) {
     setFileStatus('gml', err.message, 'err');
     setStatus('CityGML nicht lesbar: ' + err.message, true);
+  } finally {
+    hideBusy();
   }
 }
 

@@ -143,6 +143,8 @@ function newScope() {
   vm.runInContext(appSrc, sandbox, { filename: 'app.js' });
   vm.runInContext(uiSrc, sandbox, { filename: 'ui.js' });
 
+  // Im Test gibt es kein Zeichnen: die Pause vor dem Lesen/Rendern entfällt (requestAnimationFrame ruft nie zurück)
+  sandbox.yieldToPaint = function () { return Promise.resolve(); };
   sandbox.initScene({ appendChild: function () {} });
   sandbox.initSharedResources();
   sandbox.document = document;
@@ -1223,6 +1225,30 @@ await test('IFC-Import: anderes Bezugssystem oder keine Georeferenz - Platzierun
   p2.p = [{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }]; p2.t = [{ x: 0, y: 0, z: 0 }, { x: 25, y: 0, z: 0 }]; p2.markers = []; p2.step = 4;
   s.finishIfcPick();
   assert.ok(g('ifc-status').textContent.indexOf('weichen um 15.00 m ab') >= 0 && g('ifc-status').className.indexOf('err') > 0, g('ifc-status').textContent);
+});
+
+await test('Großes Gebäudemodell: Hinweis "wird verarbeitet/gerendert" erscheint während der Arbeit und verschwindet danach, auch bei Fehlern', async function () {
+  const s = await scopeWithTerrain();
+  const busy = s.document.getElementById('busy-hint');
+  const seen = [];
+  s.yieldToPaint = function () { seen.push([busy.style.display, busy.textContent]); return Promise.resolve(); };
+  const gml =
+    '<CityModel xmlns:gml="http://www.opengis.net/gml"><gml:Polygon><gml:exterior><gml:LinearRing>' +
+    '<gml:posList>691995 5336005 500 692005 5336005 500 692005 5336015 500</gml:posList>' +
+    '</gml:LinearRing></gml:exterior></gml:Polygon></CityModel>';
+  await s.handleGmlFiles([fakeFile('gross.gml', gml)]);
+  assert.ok(seen.length >= 2, 'mehrmals Zeit zum Zeichnen: ' + seen.length);
+  assert.strictEqual(seen[0][0], 'block');
+  assert.ok(seen[0][1].indexOf('verarbeitet') >= 0, seen[0][1]);
+  assert.ok(seen.some(function (x) { return x[1].indexOf('gerendert') >= 0; }), 'zweite Stufe: gerendert');
+  assert.strictEqual(busy.style.display, 'none', 'danach wieder weg');
+  // Fehler: Hinweis verschwindet trotzdem
+  await s.handleGmlFiles([{ name: 'kaputt.gml', text: function () { return Promise.reject(new Error('kaputt')); } }]);
+  assert.strictEqual(busy.style.display, 'none');
+  s.STRINGS_CHECK = s.__bridge.STRINGS;
+  ['busyGml', 'busyGmlRender', 'busyIfc'].forEach(function (k) {
+    assert.ok(s.__bridge.STRINGS.de[k] && s.__bridge.STRINGS.en[k], 'Text in beiden Sprachen: ' + k);
+  });
 });
 
 await test('IFC-Import: Abbrechen mit Esc entfernt ein neues Bauwerk, ein schon platziertes behält seine Lage', async function () {

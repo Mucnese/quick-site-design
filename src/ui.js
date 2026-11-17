@@ -31,6 +31,8 @@ const STRINGS = {
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
     ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
+    busyGml: 'Gebäudemodell wird verarbeitet … bei großen Dateien kann das einige Sekunden dauern.', busyGmlRender: 'Gebäudemodell wird gerendert …',
+    busyIfc: 'IFC-Datei wird gelesen und gerendert … bei großen Dateien kann das einige Sekunden dauern.',
     ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
     ifcWhyNoGeo: 'Das Bauwerk ist nicht georeferenziert.', ifcWhyCrs: 'Das Bauwerk liegt in EPSG:{a}, das Gelände in EPSG:{b}.',
     ifcWhyNoCrs: 'Das Bauwerk nennt kein Bezugssystem (EPSG-Code).', ifcWhyTerrainCrs: 'Das Gelände hat kein bekanntes Bezugssystem.',
@@ -175,6 +177,8 @@ const STRINGS = {
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
     ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
+    busyGml: 'Building model is being processed … large files can take a few seconds.', busyGmlRender: 'Building model is being rendered …',
+    busyIfc: 'IFC file is being read and rendered … large files can take a few seconds.',
     ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
     ifcWhyNoGeo: 'The structure is not georeferenced.', ifcWhyCrs: 'The structure is in EPSG:{a}, the terrain in EPSG:{b}.',
     ifcWhyNoCrs: 'The structure names no coordinate system (EPSG code).', ifcWhyTerrainCrs: 'The terrain has no known coordinate system.',
@@ -1444,6 +1448,27 @@ function setStatus(msg, isError) {
   if (msg) statusTimer = setTimeout(function () { el.style.display = 'none'; }, isError ? 8000 : 3000);
 }
 
+/* Dauerhinweis "wird verarbeitet" oben in der Mitte (gemeinsam mit den anderen Hinweisen), solange eine lange
+   Arbeit läuft (große Gebäudemodelle, IFC). Der Browser muss die Meldung erst zeichnen dürfen, bevor die Arbeit
+   den Hauptthread blockiert: yieldToPaint wartet ein Bild und eine Runde der Ereignisschleife ab. */
+function showBusy(key) {
+  const el = document.getElementById('busy-hint');
+  if (!el) return;
+  el.textContent = T(key);
+  el.style.display = 'block';
+}
+
+function hideBusy() {
+  const el = document.getElementById('busy-hint');
+  if (el) el.style.display = 'none';
+}
+
+function yieldToPaint() {
+  return new Promise(function (resolve) {
+    requestAnimationFrame(function () { setTimeout(resolve, 0); });
+  });
+}
+
 function setNeedsData(on) {
   const data = document.getElementById('data');
   data.className = 'panel' + (on ? ' needs' : '');
@@ -1965,6 +1990,7 @@ async function handleIfcFile(file) {
   }
   if (ifcPick) cancelIfcPick(true);
   setIfcStatus(T('ifcReading'), 'busy');
+  showBusy('busyIfc');
   // dem Browser Zeit geben, die Meldung zu zeigen, bevor das Lesen blockiert
   await new Promise(function (r) { setTimeout(r, 30); });
   try {
@@ -1997,6 +2023,8 @@ async function handleIfcFile(file) {
     const msg = code === 'ifcLibFail' ? T('ifcLibFail') : code === 'ifcEmpty' ? T('ifcEmpty') : ifcFormat('ifcFail', { e: code });
     setIfcStatus(msg, 'err');
     setStatus(msg, true);
+  } finally {
+    hideBusy();
   }
 }
 
@@ -2153,6 +2181,8 @@ async function handleGmlFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
   setFileStatus('gml', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Dateien', 'busy');
+  showBusy('busyGml');
+  await yieldToPaint();
   try {
     const texts = [];
     for (let i = 0; i < list.length; i++) {
@@ -2161,8 +2191,11 @@ async function handleGmlFiles(files, isDemo) {
     const merged = mergeCityGML(texts);
     lastGmlRings = merged.rings;
 
+    showBusy('busyGmlRender');
+    await yieldToPaint();
     const mesh = buildBuildingsMesh(merged.rings);
     setBuildings(mesh);
+    await yieldToPaint();                    // das erste Bild mit den Gebäuden ist gezeichnet
 
     demoAttribGml = !!isDemo;
     refreshAttribution();
@@ -2179,6 +2212,8 @@ async function handleGmlFiles(files, isDemo) {
   } catch (err) {
     setFileStatus('gml', err.message, 'err');
     setStatus('CityGML nicht lesbar: ' + err.message, true);
+  } finally {
+    hideBusy();
   }
 }
 

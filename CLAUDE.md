@@ -78,7 +78,7 @@ Rasterweite = häufigster Koordinatenabstand, Punkte gelten als Zellmitten, Lüc
 außerhalb Europas legt. Grenze `XYZ_MAX_POINTS` (30 Mio.). ESRI-ASCII-Raster werden abgelehnt.
 
 **Hinweise und Meldungen** stehen immer oben in der Mitte, untereinander im Container `#notices`
-(`#road-hint`, `#ifc-hint`, `#status`), alle mit 12 px. Neue Hinweise dort einsetzen, nicht als eigenes
+(`#road-hint`, `#ifc-hint`, `#busy-hint`, `#status`), alle mit 12 px. Lange Arbeit (CityGML, IFC) zeigt `showBusy`/`hideBusy`; davor `await yieldToPaint()`, sonst blockiert die Arbeit, bevor der Hinweis gezeichnet ist (Tests ersetzen `yieldToPaint`). Neue Hinweise dort einsetzen, nicht als eigenes
 `position: fixed` an anderer Stelle.
 
 **Adressleiste (Photon).** Zweite Verbindung nach außen neben der OSM-Karte: `photonSearch`
