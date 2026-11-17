@@ -76,7 +76,7 @@ Browser.
   danach aus.
 - Warnung bei sich überschneidenden Kranradien; der Radiusregler der Baustraße
   färbt sich, sobald der Mindestradius nicht mehr zwischen die Stützpunkte passt.
-- Zwei Oberflächen (dunkel und hell), elf Schriftarten, Deutsch und Englisch.
+- Dunkle Oberfläche auf hellem Hintergrund, elf Schriftarten, Deutsch und Englisch.
 
 ---
 

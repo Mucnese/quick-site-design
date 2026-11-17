@@ -89,7 +89,7 @@ This mainly concerns Austria, where the BEV rasters are very large.
 | **Compass** | bottom | north direction, a click aligns north |
 | **Info bar** | bottom left | coordinate system (CRS), DTM grid, unit |
 
-**Appearance** sets dark or light, font, font size, accent colour and panel width (220 to 400 px).
+**Appearance** sets font, font size, accent colour and panel width (220 to 400 px).
 **Help** opens a short overview with a link to this guide.
 
 ---

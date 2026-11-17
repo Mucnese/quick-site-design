@@ -76,7 +76,7 @@ browser.
   into space. The compass shows north and orients to it on click.
 - Warning when crane radii overlap; the haul road radius slider turns red as
   soon as the minimum radius no longer fits between the nodes.
-- Two interface styles (dark and light), eleven typefaces, German and English.
+- Dark interface on a light background, eleven typefaces, German and English.
 
 ---
 

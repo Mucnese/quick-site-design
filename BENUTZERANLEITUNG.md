@@ -91,7 +91,7 @@ Das betrifft vor allem Österreich, wo die BEV-Raster sehr groß sind.
 | **Kompass** | unten | Nordrichtung, Klick richtet nach Norden aus |
 | **Infoleiste** | unten links | Bezugssystem (KBS), DGM-Rasterung, Einheit |
 
-**Darstellung** stellt dunkel oder hell, Schriftart, Schriftgröße, Akzentfarbe und Fensterbreite
+**Darstellung** stellt Schriftart, Schriftgröße, Akzentfarbe und Fensterbreite
 (220 bis 400 px) ein. **Hilfe** öffnet eine Kurzübersicht mit einem Link auf diese Anleitung.
 
 ---

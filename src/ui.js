@@ -53,7 +53,7 @@ const STRINGS = {
     helpS1T: 'Loslegen',
     helpS1B: '- Oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
-    helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: dunkel oder hell, Schrift, Fensterbreite. DE und EN wechseln die Sprache.',
+    helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
     helpS3B: '- Unten einen Baustein wählen und ins Gelände klicken: Container, Turmdrehkran, Mobilkran.\n- Baustraße und Baugrube: Punkt für Punkt setzen, dann Rechtsklick oder Leertaste. Esc bricht ab.\n- Im Eigenschaftsfenster rechts Maße, Winkel und Typ einstellen. Jeder Regler hat ein Zahlenfeld zum Eintippen.',
     helpS4T: 'Bearbeiten',
@@ -99,7 +99,6 @@ const STRINGS = {
     datasheet: 'Datenblatt beim Hersteller',
     craneNote: 'Nur als Richtwert zu benutzen. Genaue Spezifikation siehe Datenblatt.',
     guideValues: 'Achtung: Richtwerte',
-    dark: 'Dunkel', light: 'Hell',
     topView: '2D', topViewSet: 'Draufsicht. Ziehen kippt die Ansicht wieder.',
     north: 'Nach Norden ausrichten',
     sourceCode: 'Quelltext auf GitHub',
@@ -126,7 +125,7 @@ const STRINGS = {
     hintRotate: 'Drehen', hintPan: 'Rechts/Mitte', hintPanX: ' ziehen', hintPanDo: 'Verschieben',
     hintWheel: 'Mausrad', hintZoom: 'Zoom', hintEsc: 'Esc', hintCancel: 'Abbrechen',
     measureOn: 'Messpunkt auf', ground: 'Gelände', building: 'Gebäude',
-    design: 'Design', font: 'Schriftart', fontSize: 'Schriftgröße',
+    font: 'Schriftart', fontSize: 'Schriftgröße',
     accent: 'Akzentfarbe', panelWidth: 'Fensterbreite',
     language: 'Sprache',
     loading: 'Lade', reset: 'Zurücksetzen',
@@ -199,7 +198,7 @@ const STRINGS = {
     helpS1T: 'Getting started',
     helpS1B: '- Type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
-    helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: dark or light, font, panel width. DE and EN switch the language.',
+    helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
     helpS3B: '- Choose a block at the bottom and click into the terrain: container, tower crane, mobile crane.\n- Haul road and excavation: set point after point, then right-click or space. Esc cancels.\n- Set sizes, angles and type in the properties window on the right. Every slider has a number field for typing.',
     helpS4T: 'Editing',
@@ -245,7 +244,6 @@ const STRINGS = {
     datasheet: 'Manufacturer data sheet',
     craneNote: 'Guide values only. See the data sheet for exact specifications.',
     guideValues: 'Caution: guide values',
-    dark: 'Dark', light: 'Light',
     topView: '2D', topViewSet: 'Top view. Drag to tilt back.',
     north: 'Face north',
     sourceCode: 'Source code on GitHub',
@@ -272,7 +270,7 @@ const STRINGS = {
     hintRotate: 'Orbit', hintPan: 'Right/middle', hintPanX: ' drag', hintPanDo: 'Pan',
     hintWheel: 'Wheel', hintZoom: 'Zoom', hintEsc: 'Esc', hintCancel: 'Cancel',
     measureOn: 'Measure point on', ground: 'terrain', building: 'building',
-    design: 'Design', font: 'Typeface', fontSize: 'Text size',
+    font: 'Typeface', fontSize: 'Text size',
     accent: 'Accent colour', panelWidth: 'Panel width',
     language: 'Language',
     loading: 'Loading', reset: 'Reset',
@@ -392,27 +390,16 @@ const TOOL_INFO = {
 /* =========================================================
    Darstellung: Designs und Einstellungen
    ========================================================= */
+/* Nur ein Design: dunkle Oberfläche auf hellem Szenenhintergrund (--scene), damit die dunkle Schrift unten links lesbar bleibt */
 const THEMES = {
   dunkel: {
-    name: 'dark',
     vars: {
-      '--bg': '#191c1f', '--scene': '#1f2429',
+      '--bg': '#191c1f', '--scene': '#dde2e7',
       '--panel-bg': 'rgba(32, 36, 40, 0.85)',
       '--border': '#4a525a', '--border-strong': '#6a737c',
       '--text': '#eef1f4', '--text-dim': '#b4bcc4', '--text-dim2': '#8d97a1',
       '--accent': '#4da3d9', '--danger': '#e0655a',
       '--field': '#262b30', '--radius': '2px'
-    }
-  },
-  hell: {
-    name: 'light',
-    vars: {
-      '--bg': '#cfd5db', '--scene': '#dde2e7',
-      '--panel-bg': 'rgba(250, 251, 252, 0.85)',
-      '--border': '#b3bbc3', '--border-strong': '#8a949d',
-      '--text': '#14181c', '--text-dim': '#3d454d', '--text-dim2': '#5f6872',
-      '--accent': '#1f6feb', '--danger': '#c4362c',
-      '--field': '#ffffff', '--radius': '2px'
     }
   }
 };
@@ -588,10 +575,6 @@ function selectRow(label, options, current, onPick) {
 function buildTweakPanel() {
   const body = document.getElementById('tweak-body');
   body.innerHTML = '';
-
-  body.appendChild(optionRow(T('design'),
-    Object.keys(THEMES).map(function (k) { return { value: k, label: T(THEMES[k].name) }; }),
-    SETTINGS.theme, function (v) { SETTINGS.theme = v; SETTINGS.accent = null; }));
 
   body.appendChild(selectRow(T('font'),
     Object.keys(FONTS).map(function (k) { return { value: k, label: FONTS[k].name }; }),
