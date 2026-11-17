@@ -85,10 +85,15 @@
   #col-left { left: 14px; }
   #col-right { right: 14px; display: none; }
   #col-left > *, #col-right > * { pointer-events: auto; }
-  /* Wird es zu eng (kleiner Bildschirm, Suchergebnis), scrollt die linke Spalte, statt dass sich Fenster überdecken */
-  #col-left { overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
-  #col-left::-webkit-scrollbar { display: none; }
-  #col-left > * { flex-shrink: 0; }
+  /* Wird es zu eng (kleiner Bildschirm, Suchergebnis), scrollt nur der Fensterteil der linken Spalte, statt dass sich
+     Fenster überdecken. Quellen- und Rechtshinweise (#about) bleiben darunter immer sichtbar. */
+  #col-left { overflow: hidden; }
+  #col-left-body {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
+    display: flex; flex-direction: column; gap: 9px; pointer-events: none;
+  }
+  #col-left-body::-webkit-scrollbar { display: none; }
+  #col-left-body > * { flex-shrink: 0; pointer-events: auto; }
 
   #locate { flex: 0 0 auto; padding: 6px 8px; }
   #addr-input {
@@ -554,6 +559,7 @@
 <div id="canvas-container"></div>
 
 <div id="col-left">
+ <div id="col-left-body">
   <div id="locate" class="panel">
     <input type="text" id="addr-input" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="addr-list">
     <ul id="addr-list" role="listbox"></ul>
@@ -605,6 +611,7 @@
       <div id="data-note" data-i18n="loadFirst">Zum Starten ein Geländemodell laden</div>
     </div>
   </div>
+ </div>
 
   <div id="about">
     <span>Quick-Site-Design · © 2026 Haoran Li · GPL v3</span>
