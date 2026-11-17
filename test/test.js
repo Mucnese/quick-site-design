@@ -333,11 +333,32 @@ test('terrainGridInRect: Rechteck außerhalb des Geländes wirft eine verständl
   assert.throws(function () { app.terrainGridInRect(1000, 1000, 1010, 1010); }, /außerhalb/);
 });
 
-test('trianglesInRect: Filterung über den Dreiecksschwerpunkt', function () {
+test('clipTrianglesToRect: innen bleibt, außen entfällt, ein Dreieck über dem Rand wird an der Kante glatt abgeschnitten', function () {
   const inside = { a: [1, 0, 1], b: [2, 0, 1], c: [1, 0, 2] };
   const outside = { a: [100, 0, 100], b: [101, 0, 100], c: [100, 0, 101] };
-  const res = app.trianglesInRect([inside, outside], 0, 0, 10, 10);
-  assert.deepStrictEqual(res, [inside]);
+  assert.deepStrictEqual(app.clipTrianglesToRect([inside, outside], 0, 0, 10, 10), [inside]);
+  // langes Dach-Dreieck von x = 2 bis x = 30, Höhe steigt mit x: wird bei x = 10 gekappt, nichts ragt darüber hinaus
+  const long = { a: [2, 2, 2], b: [30, 30, 2], c: [2, 2, 6] };
+  const res = app.clipTrianglesToRect([long], 0, 0, 10, 10);
+  assert.ok(res.length >= 1);
+  let maxx = -Infinity, area = 0, onEdge = 0;
+  res.forEach(function (t) {
+    [t.a, t.b, t.c].forEach(function (p) { maxx = Math.max(maxx, p[0]); if (Math.abs(p[0] - 10) < 1e-9) { onEdge++; assert.ok(Math.abs(p[1] - p[0]) < 1e-9, 'Höhe wird mitgeschnitten: ' + p[1]); } });
+    area += Math.abs((t.b[0] - t.a[0]) * (t.c[2] - t.a[2]) - (t.c[0] - t.a[0]) * (t.b[2] - t.a[2])) / 2;
+  });
+  assert.ok(Math.abs(maxx - 10) < 1e-9, 'Schnittkante genau am Rand: ' + maxx);
+  assert.ok(onEdge >= 2, 'Kante liegt auf x = 10');
+  // Fläche stimmt: Dreieck (x 2..30, Basis auf z: 4 bei x = 2, Spitze bei x = 30, z = 2) bis x = 10
+  // Breite in z bei x: 4 * (30 - x) / 28; Integral von 2 bis 10
+  const expected = 4 / 28 * ((30 * 10 - 100 / 2) - (30 * 2 - 4 / 2));
+  assert.ok(Math.abs(area - expected) < 1e-6, 'Fläche ' + area + ' statt ' + expected);
+  // Umlaufsinn bleibt erhalten (Vorzeichen der Fläche in der Draufsicht)
+  const sign = function (t) { return Math.sign((t.b[0] - t.a[0]) * (t.c[2] - t.a[2]) - (t.c[0] - t.a[0]) * (t.b[2] - t.a[2])); };
+  res.forEach(function (t) { assert.strictEqual(sign(t), sign(long)); });
+  // Ecke des Rechtecks: Dreieck deckt die Ecke ab - es entsteht ein Vieleck mit allen Ecken innerhalb
+  const big = { a: [-5, 0, -5], b: [20, 0, -5], c: [-5, 0, 20] };
+  const corner = app.clipTrianglesToRect([big], 0, 0, 10, 10);
+  corner.forEach(function (t) { [t.a, t.b, t.c].forEach(function (p) { assert.ok(p[0] >= -1e-9 && p[0] <= 10 + 1e-9 && p[2] >= -1e-9 && p[2] <= 10 + 1e-9); }); });
 });
 
 test('triangulateBuildingRings: erkennt Dach (annähernd waagerecht) und Wand', function () {

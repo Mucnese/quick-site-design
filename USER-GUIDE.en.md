@@ -256,7 +256,7 @@ file stays in the browser and is not transmitted. Size up to 300 MB.
 
 The **IFC export** card (at the bottom, among the blocks) writes **terrain and buildings** to an
 IFC file, optionally with **roads, excavations, cranes and containers** (checkbox in the window,
-on by default; every block is a building element of its own). The parts carry **colours**: blocks as in the application (yellow crane, coloured containers, grey asphalt, brown embankment), terrain green-brown, buildings light grey. The terrain is not cut out: an
+on by default; every block is a building element of its own). The parts carry **colours**: blocks as in the application (yellow crane, coloured containers, grey asphalt, brown embankment), terrain green-brown, buildings light grey. Buildings that reach beyond the rectangle are cut off there with a clean straight edge (open cut surface, no cap). The terrain is not cut out: an
 excavation lies below the terrain surface.
 
 1. Click **IFC export**. The view switches to the top view.

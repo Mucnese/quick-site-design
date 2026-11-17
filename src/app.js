@@ -4242,15 +4242,45 @@ function terrainGridInRect(minX, minZ, maxX, maxZ) {
   return triangles;
 }
 
-/* Grobe, aber robuste Klassifikation über den Dreiecksschwerpunkt – wie
-   die bestehende Randprüfung in triangulateBuildingRings(), keine exakte
-   Kantenclippung. */
-function trianglesInRect(triangles, minX, minZ, maxX, maxZ) {
-  return triangles.filter(function (tri) {
-    const cx = (tri.a[0] + tri.b[0] + tri.c[0]) / 3;
-    const cz = (tri.a[2] + tri.b[2] + tri.c[2]) / 3;
-    return cx >= minX && cx <= maxX && cz >= minZ && cz <= maxZ;
+/* Schneidet Dreiecke exakt am Rechteck ab (Sutherland-Hodgman gegen die vier Kanten, Grundriss x/z; Höhen werden
+   mitgeschnitten). Dreiecke ganz innen bleiben, ganz außen entfallen, die dazwischen werden an der Rechteckkante
+   gekappt und als Fächer neu zerlegt, Umlaufsinn bleibt erhalten. Gebäude haben so eine glatte, gerade Schnittkante
+   statt langer Dreiecke, die über den Rand hinausragen oder ganz fehlen. */
+function clipTrianglesToRect(triangles, minX, minZ, maxX, maxZ) {
+  // Abstand eines Punkts von der jeweiligen Rechteckkante, innen positiv
+  const planes = [
+    { d: function (p) { return p[0] - minX; } }, { d: function (p) { return maxX - p[0]; } },
+    { d: function (p) { return p[2] - minZ; } }, { d: function (p) { return maxZ - p[2]; } }
+  ];
+  const out = [];
+  triangles.forEach(function (tri) {
+    let poly = [tri.a, tri.b, tri.c];
+    let inside = true;
+    for (let i = 0; i < 3; i++) {
+      const p = poly[i];
+      if (p[0] < minX || p[0] > maxX || p[2] < minZ || p[2] > maxZ) { inside = false; break; }
+    }
+    if (inside) { out.push(tri); return; }
+    for (let pi = 0; pi < planes.length && poly.length; pi++) {
+      const d = planes[pi].d, next = [];
+      for (let i = 0; i < poly.length; i++) {
+        const p = poly[i], q = poly[(i + 1) % poly.length], dp = d(p), dq = d(q);
+        if (dp >= 0) next.push(p);
+        if ((dp >= 0) !== (dq >= 0)) {
+          const t = dp / (dp - dq);
+          next.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t]);
+        }
+      }
+      poly = next;
+    }
+    for (let i = 1; i + 1 < poly.length; i++) {
+      const A = poly[0], B = poly[i], C = poly[i + 1];
+      // Entartete Splitter (Fläche null) weglassen
+      const area = Math.abs((B[0] - A[0]) * (C[2] - A[2]) - (C[0] - A[0]) * (B[2] - A[2]));
+      if (area > 1e-9) out.push({ a: A, b: B, c: C });
+    }
   });
+  return out;
 }
 
 /* Farben im IFC (Rot, Grün, Blau, 0 bis 1): Gelände und Gebäude einheitlich; Bausteine nehmen ihre Farben aus den Materialien */
@@ -4344,7 +4374,7 @@ function collectExportGeometry(rings, minX, minZ, maxX, maxZ, withObjects) {
   const terrain = terrainGridInRect(minX, minZ, maxX, maxZ);
   let buildings = [];
   if (rings && rings.length) {
-    buildings = trianglesInRect(triangulateBuildingRings(rings).triangles, minX, minZ, maxX, maxZ);
+    buildings = clipTrianglesToRect(triangulateBuildingRings(rings).triangles, minX, minZ, maxX, maxZ);
   }
   return { terrain: terrain, buildings: buildings, objects: withObjects ? collectExportObjects(minX, minZ, maxX, maxZ) : [] };
 }
@@ -4975,7 +5005,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
     // IFC-Export
     terrainGridInRect: terrainGridInRect,
-    trianglesInRect: trianglesInRect,
+    clipTrianglesToRect: clipTrianglesToRect,
     collectExportGeometry: collectExportGeometry,
     buildExportPreview: buildExportPreview,
     thickLine: thickLine,

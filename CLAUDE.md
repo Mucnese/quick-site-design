@@ -235,6 +235,8 @@ Farben: `objectTriangles` gibt je Dreieck `col` (Materialfarbe mal Instanzfarbe)
 IfcTriangulatedFaceSet mit IfcStyledItem und gemeinsamem IfcSurfaceStyle (`IFC_COLOR_*` für gleichfarbiges Gelände/Gebäude).
 Neue Systeme nur mit nachgeprüften Parametern (der Test vergleicht über `crsToLonLat` mit PROJ-Referenzwerten).
 
+**IFC-Gebäude am Rechteck.** `clipTrianglesToRect` schneidet die Gebäude-Dreiecke exakt an den vier Rechteckkanten ab (Höhen mit); früher entschied der Schwerpunkt, ganze lange Dreiecke blieben oder fehlten.
+
 **Klick ohne Drehen.** Ein Klick bleibt ruhig: `onOrbitPointerMove` dreht erst nach `DRAG_TOLERANCE` Pixeln Weg (Handzittern),
 und `updateControls` fährt Kamera und Drehzentrum mit demselben Schritt, sonst kippt die Blickrichtung kurz und schwingt zurück.
 
