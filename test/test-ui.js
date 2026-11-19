@@ -798,7 +798,7 @@ await test('Baugrube: Werkzeugfenster zeigt nur die Tiefe (Standard -5), der Edi
   const tool = s.buildForm('pit', s.defaultPitParams(), function () {}, false).refs;
   assert.ok(tool.depth && !tool.bottomAbs);
   assert.strictEqual(tool.depth.num.value, -5);
-  assert.strictEqual(tool.depth.input.min, -30);
+  assert.strictEqual(tool.depth.input.min, -100);
   assert.strictEqual(tool.depth.input.max, 10);
 });
 
@@ -815,7 +815,7 @@ await test('Baugrube: beide Regler überdecken dieselbe Spanne um das mittlere G
   const s = newScope();
   const e = pitEditor(s);
   const info = e.obj.group.userData.pit;
-  assert.ok(Math.abs(e.refs.bottomAbs.input.min - (info.refAbs - 30)) < 0.06);
+  assert.ok(Math.abs(e.refs.bottomAbs.input.min - (info.refAbs - 100)) < 0.06);
   assert.ok(Math.abs(e.refs.bottomAbs.input.max - (info.refAbs + 10)) < 0.06);
   assert.ok(Math.abs(e.refs.bottomAbs.num.value - (info.refAbs - 5)) < 0.01, 'Unterkante = Bezug - 5');
   assert.strictEqual(e.refs.depth.num.value, -5);

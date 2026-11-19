@@ -36,6 +36,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   and one point; the exact point on buildings follows as soon as the mouse rests briefly.
 
 ### Changed
+- Excavation: the depth now goes down to −100 m (before −30 m).
 - Help window: “Close” stays at the top, only the text scrolls.
 - No fog when zooming out; the background behind the terrain is light.
 - Dark interface only; the light/dark choice is gone.

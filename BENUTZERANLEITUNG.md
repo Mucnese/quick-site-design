@@ -188,7 +188,7 @@ Länge, Fläche und der engste Radius stehen im Eigenschaftsfenster.
 
 Ein Polygon mit bis zu 32 Ecken. Im Gelände entsteht ein Loch, in das man hineinsieht.
 
-- **Tiefe zum mittleren Gelände** (Standard −5 m) und **Höhe der Unterkante** (m ü. NHN) sind zwei
+- **Tiefe zum mittleren Gelände** (Standard −5 m, bis −100 m) und **Höhe der Unterkante** (m ü. NHN) sind zwei
   Regler für denselben Wert: bewegst du einen, folgt der andere.
 - **Böschungswinkel** (20° bis 90°, 90° = senkrecht). Das gezeichnete Polygon bleibt die **Oberkante**,
   nur die **Sohle** wird kleiner. Ist die Grube für den Winkel zu schmal, springt der Regler auf den

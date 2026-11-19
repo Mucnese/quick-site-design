@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-BigDuBteGkWlWoiOVvWOunk9D8eaIB7lZZVPISk5iTs=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-RI1jmhiifMNotjettSCy4LtpMRrhOQzyQGDhJqWnisM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -3827,7 +3827,7 @@ function simplifyLoop(pts, tol) {
    ========================================================= */
 const PIT_MAX_POINTS = 32;       // Eckpunkte je Polygon (Shader-Uniforms sind begrenzt)
 const PIT_MAX_HOLES = 6;         // Baugruben, die gleichzeitig ein Loch ins Gelände schneiden
-const PIT_DEPTH_MIN = -30;
+const PIT_DEPTH_MIN = -100;
 const PIT_DEPTH_MAX = 10;
 const PIT_SAMPLES = 40000;       // Obergrenze der Stichproben für die Mengen
 
@@ -6179,7 +6179,7 @@ const SCHEMAS = {
   pit: [
     // Tiefe zum MITTLEREN Gelände im Polygon (Standard -5 m); die Höhe der Unterkante
     // ist derselbe Wert in absoluten Metern und wird im Editor an das Gelände angepasst
-    { key: 'depth',     label: 'fDepth',     type: 'range', min: -30, max: 10, step: 0.1, unit: 'm' },
+    { key: 'depth',     label: 'fDepth',     type: 'range', min: -100, max: 10, step: 0.1, unit: 'm' },
     { key: 'bottomAbs', label: 'fBottomAbs', type: 'range', min: 0, max: 100, step: 0.1, unit: 'm', editorOnly: true },
     // Böschungswinkel der Wände (90° = senkrecht); das gezeichnete Polygon bleibt die Oberkante
     { key: 'angle',     label: 'fPitAngle',  type: 'range', min: 20, max: 90, step: 1, unit: '°' }
@@ -6986,7 +6986,7 @@ function pitAngleShown(info) {
   return info.clamped ? Math.min(PIT_ANGLE_MAX, Math.ceil(info.angleEff - 1e-9)) : info.angle;
 }
 
-/* Beide Regler überdecken dieselbe Spanne (Tiefe -30..+10 m um das mittlere Gelände) */
+/* Beide Regler überdecken dieselbe Spanne (Tiefe -100..+10 m um das mittlere Gelände) */
 function setPitRanges(obj, refs) {
   const info = obj.group.userData.pit;
   const lo = Math.round((info.refAbs + PIT_DEPTH_MIN) * 10) / 10;

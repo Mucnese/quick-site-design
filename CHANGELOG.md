@@ -37,6 +37,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   einen Punkt; der genaue Punkt auf Gebäuden wird nachgezogen, sobald die Maus kurz steht.
 
 ### Geändert
+- Baugrube: die Tiefe reicht jetzt bis −100 m (vorher −30 m).
 - Hilfefenster: „Schließen“ bleibt oben stehen, nur der Text scrollt.
 - Kein Nebel mehr beim Herauszoomen; der Hintergrund hinter dem Gelände ist hell.
 - Nur noch die dunkle Oberfläche; die Wahl „hell/dunkel“ entfällt.

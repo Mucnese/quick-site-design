@@ -387,7 +387,7 @@ const SCHEMAS = {
   pit: [
     // Tiefe zum MITTLEREN Gelände im Polygon (Standard -5 m); die Höhe der Unterkante
     // ist derselbe Wert in absoluten Metern und wird im Editor an das Gelände angepasst
-    { key: 'depth',     label: 'fDepth',     type: 'range', min: -30, max: 10, step: 0.1, unit: 'm' },
+    { key: 'depth',     label: 'fDepth',     type: 'range', min: -100, max: 10, step: 0.1, unit: 'm' },
     { key: 'bottomAbs', label: 'fBottomAbs', type: 'range', min: 0, max: 100, step: 0.1, unit: 'm', editorOnly: true },
     // Böschungswinkel der Wände (90° = senkrecht); das gezeichnete Polygon bleibt die Oberkante
     { key: 'angle',     label: 'fPitAngle',  type: 'range', min: 20, max: 90, step: 1, unit: '°' }
@@ -1194,7 +1194,7 @@ function pitAngleShown(info) {
   return info.clamped ? Math.min(PIT_ANGLE_MAX, Math.ceil(info.angleEff - 1e-9)) : info.angle;
 }
 
-/* Beide Regler überdecken dieselbe Spanne (Tiefe -30..+10 m um das mittlere Gelände) */
+/* Beide Regler überdecken dieselbe Spanne (Tiefe -100..+10 m um das mittlere Gelände) */
 function setPitRanges(obj, refs) {
   const info = obj.group.userData.pit;
   const lo = Math.round((info.refAbs + PIT_DEPTH_MIN) * 10) / 10;

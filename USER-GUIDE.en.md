@@ -185,7 +185,7 @@ Length, area and the tightest radius are shown in the properties window.
 
 A polygon with up to 32 corners. The terrain gets a hole you can look into.
 
-- **Depth below the mean ground** (default −5 m) and **bottom level** (m above sea level) are two
+- **Depth below the mean ground** (default −5 m, down to −100 m) and **bottom level** (m above sea level) are two
   sliders for the same value: moving one moves the other.
 - **Slope angle** (20° to 90°, 90° = vertical). The drawn polygon stays the **top edge**, only the
   **floor** gets smaller. If the pit is too narrow for the angle, the slider jumps to the smallest

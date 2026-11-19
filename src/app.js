@@ -3024,7 +3024,7 @@ function simplifyLoop(pts, tol) {
    ========================================================= */
 const PIT_MAX_POINTS = 32;       // Eckpunkte je Polygon (Shader-Uniforms sind begrenzt)
 const PIT_MAX_HOLES = 6;         // Baugruben, die gleichzeitig ein Loch ins Gelände schneiden
-const PIT_DEPTH_MIN = -30;
+const PIT_DEPTH_MIN = -100;
 const PIT_DEPTH_MAX = 10;
 const PIT_SAMPLES = 40000;       // Obergrenze der Stichproben für die Mengen
 
