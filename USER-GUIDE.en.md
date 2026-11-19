@@ -84,7 +84,7 @@ This mainly concerns Austria, where the BEV rasters are very large.
 | **Data** | left | terrain, buildings, structure (IFC), coordinate system for XYZ |
 | **Map** | bottom left | button for the OpenStreetMap map |
 | **Properties** | right | sizes and values of the selected block |
-| **Building blocks** | bottom | container, tower crane, mobile crane, haul road, excavation, IFC export |
+| **Building blocks** | bottom | container, tower crane, mobile crane, haul road, excavation, IFC export, measure |
 | **DE / EN, 2D, Appearance, Help** | bottom right | language, top view, looks, short help |
 | **Compass** | bottom | north direction, a click aligns north |
 | **Info bar** | bottom left | coordinate system (CRS), DTM grid, unit |
@@ -210,6 +210,13 @@ Note: objects standing in a pit sit at the height of the original ground.
   of Kanton Luzern (2006), not the German RBSV; the values were matched to the curves of that sheet
   (90 % of the points within 7 cm).
 - **Crane radii:** if they overlap, a warning appears in the overview.
+- **Measure:** the **Measure** card (bottom, far right) measures distances on terrain and buildings.
+  Click points one after another; every segment shows its **horizontal length** and the **height
+  difference** (**Δ**) in metres with two decimals. The window below gives the totals horizontally and
+  in space, the height difference and the **slope** between start and end in percent, and the heights of
+  start and end. **Right-click**, **space** or **Enter** finishes the measurement, another click starts
+  a new one, **Backspace** removes the last point, **Esc** ends the tool. The accuracy depends on the
+  terrain model (see the info bar for the grid size), and for buildings on the roof shape of the model.
 
 The calculations are planning aids. They do not replace a design calculation or coordination with
 the parties involved.

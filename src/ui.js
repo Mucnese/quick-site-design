@@ -59,7 +59,7 @@ const STRINGS = {
     helpS4T: 'Bearbeiten',
     helpS4B: '- Objekt anklicken: Verschieben, Duplizieren, Löschen.\n- Straße und Baugrube: Stützpunkte anklicken und versetzen, „Punkt hinzufügen“, „Punkt löschen“.\n- Ein Eintrag in der Übersicht wählt die ganze Gruppe.',
     helpS5T: 'Mengen und Prüfungen',
-    helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.',
+    helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.\n- „Messen“ (Leiste): Punkte anklicken, an jeder Strecke stehen waagerechte Länge und Höhenunterschied (2 Nachkommastellen); Rechtsklick oder Leertaste beendet, Rücktaste nimmt den letzten Punkt zurück, Esc beendet.',
     helpS6T: 'Karte und Export',
     helpS6B: '- Knopf „Karte“ (unten links) → „Karte · OpenStreetMap“ legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände, Gebäude und auf Wunsch die Bausteine als IFC-Datei heruntergeladen, auch in einem anderen Koordinatensystem.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
     helpS7T: 'Tastatur',
@@ -112,6 +112,12 @@ const STRINGS = {
     noManufacturerValue: 'keine Herstellerangabe',
     geoportals: 'Geoportale', geoportalsTip: 'Tabelle der Geoportale der Bundesländer (GitHub)',
     geoportalUrl: 'https://github.com/Mucnese/quick-site-design#datenquellen',
+    tRuler: 'Messen', tRulerHint: 'Strecken, Höhenunterschiede und Gefälle messen',
+    rulerHint0: 'Messen: ersten Punkt anklicken · Esc beendet',
+    rulerHint1: 'Messen: weitere Punkte anklicken · Rechtsklick oder Leertaste beendet · Rücktaste nimmt den letzten Punkt zurück · Esc beendet',
+    rulerDone: 'Messung beendet · ein Klick beginnt eine neue · Esc beendet das Messen',
+    rulerTitle: 'Messen', rulerPts: 'Punkte', rulerH: 'Horizontal', rulerS: 'Schräg (im Raum)', rulerDz: 'Höhenunterschied',
+    rulerSlope: 'Gefälle', rulerZ0: 'Höhe Start', rulerZ1: 'Höhe Ende', rulerNew: 'Neu messen', rulerClose: 'Beenden',
     tIfc: 'IFC Export', tIfcHint: 'Rechteck aufziehen, Gelände, Gebäude und Bausteine als IFC', ifcExportHint: 'Rechteck auf dem Gelände ziehen. Esc bricht ab.',
     ifcCoords: 'Koordinaten', ifcCoordsAbs: 'absolut im Bezugssystem', ifcCoordsLocal: 'lokal (mit IfcMapConversion)',
     ifcCoordsNote: 'Absolut: Rechtswert, Hochwert und Höhe stehen direkt im Modell. Lokal: kleine Zahlen, die Lage steckt in der Georeferenz (IfcMapConversion).',
@@ -204,7 +210,7 @@ const STRINGS = {
     helpS4T: 'Editing',
     helpS4B: '- Click an object: move, duplicate, delete.\n- Road and excavation: click nodes and move them, “Add node”, “Delete node”.\n- An entry in the overview selects the whole group.',
     helpS5T: 'Quantities and checks',
-    helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.',
+    helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.\n- “Measure” (toolbar): click points, every segment shows horizontal length and height difference (2 decimals); right-click or space finishes, backspace removes the last point, Esc ends.',
     helpS6T: 'Map and export',
     helpS6B: '- “Map” button (bottom left) → “Map · OpenStreetMap” puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain, buildings and, optionally, the blocks are downloaded as an IFC file, also in another coordinate system.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
     helpS7T: 'Keyboard',
@@ -257,6 +263,12 @@ const STRINGS = {
     noManufacturerValue: 'no manufacturer figure',
     geoportals: 'Geoportals', geoportalsTip: 'Table of the German state geoportals (GitHub)',
     geoportalUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/README.en.md#where-to-get-the-data',
+    tRuler: 'Measure', tRulerHint: 'Measure distances, height differences and slope',
+    rulerHint0: 'Measure: click the first point · Esc ends',
+    rulerHint1: 'Measure: click more points · right-click or space finishes · backspace removes the last point · Esc ends',
+    rulerDone: 'Measurement finished · a click starts a new one · Esc ends measuring',
+    rulerTitle: 'Measure', rulerPts: 'Points', rulerH: 'Horizontal', rulerS: 'Slope distance (3D)', rulerDz: 'Height difference',
+    rulerSlope: 'Slope', rulerZ0: 'Height start', rulerZ1: 'Height end', rulerNew: 'Measure again', rulerClose: 'End',
     tIfc: 'IFC Export', tIfcHint: 'Draw a rectangle, export terrain, buildings and blocks as IFC', ifcExportHint: 'Drag a rectangle over the terrain. Esc cancels.',
     ifcCoords: 'Coordinates', ifcCoordsAbs: 'absolute in the CRS', ifcCoordsLocal: 'local (with IfcMapConversion)',
     ifcCoordsNote: 'Absolute: easting, northing and height are written directly into the model. Local: small numbers, the position is in the georeference (IfcMapConversion).',
@@ -383,7 +395,8 @@ const TOOL_INFO = {
   mobile:    { name: 'tMobile', hint: 'tMobileHint' },
   road:      { name: 'tRoad',   hint: 'tRoadHint' },
   pit:       { name: 'tPit',    hint: 'tPitHint' },
-  ifc:       { name: 'tIfc',    hint: 'tIfcHint' }   // keine Platzierung, startet die Rechteckauswahl
+  ifc:       { name: 'tIfc',    hint: 'tIfcHint' },  // keine Platzierung, startet die Rechteckauswahl
+  ruler:     { name: 'tRuler',  hint: 'tRulerHint' } // keine Platzierung, startet das Messen
 };
 
 
@@ -849,6 +862,7 @@ function isDrawTool(t) { return t === 'road' || t === 'pit'; }
 
 /* ---------- Werkzeugwahl ---------- */
 function selectTool(type) {
+  if (rulerActive && type) stopRuler();
   clearRoadNodes();
   if (isDrawTool(activeTool) && type !== activeTool) { roadPoints = []; clearRoadPreview(); setRoadHint(false); }
   activeTool = type;
@@ -1531,8 +1545,8 @@ let segLabelEls = [];
 function updateSegLabels() {
   const box = document.getElementById('seg-labels');
   if (!box) return;
-  const list = roadPreviewLabels;
-  const show = list.length && isDrawTool(activeTool);
+  const list = rulerActive ? rulerLabels : roadPreviewLabels;
+  const show = list.length && (rulerActive || isDrawTool(activeTool));
   const n = show ? list.length : 0;
   while (segLabelEls.length < n) {
     const d = document.createElement('div');
@@ -1546,7 +1560,7 @@ function updateSegLabels() {
     if (i >= n) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
     v.set(list[i].x, list[i].y, list[i].z).project(camera);
     if (v.z > 1) { el.style.display = 'none'; return; }
-    const txt = list[i].len.toFixed(2) + ' m';
+    const txt = list[i].text || (list[i].len.toFixed(2) + ' m');
     if (el.textContent !== txt) el.textContent = txt;
     el.className = 'seg-label' + (list[i].live ? ' live' : '');
     el.style.display = 'block';
@@ -1565,6 +1579,158 @@ function updatePointLabel() {
   // Punkt stehen gleich mit drin (früher im CSS)
   const t = 'translate(' + (Math.round(p.x) + 14) + 'px, ' + Math.round(p.y) + 'px) translateY(-50%)';
   if (el.style.transform !== t) el.style.transform = t;
+}
+
+/* ---------- Messen ----------
+   Werkzeug "Messen" in der Leiste: Punkte auf Gelände oder Gebäuden anklicken, es entsteht ein Linienzug. An jeder
+   Strecke steht die waagerechte Länge und der Höhenunterschied (zwei Nachkommastellen); das Fenster darunter zeigt
+   Gesamtlängen (waagerecht und im Raum), Höhenunterschied, Gefälle und die Höhen von Start und Ende.
+   Rechtsklick oder Leertaste beendet die Messung, ein weiterer Klick beginnt eine neue, Rücktaste nimmt den letzten
+   Punkt zurück, Esc beendet das Werkzeug. */
+let rulerActive = false, rulerDone = false;
+let rulerPts = [], rulerHover = null, rulerGroup = null, rulerLabels = [], rulerMarkers = [], rulerHoverAt = 0;
+
+function rulerFmt(v) { return v.toFixed(2); }
+function rulerSigned(v) { return (v >= 0.005 ? '+' : (v <= -0.005 ? '−' : '')) + rulerFmt(Math.abs(v)); }
+
+function markRulerCard() {
+  const cards = document.getElementById('palette').children;
+  for (let i = 0; i < cards.length; i++) {
+    if (cards[i].classList && cards[i].dataset && cards[i].dataset.tool === 'ruler') cards[i].classList.toggle('active', rulerActive);
+  }
+}
+
+function setRulerHint() {
+  const el = document.getElementById('ruler-hint');
+  if (!el) return;
+  if (!rulerActive) { el.style.display = 'none'; return; }
+  el.textContent = T(rulerDone ? 'rulerDone' : (rulerPts.length ? 'rulerHint1' : 'rulerHint0'));
+  el.style.display = 'block';
+}
+
+function clearRulerDrawing() {
+  if (rulerGroup) { scene.remove(rulerGroup); disposeGroup(rulerGroup); rulerGroup = null; }
+  rulerMarkers = [];
+  rulerLabels = [];
+}
+
+function rulerRenderPanel() {
+  const panel = document.getElementById('ruler-panel');
+  if (!panel) return;
+  const st = rulerStats(rulerPts);
+  panel.style.display = rulerActive && st.n >= 2 ? 'block' : 'none';
+  if (st.n < 2) return;
+  const set = function (id, txt) { document.getElementById(id).textContent = txt; };
+  set('ruler-n', String(st.n));
+  set('ruler-h', rulerFmt(st.horizontal) + ' m');
+  set('ruler-s', rulerFmt(st.slant) + ' m');
+  set('ruler-dz', rulerSigned(st.dz) + ' m');
+  set('ruler-slope', st.slopePct === null ? '–' : rulerSigned(st.slopePct) + ' %');
+  set('ruler-z0', rulerFmt(st.zStart) + ' m');
+  set('ruler-z1', rulerFmt(st.zEnd) + ' m');
+}
+
+/* Zeichnet Linienzug, Punkte und Streckenschilder neu (mit dem Punkt unter der Maus als letztem, solange gemessen wird) */
+function drawRuler() {
+  clearRulerDrawing();
+  const pts = rulerHover && !rulerDone ? rulerPts.concat([rulerHover]) : rulerPts.slice();
+  if (pts.length) {
+    const g = new THREE.Group();
+    if (pts.length >= 2) {
+      g.add(thickLine(pts.map(function (p) { return new THREE.Vector3(p.x, p.y + 0.12, p.z); }), 0.5, MAT.drawPreview, false));
+    }
+    pts.forEach(function (p) {
+      const m = new THREE.Mesh(GEO.sphere, MAT.measure);
+      m.position.set(p.x, p.y + 0.12, p.z);
+      m.renderOrder = 10;
+      g.add(m);
+      rulerMarkers.push(m);
+    });
+    scene.add(g);
+    rulerGroup = g;
+    const st = rulerStats(pts);
+    st.segments.forEach(function (s, i) {
+      const p = pts[i], q = pts[i + 1];
+      rulerLabels.push({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 + 0.12, z: (p.z + q.z) / 2,
+                         text: rulerFmt(s.h) + ' m · Δ ' + rulerSigned(s.dz) + ' m',
+                         live: !rulerDone && !!rulerHover && i === st.segments.length - 1 });
+    });
+  }
+  updateRulerScale();
+  rulerRenderPanel();
+  setRulerHint();
+}
+
+/* Hält die Punkte unabhängig vom Zoom gleich groß; pro Bild aufgerufen */
+function updateRulerScale() {
+  if (!rulerMarkers.length) return;
+  const fov = camera.fov * Math.PI / 180;
+  rulerMarkers.forEach(function (m) {
+    const d = camera.position.distanceTo(m.position);
+    const r = (d * Math.tan(fov / 2) * 2 / window.innerHeight) * (MEASURE_PIXELS / 2);
+    m.scale.set(r, r, r);
+  });
+}
+
+function startRuler() {
+  if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
+  if (rectSelectActive) cancelRectExport();
+  clearExportPreview();
+  if (ifcPick) cancelIfcPick(true);
+  selectTool(null);
+  hideMeasure();
+  rulerActive = true; rulerDone = false; rulerPts = []; rulerHover = null;
+  markRulerCard();
+  drawRuler();
+}
+
+function stopRuler() {
+  rulerActive = false; rulerDone = false; rulerPts = []; rulerHover = null;
+  clearRulerDrawing();
+  markRulerCard();
+  rulerRenderPanel();
+  setRulerHint();
+}
+
+function finishRuler() {
+  if (!rulerActive || rulerDone) return;
+  if (rulerPts.length < 2) { rulerPts = []; rulerHover = null; drawRuler(); return; }
+  rulerDone = true;
+  rulerHover = null;
+  drawRuler();
+}
+
+function newRuler() {
+  rulerPts = []; rulerHover = null; rulerDone = false;
+  drawRuler();
+}
+
+function rulerClick(event) {
+  if (rulerDone) newRuler();
+  const g = raycastGround(event);
+  if (!g) return;
+  rulerPts.push({ x: g.point.x, y: g.point.y, z: g.point.z });
+  rulerHover = null;
+  drawRuler();
+}
+
+function rulerRemoveLast() {
+  if (!rulerActive) return;
+  if (rulerDone) rulerDone = false;
+  rulerPts.pop();
+  rulerHover = null;
+  drawRuler();
+}
+
+/* Vorschau zum Zeigerpunkt; höchstens alle 80 ms, damit die Strahlen über die Gebäude nicht bremsen */
+function rulerMove(event) {
+  if (!rulerActive || rulerDone || !rulerPts.length) return;
+  const now = Date.now();
+  if (now - rulerHoverAt < 80) return;
+  rulerHoverAt = now;
+  const g = raycastGround(event);
+  rulerHover = g ? { x: g.point.x, y: g.point.y, z: g.point.z } : null;
+  drawRuler();
 }
 
 /* ---------- Dateiimport ---------- */
@@ -2339,6 +2505,7 @@ function markIfcCard() {
 
 function startRectExport() {
   if (!hasTerrain()) { setStatus(T('msgNeedTerrain'), true); return; }
+  if (rulerActive) stopRuler();
   clearExportPreview();
   rectSelectActive = true;
   rectStart = null;
@@ -2546,7 +2713,7 @@ function onCanvasPointerUp(event) {
   const wasRight = pressInfo.button === 2;
   pressInfo = null;
   if (moved > DRAG_TOLERANCE) return;
-  if (wasRight) { if (isDrawTool(activeTool)) finishDrawing(); return; }
+  if (wasRight) { if (rulerActive) finishRuler(); else if (isDrawTool(activeTool)) finishDrawing(); return; }
   const now = Date.now();
   if (now - lastPlaceTime < REPEAT_GUARD) return;
   lastPlaceTime = now;
@@ -2619,6 +2786,7 @@ function onCanvasMove(event) {
   if (rectSelectActive && rectStart && pt) {
     updateRectDragPreview(rectStart, { x: pt.x, z: pt.z });
   }
+  if (rulerActive) rulerMove(event);
   if (isDrawTool(activeTool) && roadPoints.length) {
     if (pt) setRoadPreview(roadPoints, { x: pt.x, z: pt.z }, activeTool === 'pit');
   }
@@ -2635,6 +2803,8 @@ function onCanvasMove(event) {
 function onCanvasClick(event) {
   // IFC-Platzierung von Hand: jeder Klick gehört dazu
   if (ifcPick) { handleIfcPick(event); return; }
+  // Messen: jeder Klick setzt einen Messpunkt
+  if (rulerActive) { rulerClick(event); return; }
 
   // Punkt hinzufügen: hat Vorrang vor dem Anklicken vorhandener Stützpunkte
   if (addNodeMode) {
@@ -2736,6 +2906,11 @@ function isTypingTarget(event) {
 
 function onKeyDown(event) {
   if (event.key !== 'Escape' && isTypingTarget(event)) return;
+  if ((event.key === ' ' || event.code === 'Space' || event.key === 'Enter') && rulerActive) {
+    if (event.preventDefault) event.preventDefault();
+    finishRuler();
+    return;
+  }
   if (event.key === ' ' || event.code === 'Space') {
     if (isDrawTool(activeTool)) {
       if (event.preventDefault) event.preventDefault();
@@ -2744,6 +2919,7 @@ function onKeyDown(event) {
     return;
   }
   if (event.key === 'Escape') {
+    if (rulerActive) { stopRuler(); return; }
     if (ifcPick) { cancelIfcPick(); return; }
     if (rectSelectActive) { cancelRectExport(); return; }
     if (isIfcPanelOpen()) { clearExportPreview(); setStatus(''); return; }
@@ -2758,6 +2934,7 @@ function onKeyDown(event) {
     toggleHelp(false);
     setStatus('');
   } else if (event.key === 'Delete' || event.key === 'Backspace') {
+    if (rulerActive) { rulerRemoveLast(); return; }
     if (ifcPick) return;
     const ids = selectedIds.slice();
     if (!ids.length) return;
@@ -2772,7 +2949,7 @@ function onKeyDown(event) {
    ========================================================= */
 function initUI() {
   const palette = document.getElementById('palette');
-  ['container', 'tower', 'mobile', 'road', 'pit', 'ifc'].forEach(function (type) {
+  ['container', 'tower', 'mobile', 'road', 'pit', 'ifc', 'ruler'].forEach(function (type) {
     const card = document.createElement('button');
     card.className = 'pal-card';
     card.dataset.tool = type;
@@ -2794,6 +2971,7 @@ function initUI() {
         if (rectSelectActive) cancelRectExport(); else startRectExport();
         return;
       }
+      if (type === 'ruler') { if (rulerActive) stopRuler(); else startRuler(); return; }
       selectTool(activeTool === type ? null : type);
     });
     palette.appendChild(card);
@@ -2817,6 +2995,8 @@ function initUI() {
     if (ifcInput.files && ifcInput.files.length) handleIfcFile(ifcInput.files[0]);
   });
   document.getElementById('ifc-clear').addEventListener('click', removeIfc);
+  document.getElementById('ruler-new').addEventListener('click', newRuler);
+  document.getElementById('ruler-close').addEventListener('click', stopRuler);
   document.getElementById('ifc-manual-btn').addEventListener('click', function () { startIfcManual(false); });
   document.getElementById('ifc-dz').addEventListener('input', function (e) {
     applyIfcDz((e && e.target ? e.target : this).value);
@@ -3006,6 +3186,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
     // IFC-Export
     startRectExport: startRectExport,
+    startRuler: startRuler, stopRuler: stopRuler, finishRuler: finishRuler, rulerClick: rulerClick, rulerRemoveLast: rulerRemoveLast,
     markIfcCard: markIfcCard,
     cancelRectExport: cancelRectExport,
     finishRectExport: finishRectExport,

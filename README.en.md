@@ -69,6 +69,8 @@ browser.
   wheel = zoom. Left-dragging from terrain, a building or a placed element
   orbits around exactly that point; dragging from the background orbits the whole
   scene around the view centre.
+- **Measure** tool: click points on terrain or buildings; every segment shows its horizontal
+  length and height difference (two decimals), plus totals, slope and heights.
 - Left-click on terrain or buildings sets a measure point, shows easting,
   northing and elevation right at the point, and makes it the orbit and zoom
   centre.

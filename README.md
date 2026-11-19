@@ -69,6 +69,8 @@ Browser.
   verschieben, Mausrad = zoomen. Wer links auf Gelände, Gebäude oder einen
   Baustein klickt und zieht, dreht um genau diesen Punkt; wer auf den Hintergrund
   klickt, kreist die ganze Szene um das Drehzentrum.
+- Werkzeug **Messen**: Punkte auf Gelände oder Gebäuden anklicken, an jeder Strecke stehen
+  waagerechte Länge und Höhenunterschied (zwei Nachkommastellen), dazu Summen, Gefälle und Höhen.
 - Linksklick auf Gelände oder Gebäude setzt einen Messpunkt, zeigt Rechtswert,
   Hochwert und Höhe direkt am Punkt und macht ihn zum Dreh- und Zoomzentrum.
 - **2D**-Knopf setzt die Ansicht senkrecht von oben; ein Ziehen kippt sie wieder

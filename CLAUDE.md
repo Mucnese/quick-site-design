@@ -79,6 +79,10 @@ außerhalb Europas legt. Grenze `XYZ_MAX_POINTS` (30 Mio.). ESRI-ASCII-Raster we
 
 **Linke Spalte.** Suche, Übersicht und Daten (`#col-left-body > .panel`) schrumpfen bei Platzmangel; nur das Datenfenster scrollt, Adresseingabe (`#locate`) und Übersicht (`#overview`) nie; `#about` (Quellen, Recht) steht fest darunter.
 
+**Messen.** Werkzeug `ruler` in der Leiste (`startRuler`, `rulerClick`, `drawRuler`, nicht über `selectTool`): Punkte auf Gelände/Gebäude
+(`raycastGround`), `rulerStats` (app.js) rechnet waagerecht, im Raum, Höhenunterschied, Gefälle; alle Anzeigen mit zwei
+Nachkommastellen. Streckenschilder laufen über `updateSegLabels` (Feld `text`), Panel `#ruler-panel`, Hinweis `#ruler-hint`.
+
 **Hinweise und Meldungen** stehen immer oben in der Mitte, untereinander im Container `#notices`
 (`#road-hint`, `#ifc-hint`, `#busy-hint`, `#status`), alle mit 12 px. Lange Arbeit (CityGML, IFC) zeigt `showBusy`/`hideBusy`; davor `await yieldToPaint()`, sonst blockiert die Arbeit, bevor der Hinweis gezeichnet ist (Tests ersetzen `yieldToPaint`). Neue Hinweise dort einsetzen, nicht als eigenes
 `position: fixed` an anderer Stelle.

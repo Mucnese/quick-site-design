@@ -86,7 +86,7 @@ Das betrifft vor allem Österreich, wo die BEV-Raster sehr groß sind.
 | **Daten** | links | Gelände, Gebäude, Bauwerk (IFC), Bezugssystem für XYZ |
 | **Karte** | unten links | Knopf für die OpenStreetMap-Karte |
 | **Eigenschaften** | rechts | Maße und Werte des gewählten Bausteins |
-| **Bausteine** | unten | Container, Turmdrehkran, Mobilkran, Baustraße, Baugrube, IFC Export |
+| **Bausteine** | unten | Container, Turmdrehkran, Mobilkran, Baustraße, Baugrube, IFC Export, Messen |
 | **DE / EN, 2D, Darstellung, Hilfe** | unten rechts | Sprache, Draufsicht, Aussehen, Kurzhilfe |
 | **Kompass** | unten | Nordrichtung, Klick richtet nach Norden aus |
 | **Infoleiste** | unten links | Bezugssystem (KBS), DGM-Rasterung, Einheit |
@@ -213,6 +213,13 @@ Hinweis: Objekte, die in einer Grube stehen, sitzen auf der Höhe des ursprüngl
   dem Überstand. Grundlage ist das Blatt 736.107.2 des Kantons Luzern (2006), nicht die RBSV;
   die Werte wurden an den Kurven dieses Blatts abgeglichen (90 % der Punkte innerhalb von 7 cm).
 - **Kranradien:** überschneiden sie sich, erscheint eine Warnung in der Übersicht.
+- **Messen:** Die Karte **Messen** (unten, ganz rechts) misst Strecken auf Gelände und Gebäuden. Punkte
+  nacheinander anklicken; an jeder Strecke stehen die **waagerechte Länge** und der **Höhenunterschied**
+  (**Δ**) in Metern mit zwei Nachkommastellen. Das Fenster darunter nennt die Summen waagerecht und im Raum,
+  den Höhenunterschied und das **Gefälle** zwischen Start und Ende in Prozent sowie die Höhen von Start und
+  Ende. **Rechtsklick**, **Leertaste** oder **Enter** beendet die Messung, ein weiterer Klick beginnt eine
+  neue, **Rücktaste** nimmt den letzten Punkt zurück, **Esc** beendet das Werkzeug. Die Genauigkeit
+  hängt vom Geländemodell ab (Rasterweite siehe Infoleiste), bei Gebäuden von der Dachform des Modells.
 
 Die Rechnungen sind Planungshilfen. Sie ersetzen keine Bemessung und keine Abstimmung mit den
 Beteiligten.

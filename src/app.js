@@ -3830,6 +3830,35 @@ function setMeasureMarker(x, y, z) {
   return m;
 }
 
+/* ---------- Messen ----------
+   Rechnet einen Linienzug aus Punkten {x, y, z} (Szenenkoordinaten, y = m über TERRAIN.zmin) aus.
+   h = waagerechte Länge, d3 = Länge im Raum, dz = Höhenunterschied (Ende minus Anfang der Strecke).
+   Gesamtwerte: horizontal und slant (Summe über alle Strecken), dz und slopePct zwischen erstem und letztem
+   Punkt (Gefälle in % = dz / waagerechter Abstand * 100, null bei senkrechter Messung). Höhen absolut (m ü. NHN)
+   über zmin. Alle Längen in Metern, ungerundet - die Anzeige rundet auf zwei Nachkommastellen. */
+function rulerStats(points) {
+  const zmin = TERRAIN ? TERRAIN.zmin : 0;
+  const segs = [];
+  let horizontal = 0, slant = 0;
+  for (let i = 1; i < points.length; i++) {
+    const p = points[i - 1], q = points[i];
+    const h = Math.hypot(q.x - p.x, q.z - p.z), dz = q.y - p.y;
+    const d3 = Math.hypot(h, dz);
+    segs.push({ h: h, d3: d3, dz: dz });
+    horizontal += h; slant += d3;
+  }
+  const n = points.length;
+  let dz = 0, directH = 0, slopePct = null, zStart = null, zEnd = null;
+  if (n) { zStart = points[0].y + zmin; zEnd = points[n - 1].y + zmin; }
+  if (n >= 2) {
+    dz = points[n - 1].y - points[0].y;
+    directH = Math.hypot(points[n - 1].x - points[0].x, points[n - 1].z - points[0].z);
+    slopePct = directH > 1e-9 ? dz / directH * 100 : null;
+  }
+  return { n: n, segments: segs, horizontal: horizontal, slant: slant, dz: dz, directH: directH,
+           slopePct: slopePct, zStart: zStart, zEnd: zEnd };
+}
+
 /* Hält die Kugel unabhängig vom Zoom gleich groß */
 function updateMeasureScale() {
   if (!measureMarker) return;
@@ -4975,6 +5004,7 @@ if (typeof module !== 'undefined' && module.exports) {
     buildTerrain: buildTerrain,
     terrainFromEmbedded: terrainFromEmbedded,
     getHeightAt: getHeightAt,
+    rulerStats: rulerStats,
     segmentLabels: segmentLabels,
     getRoadPreviewLabels: function () { return roadPreviewLabels; },
     setRoadPreview: setRoadPreview,

@@ -447,6 +447,66 @@ await test('IFC-Panel: Bezugssystem der Datei wählbar, anderes System sperrt "l
   assert.ok(saved.indexOf("'EPSG:25832'") > 0);
 });
 
+/* ---------- Messen ---------- */
+
+const rulerOf = function (s) { return vm.runInContext('({ active: rulerActive, done: rulerDone, pts: rulerPts, labels: rulerLabels })', s); };
+
+await test('Messen: Karte in der Leiste, Punkte anklicken, Strecken mit zwei Nachkommastellen, Panel mit Summen, Rücktaste, Neustart, Esc', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  const card = Array.prototype.slice.call(g('palette').children).filter(function (c) { return c.dataset.tool === 'ruler'; })[0];
+  assert.strictEqual(card.children[1].textContent, 'Messen');
+  s.startRuler();
+  assert.strictEqual(rulerOf(s).active, true);
+  assert.strictEqual(g('ruler-hint').style.display, 'block');
+  assert.ok(g('ruler-hint').textContent.indexOf('ersten Punkt') >= 0);
+  assert.strictEqual(g('ruler-panel').style.display, 'none', 'ohne zwei Punkte kein Panel');
+  const click = function (x, y, z) { setTerrainHit(s, x, y, z); s.rulerClick({ clientX: 10, clientY: 10 }); };
+  click(0, 5, 0);
+  assert.ok(g('ruler-hint').textContent.indexOf('weitere Punkte') >= 0);
+  click(30, 9, 40);                                       // waagerecht 50, 4 m höher
+  const st = rulerOf(s);
+  assert.strictEqual(st.pts.length, 2);
+  assert.strictEqual(g('ruler-panel').style.display, 'block');
+  assert.strictEqual(g('ruler-h').textContent, '50.00 m');
+  assert.strictEqual(g('ruler-s').textContent, '50.16 m');
+  assert.strictEqual(g('ruler-dz').textContent, '+4.00 m');
+  assert.strictEqual(g('ruler-slope').textContent, '+8.00 %');
+  assert.strictEqual(g('ruler-n').textContent, '2');
+  assert.strictEqual(st.labels.length, 1);
+  assert.strictEqual(st.labels[0].text, '50.00 m · Δ +4.00 m');
+  // dritter Punkt: Summen über alle Strecken, Höhenunterschied und Gefälle zwischen Start und Ende
+  click(30, 2, 100);
+  assert.strictEqual(g('ruler-h').textContent, '110.00 m');
+  assert.strictEqual(g('ruler-dz').textContent, '−3.00 m');
+  assert.strictEqual(rulerOf(s).labels.length, 2);
+  // Rücktaste nimmt den letzten Punkt zurück
+  s.onKeyDown({ key: 'Backspace', target: {} });
+  assert.strictEqual(rulerOf(s).pts.length, 2);
+  // Rechtsklick/Leertaste beendet; ein weiterer Klick beginnt eine neue Messung
+  s.onKeyDown({ key: ' ', target: {} });
+  assert.strictEqual(rulerOf(s).done, true);
+  assert.ok(g('ruler-hint').textContent.indexOf('beendet') >= 0);
+  click(1, 1, 1);
+  assert.strictEqual(rulerOf(s).done, false);
+  assert.strictEqual(rulerOf(s).pts.length, 1, 'neue Messung beginnt mit dem Klickpunkt');
+  // anderes Werkzeug beendet das Messen, Esc ebenso
+  s.selectTool('road');
+  assert.strictEqual(rulerOf(s).active, false);
+  s.startRuler();
+  click(0, 0, 0);
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(rulerOf(s).active, false);
+  assert.strictEqual(g('ruler-panel').style.display, 'none');
+  assert.strictEqual(g('ruler-hint').style.display, 'none');
+  // ohne Gelände nicht möglich
+  const s0 = newScope();
+  s0.initUI();
+  s0.startRuler();
+  assert.strictEqual(rulerOf(s0).active, false);
+});
+
 /* ---------- Baustraße: Eigenschaftsfenster ---------- */
 
 function roadObject(s, slope) {
@@ -575,7 +635,7 @@ await test('IFC Export: Karte in der Werkzeugleiste (hinter Baustraße und Baugr
   const s = newScope();
   s.initUI();
   const tools = Array.prototype.slice.call(s.document.getElementById('palette').children).map(function (c) { return c.dataset.tool; });
-  assert.deepStrictEqual(tools, ['container', 'tower', 'mobile', 'road', 'pit', 'ifc']);
+  assert.deepStrictEqual(tools, ['container', 'tower', 'mobile', 'road', 'pit', 'ifc', 'ruler']);
   const card = ifcCard(s);
   assert.strictEqual(card.children[0].className, 'pal-icon ifc');
   assert.strictEqual(card.children[1].textContent, 'IFC Export');

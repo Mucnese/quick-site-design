@@ -1507,6 +1507,24 @@ test('Zeichenvorschau (Straße, Baugrube): die Linie folgt dem Gelände, auch ü
   app.clearRoadPreview();
 });
 
+test('rulerStats: waagerechte und räumliche Länge, Höhenunterschied, Gefälle, absolute Höhen', function () {
+  terrainForExportTests();                                    // zmin = 500
+  const r = app.rulerStats([{ x: 0, y: 5, z: 0 }, { x: 3, y: 5, z: 4 }, { x: 3, y: 11, z: 4 }]);
+  assert.strictEqual(r.n, 3);
+  assert.ok(Math.abs(r.segments[0].h - 5) < 1e-12 && Math.abs(r.segments[0].d3 - 5) < 1e-12 && r.segments[0].dz === 0);
+  assert.ok(r.segments[1].h === 0 && Math.abs(r.segments[1].d3 - 6) < 1e-12 && r.segments[1].dz === 6, 'senkrechte Strecke');
+  assert.ok(Math.abs(r.horizontal - 5) < 1e-12 && Math.abs(r.slant - 11) < 1e-12);
+  assert.strictEqual(r.dz, 6);
+  assert.ok(Math.abs(r.directH - 5) < 1e-12 && Math.abs(r.slopePct - 120) < 1e-9);
+  assert.strictEqual(r.zStart, 505);
+  assert.strictEqual(r.zEnd, 511);
+  // Gefälle bei rein senkrechter Messung nicht definiert, ein Punkt = nichts zu messen
+  assert.strictEqual(app.rulerStats([{ x: 1, y: 0, z: 1 }, { x: 1, y: 3, z: 1 }]).slopePct, null);
+  const one = app.rulerStats([{ x: 1, y: 2, z: 3 }]);
+  assert.ok(one.n === 1 && one.horizontal === 0 && one.slopePct === null && one.segments.length === 0);
+  assert.strictEqual(app.rulerStats([]).n, 0);
+});
+
 test('Zeichenvorschau: je Strecke die waagerechte Länge, auch am Hang, bei der Baugrube mit der schließenden Kante', function () {
   roadTerrain(0.1);                                   // 10-%-Rampe in +x: die räumliche Länge wäre größer
   app.setRoadPreview([{ x: 0, z: 0 }, { x: 30, z: 0 }, { x: 30, z: 40 }], { x: 33, z: 44 }, false);

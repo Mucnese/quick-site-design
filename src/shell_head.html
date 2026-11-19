@@ -285,6 +285,9 @@
   .pal-icon.ifc {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1' stroke-linejoin='round' stroke-linecap='round'><path d='M14 3l9 5v10l-9 5-9-5V8z'/><path d='M5 8l9 5 9-5M14 13v10'/><path d='M27 13h13M36 8.5l4.5 4.5-4.5 4.5'/></svg>");
   }
+  .pal-icon.ruler {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1' stroke-linejoin='round' stroke-linecap='round'><path d='M5 17L29 3l9 5.5L14 22.5z'/><path d='M10 14.5l2.4 1.6M15 11.6l1.6 1.1M19.5 9l2.4 1.6M24 6.4l1.6 1.1'/><circle cx='40' cy='20' r='1.5'/><path d='M36 22.5h6'/></svg>");
+  }
   .pal-icon.pit {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 26' fill='none' stroke='%23aab6bd' stroke-width='1.1' stroke-linejoin='round'><path d='M3 8h8l3 12h16l3-12h8'/><path d='M14 20l-1.4-5.5M30 20l1.4-5.5' stroke-dasharray='1.6 1.6'/><path d='M17 12.5h10M18.5 16h7'/><path d='M3 8V6M41 8V6'/></svg>");
   }
@@ -431,13 +434,13 @@
     display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none;
     max-width: max(220px, calc(100vw - 2 * (var(--panel-w) + 28px)));
   }
-  #status, #road-hint, #ifc-hint, #busy-hint {
+  #status, #road-hint, #ifc-hint, #ruler-hint, #busy-hint {
     display: none; box-sizing: border-box; max-width: 100%;
     background: var(--panel-bg); border: 1px solid var(--accent); border-radius: var(--radius);
     padding: 6px 13px; font-size: 12px; line-height: 1.4; color: var(--accent); text-align: center;
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
-  #road-hint, #ifc-hint { border-style: dashed; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+  #road-hint, #ifc-hint, #ruler-hint { border-style: dashed; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
   #ifc-hint .sub { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
   #status.error { border-color: var(--danger); color: var(--danger); }
   #busy-hint::before {
@@ -503,13 +506,15 @@
   .btn-block.accent { border-color: var(--accent); color: var(--accent); }
 
   /* Kleines Panel direkt über der Bausteinleiste (#dock, bottom: 56px) */
-  #ifc-panel {
+  #ifc-panel, #ruler-panel {
     display: none; position: fixed; bottom: 132px; left: 50%; transform: translateX(-50%);
     z-index: 24; width: 210px;
     background: var(--panel-bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   }
   #ifc-panel .kv { flex-direction: column; align-items: flex-start; gap: 1px; }
+  #ruler-panel .kv { padding: 2px 0; }
+  #ruler-panel .v { font-variant-numeric: tabular-nums; }
   #ifc-panel #ifc-error:empty { display: none; }
   #ifc-actions { display: flex; gap: 6px; }
   #ifc-actions .btn-block { flex: 1 1 0; margin-top: 10px; padding: 6px 8px; }
@@ -575,6 +580,12 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border-strong); }
 
+  /* Sieben Werkzeugkarten: auf schmalen Fenstern etwas enger, damit die Leiste nicht über den Rand läuft */
+  @media (max-width: 1150px) {
+    .pal-card { width: 66px; padding: 9px 2px 8px; }
+    .pal-name { font-size: 0.72em; letter-spacing: 0; }
+    .pal-icon { width: 34px; }
+  }
   @media (max-width: 1000px) {
     #footer { display: none; }
     /* Ohne Fußleiste rutscht der Kartenknopf nach unten, bleibt aber unter der Bausteinleiste (#dock, bottom: 56px) */
@@ -693,6 +704,7 @@
 <div id="notices">
   <div id="road-hint">Baustraße: Punkte im Gelände setzen</div>
   <div id="ifc-hint"></div>
+  <div id="ruler-hint"></div>
   <div id="busy-hint"></div>
   <div id="status"></div>
 </div>
@@ -738,6 +750,23 @@
 <div id="help-panel" class="panel">
   <div class="sec"><span data-i18n="helpBtn">Hilfe</span><span class="act" id="help-close" data-i18n="close">Schließen</span></div>
   <div id="help-body"></div>
+</div>
+
+<div id="ruler-panel">
+  <div class="sec"><span data-i18n="rulerTitle">Messen</span></div>
+  <div class="body">
+    <div class="kv"><span class="k" data-i18n="rulerPts">Punkte</span><span class="v" id="ruler-n">–</span></div>
+    <div class="kv"><span class="k" data-i18n="rulerH">Horizontal</span><span class="v" id="ruler-h">–</span></div>
+    <div class="kv"><span class="k" data-i18n="rulerS">Schräg (im Raum)</span><span class="v" id="ruler-s">–</span></div>
+    <div class="kv"><span class="k" data-i18n="rulerDz">Höhenunterschied</span><span class="v" id="ruler-dz">–</span></div>
+    <div class="kv"><span class="k" data-i18n="rulerSlope">Gefälle</span><span class="v" id="ruler-slope">–</span></div>
+    <div class="kv"><span class="k" data-i18n="rulerZ0">Höhe Start</span><span class="v" id="ruler-z0">–</span></div>
+    <div class="kv"><span class="k" data-i18n="rulerZ1">Höhe Ende</span><span class="v" id="ruler-z1">–</span></div>
+    <div id="ifc-actions">
+      <button class="btn-block" id="ruler-new" data-i18n="rulerNew">Neu messen</button>
+      <button class="btn-block accent" id="ruler-close" data-i18n="rulerClose">Beenden</button>
+    </div>
+  </div>
 </div>
 
 <div id="ifc-panel">
