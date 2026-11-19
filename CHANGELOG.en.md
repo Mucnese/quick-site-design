@@ -1,0 +1,112 @@
+# Changelog
+
+All notable changes to Quick-Site-Design, newest first. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); releases are named by date (year-month-day)
+because there are no fixed version numbers. German version: [CHANGELOG.md](CHANGELOG.md).
+
+Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy**.
+
+## 2026-11-19
+
+### Added
+- **Measure:** tool in the toolbar. Click points on terrain and buildings; every segment shows its
+  horizontal length and height difference (two decimals). The window gives totals (horizontal and in
+  space), height difference, slope in percent and the heights of start and end.
+- Changelog (this file) and a link to it in the help window.
+- Files for contributing: contribution guide, code of conduct, security policy, templates for bug
+  reports and suggestions, automatic checks on every push, third-party licences.
+
+### Changed
+- Help window: “Close” stays at the top, only the text scrolls.
+- No fog when zooming out; the background behind the terrain is light.
+- Dark interface only; the light/dark choice is gone.
+- Left column: address input and overview never scroll, only the data window does; the footer with
+  copyright, source code and legal notice is always visible.
+- The map (OpenStreetMap) has its own button at the bottom left.
+- Hints and messages appear uniformly at the top centre (12 px).
+
+## 2026-11-17
+
+### Added
+- “Being processed / rendered” hint while loading large building models and IFC files.
+- IFC export: buildings are cut off cleanly and straight at the rectangle.
+
+### Legal and privacy
+- Liability disclaimer in the legal notice, README, guide and help.
+- Privacy statement: transfer to the USA (Data Privacy Framework), to the United Kingdom (adequacy
+  decision), note on Photon, up to 144 map tiles.
+
+## 2026-11-16
+
+### Added
+- IFC export optionally contains roads, excavations, cranes and containers as separate building
+  elements, with colours.
+- IFC export can convert to another coordinate system (UTM, Gauss-Krüger, Austria; DHDN/MGI only
+  accurate to about 1 to 2 m).
+- While drawing a road or excavation, every segment shows its horizontal length.
+
+### Changed
+- Manual IFC placement: points alternately on the structure and on the terrain (A, A, B, B).
+- Better text contrast, more opaque windows, faster panning with the middle and right button.
+- Map: finer zoom level, the labels look smaller.
+
+### Fixed
+- On left click the view briefly twisted and swung back.
+
+## 2026-11-14
+
+### Added
+- **IFC import:** load structures as IFC files. With a georeference and the same coordinate system as the
+  terrain they are placed automatically, otherwise by hand using two point pairs. web-ifc is loaded
+  only on the first import.
+
+## 2026-11-13
+
+### Added
+- **Address bar** with place suggestions (Photon) and links to the terrain model and building model of
+  the state; coordinates can be typed in directly.
+- Help button, short help and user guide (German and English).
+- IFC export: absolute coordinates selectable, fuller coordinate reference and site position.
+
+### Changed
+- All links open in a new tab.
+- The drawing preview follows the terrain.
+
+## 2026-11-12
+
+### Added
+- **Excavation** as a new tool; finish haul roads and excavations with a right-click, “Add point”, slope
+  angle.
+- **Swept path of a semi-trailer** check (sheet 736.107.2, Kanton Luzern).
+- **Map** (OpenStreetMap) as a base on the terrain (switch, off by default).
+- Read XYZ files, with a choice of coordinate system; limits for very large GeoTIFFs.
+- Table of geoportals: formats, building model column, Austria.
+- Overview with total quantities for roads and excavations.
+- More Liebherr mobile cranes from the data sheets.
+
+## 2026-11-11
+
+### Added
+- Haul road with longitudinal slope and selectable embankment, cut and fill.
+- Terrain: level of detail adapts to the zoom automatically.
+- Sliders with a number field for typing.
+- IFC export as a card in the toolbar.
+
+### Fixed
+- The view no longer rotates while panning; container editor repaired; the point window no longer jitters.
+
+## 2026-09-17
+
+### Added
+- Tower crane as a generic model, mobile cranes with real axle count and dimensions.
+
+## 2026-09-16
+
+### Added
+- **IFC export** of terrain and buildings via a rectangle in the top view.
+- Attribution for the sample data (CC BY 4.0).
+
+## 2026-09-15
+
+- First published version: load terrain (GeoTIFF) and buildings (CityGML), place containers, tower cranes
+  and mobile cranes, check crane radii. GPLv3.

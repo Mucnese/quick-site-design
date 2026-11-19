@@ -75,6 +75,12 @@ test('web-ifc liegt lokal vor, mit Lizenztext, und steht nicht fest im HTML', fu
   assert.ok(indexHtml.indexOf('<script src="lib/web-ifc') < 0, 'web-ifc darf nur nachgeladen werden');
 });
 
+test('Änderungsprotokoll (Deutsch und Englisch) liegt vor und die Hilfe verlinkt es', function () {
+  ['CHANGELOG.md', 'CHANGELOG.en.md'].forEach(function (rel) { assert.ok(fs.existsSync(path.join(ROOT, rel)), rel + ' fehlt'); });
+  const ui = fs.readFileSync(path.join(ROOT, 'src/ui.js'), 'utf8');
+  assert.ok(ui.indexOf('blob/main/CHANGELOG.md') > 0 && ui.indexOf('blob/main/CHANGELOG.en.md') > 0, 'Hilfe verlinkt das Änderungsprotokoll nicht');
+});
+
 test('keine CDN-Verweise', function () {
   assert.ok(!/<script[^>]+src=["']https?:\/\//.test(indexHtml), 'ein <script src> zeigt auf einen fremden Server');
 });
