@@ -27,6 +27,8 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 - CityGML files over 300 MB are rejected before reading.
 
 ### Fixed
+- Road/excavation: after moving a node, a click anywhere on the map moved the whole road if “Move” had been
+  clicked before. Move mode now ends as soon as a node is touched.
 - Measure: the preview to the mouse was choppy. It now follows every mouse movement and only moves one line piece
   and one point; the exact point on buildings follows as soon as the mouse rests briefly.
 

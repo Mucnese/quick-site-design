@@ -912,6 +912,24 @@ await test('Punkt hinzufügen: Klick im Modus trifft keinen vorhandenen Stützpu
   assert.strictEqual(k.obj.params.points.length, 3);
 });
 
+await test('Stützpunkt verschieben: danach verschiebt ein Klick irgendwo nicht die ganze Straße (auch nicht nach "Verschieben")', async function () {
+  const k = await nodeEditorScope('road');
+  const before = JSON.parse(JSON.stringify(k.obj.params.points));
+  // "Verschieben" (ganzes Objekt) war angeklickt, dann wird stattdessen ein Stützpunkt gewählt und versetzt
+  findButton(k.s.document.getElementById('param-panel'), k.s.T('move')).fire('click');
+  k.s.__bridge.raycaster._results = [{ point: { x: before[0].x, y: 0, z: before[0].z }, object: { userData: { __nodeIndex: 0 } } }];
+  k.s.onCanvasClick({ clientX: 0, clientY: 0 });
+  k.s.__bridge.raycaster._results = [{ point: { x: before[0].x + 5, y: 0, z: before[0].z + 7 }, object: { userData: {} } }];
+  k.s.onCanvasClick({ clientX: 1, clientY: 1 });
+  const afterNode = JSON.parse(JSON.stringify(k.obj.params.points));
+  assert.ok(Math.abs(afterNode[0].x - (before[0].x + 5)) < 1e-6, 'Stützpunkt versetzt');
+  assert.ok(Math.abs(afterNode[1].x - before[1].x) < 1e-6 && Math.abs(afterNode[1].z - before[1].z) < 1e-6, 'andere Punkte bleiben');
+  // Klick irgendwo auf die Karte: die Straße bleibt stehen
+  k.s.__bridge.raycaster._results = [{ point: { x: 80, y: 0, z: -60 }, object: { userData: {} } }];
+  k.s.onCanvasClick({ clientX: 2, clientY: 2 });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(k.obj.params.points)), afterNode, 'die ganze Straße darf nicht mitwandern');
+});
+
 /* ---------- Baugrube: Böschungswinkel im Fenster ---------- */
 
 await test('Baugrube: Winkel-Regler (20 bis 90°, Standard 90°) im Werkzeug- und im Editorfenster', function () {

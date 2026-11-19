@@ -2901,6 +2901,7 @@ function onCanvasClick(event) {
   if (hasNodes(sel)) {
     const hit = raycastRoadNode(event);
     if (hit !== null) {
+      moveMode = false;                       // wer einen Stützpunkt anfasst, will nicht mehr die ganze Straße verschieben
       setActiveNode(hit);
       setStatus(T('nodePicked'));
       return;
@@ -2909,6 +2910,7 @@ function onCanvasClick(event) {
       const pt = raycastTerrain(event);
       if (pt) {
         moveRoadNode(sel, activeRoadNode(), pt.x, pt.z);
+        moveMode = false;                     // sonst verschiebt der nächste Klick irgendwo die ganze Straße mit
         setActiveNode(null);
         showObjectEditor(sel.id);
         setStatus(T('nodeMoved'));
