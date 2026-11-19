@@ -1623,6 +1623,23 @@ await test('Linke Taste auf einen Punkt: OrbitControls pausiert, die Kamera dreh
   assert.strictEqual(s.__bridge.controls.enabled, true);
 });
 
+await test('Mausrad nach einem Klick: ein verlorenes Loslassen sperrt OrbitControls nicht, und die Kamerafahrt zum Punkt hält das Zoomen nicht auf', async function () {
+  const s = await scopeWithTerrain();
+  const cam = s.__bridge.camera, ctl = s.__bridge.controls;
+  ctl.target.set(0, 0, 0);
+  cam.position.set(0, 100, 100);
+  setTerrainHit(s, 30, 5, -20);
+  s.onOrbitPointerDown(orbitEvent(s));
+  assert.strictEqual(ctl.enabled, false);
+  s.onCanvasWheel({ buttons: 0 });                 // Taste ist längst oben, pointerup kam nie an
+  assert.strictEqual(ctl.enabled, true, 'Zoomen muss wieder möglich sein');
+  assert.strictEqual(s.isPivotDragging(), false);
+
+  s.focusOnPoint(30, 5, -20);
+  s.onCanvasWheel({ buttons: 0 });
+  assert.deepStrictEqual({ cam: vm.runInContext("camGoal", s), focus: vm.runInContext("focusGoal", s) }, { cam: null, focus: null }, 'laufende Fahrt endet');
+});
+
 await test('Klick mit zitternder Hand: wenige Pixel Weg drehen die Ansicht nicht, erst größere Bewegung dreht ohne Sprung', async function () {
   const s = await scopeWithTerrain();
   const cam = s.__bridge.camera;

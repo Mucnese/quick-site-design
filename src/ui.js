@@ -2845,6 +2845,11 @@ function endOrbitDrag() {
   window.removeEventListener('pointercancel', endOrbitDrag);
 }
 
+function onCanvasWheel(event) {
+  if (pivotDrag && !(event.buttons & 1)) endOrbitDrag();
+  settleCameraFlight();
+}
+
 function isPivotDragging() { return pivotDrag !== null; }
 
 function onCanvasPointerCancel() { pressInfo = null; rectStart = null; }
@@ -3156,6 +3161,9 @@ function initUI() {
   dom.addEventListener('pointerup', onCanvasPointerUp);
   dom.addEventListener('pointercancel', onCanvasPointerCancel);
   window.addEventListener('pointerdown', onOrbitPointerDown, true);
+  // Mausrad: eine laufende Kamerafahrt zum Klickpunkt endet, sonst zieht sie die Kamera zurück;
+  // ging das Loslassen verloren, ist OrbitControls wieder frei (controls.enabled blieb sonst aus)
+  dom.addEventListener('wheel', onCanvasWheel, true);
   window.addEventListener('blur', endOrbitDrag);
   dom.addEventListener('pointerleave', onCanvasPointerCancel);
   window.addEventListener('keydown', onKeyDown);

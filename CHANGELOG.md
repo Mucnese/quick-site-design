@@ -30,6 +30,9 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 ### Behoben
 - Straße/Baugrube: Nach dem Versetzen eines Stützpunkts verschob ein Klick irgendwo auf der Karte die ganze Straße,
   wenn zuvor „Verschieben“ angeklickt war. Der Verschiebemodus endet jetzt, sobald ein Stützpunkt angefasst wird.
+- Nach dem Anklicken eines Punkts ließ sich manchmal nicht mehr zoomen: die Kamerafahrt zum Punkt konnte bei kleinem
+  Gelände nie ankommen und zog die Kamera zurück. Das Mausrad beendet die Fahrt jetzt, und das Fahrtziel liegt immer im
+  erlaubten Zoombereich.
 - Messen: die Vorschau zur Maus ruckelte. Sie folgt jetzt jeder Mausbewegung und verschiebt nur ein Linienstück und
   einen Punkt; der genaue Punkt auf Gebäuden wird nachgezogen, sobald die Maus kurz steht.
 

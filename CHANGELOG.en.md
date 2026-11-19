@@ -29,6 +29,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 ### Fixed
 - Road/excavation: after moving a node, a click anywhere on the map moved the whole road if “Move” had been
   clicked before. Move mode now ends as soon as a node is touched.
+- After clicking a point, zooming sometimes no longer worked: with a small terrain the camera move to the point could
+  never arrive and kept pulling the camera back. The mouse wheel now ends the move, and its target always lies within
+  the allowed zoom range.
 - Measure: the preview to the mouse was choppy. It now follows every mouse movement and only moves one line piece
   and one point; the exact point on buildings follows as soon as the mouse rests briefly.
 

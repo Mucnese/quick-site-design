@@ -3736,6 +3736,20 @@ function frameObjects(objs) {
   camGoal = new THREE.Vector3(cx + dx * dist, focusGoal.y + dy * dist, cz + dz * dist);
 }
 
+/* Beendet eine laufende Kamerafahrt starr am Ziel: das Zentrum springt zum Fahrtziel, die Kamera
+   verschiebt sich um denselben Betrag (Abstand und Blickrichtung bleiben). Wer währenddessen
+   zoomt oder zieht, soll nicht gegen die Fahrt ankämpfen, die die Kamera sonst zurückzieht. */
+function settleCameraFlight() {
+  if (focusGoal) {
+    camera.position.x += focusGoal.x - controls.target.x;
+    camera.position.y += focusGoal.y - controls.target.y;
+    camera.position.z += focusGoal.z - controls.target.z;
+    controls.target.copy(focusGoal);
+  }
+  focusGoal = null;
+  camGoal = null;
+}
+
 /* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
 function updateControls() {
   // Fahren Zentrum und Kamera gemeinsam (Klick auf einen Punkt, Einrahmen), mit demselben Schritt: dann
@@ -3814,7 +3828,10 @@ function focusOnPoint(x, y, z, zoom) {
   if (!(len > 0.001)) return;
   // Blickrichtung beibehalten, Abstand auf einen nahen Arbeitsabstand ziehen
   const span = TERRAIN ? Math.max(TERRAIN.w, TERRAIN.d) : 500;
-  const want = Math.max(Math.min(len, span * 0.35), span * 0.12);
+  let want = Math.max(Math.min(len, span * 0.35), span * 0.12);
+  // Außerhalb von minDistance/maxDistance schiebt OrbitControls die Kamera jedes Bild zurück,
+  // die Fahrt käme nie an, und das Zoomen ginge nicht mehr
+  want = Math.max(controls.minDistance, Math.min(controls.maxDistance, want));
   camGoal = new THREE.Vector3(x + dx / len * want, y + dy / len * want, z + dz / len * want);
 }
 
@@ -4977,6 +4994,8 @@ if (typeof module !== 'undefined' && module.exports) {
     initSharedResources: initSharedResources,
     getScene: function () { return scene; },
     focusOnPoint: focusOnPoint,
+    settleCameraFlight: settleCameraFlight,
+    getCameraGoals: function () { return { cam: camGoal, focus: focusGoal }; },
     getControls: function () { return controls; },
     getCamera: function () { return camera; },
     setTopView: setTopView,

@@ -1572,6 +1572,40 @@ test('Kamerafahrt auf einen Punkt (Klick): Kamera und Drehzentrum bewegen sich g
   assert.ok(Math.abs(ctl.target.x - (-60)) < 1e-6 && Math.abs(ctl.target.z - (-40)) < 1e-6, 'Zentrum steht am Punkt');
 });
 
+test('Kamerafahrt auf einen Punkt: Ziel liegt im erlaubten Zoombereich, sonst zieht OrbitControls die Kamera für immer zurück und Zoomen geht nicht mehr', function () {
+  terrainForExportTests();
+  const cam = app.getCamera(), ctl = app.getControls();
+  [{ w: 20, d: 20 }, { w: 400, d: 400 }, { w: 20000, d: 20000 }].forEach(function (size) {
+    const saved = app.getTerrain();
+    saved.w = size.w; saved.d = size.d;
+    ctl.maxDistance = size.w * 3;          // wie frameTerrain es für das Gelände setzt
+    ctl.target.set(0, 0, 0);
+    cam.position.set(100, 80, 140);
+    app.focusOnPoint(5, 5, 5);
+    const g = app.getCameraGoals();
+    const dist = Math.hypot(g.cam.x - g.focus.x, g.cam.y - g.focus.y, g.cam.z - g.focus.z);
+    assert.ok(dist >= ctl.minDistance - 1e-9 && dist <= ctl.maxDistance + 1e-9,
+      'Abstand ' + dist.toFixed(1) + ' m liegt nicht in [' + ctl.minDistance + ', ' + ctl.maxDistance + '] (Gelände ' + size.w + ' m)');
+  });
+});
+
+test('Mausrad während der Kamerafahrt: Fahrt endet starr am Punkt, danach gewinnt der Zoom', function () {
+  terrainForExportTests();
+  const cam = app.getCamera(), ctl = app.getControls();
+  ctl.target.set(0, 0, 0);
+  cam.position.set(100, 80, 140);
+  app.focusOnPoint(-60, 10, -40);
+  for (let i = 0; i < 3; i++) app.updateControls();      // mitten in der Fahrt
+  const off = [cam.position.x - ctl.target.x, cam.position.y - ctl.target.y, cam.position.z - ctl.target.z];
+  app.settleCameraFlight();
+  assert.deepStrictEqual(app.getCameraGoals(), { cam: null, focus: null }, 'keine Fahrt mehr offen');
+  assert.ok(Math.abs(ctl.target.x + 60) < 1e-9 && Math.abs(ctl.target.z + 40) < 1e-9, 'Zentrum steht am Punkt');
+  const off2 = [cam.position.x - ctl.target.x, cam.position.y - ctl.target.y, cam.position.z - ctl.target.z];
+  off.forEach(function (c, i) { assert.ok(Math.abs(c - off2[i]) < 1e-9, 'Abstand und Richtung bleiben, nichts springt'); });
+  for (let i = 0; i < 20; i++) app.updateControls();
+  assert.ok(Math.abs(ctl.target.x + 60) < 1e-9, 'danach zieht nichts mehr an der Kamera');
+});
+
 /* ---------- Draufsicht: keine Trägheitsdrehung ---------- */
 
 test('Draufsicht schaltet die OrbitControls-Trägheit aus, sonst dreht sich die Ansicht nach einer Drehgeste von selbst weiter', function () {
