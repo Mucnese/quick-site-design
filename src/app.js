@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* =========================================================
    Quick-Site-Design  –  Kernlogik
    Einheiten: 1 Three.js-Einheit = 1 Meter

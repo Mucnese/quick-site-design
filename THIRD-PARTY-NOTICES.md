@@ -1,11 +1,11 @@
 # Drittsoftware und Drittdaten / Third-party software and data
 
-Quick-Site-Design selbst steht unter der **GNU General Public License, Version 3** (siehe [LICENSE](LICENSE)).
+Quick-Site-Design selbst steht unter der **GNU General Public License, Version 3 oder später** (siehe [LICENSE](LICENSE)).
 Die folgenden Bestandteile stammen von Dritten und behalten ihre eigenen Lizenzen. Alle sind mit der
 GPLv3 verträglich. Sie liegen unverändert im Ordner `lib/`; die Prüfsummen stehen in
 [`lib/SHA256SUMS`](lib/SHA256SUMS) und werden von `node test/validate-html.js` geprüft.
 
-Quick-Site-Design itself is licensed under the **GNU General Public License, version 3** (see
+Quick-Site-Design itself is licensed under the **GNU General Public License, version 3 or later** (see
 [LICENSE](LICENSE)). The components below come from third parties and keep their own licences. All are
 compatible with the GPLv3. They are included unmodified in `lib/`; checksums are in
 [`lib/SHA256SUMS`](lib/SHA256SUMS) and verified by `node test/validate-html.js`.

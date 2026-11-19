@@ -313,7 +313,7 @@ Copyright © 2026 Haoran Li
 GNU General Public License, version 3 or later. See [LICENSE](LICENSE).
 
 In short: the software may be used, distributed and modified. A distributed
-modified version must also be under the GPLv3, with its source available.
+modified version must also be under the GPL (version 3 or later), with its source available.
 
 The software is provided without any warranty. The results are rough aids and replace
 neither design nor structural analysis nor surveying. The author's liability is excluded

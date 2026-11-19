@@ -2,9 +2,12 @@
 <!--
   Quick-Site-Design
   Copyright (C) 2026  Haoran Li
+  SPDX-License-Identifier: GPL-3.0-or-later
 
   Dieses Programm ist freie Software: Sie können es unter den Bedingungen
-  der GNU General Public License, Version 3, weitergeben und/oder ändern.
+  der GNU General Public License, wie von der Free Software Foundation
+  veröffentlicht, entweder in Version 3 der Lizenz oder (nach Ihrer Wahl)
+  in jeder späteren Version weitergeben und/oder ändern.
 
   Die Veröffentlichung erfolgt in der Hoffnung, dass es nützlich ist,
   jedoch OHNE JEDE GEWÄHR, auch ohne die implizite Gewähr der
@@ -24,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-IJeUVKRdYVr3FPqX5FmNMzJ8o+GZfeSMs1om4XyJkfI=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pTaucdswqD9EDXnmHFJ2mqMf7HXxQL9QFczxjT5iI3o=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -655,7 +658,7 @@
  </div>
 
   <div id="about">
-    <span>Quick-Site-Design · © 2026 Haoran Li · GPL v3</span>
+    <span>Quick-Site-Design · © 2026 Haoran Li · GPL v3+</span>
     <a href="https://github.com/Mucnese/quick-site-design"
        target="_blank" rel="noopener noreferrer"
        data-i18n="sourceCode">Quelltext auf GitHub</a>
@@ -798,6 +801,7 @@
 <script src="lib/three.min.js"></script>
 <script src="lib/OrbitControls.js"></script>
 <script src="lib/geotiff.js"></script><script>
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* =========================================================
    Quick-Site-Design  –  Kernlogik
    Einheiten: 1 Three.js-Einheit = 1 Meter
@@ -5769,6 +5773,7 @@ function ifcPreviewPlacement(model) {
    Export für Tests
    ========================================================= */
 
+// SPDX-License-Identifier: GPL-3.0-or-later
 /* =========================================================
    Quick-Site-Design  –  Bedienoberfläche
    ========================================================= */

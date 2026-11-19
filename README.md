@@ -309,8 +309,8 @@ Copyright © 2026 Haoran Li
 GNU General Public License, Version 3 oder später. Siehe [LICENSE](LICENSE).
 
 In Kurzform: Die Software darf genutzt, weitergegeben und verändert werden.
-Wird eine veränderte Fassung weitergegeben, muss auch diese unter der GPLv3
-stehen und der Quelltext offenliegen.
+Wird eine veränderte Fassung weitergegeben, muss auch diese unter der GPL (Version 3
+oder später) stehen und der Quelltext offenliegen.
 
 Die Software wird ohne jede Gewährleistung bereitgestellt. Die Ergebnisse sind
 überschlägige Hilfen und ersetzen weder Planung noch Statik noch Vermessung. Die Haftung

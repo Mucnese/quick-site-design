@@ -284,7 +284,7 @@ Schlüssel haben** — dafür gibt es einen Test.
 nicht mitgebaut. Ändert sich etwas an geladenen Fremdinhalten, muss die
 Datenschutzerklärung nachgezogen werden.
 
-Lizenz GPLv3, Copyright 2026 Haoran Li. Der Vermerk steht im Kopf von
+Lizenz GPL-3.0-or-later (Version 3 oder später), Copyright 2026 Haoran Li. Der Vermerk steht im Kopf von
 `index.html`, unten links in der Anwendung und in beiden READMEs.
 
 ---

@@ -1,6 +1,6 @@
 # Quick-Site-Design — Entwicklernotizen
 
-Copyright © 2026 Haoran Li · GNU GPL v3
+Copyright © 2026 Haoran Li · GNU GPL v3 oder später
 
 Kurzreferenz für die Weiterarbeit. Alles Weitere steht im Code.
 

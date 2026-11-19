@@ -11,7 +11,7 @@ willkommen. / Thanks for your interest. Bug reports, suggestions, corrections to
 
 ### Vorab
 
-- Alle Beiträge stehen unter der **GNU General Public License v3** wie das Projekt selbst (siehe [LICENSE](LICENSE)).
+- Alle Beiträge stehen unter der **GNU General Public License v3 oder später** (GPL-3.0-or-later) wie das Projekt selbst (siehe [LICENSE](LICENSE)).
 - Es gilt der [Verhaltenskodex](CODE_OF_CONDUCT.md).
 - Sicherheitslücken bitte **nicht** öffentlich melden, sondern wie in [SECURITY.md](SECURITY.md) beschrieben.
 - Das Werkzeug ist eine Planungshilfe und ersetzt keine Statik oder Bemessung. Änderungen an Krandaten oder
@@ -56,7 +56,7 @@ Datenschutzerklärung denkbar.
 
 Mit `Signed-off-by: Name <E-Mail>` in jeder Commit-Nachricht (`git commit -s`) bestätigst du das
 [Developer Certificate of Origin 1.1](https://developercertificate.org/): dass du den Beitrag selbst geschrieben hast oder
-berechtigt bist, ihn unter der GPLv3 einzureichen. Es gibt keinen Lizenzvertrag (CLA); du behältst das Urheberrecht an
+berechtigt bist, ihn unter der GPLv3 oder später einzureichen. Es gibt keinen Lizenzvertrag (CLA); du behältst das Urheberrecht an
 deinem Beitrag.
 
 ### Datenquellen und Tabellen
@@ -71,7 +71,7 @@ nennt die Seite und was dort steht (ob DGM, Format, Lizenz). Gleichzeitig änder
 
 ### Before you start
 
-- All contributions are under the **GNU General Public License v3**, like the project itself (see [LICENSE](LICENSE)).
+- All contributions are under the **GNU General Public License v3 or later** (GPL-3.0-or-later), like the project itself (see [LICENSE](LICENSE)).
 - The [Code of Conduct](CODE_OF_CONDUCT.md) applies.
 - Please do **not** report security issues publicly; follow [SECURITY.md](SECURITY.md).
 - The tool is a planning aid and does not replace structural design. Changes to crane data or calculation methods need
@@ -112,7 +112,7 @@ servers (fonts, counters, map services) are only conceivable with user consent a
 
 By adding `Signed-off-by: Name <email>` to every commit message (`git commit -s`) you confirm the
 [Developer Certificate of Origin 1.1](https://developercertificate.org/): that you wrote the contribution or are entitled
-to submit it under the GPLv3. There is no contributor licence agreement (CLA); you keep the copyright to your contribution.
+to submit it under the GPLv3 or later. There is no contributor licence agreement (CLA); you keep the copyright to your contribution.
 
 ### Data sources and tables
 

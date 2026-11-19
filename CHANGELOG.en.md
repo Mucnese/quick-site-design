@@ -8,6 +8,10 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-19
 
+### Legal and privacy
+- Licence unified as **GPL version 3 or later** (program header, legal notice, README, contribution guide); the
+  program header carries the SPDX identifier `GPL-3.0-or-later`.
+
 ### Added
 - **Measure:** tool in the toolbar. Click points on terrain and buildings; every segment shows its
   horizontal length and height difference (two decimals). The window gives totals (horizontal and in

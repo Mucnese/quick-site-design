@@ -9,6 +9,10 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-19
 
+### Rechtliches und Datenschutz
+- Lizenz einheitlich **GPL Version 3 oder später** (Programmkopf, Impressum, README, Beitragshinweise); der
+  Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
+
 ### Neu
 - **Messen:** Werkzeug in der Leiste. Punkte auf Gelände und Gebäuden anklicken; an jeder Strecke stehen
   die waagerechte Länge und der Höhenunterschied (zwei Nachkommastellen). Das Fenster nennt Summen
