@@ -26,6 +26,10 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 - The libraries in `lib/` have checksums (`lib/SHA256SUMS`); a test detects changes.
 - CityGML files over 300 MB are rejected before reading.
 
+### Fixed
+- Measure: the preview to the mouse was choppy. It now follows every mouse movement and only moves one line piece
+  and one point; the exact point on buildings follows as soon as the mouse rests briefly.
+
 ### Changed
 - Help window: “Close” stays at the top, only the text scrolls.
 - No fog when zooming out; the background behind the terrain is light.

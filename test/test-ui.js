@@ -449,7 +449,7 @@ await test('IFC-Panel: Bezugssystem der Datei wählbar, anderes System sperrt "l
 
 /* ---------- Messen ---------- */
 
-const rulerOf = function (s) { return vm.runInContext('({ active: rulerActive, done: rulerDone, pts: rulerPts, labels: rulerLabels })', s); };
+const rulerOf = function (s) { return vm.runInContext('({ active: rulerActive, done: rulerDone, pts: rulerPts, labels: rulerAllLabels() })', s); };
 
 await test('Messen: Karte in der Leiste, Punkte anklicken, Strecken mit zwei Nachkommastellen, Panel mit Summen, Rücktaste, Neustart, Esc', async function () {
   const s = await scopeWithTerrain();
@@ -1309,6 +1309,31 @@ await test('Großes Gebäudemodell: Hinweis "wird verarbeitet/gerendert" erschei
   ['busyGml', 'busyGmlRender', 'busyIfc'].forEach(function (k) {
     assert.ok(s.__bridge.STRINGS.de[k] && s.__bridge.STRINGS.en[k], 'Text in beiden Sprachen: ' + k);
   });
+});
+
+await test('Messen: die Vorschau zur Maus verschiebt dieselben Objekte, statt bei jeder Bewegung neue zu bauen (sonst ruckelt es)', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  s.startRuler();
+  setTerrainHit(s, 0, 5, 0);
+  s.rulerClick({ clientX: 1, clientY: 1 });
+  s.rulerMove({ clientX: 2, clientY: 2 }, { x: 10, y: 5, z: 0 });
+  const sceneKids = s.__bridge.scene ? s.__bridge.scene.children.length : null;
+  const labels1 = rulerOf(s);
+  assert.strictEqual(labels1.labels.length, 1, 'ein Schild zur Maus');
+  assert.strictEqual(labels1.labels[0].text, '10.00 m · Δ 0.00 m');
+  for (let i = 0; i < 50; i++) s.rulerMove({ clientX: 2, clientY: 2 }, { x: 10 + i, y: 5 + i * 0.1, z: i });
+  if (sceneKids !== null) assert.strictEqual(s.__bridge.scene.children.length, sceneKids, 'keine neuen Objekte pro Bewegung');
+  const l = rulerOf(s).labels;
+  assert.strictEqual(l.length, 1);
+  assert.strictEqual(l[0].text, Math.hypot(59, 49).toFixed(2) + ' m · Δ +4.90 m');
+  assert.strictEqual(l[0].live, true);
+  // Klick macht daraus ein festes Schild, die Vorschau ist weg
+  setTerrainHit(s, 20, 5, 0);
+  s.rulerClick({ clientX: 3, clientY: 3 });
+  const after = rulerOf(s);
+  assert.strictEqual(after.labels.length, 1);
+  assert.strictEqual(after.labels[0].live, false);
 });
 
 await test('CityGML: zu große Dateien werden vor dem Lesen abgelehnt, mit Meldung in beiden Sprachen', async function () {

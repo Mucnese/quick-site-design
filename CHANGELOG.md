@@ -27,6 +27,10 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 - Die Bibliotheken in `lib/` haben Prüfsummen (`lib/SHA256SUMS`); ein Test erkennt Veränderungen.
 - CityGML-Dateien über 300 MB werden vor dem Lesen abgelehnt.
 
+### Behoben
+- Messen: die Vorschau zur Maus ruckelte. Sie folgt jetzt jeder Mausbewegung und verschiebt nur ein Linienstück und
+  einen Punkt; der genaue Punkt auf Gebäuden wird nachgezogen, sobald die Maus kurz steht.
+
 ### Geändert
 - Hilfefenster: „Schließen“ bleibt oben stehen, nur der Text scrollt.
 - Kein Nebel mehr beim Herauszoomen; der Hintergrund hinter dem Gelände ist hell.

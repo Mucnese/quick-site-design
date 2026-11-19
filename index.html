@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pTaucdswqD9EDXnmHFJ2mqMf7HXxQL9QFczxjT5iI3o=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WMPJIrLx4T6+gNnOrZLoQb+Q4+WVfCSnlipliPkgKx8=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -7331,7 +7331,7 @@ let segLabelEls = [];
 function updateSegLabels() {
   const box = document.getElementById('seg-labels');
   if (!box) return;
-  const list = rulerActive ? rulerLabels : roadPreviewLabels;
+  const list = rulerActive ? rulerAllLabels() : roadPreviewLabels;
   const show = list.length && (rulerActive || isDrawTool(activeTool));
   const n = show ? list.length : 0;
   while (segLabelEls.length < n) {
@@ -7374,10 +7374,14 @@ function updatePointLabel() {
    Rechtsklick oder Leertaste beendet die Messung, ein weiterer Klick beginnt eine neue, Rücktaste nimmt den letzten
    Punkt zurück, Esc beendet das Werkzeug. */
 let rulerActive = false, rulerDone = false;
-let rulerPts = [], rulerHover = null, rulerGroup = null, rulerLabels = [], rulerMarkers = [], rulerHoverAt = 0;
+let rulerPts = [], rulerHover = null, rulerGroup = null, rulerStaticLabels = [], rulerHoverLabel = null, rulerMarkers = [];
+let rulerHoverMesh = null, rulerHoverMarker = null, rulerRefineTimer = null;
 
 function rulerFmt(v) { return v.toFixed(2); }
 function rulerSigned(v) { return (v >= 0.005 ? '+' : (v <= -0.005 ? '−' : '')) + rulerFmt(Math.abs(v)); }
+
+/* Alle Streckenschilder: die festen und, solange gemessen wird, das zur Maus */
+function rulerAllLabels() { return rulerHoverLabel ? rulerStaticLabels.concat([rulerHoverLabel]) : rulerStaticLabels; }
 
 function markRulerCard() {
   const cards = document.getElementById('palette').children;
@@ -7397,7 +7401,10 @@ function setRulerHint() {
 function clearRulerDrawing() {
   if (rulerGroup) { scene.remove(rulerGroup); disposeGroup(rulerGroup); rulerGroup = null; }
   rulerMarkers = [];
-  rulerLabels = [];
+  rulerStaticLabels = [];
+  rulerHoverLabel = null;
+  if (rulerHoverMesh) rulerHoverMesh.visible = false;
+  if (rulerHoverMarker) rulerHoverMarker.visible = false;
 }
 
 function rulerRenderPanel() {
@@ -7416,42 +7423,80 @@ function rulerRenderPanel() {
   set('ruler-z1', rulerFmt(st.zEnd) + ' m');
 }
 
-/* Zeichnet Linienzug, Punkte und Streckenschilder neu (mit dem Punkt unter der Maus als letztem, solange gemessen wird) */
+function rulerLabelFor(p, q, live) {
+  const h = Math.hypot(q.x - p.x, q.z - p.z);
+  return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 + 0.12, z: (p.z + q.z) / 2,
+           text: rulerFmt(h) + ' m · Δ ' + rulerSigned(q.y - p.y) + ' m', live: live };
+}
+
+function rulerMarker() {
+  const m = new THREE.Mesh(GEO.sphere, MAT.measure);
+  m.renderOrder = 10;
+  return m;
+}
+
+/* Baut die festen Teile neu (nur bei Klick, Rücktaste, Neustart): Linienzug, Punkte, Schilder, Fenster */
 function drawRuler() {
   clearRulerDrawing();
-  const pts = rulerHover && !rulerDone ? rulerPts.concat([rulerHover]) : rulerPts.slice();
-  if (pts.length) {
+  if (rulerPts.length) {
     const g = new THREE.Group();
-    if (pts.length >= 2) {
-      g.add(thickLine(pts.map(function (p) { return new THREE.Vector3(p.x, p.y + 0.12, p.z); }), 0.5, MAT.drawPreview, false));
+    if (rulerPts.length >= 2) {
+      g.add(thickLine(rulerPts.map(function (p) { return new THREE.Vector3(p.x, p.y + 0.12, p.z); }), 0.5, MAT.drawPreview, false));
     }
-    pts.forEach(function (p) {
-      const m = new THREE.Mesh(GEO.sphere, MAT.measure);
+    rulerPts.forEach(function (p) {
+      const m = rulerMarker();
       m.position.set(p.x, p.y + 0.12, p.z);
-      m.renderOrder = 10;
       g.add(m);
       rulerMarkers.push(m);
     });
     scene.add(g);
     rulerGroup = g;
-    const st = rulerStats(pts);
-    st.segments.forEach(function (s, i) {
-      const p = pts[i], q = pts[i + 1];
-      rulerLabels.push({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 + 0.12, z: (p.z + q.z) / 2,
-                         text: rulerFmt(s.h) + ' m · Δ ' + rulerSigned(s.dz) + ' m',
-                         live: !rulerDone && !!rulerHover && i === st.segments.length - 1 });
-    });
+    for (let i = 1; i < rulerPts.length; i++) rulerStaticLabels.push(rulerLabelFor(rulerPts[i - 1], rulerPts[i], false));
   }
+  updateRulerHover();
   updateRulerScale();
   rulerRenderPanel();
   setRulerHint();
 }
 
+/* Die Vorschau zur Maus: ein einziges Stück Linie und ein Punkt, die nur verschoben werden (keine neuen Objekte pro
+   Mausbewegung), dazu das Schild. Sonst ruckelte die Messung. */
+function updateRulerHover() {
+  const show = rulerActive && !rulerDone && rulerHover && rulerPts.length;
+  if (!show) {
+    rulerHoverLabel = null;
+    if (rulerHoverMesh) rulerHoverMesh.visible = false;
+    if (rulerHoverMarker) rulerHoverMarker.visible = false;
+    return;
+  }
+  if (!rulerHoverMesh) {
+    rulerHoverMesh = new THREE.Mesh(GEO.box, MAT.drawPreview);
+    rulerHoverMesh.renderOrder = 9;
+    scene.add(rulerHoverMesh);
+    rulerHoverMarker = rulerMarker();
+    scene.add(rulerHoverMarker);
+  }
+  const a = rulerPts[rulerPts.length - 1], b = rulerHover;
+  const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+  const flat = Math.sqrt(dx * dx + dz * dz), len = Math.sqrt(flat * flat + dy * dy);
+  const m = rulerHoverMesh;
+  m.visible = len > 1e-6;
+  m.position.set((a.x + b.x) / 2, (a.y + b.y) / 2 + 0.12, (a.z + b.z) / 2);
+  m.rotation.order = 'YZX';
+  m.rotation.y = -Math.atan2(dz, dx);
+  m.rotation.z = Math.atan2(dy, flat);
+  m.scale.set(len, 0.2, 0.5);
+  rulerHoverMarker.visible = true;
+  rulerHoverMarker.position.set(b.x, b.y + 0.12, b.z);
+  rulerHoverLabel = rulerLabelFor(a, b, true);
+}
+
 /* Hält die Punkte unabhängig vom Zoom gleich groß; pro Bild aufgerufen */
 function updateRulerScale() {
-  if (!rulerMarkers.length) return;
+  const list = rulerMarkers.concat(rulerHoverMarker && rulerHoverMarker.visible ? [rulerHoverMarker] : []);
+  if (!list.length) return;
   const fov = camera.fov * Math.PI / 180;
-  rulerMarkers.forEach(function (m) {
+  list.forEach(function (m) {
     const d = camera.position.distanceTo(m.position);
     const r = (d * Math.tan(fov / 2) * 2 / window.innerHeight) * (MEASURE_PIXELS / 2);
     m.scale.set(r, r, r);
@@ -7471,6 +7516,7 @@ function startRuler() {
 }
 
 function stopRuler() {
+  if (rulerRefineTimer) { clearTimeout(rulerRefineTimer); rulerRefineTimer = null; }
   rulerActive = false; rulerDone = false; rulerPts = []; rulerHover = null;
   clearRulerDrawing();
   markRulerCard();
@@ -7508,15 +7554,21 @@ function rulerRemoveLast() {
   drawRuler();
 }
 
-/* Vorschau zum Zeigerpunkt; höchstens alle 80 ms, damit die Strahlen über die Gebäude nicht bremsen */
-function rulerMove(event) {
+/* Vorschau zur Maus. Bei jeder Bewegung sofort mit dem Geländepunkt, den onCanvasMove ohnehin schon berechnet hat
+   (billig, glatt); steht die Maus kurz still, wird der Punkt mit Gebäuden genau nachgezogen. Der teure Strahl über das
+   Gebäudemodell läuft so nie bei jeder Bewegung. */
+function rulerMove(event, terrainPt) {
   if (!rulerActive || rulerDone || !rulerPts.length) return;
-  const now = Date.now();
-  if (now - rulerHoverAt < 80) return;
-  rulerHoverAt = now;
-  const g = raycastGround(event);
-  rulerHover = g ? { x: g.point.x, y: g.point.y, z: g.point.z } : null;
-  drawRuler();
+  rulerHover = terrainPt ? { x: terrainPt.x, y: terrainPt.y, z: terrainPt.z } : null;
+  updateRulerHover();
+  if (rulerRefineTimer) clearTimeout(rulerRefineTimer);
+  rulerRefineTimer = setTimeout(function () {
+    rulerRefineTimer = null;
+    if (!rulerActive || rulerDone) return;
+    const g = raycastGround(event);
+    rulerHover = g ? { x: g.point.x, y: g.point.y, z: g.point.z } : rulerHover;
+    updateRulerHover();
+  }, 120);
 }
 
 /* ---------- Dateiimport ---------- */
@@ -8583,7 +8635,7 @@ function onCanvasMove(event) {
   if (rectSelectActive && rectStart && pt) {
     updateRectDragPreview(rectStart, { x: pt.x, z: pt.z });
   }
-  if (rulerActive) rulerMove(event);
+  if (rulerActive) rulerMove(event, pt);
   if (isDrawTool(activeTool) && roadPoints.length) {
     if (pt) setRoadPreview(roadPoints, { x: pt.x, z: pt.z }, activeTool === 'pit');
   }
