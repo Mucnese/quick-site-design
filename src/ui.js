@@ -31,6 +31,7 @@ const STRINGS = {
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
     ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
+    gmlTooBig: 'Die CityGML-Dateien sind zusammen {s} MB groß, mehr als {m} MB schafft der Browser nicht. Bitte kleinere Ausschnitte laden.',
     busyGml: 'Gebäudemodell wird verarbeitet … bei großen Dateien kann das einige Sekunden dauern.', busyGmlRender: 'Gebäudemodell wird gerendert …',
     busyIfc: 'IFC-Datei wird gelesen und gerendert … bei großen Dateien kann das einige Sekunden dauern.',
     ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
@@ -183,6 +184,7 @@ const STRINGS = {
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
     ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
+    gmlTooBig: 'The CityGML files are {s} MB together; the browser cannot handle more than {m} MB. Please load smaller extracts.',
     busyGml: 'Building model is being processed … large files can take a few seconds.', busyGmlRender: 'Building model is being rendered …',
     busyIfc: 'IFC file is being read and rendered … large files can take a few seconds.',
     ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
@@ -2344,9 +2346,20 @@ async function handleDemFiles(files, isDemo) {
   }
 }
 
+/* Obergrenze für CityGML: der Browser liest die Dateien als Text in den Speicher und parst sie als XML;
+   darüber hinaus bricht er mit einer unverständlichen Meldung ab oder steht still. Schätzwert, nicht gemessen. */
+const GML_MAX_BYTES = 300e6;
+
 async function handleGmlFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
+  const total = list.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+  if (total > GML_MAX_BYTES) {
+    const msg = T('gmlTooBig').replace('{s}', (total / 1e6).toFixed(0)).replace('{m}', String(GML_MAX_BYTES / 1e6));
+    setFileStatus('gml', msg, 'err');
+    setStatus(msg, true);
+    return;
+  }
   setFileStatus('gml', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Dateien', 'busy');
   showBusy('busyGml');
   await yieldToPaint();

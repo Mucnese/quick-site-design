@@ -1,0 +1,19 @@
+Beispieldaten für den Demo-Link (?demo=1)
+=========================================
+
+demo_dgm.tif   Digitales Geländemodell DGM1, 1000 x 1000 Punkte, 1 m Raster
+demo_lod2.gml  LoD2-Gebäudemodell (CityGML), 612 Gebäude, auf die Kachel zugeschnitten
+
+Bezugssystem: ETRS89 / UTM Zone 32N (EPSG:25832), Südwestecke E 692000 / N 5336000.
+
+Quelle:   Bayerische Vermessungsverwaltung
+          https://geodaten.bayern.de/opengeodata/OpenDataDetail.html?pn=dgm1
+Lizenz:   Creative Commons Namensnennung 4.0 International (CC BY 4.0)
+          https://creativecommons.org/licenses/by/4.0/deed.de
+Änderung: Ausschnitt (Kachel) und Zuschnitt auf das Gebiet der Demo. Inhaltlich wurden
+          die Daten nicht verändert.
+
+Die Namensnennung blendet die Anwendung ein, solange die Beispieldaten geladen sind
+(showAttribution in src/ui.js, DEMO_ATTRIBUTION). Wer die Dateien austauscht, muss diesen
+Eintrag und diese Datei mit ändern. Diese Daten fallen nicht unter die GPLv3 des Programms,
+sondern unter die oben genannte Lizenz.

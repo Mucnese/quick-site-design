@@ -70,7 +70,7 @@ vorher in GeoTIFF um, zum Beispiel mit GDAL.
 
 **Größe.** Das Tool liest jede Datei ganz in den Speicher. Es lehnt deshalb vor dem Lesen ab:
 Dateien über 1 GB, Kacheln über 100 Millionen Pixel und mehr als 150 Millionen Pixel (oder 2 GB)
-zusammen; bei XYZ mehr als 30 Millionen Punkte. Die Meldung nennt die Datei und die Zahl. Dann
+zusammen; bei XYZ mehr als 30 Millionen Punkte; bei CityGML insgesamt mehr als 300 MB; bei IFC mehr als 300 MB je Datei. Die Meldung nennt die Datei und die Zahl. Dann
 vorher einen Ausschnitt schneiden, etwa mit
 `gdal_translate -projwin <links> <oben> <rechts> <unten> -of GTiff eingabe.tif ausschnitt.tif`.
 Das betrifft vor allem Österreich, wo die BEV-Raster sehr groß sind.

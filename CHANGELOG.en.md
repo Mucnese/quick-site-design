@@ -14,7 +14,13 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   space), height difference, slope in percent and the heights of start and end.
 - Changelog (this file) and a link to it in the help window.
 - Files for contributing: contribution guide, code of conduct, security policy, templates for bug
-  reports and suggestions, automatic checks on every push, third-party licences.
+  reports and suggestions, third-party licences.
+
+### Security
+- **Content Security Policy** in `index.html`: own files only, the program script via its checksum (no
+  `unsafe-inline`), third-party servers only for map tiles (OSM) and the address search (Photon).
+- The libraries in `lib/` have checksums (`lib/SHA256SUMS`); a test detects changes.
+- CityGML files over 300 MB are rejected before reading.
 
 ### Changed
 - Help window: “Close” stays at the top, only the text scrolls.

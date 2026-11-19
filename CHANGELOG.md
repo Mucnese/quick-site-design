@@ -15,7 +15,13 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   (waagerecht und im Raum), Höhenunterschied, Gefälle in Prozent sowie die Höhen von Start und Ende.
 - Änderungsprotokoll (diese Datei) und Link dazu im Hilfefenster.
 - Dateien für die Mitarbeit: Beitragshinweise, Verhaltenskodex, Sicherheitshinweise, Vorlagen für
-  Fehlermeldungen und Änderungsvorschläge, automatische Prüfung bei jedem Push, Drittlizenzen.
+  Fehlermeldungen und Änderungsvorschläge, Drittlizenzen.
+
+### Sicherheit
+- **Content Security Policy** in `index.html`: nur eigene Dateien, das Programm-Skript über seine Prüfsumme (kein
+  `unsafe-inline`), Fremdserver nur für Kartenkacheln (OSM) und die Adresssuche (Photon).
+- Die Bibliotheken in `lib/` haben Prüfsummen (`lib/SHA256SUMS`); ein Test erkennt Veränderungen.
+- CityGML-Dateien über 300 MB werden vor dem Lesen abgelehnt.
 
 ### Geändert
 - Hilfefenster: „Schließen“ bleibt oben stehen, nur der Text scrollt.

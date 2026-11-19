@@ -1311,6 +1311,17 @@ await test('Großes Gebäudemodell: Hinweis "wird verarbeitet/gerendert" erschei
   });
 });
 
+await test('CityGML: zu große Dateien werden vor dem Lesen abgelehnt, mit Meldung in beiden Sprachen', async function () {
+  const s = await scopeWithTerrain();
+  const g = function (id) { return s.document.getElementById(id); };
+  let read = false;
+  await s.handleGmlFiles([{ name: 'riesig.gml', size: 400e6, text: function () { read = true; return Promise.resolve(''); } }]);
+  assert.strictEqual(read, false, 'nichts wird gelesen');
+  assert.ok(g('gml-status').textContent.indexOf('400 MB') >= 0 && g('gml-status').textContent.indexOf('300 MB') >= 0, g('gml-status').textContent);
+  assert.strictEqual(g('gml-status').className.indexOf('err') > 0, true);
+  assert.ok(s.__bridge.STRINGS.en.gmlTooBig.indexOf('{s}') > 0 && s.__bridge.STRINGS.en.gmlTooBig.indexOf('{m}') > 0);
+});
+
 await test('IFC-Import: Abbrechen mit Esc entfernt ein neues Bauwerk, ein schon platziertes behält seine Lage', async function () {
   const s = ifcScope(null);                                    // ohne Georeferenz
   const g = function (id) { return s.document.getElementById(id); };

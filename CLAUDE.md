@@ -108,6 +108,15 @@ Kurzabschnitte aus `STRINGS` (`helpS1T`..`helpS7B`, beide Sprachen) und verlinkt
 `BENUTZERANLEITUNG.md` bzw. `USER-GUIDE.en.md` im Hauptzweig. Wer eine Funktion ändert, die dort
 beschrieben ist, passt Anleitung (beide Sprachen) und Kurzhilfe mit an.
 
+**Content Security Policy.** `index.html` trägt eine CSP im `<meta>`-Element (`src/shell_head.html`); `build.py` ersetzt
+`__CSP_SCRIPT_HASH__` durch die Prüfsumme des einen Inline-Skripts, deshalb kein `unsafe-inline` für Skripte. Neue Fremdserver, Inline-Ereignisse
+(`onclick=`) oder `eval` brechen die Seite: erst die Richtlinie und die Datenschutzerklärung anpassen (`test/validate-html.js` prüft die Liste).
+Die Bibliotheken in `lib/` haben Prüfsummen in `lib/SHA256SUMS` (Test); bei einem Austausch Datei, Prüfsumme, `lib/LIESMICH.txt` und
+`THIRD-PARTY-NOTICES.md` zusammen ändern.
+
+**Open-Source-Dateien.** `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `THIRD-PARTY-NOTICES.md`, `CHANGELOG.md`/`CHANGELOG.en.md`,
+`.github/` (Vorlagen). Eine Datei `.github/workflows/ci.yml` darf lokal liegen, wird aber nicht hochgeladen (`.gitignore`). Neue sichtbare Änderung: Eintrag im Änderungsprotokoll (beide Sprachen).
+
 **Keine CDN-Verweise.** Die vier Bibliotheken liegen in `lib/` (web-ifc nur lokal und unverändert, Lizenztext `lib/LICENSE-web-ifc.txt`; es steht nicht als `<script>` im HTML, `getWebIfc` lädt es erst beim ersten IFC-Import). Ein neuer
 `<script src>` auf einen fremden Server würde die Datenschutzerklärung
 unrichtig machen.

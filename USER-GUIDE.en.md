@@ -68,7 +68,7 @@ first, for example with GDAL.
 
 **Size.** The tool reads each file completely into memory. Before reading it therefore rejects:
 files over 1 GB, tiles over 100 million pixels, and more than 150 million pixels (or 2 GB) in
-total; for XYZ more than 30 million points. The message names the file and the number. In that case
+total; for XYZ more than 30 million points; for CityGML more than 300 MB in total; for IFC more than 300 MB per file. The message names the file and the number. In that case
 cut out an area first, for example with
 `gdal_translate -projwin <left> <top> <right> <bottom> -of GTiff input.tif cutout.tif`.
 This mainly concerns Austria, where the BEV rasters are very large.

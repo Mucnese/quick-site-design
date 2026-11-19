@@ -224,7 +224,11 @@ quick-site-design/
 ├── BENUTZERANLEITUNG.md  user guide (German), the Help button links to it
 ├── USER-GUIDE.en.md      user guide (English)
 ├── PROJEKT.md            developer notes (German)
+├── CHANGELOG.en.md       changelog (CHANGELOG.md: German)
+├── CONTRIBUTING.md       contributing; CODE_OF_CONDUCT.md, SECURITY.md
+├── THIRD-PARTY-NOTICES.md  third-party software, data, trademarks
 ├── LICENSE
+├── .github/              issue and pull request templates
 ├── build.py
 ├── .gitignore
 ├── lib/
@@ -282,6 +286,15 @@ listed in [`lib/LIESMICH.txt`](lib/LIESMICH.txt) (German).
 For operation on a private web space, `index.html` together with the `lib/` and
 `demo/` folders in the web directory is sufficient. The `demo/` folder is only
 needed for the demo link.
+
+---
+
+## Contributing
+
+Contributions are welcome: [CONTRIBUTING.md](CONTRIBUTING.md) (reporting bugs, contributing code, certificate of origin),
+[code of conduct](CODE_OF_CONDUCT.md), [security policy](SECURITY.md), [changelog](CHANGELOG.en.md) and
+[third-party software and trademarks](THIRD-PARTY-NOTICES.md). Manufacturer and model names (for example Liebherr) are used
+only for identification; there is no affiliation with the manufacturers.
 
 ---
 

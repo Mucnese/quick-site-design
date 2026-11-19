@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitslücke melden / Report a vulnerability
+    url: https://github.com/Mucnese/quick-site-design/security/advisories/new
+    about: Bitte nicht öffentlich melden. / Please do not report publicly.
+  - name: Benutzeranleitung / User guide
+    url: https://github.com/Mucnese/quick-site-design/blob/main/BENUTZERANLEITUNG.md
+    about: Antworten auf häufige Fragen. / Answers to common questions.

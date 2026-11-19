@@ -221,7 +221,11 @@ quick-site-design/
 ├── BENUTZERANLEITUNG.md  Benutzeranleitung (Deutsch), der Hilfe-Knopf verweist darauf
 ├── USER-GUIDE.en.md      Benutzeranleitung (Englisch)
 ├── PROJEKT.md            Entwicklernotizen
+├── CHANGELOG.md          Änderungsprotokoll (CHANGELOG.en.md: Englisch)
+├── CONTRIBUTING.md       Mitarbeit; CODE_OF_CONDUCT.md, SECURITY.md
+├── THIRD-PARTY-NOTICES.md  Drittsoftware, Drittdaten, Marken
 ├── LICENSE
+├── .github/              Vorlagen für Issues und Pull Requests
 ├── build.py
 ├── .gitignore
 ├── lib/
@@ -280,6 +284,15 @@ Bezugsquellen stehen in [`lib/LIESMICH.txt`](lib/LIESMICH.txt).
 Für den Betrieb auf eigenem Webspace genügt `index.html` mitsamt den Ordnern
 `lib/` und `demo/` im Web-Verzeichnis. Der Ordner `demo/` wird nur für den
 Demo-Link gebraucht.
+
+---
+
+## Mitarbeit
+
+Beiträge sind willkommen: [CONTRIBUTING.md](CONTRIBUTING.md) (Fehler melden, Code beitragen, Herkunftsnachweis),
+[Verhaltenskodex](CODE_OF_CONDUCT.md), [Sicherheitshinweise](SECURITY.md), [Änderungsprotokoll](CHANGELOG.md) und
+[Drittsoftware und Marken](THIRD-PARTY-NOTICES.md). Hersteller- und Modellnamen (zum Beispiel Liebherr) dienen nur der
+Bezeichnung; es besteht keine Verbindung zu den Herstellern.
 
 ---
 
