@@ -41,7 +41,8 @@ gesperrt.
    verschieben (Ziehen mit einer beliebigen Maustaste, auch mit gedrückter Mitteltaste) und stufenlos zoomen (Mausrad,
    **+**/**−**). Ein Klick setzt einen **Pin**; daneben öffnet sich ein
    **Fenster mit den Links zu den Geoportalen** des Landes (Gelände- und Gebäudemodell), mit Ort und UTM-Werten
-   (schließen mit **×** oder **Esc**). Dieselben Links stehen links unter der Adressleiste. **Bereich wählen**
+   (schließen mit **×** oder **Esc**). Die Links stehen dann nur dort; unter der Adressleiste
+   erscheinen sie, wenn du dort etwas eintippst. **Bereich wählen**
    und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs; das Fenster hängt dann an der Nordkante. Die Karte verschwindet, sobald ein Gelände geladen ist.
    Alternativ: Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine
    Adresse oder einen Ort ein und wähle einen Vorschlag. Darunter erscheinen die Links zur

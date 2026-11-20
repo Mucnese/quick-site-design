@@ -31,7 +31,7 @@ const STRINGS = {
     smAttrib: '-Mitwirkende',
     smArea: 'Bereich ≈ {w} × {h} m', smPoint: 'Punkt', smClear: 'Auswahl löschen',
     smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
-    smHint: 'Gelände und Gebäude des Landes: Links links unter der Adresse. Danach die Dateien unter „Daten“ laden.',
+    smHint: 'Die Links zu Gelände und Gebäuden des Landes stehen im Fenster am Bereich. Danach die Dateien unter „Daten“ laden.',
     smPopHint: 'Dateien herunterladen und links unter „Daten“ laden.',
     osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
     osmNote: 'Aus. Beim Einschalten lädt Ihr Browser Kartenkacheln von tile.openstreetmap.org; dabei wird Ihre IP-Adresse übertragen.',
@@ -197,7 +197,7 @@ const STRINGS = {
     smAttrib: ' contributors',
     smArea: 'Area ≈ {w} × {h} m', smPoint: 'Point', smClear: 'Clear selection',
     smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
-    smHint: 'Terrain and buildings of the state: links on the left below the address. Then load the files under “Data”.',
+    smHint: 'The links to the state’s terrain and buildings are in the window at the area. Then load the files under “Data”.',
     smPopHint: 'Download the files and load them under “Data” on the left.',
     osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
     osmNote: 'Off. Turning it on makes your browser load map tiles from tile.openstreetmap.org; your IP address is transmitted.',
@@ -2367,7 +2367,7 @@ function smPointerUp(e) {
       smPopOpen = true;
       smSetSelectMode(false);                          // danach verschiebt Ziehen wieder die Karte
       const i = smRectInfo(smRect.a, smRect.b);
-      chooseAddrItem({ coord: true, main: i.clat.toFixed(5) + ', ' + i.clon.toFixed(5), sub: T('addrCoordSub'), lat: i.clat, lon: i.clon }, { noFly: true });
+      chooseAddrItem({ coord: true, main: i.clat.toFixed(5) + ', ' + i.clon.toFixed(5), sub: T('addrCoordSub'), lat: i.clat, lon: i.clon }, { noFly: true, fromMap: true });
     }
     smInfo();
     smRender();
@@ -2377,7 +2377,7 @@ function smPointerUp(e) {
     smPoint = { lon: d.start.lon, lat: d.start.lat };
     smRect = null;
     smPopOpen = true;
-    chooseAddrItem({ coord: true, main: d.start.lat.toFixed(5) + ', ' + d.start.lon.toFixed(5), sub: T('addrCoordSub'), lat: d.start.lat, lon: d.start.lon }, { noFly: true });
+    chooseAddrItem({ coord: true, main: d.start.lat.toFixed(5) + ', ' + d.start.lon.toFixed(5), sub: T('addrCoordSub'), lat: d.start.lat, lon: d.start.lon }, { noFly: true, fromMap: true });
     smInfo();
   }
   smRender();
@@ -2507,20 +2507,23 @@ async function chooseAddr(i) {
   return chooseAddrItem(it, {});
 }
 
-/* Ort übernehmen (aus der Liste oder aus einem Klick auf die Startkarte). opts.noFly: Karte nicht verschieben */
+/* Ort übernehmen (aus der Liste oder aus einem Klick auf die Startkarte). opts.noFly: Karte nicht verschieben;
+   opts.fromMap: Ort kommt von der Karte - dann zeigt nur das Fenster am Pin die Links, nicht die Adressleiste */
 async function chooseAddrItem(it, opts) {
   if (!it) return;
+  const fromMap = !!(opts && opts.fromMap);
   if (!(opts && opts.noFly) && isFinite(it.lat) && isFinite(it.lon)) smFlyTo(it.lat, it.lon, it.coord ? 16 : 15);
   if (addrTimer) clearTimeout(addrTimer);
   addrSeq++;                 // eine noch laufende Suche darf die Liste nicht wieder öffnen
   addrStale = false;
   addrPlace = it;
-  document.getElementById('addr-input').value = it.coord ? it.main : it.main + (it.sub ? ', ' + it.sub : '');
+  it.fromMap = fromMap;
+  if (!fromMap) document.getElementById('addr-input').value = it.coord ? it.main : it.main + (it.sub ? ', ' + it.sub : '');
   addrItems = []; addrSel = -1;
   renderAddrList(null);
   if (it.coord) {
     // Ort und Bundesland zu den Koordinaten nachfragen
-    const place = { coord: true, main: it.main, sub: '', lat: it.lat, lon: it.lon, country: '', state: '', city: '', pending: true };
+    const place = { coord: true, main: it.main, sub: '', lat: it.lat, lon: it.lon, country: '', state: '', city: '', pending: true, fromMap: fromMap };
     addrPlace = place;
     renderAddrResult();
     try {
@@ -2579,7 +2582,8 @@ function addrRow(src, kind) {
 function renderAddrResult() {
   const box = document.getElementById('addr-result');
   if (!box) return;
-  renderPlaceInto(box, addrPlace);
+  if (addrPlace && addrPlace.fromMap) { box.innerHTML = ''; box.style.display = 'none'; }     // von der Karte: nur das Fenster am Pin
+  else renderPlaceInto(box, addrPlace);
   smRenderPop();                       // das Fenster am Pin zeigt dieselben Links
 }
 

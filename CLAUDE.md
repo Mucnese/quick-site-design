@@ -245,7 +245,8 @@ Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList`, `smRe
 `ui.js`, Abschnitt Startkarte). Kacheln (`OSM_TILE_URL`) werden erst nach dem Klick auf `#sm-load` angefragt (Datenschutz:
 IP-Adresse an OSM); nie beim Start. Klick oder Rechteck rufen `chooseAddrItem` auf (Ort wie eine eingegebene Koordinate,
 Links des Landes über `geoSourcesFor`), `noFly` hält die Karte still. Der Klick setzt einen Pin (`#sm-marker`) und öffnet
-`#sm-pop` mit denselben Links wie die Adressleiste (`renderPlaceInto`, `smRenderPop`; folgt dem Pin, Esc und × schließen).
+`#sm-pop` mit den Links (`renderPlaceInto`, `smRenderPop`; folgt dem Pin, Esc und × schließen). Orte von der Karte tragen
+`fromMap`: dann bleibt `#addr-result` leer und das Eingabefeld unberührt; die Adressleiste zeigt die Links nur bei einer Eingabe dort.
 Achtung Stapelreihenfolge: `#sm-tiles` ist ein eigener Stapelkontext (`isolation`), sonst liegen die Kacheln (z-index = Stufe) über Pin und Fenster. Kein localStorage: die Einwilligung gilt nur bis zum
 Neuladen. Zoomen: stufenlos (`smZoomBy`, `smAnimStep`); Kacheln der nächsten ganzen Stufe werden skaliert, zwei grobe Unterlagen (3 und
 6 Stufen darunter) füllen Lücken, alte Kacheln bleiben, bis die neuen geladen UND eingeblendet sind (sonst blitzt der Hintergrund). Mit `?demo=1` erscheint sie nicht. Die Karte lädt kein Gelände; das tut weiterhin der Nutzer mit den Dateien.

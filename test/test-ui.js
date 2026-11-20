@@ -730,6 +730,36 @@ await test('Startkarte: Ort ohne Daten (nicht Deutschland oder Österreich) nenn
   assert.strictEqual(s.document.getElementById('sm-info').style.display, 'block', 'und die Größe unten');
 });
 
+await test('Startkarte: ein Pin zeigt die Links nur im Fenster am Pin; die Adressleiste zeigt sie erst, wenn dort etwas eingegeben wird', async function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  s.smFlyTo(48.1374, 11.5755, 16);
+  s.document.getElementById('addr-input').value = '';
+  const box = s.document.getElementById('sm-tiles');
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerUp({ clientX: 300, clientY: 200 });
+  assert.strictEqual(s.document.getElementById('sm-pop').style.display, 'block', 'Fenster am Pin');
+  assert.strictEqual(s.document.getElementById('addr-result').style.display, 'none', 'nicht noch einmal unter der Adresseingabe');
+  assert.strictEqual(s.document.getElementById('addr-input').value, '', 'das Eingabefeld bleibt leer');
+  assert.ok(vm.runInContext('addrPlace', s).fromMap);
+  // Rechteck: ebenso
+  s.document.getElementById('sm-select')._listeners.click[0]();
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 250, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 520, clientY: 400, buttons: 1 });
+  s.smPointerUp({ clientX: 520, clientY: 400 });
+  assert.strictEqual(s.document.getElementById('addr-result').style.display, 'none');
+  assert.strictEqual(s.document.getElementById('addr-input').value, '');
+  // Etwas in der Adressleiste gewählt: dort erscheinen die Links
+  await s.chooseAddrItem({ main: 'Marienplatz', sub: 'München', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
+  assert.strictEqual(s.document.getElementById('addr-result').style.display, 'block');
+  assert.ok(s.document.getElementById('addr-result').textContent.indexOf('geodaten.bayern.de') >= 0);
+  assert.strictEqual(s.document.getElementById('addr-input').value, 'Marienplatz, München');
+  // und danach wieder ein Pin: die Liste links verschwindet
+  box._listeners.pointerdown[0]({ button: 0, clientX: 320, clientY: 210, preventDefault: function () {} });
+  s.smPointerUp({ clientX: 320, clientY: 210 });
+  assert.strictEqual(s.document.getElementById('addr-result').style.display, 'none');
+});
+
 await test('Startkarte: sobald ein Gelände geladen ist, verschwindet sie; ohne Gelände kommt sie zurück', async function () {
   const s = await scopeWithTerrain();
   assert.strictEqual(s.document.getElementById('startmap').style.display, 'none');
