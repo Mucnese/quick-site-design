@@ -31,6 +31,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 - CityGML-Dateien über 300 MB werden vor dem Lesen abgelehnt.
 
 ### Behoben
+- Achslinie: die zweite Nachkommastelle der Länge verdeckte das „m“. Die Felder passen ihre Breite jetzt dem Text an.
 - Straße/Baugrube: Nach dem Versetzen eines Stützpunkts verschob ein Klick irgendwo auf der Karte die ganze Straße,
   wenn zuvor „Verschieben“ angeklickt war. Der Verschiebemodus endet jetzt, sobald ein Stützpunkt angefasst wird.
 - Nach dem Anklicken eines Punkts ließ sich manchmal nicht mehr zoomen: die Kamerafahrt zum Punkt konnte bei kleinem

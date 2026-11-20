@@ -569,6 +569,8 @@ await test('Achslinie: Felder über (Neigung) und unter (Länge) der Mittellinie
   assert.strictEqual(inputOf(1).value, '40.00');
   assert.strictEqual(inputOf(2).value, '-2');
   assert.strictEqual(inputOf(3).value, '30.00');
+  assert.strictEqual(inputOf(1).style.width, '6ch', 'Breite nach dem Text (5 Zeichen plus Rand), damit die Einheit frei bleibt');
+  assert.strictEqual(inputOf(0).style.width, '4ch');
   assert.strictEqual(els[0].className, 'axis-label up');
   assert.strictEqual(els[1].className, 'axis-label down');
 

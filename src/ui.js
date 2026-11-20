@@ -1625,6 +1625,11 @@ function parseAxisNumber(text) {
   return isFinite(v) ? v : null;
 }
 
+/* Feldbreite nach dem Text (plus Platz für die Ziffern am Rand), sonst verdeckt die letzte Stelle die Einheit */
+function fitAxisInput(input) {
+  input.style.width = (Math.max(3, String(input.value).length) + 1) + 'ch';
+}
+
 function makeAxisLabel(kind) {
   const wrap = document.createElement('div');
   wrap.className = 'axis-label ' + kind;
@@ -1638,6 +1643,7 @@ function makeAxisLabel(kind) {
   wrap.appendChild(unit);
   const entry = { wrap: wrap, input: input, kind: kind, ref: null };
   input.addEventListener('change', function () { applyAxisEdit(entry); });
+  input.addEventListener('input', function () { fitAxisInput(input); });
   input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { if (input.blur) input.blur(); }
     else if (e.key === 'Escape') { entry.cancel = true; if (input.blur) input.blur(); }
@@ -1653,12 +1659,12 @@ function applyAxisEdit(entry) {
   const part = obj && obj.group.userData.parts && obj.group.userData.parts[ref.index];
   if (entry.cancel) {                       // Esc: alten Wert wiederherstellen
     entry.cancel = false;
-    if (part) entry.input.value = entry.kind === 'up' ? axisSlopeText(part.slope) : axisLenText(part.len);
+    if (part) { entry.input.value = entry.kind === 'up' ? axisSlopeText(part.slope) : axisLenText(part.len); fitAxisInput(entry.input); }
     return;
   }
   if (!obj || !part) return;
   const v = parseAxisNumber(entry.input.value);
-  if (v === null) { entry.input.value = entry.kind === 'up' ? axisSlopeText(part.slope) : axisLenText(part.len); return; }
+  if (v === null) { entry.input.value = entry.kind === 'up' ? axisSlopeText(part.slope) : axisLenText(part.len); fitAxisInput(entry.input); return; }
   if (entry.kind === 'up') setRoadSectionSlope(obj, ref.index, v);
   else setRoadSectionLength(obj, ref.index, v);
   renderOverview();
@@ -1707,7 +1713,7 @@ function updateAxisLabels() {
     }
     e.ref = { objId: item.obj.id, index: item.index };
     const txt = e.kind === 'up' ? axisSlopeText(pt.slope) : axisLenText(pt.len);
-    if (e.input !== document.activeElement && e.input.value !== txt) e.input.value = txt;
+    if (e.input !== document.activeElement && e.input.value !== txt) { e.input.value = txt; fitAxisInput(e.input); }
     e.wrap.style.display = 'block';
     e.wrap.style.transform = 'translate(' + Math.round((v.x * 0.5 + 0.5) * window.innerWidth) + 'px, ' +
       Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, ' + (e.kind === 'up' ? '-125%' : '25%') + ')';

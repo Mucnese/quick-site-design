@@ -30,6 +30,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 - CityGML files over 300 MB are rejected before reading.
 
 ### Fixed
+- Axis line: the second decimal of the length covered the “m”. The fields now fit their width to the text.
 - Road/excavation: after moving a node, a click anywhere on the map moved the whole road if “Move” had been
   clicked before. Move mode now ends as soon as a node is touched.
 - After clicking a point, zooming sometimes no longer worked: with a small terrain the camera move to the point could
