@@ -216,6 +216,7 @@
     /* in der freien Fläche rechts neben dem linken Fenster, nie darunter */
     left: calc(var(--panel-w) + 28px); right: 14px; width: auto; max-width: 380px; margin: 0 auto; }
   #sm-consent .sm-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  #sm-consent .sm-place { font-size: 12.5px; font-weight: 600; margin: -4px 0 10px; word-break: break-word; }
   #sm-consent .sm-text { font-size: 12.5px; line-height: 1.5; color: var(--text-dim); margin-bottom: 10px; }
   #sm-tools { position: absolute; z-index: 4; right: 14px; top: 14px; display: none; flex-direction: column; align-items: flex-end; gap: 6px; }
   #sm-tools .btn-block { width: auto; margin: 0; padding: 6px 12px; }
@@ -678,9 +679,11 @@
   <div id="sm-consent" class="panel">
     <div class="sm-title" data-i18n="smTitle">Lade OpenStreetMap</div>
     <div class="sm-text" data-i18n="smConsent">Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen.</div>
+    <div class="sm-place" id="sm-consent-place" style="display:none"></div>
     <button class="btn-block accent" id="sm-load" data-i18n="smLoad">Karte laden</button>
   </div>
   <div id="sm-tools">
+    <button class="btn-block" id="sm-back" data-i18n="smBack" style="display:none">Zurück zum Gelände</button>
     <button class="btn-block" id="sm-select" data-i18n="smSelect">Bereich wählen</button>
     <div id="sm-zoom">
       <button class="btn-block" id="sm-in" aria-label="+">+</button>

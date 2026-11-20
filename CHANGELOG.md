@@ -14,6 +14,8 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
 
 ### Neu
+- **Anderen Ort wählen:** Wer in der Adressleiste einen Ort wählt, bevor die Karte geladen ist, sieht ihn im Kasten („Karte am Ort laden“) und kommt mit einem Klick dorthin.
+  Ist schon ein Gelände geladen (zum Beispiel die Demo) und der Ort liegt außerhalb, öffnet sich die Karte dort wieder; „Zurück zum Gelände“ oder Esc führt zurück.
 - **Nationale Bezugssysteme der EU:** Karte, Umrechnung und IFC-Export kennen jetzt die Systeme von Schweden, Finnland, Polen, Slowenien, Luxemburg, Portugal,
   Lettland, Litauen, Griechenland, Kroatien, Irland, Frankreich, Belgien, Estland, den Niederlanden, Tschechien und der Slowakei (an GDAL/PROJ auf wenige Millimeter
   geprüft). Neu sind dafür der Breitenursprung bei Gauß-Krüger, die Lambert-Kegelprojektion, die schiefe stereographische Abbildung (RD New) und Krovak (S-JTSK). Die IFC-Zielliste

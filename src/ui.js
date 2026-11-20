@@ -25,7 +25,7 @@ const STRINGS = {
     loadFirst: 'Zum Starten ein Geländemodell laden',
     smTitle: 'Lade OpenStreetMap',
     smConsent: 'Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen. Erst nach Ihrem Klick.',
-    smLoad: 'Karte laden',
+    smBack: 'Zurück zum Gelände', smLoad: 'Karte laden', smLoadAt: 'Karte am Ort laden', smConsentPlace: 'Ort: {p}',
     smSelect: 'Bereich wählen', smSelectOn: 'Bereich wählen: Rechteck aufziehen',
     smZoomIn: 'Vergrößern', smZoomOut: 'Verkleinern',
     smAttrib: '-Mitwirkende',
@@ -204,7 +204,7 @@ const STRINGS = {
     loadFirst: 'Load a terrain model to begin',
     smTitle: 'Load OpenStreetMap',
     smConsent: 'The map loads tiles from tile.openstreetmap.org. Your IP address is transmitted. Only after your click.',
-    smLoad: 'Load map',
+    smBack: 'Back to the terrain', smLoad: 'Load map', smLoadAt: 'Load map at the place', smConsentPlace: 'Place: {p}',
     smSelect: 'Select area', smSelectOn: 'Select area: drag a rectangle',
     smZoomIn: 'Zoom in', smZoomOut: 'Zoom out',
     smAttrib: ' contributors',
@@ -394,6 +394,7 @@ function applyLanguage() {
   const geo = document.getElementById('geoportal-link');
   geo.href = T('geoportalUrl');
   geo.title = T('geoportalsTip');
+  if (typeof smRender === 'function') smRender();       // Beschriftung des Kastens der Startkarte (hängt vom gewählten Ort ab)
 }
 
 /* ---------- Parameterschemata ---------- */
@@ -1584,12 +1585,14 @@ function updateTerrainInfo() {
     document.getElementById('stat-relief').textContent = '–';
     setNeedsData(true);
     renderOsmUi();
-    showStartMap(true);
+    smForced = false;
+    showStartMap();
     return;
   }
   setNeedsData(false);
   renderOsmUi();
-  showStartMap(false);
+  smForced = false;                                    // ein neues Gelände ist da: zurück zur 3D-Ansicht
+  showStartMap();
   document.getElementById('tile-label').textContent = t.label;
   document.getElementById('tile-size').textContent = Math.round(t.w) + ' × ' + Math.round(t.d) + ' m';
   document.getElementById('tile-grid').textContent = t.nx + ' × ' + t.nz;
@@ -2064,6 +2067,7 @@ function demStatusText(t) {
 let smConsent = false, smVisible = false;
 let smView = { lon: 10.5, lat: 50.6, z: 6 };
 let smSelectMode = false, smRect = null, smPoint = null, smDrag = null;
+let smForced = false;                              // Karte wieder geöffnet, obwohl ein Gelände geladen ist (Ort außerhalb gewählt)
 let smAnim = null, smAnimBusy = false, smRenderBusy = false;
 let smPopOpen = false, smPopKey = '', smCutOpen = false;              // Fenster am Pin mit den Links
 let smSettleAt = 0, smSettleTimer = null;       // seit wann alle Kacheln der Ansicht geladen sind
@@ -2117,7 +2121,18 @@ function smSchedule() {
 function smRender() {
   const consent = smEl('sm-consent'), tools = smEl('sm-tools'), attrib = smEl('sm-attrib');
   consent.style.display = smVisible && !smConsent ? 'block' : 'none';
-  tools.style.display = smVisible && smConsent ? 'flex' : 'none';
+  // Wurde schon ein Ort gewählt (Adresse eingetippt), nennt der Kasten ihn: ein Klick bringt direkt dorthin
+  const where = smVisible && !smConsent && smPoint && addrPlace && addrPlace.main
+    ? addrPlace.main + (addrPlace.sub && !addrPlace.coord ? ', ' + addrPlace.sub : '') : '';
+  const pl = smEl('sm-consent-place');
+  pl.style.display = where ? 'block' : 'none';
+  pl.textContent = where ? T('smConsentPlace').replace('{p}', where) : '';
+  smEl('sm-load').textContent = T(where ? 'smLoadAt' : 'smLoad');
+  const backOn = smVisible && smForced && !!TERRAIN;
+  tools.style.display = smVisible && (smConsent || backOn) ? 'flex' : 'none';
+  smEl('sm-back').style.display = backOn ? 'block' : 'none';
+  smEl('sm-select').style.display = smConsent ? 'block' : 'none';
+  smEl('sm-zoom').style.display = smConsent ? 'flex' : 'none';
   attrib.style.display = smVisible && smConsent ? 'block' : 'none';
   const box = smEl('sm-tiles');
   if (!smVisible || !smConsent) {
@@ -2198,8 +2213,21 @@ function smRender() {
   smRenderPop();
 }
 
-function showStartMap(on) {
-  const want = !!on && !demoRequested();
+/* Die Karte steht, solange kein Gelände geladen ist (außer mit ?demo=1, dort lädt gleich das Beispiel), und auf Wunsch (smForced)
+   über einem geladenen Gelände: Wer einen Ort außerhalb wählt, kommt so zu einer anderen Stadt. */
+/* Liegt der Ort (Breite/Länge) im geladenen Gelände? Bei einem Bezugssystem, das die Anwendung nicht kennt: nein. */
+function placeInsideTerrain(lat, lon) {
+  const t = typeof TERRAIN !== 'undefined' ? TERRAIN : null;
+  const def = t && crsGeoDefinition(t.epsg);
+  if (!t || !def || def.merc) return false;
+  const p = lonLatToCrs(def, lat, lon);
+  return Math.abs(p.e - t.originE) <= t.w / 2 && Math.abs(p.n - t.originN) <= t.d / 2;
+}
+
+function smShouldShow() { return smForced || (!TERRAIN && !demoRequested()); }
+
+function showStartMap() {
+  const want = smShouldShow();
   smVisible = want;
   smEl('startmap').style.display = want ? 'block' : 'none';
   smRender();
@@ -2493,6 +2521,7 @@ function initStartMap() {
   smEl('sm-load').addEventListener('click', function () { smConsent = true; smRender(); smInfo(); });
   smEl('sm-select').addEventListener('click', function () { smSetSelectMode(!smSelectMode); });
   smEl('sm-pop-close').addEventListener('click', function () { smPopOpen = false; smRenderPop(); });
+  smEl('sm-back').addEventListener('click', function () { smForced = false; showStartMap(); });
   smEl('sm-in').addEventListener('click', function () { smZoomBy(1); });
   smEl('sm-out').addEventListener('click', function () { smZoomBy(-1); });
   const box = smEl('sm-tiles');
@@ -2610,6 +2639,11 @@ async function chooseAddr(i) {
 async function chooseAddrItem(it, opts) {
   if (!it) return;
   const fromMap = !!(opts && opts.fromMap);
+  // Ist schon ein Gelände geladen und der Ort liegt außerhalb, öffnet sich die Karte dort (sonst bliebe nur die Linkliste)
+  if (!fromMap && !(opts && opts.noFly) && TERRAIN && isFinite(it.lat) && isFinite(it.lon) && !placeInsideTerrain(it.lat, it.lon)) {
+    smForced = true;
+    showStartMap();
+  }
   if (!(opts && opts.noFly) && isFinite(it.lat) && isFinite(it.lon)) smFlyTo(it.lat, it.lon, it.coord ? 16 : 15);
   if (addrTimer) clearTimeout(addrTimer);
   addrSeq++;                 // eine noch laufende Suche darf die Liste nicht wieder öffnen
@@ -2683,6 +2717,7 @@ function renderAddrResult() {
   if (addrPlace && addrPlace.fromMap) { box.innerHTML = ''; box.style.display = 'none'; }     // von der Karte: nur das Fenster am Pin
   else renderPlaceInto(box, addrPlace);
   smRenderPop();                       // das Fenster am Pin zeigt dieselben Links
+  if (!smConsent) smRender();          // noch keine Karte geladen: der Kasten nennt den gewählten Ort
 }
 
 /* Ort und Links zu Gelände- und Gebäudedaten in ein Feld schreiben (Adressleiste und Fenster am Pin) */
@@ -3652,6 +3687,7 @@ function isTypingTarget(event) {
 
 function onKeyDown(event) {
   if (event.key === 'Escape' && smPopOpen && smVisible) { smPopOpen = false; smRenderPop(); return; }
+  if (event.key === 'Escape' && smForced && smVisible && !isTypingTarget(event)) { smForced = false; showStartMap(); return; }
   if (event.key !== 'Escape' && isTypingTarget(event)) return;
   if ((event.key === ' ' || event.code === 'Space' || event.key === 'Enter') && rulerActive) {
     if (event.preventDefault) event.preventDefault();

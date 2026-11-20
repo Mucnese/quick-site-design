@@ -43,7 +43,7 @@ locked.
    **Copy** puts it on the clipboard. The links then appear
    only there; below the address bar they appear when you type something there. **Select area** and a dragged rectangle give the size and UTM values of the
    area; the window then hangs on its north edge. The map
-   disappears as soon as a terrain is loaded. Alternatively: type an address or place in the address bar at the top left (“Where is your
+   disappears as soon as a terrain is loaded. If you chose a place in the address bar before the map is loaded, the box names it and **Load map at the place** takes you straight there. **If a terrain is already loaded** (for example the demo) and you choose a place **outside** it, the map opens there again; **Back to the terrain** (or **Esc**) returns you to the 3D view, the terrain stays. Alternatively: type an address or place in the address bar at the top left (“Where is your
    construction site?”) and pick a suggestion. Below it you get the links to the terrain model
    (DGM) and building model (LoD2) pages of your German state; for Austria, the pages of the federal
    government and the state, **for all other EU countries** the pages of the national mapping agency (where an open

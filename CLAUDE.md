@@ -269,7 +269,9 @@ Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList`, `smRe
 `ui.js`, Abschnitt Startkarte). Kacheln (`OSM_TILE_URL`) werden erst nach dem Klick auf `#sm-load` angefragt (Datenschutz:
 IP-Adresse an OSM); nie beim Start. Klick oder Rechteck rufen `chooseAddrItem` auf (Ort wie eine eingegebene Koordinate,
 Links des Landes über `geoSourcesFor`), `noFly` hält die Karte still. Der Klick setzt einen Pin (`#sm-marker`) und öffnet
-`#sm-pop` mit den Links (`renderPlaceInto`, `smRenderPop`; folgt dem Pin, Esc und × schließen). Für Österreich (`country === 'AT'`) hängt `smAddCutBlock` einen `gdal_translate`-Befehl an (`smCutWindow`, `gdalCutCommand`,
+`#sm-pop` mit den Links (`renderPlaceInto`, `smRenderPop`; folgt dem Pin, Esc und × schließen). Die Karte steht auch über einem geladenen Gelände, wenn ein Ort außerhalb gewählt wird (`smForced`, `placeInsideTerrain`; Knopf `#sm-back`, Esc); ein
+neues Gelände (`updateTerrainInfo`) setzt `smForced` zurück. Vor dem Klick "Karte laden" nennt `#sm-consent-place` den gewählten Ort (Knopf `smLoadAt`).
+Für Österreich (`country === 'AT'`) hängt `smAddCutBlock` einen `gdal_translate`-Befehl an (`smCutWindow`, `gdalCutCommand`,
 `-projwin_srs EPSG:4326`: unabhängig vom Bezugssystem der Datei, auch 3035). Das Fenster scrollt (`#sm-pop-scroll`) und weicht
 neben den Pin aus, wenn es oben und unten nicht passt. Orte von der Karte tragen
 `fromMap`: dann bleibt `#addr-result` leer und das Eingabefeld unberührt; die Adressleiste zeigt die Links nur bei einer Eingabe dort.

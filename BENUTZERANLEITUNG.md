@@ -45,7 +45,7 @@ gesperrt.
    Rasterdatei (zum Beispiel BEV 1 m, über 1 GB) den Ausschnitt um den Pin (1000 × 1000 m) oder das Rechteck schneidet; **Kopieren**
    legt ihn in die Zwischenablage. Die Links stehen dann nur dort; unter der Adressleiste
    erscheinen sie, wenn du dort etwas eintippst. **Bereich wählen**
-   und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs; das Fenster hängt dann an der Nordkante. Die Karte verschwindet, sobald ein Gelände geladen ist.
+   und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs; das Fenster hängt dann an der Nordkante. Die Karte verschwindet, sobald ein Gelände geladen ist. Hast du in der Adressleiste einen Ort gewählt, bevor die Karte geladen ist, nennt der Kasten ihn, und **Karte am Ort laden** führt direkt dorthin. **Ist schon ein Gelände geladen** (zum Beispiel die Demo) und du wählst einen Ort **außerhalb**, öffnet sich die Karte dort wieder; **Zurück zum Gelände** (oder **Esc**) bringt dich zur 3D-Ansicht zurück, das Gelände bleibt.
    Alternativ: Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine
    Adresse oder einen Ort ein und wähle einen Vorschlag. Darunter erscheinen die Links zur
    Seite des Geländemodells (DGM) und des Gebäudemodells (LoD2) deines Bundeslandes, bei

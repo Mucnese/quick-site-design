@@ -823,13 +823,97 @@ await test('Startkarte: für Österreich nennt das Fenster einen Befehl zum Zusc
   assert.ok(body.textContent.indexOf(s.T('smCutToggle')) < 0, 'nur Österreich: ' + body.textContent.slice(0, 200));
 });
 
+await test('Startkarte: nach einer eingetippten Adresse nennt der Kasten den Ort, der Knopf heißt "Karte am Ort laden", ein Klick zeigt den Ort', async function () {
+  const s = startMapScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  assert.strictEqual(g('sm-consent-place').style.display, 'none', 'ohne Ort kein Ortsname');
+  assert.strictEqual(g('sm-load').textContent, s.T('smLoad'));
+  await s.chooseAddrItem({ main: 'Marienplatz', sub: '80331 München, Bayern', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
+  assert.strictEqual(g('sm-consent').style.display, 'block', 'der Kasten bleibt (Einwilligung vor den OSM-Kacheln)');
+  assert.strictEqual(g('sm-tiles').children.length, 0, 'noch keine Kachel angefragt');
+  assert.strictEqual(g('sm-consent-place').style.display, 'block');
+  assert.ok(g('sm-consent-place').textContent.indexOf('Marienplatz') >= 0 && g('sm-consent-place').textContent.indexOf('München') >= 0, g('sm-consent-place').textContent);
+  assert.strictEqual(g('sm-load').textContent, s.T('smLoadAt'));
+  assert.strictEqual(s.T('smLoadAt'), 'Karte am Ort laden');
+  g('sm-load')._listeners.click[0]();
+  const imgs = g('sm-tiles').children;
+  assert.ok(imgs.some(function (im) { return /\/15\/17\d{3}\/11\d{3}\.png$/.test(im.src); }), 'Kacheln der Stufe 15 bei München: ' + (imgs[0] && imgs[0].src));
+  assert.strictEqual(g('sm-pop').style.display, 'block', 'Pin und Fenster stehen am Ort');
+  // eine zweite Adresse bei geladener Karte: die Karte springt mit
+  await s.chooseAddrItem({ main: 'Rathausplatz', sub: '1010 Wien', lat: 48.2105, lon: 16.3588, country: 'AT', state: 'Wien' }, {});
+  const v = vm.runInContext('smView', s);
+  assert.ok(Math.abs(v.lat - 48.2105) < 1e-9 && Math.abs(v.lon - 16.3588) < 1e-9 && v.z === 15, JSON.stringify(v));
+});
+
+await test('Startkarte: Beschriftung des Kastens folgt der Sprache, auch mit gewähltem Ort', async function () {
+  const s = startMapScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  await s.chooseAddrItem({ main: 'Marienplatz', sub: 'München', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
+  s.__bridge.SETTINGS.language = 'en';
+  s.applyLanguage();
+  assert.strictEqual(g('sm-load').textContent, 'Load map at the place');
+  assert.ok(g('sm-consent-place').textContent.indexOf('Place: Marienplatz') === 0, g('sm-consent-place').textContent);
+  s.__bridge.SETTINGS.language = 'de';
+  s.applyLanguage();
+  assert.strictEqual(g('sm-load').textContent, 'Karte am Ort laden');
+});
+
 await test('Startkarte: sobald ein Gelände geladen ist, verschwindet sie; ohne Gelände kommt sie zurück', async function () {
   const s = await scopeWithTerrain();
   assert.strictEqual(s.document.getElementById('startmap').style.display, 'none');
-  s.showStartMap(true);
-  assert.strictEqual(s.document.getElementById('startmap').style.display, 'block');
+  vm.runInContext('TERRAIN = null', s);
   s.updateTerrainInfo();
-  assert.strictEqual(s.document.getElementById('startmap').style.display, 'none');
+  assert.strictEqual(s.document.getElementById('startmap').style.display, 'block');
+});
+
+await test('Startkarte bei geladenem Gelände (z. B. Demo): ein Ort außerhalb öffnet die Karte dort, ein Ort im Gelände nicht; Zurück und Esc schließen sie', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  const t = vm.runInContext('TERRAIN', s);
+  const mid = s.crsToLonLat(t.epsg, t.originE, t.originN);
+  // Ort mitten im Gelände: nur die Links, keine Karte
+  await s.chooseAddrItem({ main: 'Mitte', sub: 'Gelände', lat: mid.lat, lon: mid.lon, country: 'DE', state: 'Bayern' }, {});
+  assert.strictEqual(g('startmap').style.display, 'none', 'im Gelände bleibt die 3D-Ansicht');
+  // andere Stadt: die Karte öffnet sich, mit Zurück-Knopf und dem Ort im Kasten
+  await s.chooseAddrItem({ main: 'Rathausplatz', sub: '1010 Wien', lat: 48.2105, lon: 16.3588, country: 'AT', state: 'Wien' }, {});
+  assert.strictEqual(g('startmap').style.display, 'block');
+  assert.strictEqual(g('sm-consent').style.display, 'block', 'erst die Einwilligung');
+  assert.ok(g('sm-consent-place').textContent.indexOf('Rathausplatz') >= 0, g('sm-consent-place').textContent);
+  assert.strictEqual(g('sm-back').style.display, 'block', 'Zurück zum Gelände ist erreichbar, auch vor "Karte laden"');
+  assert.strictEqual(g('sm-tools').style.display, 'flex');
+  assert.strictEqual(g('sm-select').style.display, 'none', 'ohne Einwilligung nur der Zurück-Knopf');
+  g('sm-load')._listeners.click[0]();
+  assert.ok(g('sm-tiles').children.length > 0, 'Kacheln nach dem Klick');
+  assert.strictEqual(g('sm-select').style.display, 'block');
+  assert.strictEqual(g('sm-pop').style.display, 'block', 'Pin und Links der neuen Stadt');
+  // Zurück
+  g('sm-back')._listeners.click[0]();
+  assert.strictEqual(g('startmap').style.display, 'none');
+  assert.ok(vm.runInContext('TERRAIN', s), 'das Gelände ist unverändert da');
+  // wieder öffnen und mit Esc schließen (erst das Fenster am Pin, dann die Karte)
+  await s.chooseAddrItem({ main: 'Marienplatz', sub: 'München', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
+  const outside = !s.placeInsideTerrain(48.1374, 11.5755);
+  if (outside) {
+    assert.strictEqual(g('startmap').style.display, 'block');
+    s.onKeyDown({ key: 'Escape', target: {} });
+    assert.strictEqual(g('sm-pop').style.display, 'none', 'Esc schließt zuerst das Fenster');
+    assert.strictEqual(g('startmap').style.display, 'block');
+    s.onKeyDown({ key: 'Escape', target: {} });
+    assert.strictEqual(g('startmap').style.display, 'none', 'dann die Karte');
+  }
+});
+
+await test('Startkarte bei geladenem Gelände: ein neues Gelände schließt die Karte; mit ?demo=1 öffnet sie sich trotzdem für einen anderen Ort', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  s.window.location.search = '?demo=1';
+  await s.chooseAddrItem({ main: 'Rathausplatz', sub: '1010 Wien', lat: 48.2105, lon: 16.3588, country: 'AT', state: 'Wien' }, {});
+  assert.strictEqual(g('startmap').style.display, 'block', 'auch im Demo-Modus');
+  s.updateTerrainInfo();                                   // ein Gelände wird geladen
+  assert.strictEqual(g('startmap').style.display, 'none');
+  assert.strictEqual(vm.runInContext('smForced', s), false);
 });
 
 await test('Startkarte: eine gewählte Adresse setzt die Karte dorthin, auch vor "Karte laden" (ohne Kachelanfrage)', async function () {

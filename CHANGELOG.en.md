@@ -13,6 +13,8 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
+- **Choosing another place:** If you choose a place in the address bar before the map is loaded, the box names it (“Load map at the place”) and one click takes you there.
+  If a terrain is already loaded (for example the demo) and the place lies outside it, the map opens there again; “Back to the terrain” or Esc returns.
 - **National coordinate systems of the EU:** The map, the conversion and the IFC export now know the systems of Sweden, Finland, Poland, Slovenia, Luxembourg, Portugal,
   Latvia, Lithuania, Greece, Croatia, Ireland, France, Belgium, Estonia, the Netherlands, Czechia and Slovakia (checked against GDAL/PROJ to a few millimetres). New for this are the
   latitude origin for Gauss-Krüger, the Lambert conic projection, the oblique stereographic projection (RD New) and Krovak (S-JTSK). The IFC target list includes them.
