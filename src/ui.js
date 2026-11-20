@@ -68,7 +68,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken oder mit „Bereich wählen“ ein Rechteck aufziehen.\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken oder mit „Bereich wählen“ ein Rechteck aufziehen.\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU).\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -86,7 +86,7 @@ const STRINGS = {
     addrSimilar: 'Nichts zu „{q}“ gefunden. Ähnlich:', addrCoordSub: 'Ort und Bundesland werden beim Wählen ermittelt',
     addrCoordFail: 'Ort oder Bundesland konnte nicht ermittelt werden.', addrAt: 'Lage',
     addrSearching: 'Suche …', addrNone: 'Keine Treffer.', addrError: 'Die Suche ist gerade nicht erreichbar.',
-    addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Deutschland und Österreich).',
+    addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Länder der EU).',
     addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD2)',
     geoFmtTif: 'GeoTIFF, direkt ladbar', geoFmtXyz: 'XYZ-Text, direkt ladbar (Bezugssystem wählen)', geoFmtUnclear: 'Format unklar',
     geoNote_dgm025: 'Das DGM1 gibt es hier nur als XYZ-Text, GeoTIFF nur beim DGM025 (0,25 m).',
@@ -98,6 +98,12 @@ const STRINGS = {
     geoNote_unverified: 'Nicht geprüft.',
     geoNote_servicesOnly: 'Kein Download gefunden, nur Dienste.',
     geoNote_noAtBldg: 'Es gibt kein landesweites 3D-Gebäudemodell.',
+    geoNote_euNoOpenDem: 'Kein offenes Geländemodell geprüft. Das nationale Geoportal oder das INSPIRE-Geoportal der EU nennen Angebote.',
+    geoNote_noEuBldg: 'Kein amtliches 3D-Gebäudemodell geprüft.',
+    geoNote_euCheckFormat: 'Das Format steht auf der Seite nicht eindeutig; vor dem Laden prüfen (GeoTIFF wird direkt geladen).',
+    geoNote_euPartial: 'Nicht überall verfügbar.',
+    geoNote_euBldgNotCityGml: 'Als CityJSON, GeoPackage oder OBJ; Quick-Site-Design liest nur CityGML.',
+    geoNote_euUnreachable: 'Die Seite war bei der Prüfung nicht erreichbar.',
     xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
     xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
@@ -238,7 +244,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place or use “Select area” to drag a rectangle.\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place or use “Select area” to drag a rectangle.\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU).\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -256,7 +262,7 @@ const STRINGS = {
     addrSimilar: 'Nothing found for “{q}”. Similar:', addrCoordSub: 'Place and state are looked up when you choose it',
     addrCoordFail: 'The place or state could not be determined.', addrAt: 'Position',
     addrSearching: 'Searching …', addrNone: 'No results.', addrError: 'The search is not reachable right now.',
-    addrOnlyDeAt: 'No data sources are listed for this place (Germany and Austria only).',
+    addrOnlyDeAt: 'No data sources are listed for this place (EU countries only).',
     addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD2)',
     geoFmtTif: 'GeoTIFF, loads directly', geoFmtXyz: 'XYZ text, loads directly (choose the coordinate system)', geoFmtUnclear: 'Format unclear',
     geoNote_dgm025: 'The DGM1 is only offered as XYZ text here, GeoTIFF only for the DGM025 (0.25 m).',
@@ -268,6 +274,12 @@ const STRINGS = {
     geoNote_unverified: 'Not checked.',
     geoNote_servicesOnly: 'No download found, services only.',
     geoNote_noAtBldg: 'There is no nationwide 3D building model.',
+    geoNote_euNoOpenDem: 'No open terrain model checked. The national geoportal or the EU INSPIRE geoportal list offers.',
+    geoNote_noEuBldg: 'No official 3D building model checked.',
+    geoNote_euCheckFormat: 'The page does not state the format clearly; check before loading (GeoTIFF loads directly).',
+    geoNote_euPartial: 'Not available everywhere.',
+    geoNote_euBldgNotCityGml: 'As CityJSON, GeoPackage or OBJ; Quick-Site-Design reads CityGML only.',
+    geoNote_euUnreachable: 'The page could not be reached when checked.',
     xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
     xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
@@ -2686,6 +2698,12 @@ function renderPlaceInto(box, place) {
   const grp = function (key) { const g = document.createElement('div'); g.className = 'addr-grp'; g.textContent = T(key); box.appendChild(g); };
   grp('addrDem');
   src.dem.forEach(function (d) { box.appendChild(addrRow(d, 'dem')); });
+  if (src.demNote) {
+    const n = document.createElement('div');
+    n.className = 'addr-note';
+    n.textContent = T('geoNote_' + src.demNote);
+    box.appendChild(n);
+  }
   grp('addrBldg');
   src.bldg.forEach(function (b) { box.appendChild(addrRow(b, 'bldg')); });
   if (src.bldgNote) {

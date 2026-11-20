@@ -240,6 +240,13 @@ kein Lenk- und Knickwinkelgrenzwert, und das Heck schwingt beim Einlenken in der
 Fahrzeugvorlage und Umrisse; die Schleppkurven selbst stecken in Autodesk-Proxyobjekten und sind nicht lesbar. Neue
 Fahrzeuge: nur `SEMI_TRUCK` ändern und die Kontrollradien erneut prüfen, nicht Werte raten.
 
+**Geoportale der EU.** `GEO_EU` (nach ISO-Code, 25 Länder außer DE/AT) neben `GEO_ENTRIES` und den AT-Tabellen; `geoSourcesFor` liefert
+auch `demNote`. Regeln: nur Links, die bei der Prüfung antworteten; `fmt: 'tif'` nur, wo die Seite selbst GeoTIFF nennt, sonst
+`'unclear'` mit Hinweis; Länder ohne bekanntes offenes DGM tragen `demNote: 'euNoOpenDem'` statt eines geratenen Links. Quelle der
+Liste und der Lizenzen: Landesvermessungen und maps3d.io/dataset (Stand November 2026). Ein Test hält `GEO_EU` und beide README-Tabellen
+gleich. Photon sucht in der EU (`PHOTON_BBOX`, `isSearchCountry`), eingetippte Koordinaten gelten für die EU. Viele Länder liefern in einem
+eigenen Bezugssystem; `crsGeoDefinition` kennt nur UTM, Gauß-Krüger, MGI und Web-Mercator (Karte und IFC-Umrechnung dann nicht möglich).
+
 **Startkarte.** Solange `TERRAIN` null ist (`updateTerrainInfo` -> `showStartMap`), liegt `#startmap` über dem Canvas: eigene
 Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList`, `smRectInfo` in `app.js`, Darstellung und Maus in
 `ui.js`, Abschnitt Startkarte). Kacheln (`OSM_TILE_URL`) werden erst nach dem Klick auf `#sm-load` angefragt (Datenschutz:

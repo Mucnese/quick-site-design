@@ -2201,6 +2201,59 @@ test('Standortsuche: Datenquellen je Land - alle 16 Länder, Links stehen in der
   assert.strictEqual(app.geoSourcesFor({ country: 'DE', state: 'Atlantis' }), null);
 });
 
+test('Standortsuche: Datenquellen der übrigen EU-Länder - alle 25 Länder, Links in beiden README-Tabellen, Hinweise ohne geratene Links', function () {
+  const fs = require('fs'), path = require('path');
+  const readmes = ['../README.md', '../README.en.md'].map(function (f) { return fs.readFileSync(path.join(__dirname, f), 'utf8'); });
+  const eu = ['BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'];
+  assert.deepStrictEqual(Object.keys(app.GEO_EU).sort(), eu.slice().sort(), 'alle EU-Länder außer Deutschland und Österreich');
+  const seen = {};
+  eu.forEach(function (cc) {
+    const e = app.GEO_EU[cc];
+    assert.ok(e.name, cc + ': Name');
+    (e.dem || []).concat(e.bldg || []).forEach(function (x) {
+      assert.ok(/^https:\/\//.test(x.url), cc + ': nur https: ' + x.url);
+      assert.ok(!seen[x.url], 'doppelter Link ' + x.url);
+      seen[x.url] = true;
+      assert.ok(x.label, cc + ': Bezeichnung');
+      readmes.forEach(function (r, i) { assert.ok(r.indexOf(x.url) >= 0, cc + ': ' + x.url + ' fehlt in README' + (i ? '.en' : '')); });
+      if (x.fmt) assert.ok(['tif', 'xyz', 'unclear'].indexOf(x.fmt) >= 0, cc + ': Format ' + x.fmt);
+    });
+    // ohne Link muss ein Hinweis erklären, warum
+    if (!e.dem.length) assert.strictEqual(e.demNote, 'euNoOpenDem', cc);
+    if (!e.bldg.length) assert.strictEqual(e.bldgNote, 'noEuBldg', cc);
+    const src = app.geoSourcesFor({ country: cc, state: '', city: '' });
+    assert.ok(src && src.country === cc, cc);
+  });
+  const nl = app.geoSourcesFor({ country: 'NL', state: 'Utrecht', city: 'Utrecht' });
+  assert.strictEqual(nl.dem[0].fmt, 'tif');
+  assert.strictEqual(nl.bldg[0].note, 'euBldgNotCityGml', '3DBAG ist kein CityGML');
+  const lu = app.geoSourcesFor({ country: 'LU', state: '', city: 'Luxembourg' });
+  assert.strictEqual(lu.bldg.length, 1);
+  assert.strictEqual(app.geoSourcesFor({ country: 'bg', state: '' }).dem.length, 0, 'Kleinbuchstaben werden erkannt');
+  assert.strictEqual(app.geoSourcesFor({ country: 'GB', state: '' }), null, 'nicht in der EU');
+  assert.strictEqual(app.geoSourcesFor({ country: 'CH', state: 'Zürich' }), null);
+  // die Zusammenfassung im README nennt alle Länder ohne Link
+  ['Bulgarien', 'Griechenland', 'Irland', 'Kroatien', 'Litauen', 'Malta', 'Ungarn'].forEach(function (n) { assert.ok(readmes[0].indexOf(n) >= 0, n); });
+});
+
+test('Standortsuche: Photon-Vorschläge aus der ganzen EU, Länder außerhalb fallen weg', function () {
+  const mk = function (name, cc, city) { return { geometry: { coordinates: [5, 50] }, properties: { name: name, city: city, countrycode: cc } }; };
+  const r = app.parsePhoton({ features: [mk('Dam', 'NL', 'Amsterdam'), mk('Louvre', 'fr', 'Paris'), mk('Prado', 'ES', 'Madrid'),
+    mk('Bahnhofstrasse', 'CH', 'Zürich'), mk('Big Ben', 'GB', 'London'), mk('Wawel', 'PL', 'Kraków')] });
+  assert.deepStrictEqual(r.map(function (x) { return x.country; }), ['NL', 'FR', 'ES', 'PL']);
+});
+
+test('Standortsuche: Koordinaten in der ganzen EU werden erkannt, außerhalb nicht', function () {
+  const paris = app.parseCoordinates('48.8566 2.3522', null);
+  assert.ok(paris && Math.abs(paris.lat - 48.8566) < 1e-9 && Math.abs(paris.lon - 2.3522) < 1e-9, JSON.stringify(paris));
+  assert.ok(app.parseCoordinates('59.33 18.07', null), 'Stockholm');
+  assert.ok(app.parseCoordinates('38.72 -9.14', null), 'Lissabon');
+  assert.ok(app.parseCoordinates('35.9 14.5', null), 'Malta');
+  assert.ok(app.parseCoordinates('EPSG:25830 440000 4474000', null), 'Madrid in UTM 30');
+  assert.strictEqual(app.parseCoordinates('40.7 -74.0', null), null, 'New York liegt außerhalb');
+  assert.strictEqual(app.parseCoordinates('0 0', null), null);
+});
+
 /* ---------- IFC-Import: Platzierung ---------- */
 
 /* Wendet die Gruppen-Transformation (Drehung um y, Maßstab, Verschiebung) auf einen Punkt an */

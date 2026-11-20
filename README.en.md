@@ -210,6 +210,42 @@ message; the Gauss-Krüger systems MGI (EPSG:31254 to 31256) work.
 Data from other countries works too, as long as the GeoTIFF carries a projected
 coordinate system and the CityGML uses the same one.
 
+### Other EU countries
+
+Besides Germany and Austria, the address search names the pages for the terrain model and the building model of the other
+EU countries. The basis are the pages of the national mapping agencies and the overview at
+[maps3d.io/dataset](https://maps3d.io/dataset); all links answered in November 2026. **Only reachability and what the page
+states were checked:** where the page itself names GeoTIFF it says “GeoTIFF”; otherwise “not clear” (check before
+loading). Licence and resolution come from the providers' statements as listed by maps3d.io. Countries without a known open
+terrain model are listed below without a link instead of guessing one. Many countries deliver in their own coordinate
+system (for example EPSG:28992 in the Netherlands); the map and the conversion in the IFC export know only UTM,
+Gauss-Krüger and Web Mercator.
+
+| Country | Terrain model | Format | Building model | Licence (terrain) |
+|---|---|---|---|---|
+| Belgium | [Flanders · 1 m](https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m), [Wallonia · 0.5 m](https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html) | GeoTIFF | — | Flanders: model licence for free reuse; Wallonia: CC BY 4.0 |
+| Cyprus | [Cyprus · 1 m](https://www.data.gov.cy/el/dataset/ypsometria-inspire) | not clear | — | CC BY 4.0 |
+| Czechia | [ČÚZK DMR 4G · 5 m](https://geoportal.cuzk.cz/) | not clear | — | CC BY 4.0 |
+| Denmark | [Højdemodel Terræn · 0.4 m](https://dataforsyningen.dk/data/930) | not clear | — | CC BY 4.0 |
+| Estonia | [Maa-amet · 1 m](https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html) | GeoTIFF (also ASCII, XYZ) | — | open data licence of the agency |
+| Finland | [Maanmittauslaitos · 2 m](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m) | GeoTIFF (also ASCII) | — | CC BY 4.0 |
+| France | [MNT LiDAR HD · 0.5 m](https://www.data.gouv.fr/datasets/mnt-lidar-hd) (not everywhere), [RGE ALTI · 1 m](https://geoservices.ign.fr/rgealti) | GeoTIFF / not clear | [IGN LiDAR HD, 3D buildings](https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire) (LoD2, beta, not everywhere) | Licence Ouverte 2.0 |
+| Italy | [TINITALY · 10 m](https://tinitaly.pi.ingv.it/Download_Area1_1.html), [South Tyrol · 2.5 m](https://natur-raum.provinz.bz.it/de/digitale-hohenmodelle) | not clear | — | TINITALY: CC BY 4.0 |
+| Latvia | [LĢIA · 20 m](https://www.lgia.gov.lv/en/Digit%C4%81lais%20reljefa%20modelis) | not clear | — | CC BY 4.0 |
+| Luxembourg | [LiDAR 2019 · 0.5 m](https://data.public.lu/fr/datasets/lidar-2019-modele-numerique-de-terrain-mnt/) | GeoTIFF, EPSG:2169 | [BD-L-BATI3D](https://data.public.lu/en/datasets/base-de-donnees-nationale-des-batiments-3d-2023/) (LoD2, CityGML) | CC0 |
+| Netherlands | [AHN · 0.5 m](https://www.ahn.nl/dataroom), [PDOK download DTM · 0.5 m](https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml) | GeoTIFF (COG), EPSG:28992 | [3DBAG](https://3dbag.nl/en/download) (LoD2.2; CityJSON, GeoPackage, OBJ, **no CityGML**) | CC0 |
+| Poland | [GUGiK NMT · 1 m and 5 m](https://www.geoportal.gov.pl/) | not clear | — | Open Government Data |
+| Portugal | [DGT LiDAR, mainland · 0.5 m](https://cdd.dgterritorio.gov.pt/dgt-fe/catalogos/colecoes?filter=LiDAR+-+Modelos+Digitais+do+Relevo&language=en) | not clear | — | CC BY 4.0 |
+| Romania | [ANCPI LAKI II · 0.5 m (partly)](https://geoportal.ancpi.ro/portal/apps/webappviewer/index.html?id=3f34ee5af71c400396dda574f0d53274) | not clear, page unreachable when checked | — | OGL-ROU-1.0 |
+| Slovakia | [ÚGKK DMR 5.0 · 1 m](https://geoportal.gov.sk/gallery/datasets/detail/c310bf1e-68a0-43b9-9955-c7dad13a93aa) | not clear | — | CC BY 4.0 |
+| Slovenia | [ARSO DMR · 1 m](https://gis.arso.gov.si/evode/) | not clear | — | CC BY 4.0 |
+| Spain | [CNIG MDT02 · 2 m](https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt02-segunda-cobertura) (not everywhere), [CNIG MDT05 · 5 m](https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt05-primera-cobertura) | GeoTIFF | — | CC BY 4.0 |
+| Sweden | [Lantmäteriet · 1 m](https://www.lantmateriet.se/sv/geodata/vara-produkter/produktlista/markhojdmodell-nedladdning/) | not clear | — | CC0 |
+
+For **Bulgaria, Croatia, Greece, Hungary, Ireland, Lithuania and Malta** no open terrain model was found, so no link is
+listed; the national geoportal or the EU INSPIRE geoportal help there. An official 3D building model was found only in
+Luxembourg, the Netherlands and (partly) France. Notes and corrections are welcome.
+
 ---
 
 ## Repository layout

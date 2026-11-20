@@ -49,7 +49,8 @@ gesperrt.
    Alternativ: Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine
    Adresse oder einen Ort ein und wähle einen Vorschlag. Darunter erscheinen die Links zur
    Seite des Geländemodells (DGM) und des Gebäudemodells (LoD2) deines Bundeslandes, bei
-   Österreich die Seiten von Bund und Land. Die Anwendung lädt dabei nichts herunter, du
+   Österreich die Seiten von Bund und Land, **für alle übrigen Länder der EU** die Seiten der Landesvermessung (soweit
+   ein offenes Geländemodell bekannt ist; sonst steht dort ein Hinweis). Die Suche findet Orte in der ganzen EU. Die Anwendung lädt dabei nichts herunter, du
    öffnest die Seiten und lädst die Dateien selbst herunter. Die gleiche Tabelle steht in der
    [README](README.md#datenquellen).
    - **Nichts Passendes gefunden?** Bauwerke wie Talbrücken stehen in OpenStreetMap oft anders oder

@@ -13,6 +13,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
+- **EU geoportals:** The address search and the start map now name the pages of the national mapping agency for the terrain model
+  of every EU country (and building models where they exist: Luxembourg, the Netherlands, France partly). Countries without a
+  known open terrain model carry a note instead of a guessed link. The search and the recognition of coordinates cover the whole EU.
 - **Start map** (for Austria: ready-made `gdal_translate` command for cutting large files, with a Copy button, pin with a window and the links to the geoportals, only there; below the address bar only when typing, smooth zoom without empty areas and without flashing, coarse tiles as an underlay, panning also with the middle and right button): without terrain the page shows an OSM map. Tiles load only after clicking “Load map”. Clicking a place or dragging a
   rectangle gives the size and UTM values; the links to the state's terrain and building data appear in the address bar.
 - **Axis line** (the fields disappear for all sections of a road at once when zooming out): every finished road shows its centre line. Above the line is the longitudinal slope per section, below it the

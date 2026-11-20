@@ -722,6 +722,87 @@ const GEO_AT_STATES = {
 };
 const GEO_AT_LINZ_BLDG = { url: 'https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e' };
 
+/* Europäische Union ohne Deutschland und Österreich: je Land die Seiten für Geländemodell (dem) und Gebäudemodell (bldg).
+   Zusammengestellt im November 2026 nach den Angaben der Landesvermessungen und der Übersicht von maps3d.io/dataset;
+   jeder Link antwortete bei der Prüfung. fmt 'tif' steht nur, wo die Seite selbst GeoTIFF nennt, sonst 'unclear'.
+   Länder ohne bekanntes offenes Geländemodell tragen demNote 'euNoOpenDem' statt eines geratenen Links.
+   note: Schlüssel eines Hinweises (STRINGS geoNote_...). Die Links stehen auch in README.md (Test vergleicht beides). */
+const GEO_EU = {
+  BE: { name: 'Belgien',
+    dem: [
+      { label: 'Flandern · 1 m', url: 'https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m', fmt: 'tif' },
+      { label: 'Wallonien · 0,5 m', url: 'https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html', fmt: 'tif' }
+    ], bldg: [], bldgNote: 'noEuBldg' },
+  BG: { name: 'Bulgarien', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  HR: { name: 'Kroatien', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  CY: { name: 'Zypern',
+    dem: [{ label: 'Zypern · 1 m', url: 'https://www.data.gov.cy/el/dataset/ypsometria-inspire', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  CZ: { name: 'Tschechien',
+    dem: [{ label: 'ČÚZK DMR 4G · 5 m', url: 'https://geoportal.cuzk.cz/', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  DK: { name: 'Dänemark',
+    dem: [{ label: 'Højdemodel Terræn · 0,4 m', url: 'https://dataforsyningen.dk/data/930', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  EE: { name: 'Estland',
+    dem: [{ label: 'Maa-amet · 1 m', url: 'https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html', fmt: 'tif' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  FI: { name: 'Finnland',
+    dem: [{ label: 'Maanmittauslaitos · 2 m', url: 'https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m', fmt: 'tif' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  FR: { name: 'Frankreich',
+    dem: [
+      { label: 'MNT LiDAR HD · 0,5 m', url: 'https://www.data.gouv.fr/datasets/mnt-lidar-hd', fmt: 'tif', note: 'euPartial' },
+      { label: 'RGE ALTI · 1 m', url: 'https://geoservices.ign.fr/rgealti', fmt: 'unclear', note: 'euCheckFormat' }
+    ],
+    bldg: [{ label: 'IGN LiDAR HD, Gebäude 3D (LoD2, Beta)', url: 'https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire', note: 'euPartial' }] },
+  GR: { name: 'Griechenland', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  HU: { name: 'Ungarn', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  IE: { name: 'Irland', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  IT: { name: 'Italien',
+    dem: [
+      { label: 'TINITALY · 10 m', url: 'https://tinitaly.pi.ingv.it/Download_Area1_1.html', fmt: 'unclear', note: 'euCheckFormat' },
+      { label: 'Südtirol · 2,5 m', url: 'https://natur-raum.provinz.bz.it/de/digitale-hohenmodelle', fmt: 'unclear', note: 'euCheckFormat' }
+    ], bldg: [], bldgNote: 'noEuBldg' },
+  LV: { name: 'Lettland',
+    dem: [{ label: 'LĢIA · 20 m', url: 'https://www.lgia.gov.lv/en/Digit%C4%81lais%20reljefa%20modelis', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  LT: { name: 'Litauen', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  LU: { name: 'Luxemburg',
+    dem: [{ label: 'LiDAR 2019 · 0,5 m', url: 'https://data.public.lu/fr/datasets/lidar-2019-modele-numerique-de-terrain-mnt/', fmt: 'tif' }],
+    bldg: [{ label: 'BD-L-BATI3D (LoD2, CityGML)', url: 'https://data.public.lu/en/datasets/base-de-donnees-nationale-des-batiments-3d-2023/' }] },
+  MT: { name: 'Malta', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  NL: { name: 'Niederlande',
+    dem: [
+      { label: 'AHN · 0,5 m (COG)', url: 'https://www.ahn.nl/dataroom', fmt: 'tif' },
+      { label: 'PDOK-Download DTM · 0,5 m', url: 'https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml', fmt: 'tif' }
+    ],
+    bldg: [{ label: '3DBAG (LoD2.2)', url: 'https://3dbag.nl/en/download', note: 'euBldgNotCityGml' }] },
+  PL: { name: 'Polen',
+    dem: [{ label: 'GUGiK NMT · 1 m und 5 m', url: 'https://www.geoportal.gov.pl/', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  PT: { name: 'Portugal',
+    dem: [{ label: 'DGT LiDAR, Festland · 0,5 m', url: 'https://cdd.dgterritorio.gov.pt/dgt-fe/catalogos/colecoes?filter=LiDAR+-+Modelos+Digitais+do+Relevo&language=en', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  RO: { name: 'Rumänien',
+    dem: [{ label: 'ANCPI LAKI II · 0,5 m (teilweise)', url: 'https://geoportal.ancpi.ro/portal/apps/webappviewer/index.html?id=3f34ee5af71c400396dda574f0d53274', fmt: 'unclear', note: 'euUnreachable' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  SK: { name: 'Slowakei',
+    dem: [{ label: 'ÚGKK DMR 5.0 · 1 m', url: 'https://geoportal.gov.sk/gallery/datasets/detail/c310bf1e-68a0-43b9-9955-c7dad13a93aa', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  SI: { name: 'Slowenien',
+    dem: [{ label: 'ARSO DMR · 1 m', url: 'https://gis.arso.gov.si/evode/', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  ES: { name: 'Spanien',
+    dem: [
+      { label: 'CNIG MDT02 · 2 m', url: 'https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt02-segunda-cobertura', fmt: 'tif', note: 'euPartial' },
+      { label: 'CNIG MDT05 · 5 m', url: 'https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt05-primera-cobertura', fmt: 'tif' }
+    ], bldg: [], bldgNote: 'noEuBldg' },
+  SE: { name: 'Schweden',
+    dem: [{ label: 'Lantmäteriet · 1 m', url: 'https://www.lantmateriet.se/sv/geodata/vara-produkter/produktlista/markhojdmodell-nedladdning/', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' }
+};
+
 /* Datenquellen zu einem Ort ({country: 'DE'|'AT'|..., state, city}); liefert
    {country, region, dem: [...], bldg: [...], bldgNote} oder null, wenn nichts hinterlegt ist */
 function geoSourcesFor(place) {
@@ -742,11 +823,13 @@ function geoSourcesFor(place) {
     if (place.city === 'Linz') bldg.push(Object.assign({ label: 'Linz' }, GEO_AT_LINZ_BLDG));
     return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: bldg.length ? null : 'noAtBldg' };
   }
+  const eu = GEO_EU[cc];
+  if (eu) return { country: cc, region: eu.name, dem: eu.dem.slice(), demNote: eu.demNote || null, bldg: eu.bldg.slice(), bldgNote: eu.bldgNote || null };
   return null;
 }
 
 const PHOTON_URL = 'https://photon.komoot.io/api/';
-const PHOTON_BBOX = '5.8,45.7,17.2,55.1';        // Deutschland, Österreich und Nachbarschaft
+const PHOTON_BBOX = '-10.6,34.5,34.7,71.3';       // Festland der EU samt Zypern, Malta und Nordkap
 
 /* Bundesland für die Zuordnung: Stadtstaaten (Berlin, Hamburg, Wien) haben bei Photon kein Feld `state`,
    Bremen heißt dort "Freie Hansestadt Bremen"; Zusätze wie "Freistaat" fallen weg */
@@ -761,14 +844,17 @@ function normalizeState(state, city, country) {
   return st;
 }
 
-/* Wandelt die Antwort von Photon in Vorschläge um; nur Deutschland und Österreich */
+/* Länder der Suche: Deutschland, Österreich und die übrigen Länder der EU (GEO_EU) */
+function isSearchCountry(cc) { return cc === 'DE' || cc === 'AT' || Object.prototype.hasOwnProperty.call(GEO_EU, cc); }
+
+/* Wandelt die Antwort von Photon in Vorschläge um; nur Länder der EU */
 function parsePhoton(json) {
   const out = [];
   const feats = (json && json.features) || [];
   feats.forEach(function (f) {
     const p = f.properties || {}, g = f.geometry && f.geometry.coordinates;
     const cc = String(p.countrycode || '').toUpperCase();
-    if (!g || g.length < 2 || (cc !== 'DE' && cc !== 'AT')) return;
+    if (!g || g.length < 2 || !isSearchCountry(cc)) return;
     const street = p.street ? p.street + (p.housenumber ? ' ' + p.housenumber : '') : '';
     const main = p.name && p.name !== p.street ? p.name + (street ? ', ' + street : '') : (street || p.name || p.city || '');
     const city0 = p.city || p.town || p.village || '';
@@ -850,7 +936,7 @@ function parseCoordinates(text, defaultEpsg) {
   if (Math.abs(a) < 1000 && Math.abs(b) < 1000) {
     let lat = a, lon = b;
     if (lat < 20 && lon > 40) { lat = b; lon = a; }                 // Länge zuerst
-    if (lat < 40 || lat > 60 || lon < 3 || lon > 20) return null;     // nur Mitteleuropa
+    if (lat < 34 || lat > 72 || lon < -11 || lon > 35) return null;   // nur die EU (Festland)
     return { lat: lat, lon: lon };
   }
   // projizierte Koordinaten
@@ -863,7 +949,7 @@ function parseCoordinates(text, defaultEpsg) {
   }
   if (!epsg) return null;
   const g = crsToLonLat(epsg, e, n);
-  if (!g || !isFinite(g.lat) || !isFinite(g.lon) || g.lat < 40 || g.lat > 60 || g.lon < 3 || g.lon > 20) return null;
+  if (!g || !isFinite(g.lat) || !isFinite(g.lon) || g.lat < 34 || g.lat > 72 || g.lon < -11 || g.lon > 35) return null;
   return { lat: g.lat, lon: g.lon, epsg: epsg };
 }
 
@@ -5432,7 +5518,7 @@ if (typeof module !== 'undefined' && module.exports) {
     XYZ_MAX_POINTS: XYZ_MAX_POINTS,
     readTiffTile: readTiffTile,
     readTiffTiles: readTiffTiles,
-    GEO_ENTRIES: GEO_ENTRIES,
+    GEO_ENTRIES: GEO_ENTRIES, GEO_EU: GEO_EU,
     geoSourcesFor: geoSourcesFor,
     parsePhoton: parsePhoton,
     normalizeState: normalizeState,

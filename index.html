@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-uvBfj8AnvvasnbOr7REurRVC9qq22lFqKT+txJRWW58=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-tdwjbJQFhdCBBkLlGw/nWFNpFvniukaT3kuhwATYJPw=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -1615,6 +1615,87 @@ const GEO_AT_STATES = {
 };
 const GEO_AT_LINZ_BLDG = { url: 'https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e' };
 
+/* Europäische Union ohne Deutschland und Österreich: je Land die Seiten für Geländemodell (dem) und Gebäudemodell (bldg).
+   Zusammengestellt im November 2026 nach den Angaben der Landesvermessungen und der Übersicht von maps3d.io/dataset;
+   jeder Link antwortete bei der Prüfung. fmt 'tif' steht nur, wo die Seite selbst GeoTIFF nennt, sonst 'unclear'.
+   Länder ohne bekanntes offenes Geländemodell tragen demNote 'euNoOpenDem' statt eines geratenen Links.
+   note: Schlüssel eines Hinweises (STRINGS geoNote_...). Die Links stehen auch in README.md (Test vergleicht beides). */
+const GEO_EU = {
+  BE: { name: 'Belgien',
+    dem: [
+      { label: 'Flandern · 1 m', url: 'https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m', fmt: 'tif' },
+      { label: 'Wallonien · 0,5 m', url: 'https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html', fmt: 'tif' }
+    ], bldg: [], bldgNote: 'noEuBldg' },
+  BG: { name: 'Bulgarien', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  HR: { name: 'Kroatien', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  CY: { name: 'Zypern',
+    dem: [{ label: 'Zypern · 1 m', url: 'https://www.data.gov.cy/el/dataset/ypsometria-inspire', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  CZ: { name: 'Tschechien',
+    dem: [{ label: 'ČÚZK DMR 4G · 5 m', url: 'https://geoportal.cuzk.cz/', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  DK: { name: 'Dänemark',
+    dem: [{ label: 'Højdemodel Terræn · 0,4 m', url: 'https://dataforsyningen.dk/data/930', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  EE: { name: 'Estland',
+    dem: [{ label: 'Maa-amet · 1 m', url: 'https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html', fmt: 'tif' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  FI: { name: 'Finnland',
+    dem: [{ label: 'Maanmittauslaitos · 2 m', url: 'https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m', fmt: 'tif' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  FR: { name: 'Frankreich',
+    dem: [
+      { label: 'MNT LiDAR HD · 0,5 m', url: 'https://www.data.gouv.fr/datasets/mnt-lidar-hd', fmt: 'tif', note: 'euPartial' },
+      { label: 'RGE ALTI · 1 m', url: 'https://geoservices.ign.fr/rgealti', fmt: 'unclear', note: 'euCheckFormat' }
+    ],
+    bldg: [{ label: 'IGN LiDAR HD, Gebäude 3D (LoD2, Beta)', url: 'https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire', note: 'euPartial' }] },
+  GR: { name: 'Griechenland', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  HU: { name: 'Ungarn', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  IE: { name: 'Irland', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  IT: { name: 'Italien',
+    dem: [
+      { label: 'TINITALY · 10 m', url: 'https://tinitaly.pi.ingv.it/Download_Area1_1.html', fmt: 'unclear', note: 'euCheckFormat' },
+      { label: 'Südtirol · 2,5 m', url: 'https://natur-raum.provinz.bz.it/de/digitale-hohenmodelle', fmt: 'unclear', note: 'euCheckFormat' }
+    ], bldg: [], bldgNote: 'noEuBldg' },
+  LV: { name: 'Lettland',
+    dem: [{ label: 'LĢIA · 20 m', url: 'https://www.lgia.gov.lv/en/Digit%C4%81lais%20reljefa%20modelis', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  LT: { name: 'Litauen', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  LU: { name: 'Luxemburg',
+    dem: [{ label: 'LiDAR 2019 · 0,5 m', url: 'https://data.public.lu/fr/datasets/lidar-2019-modele-numerique-de-terrain-mnt/', fmt: 'tif' }],
+    bldg: [{ label: 'BD-L-BATI3D (LoD2, CityGML)', url: 'https://data.public.lu/en/datasets/base-de-donnees-nationale-des-batiments-3d-2023/' }] },
+  MT: { name: 'Malta', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  NL: { name: 'Niederlande',
+    dem: [
+      { label: 'AHN · 0,5 m (COG)', url: 'https://www.ahn.nl/dataroom', fmt: 'tif' },
+      { label: 'PDOK-Download DTM · 0,5 m', url: 'https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml', fmt: 'tif' }
+    ],
+    bldg: [{ label: '3DBAG (LoD2.2)', url: 'https://3dbag.nl/en/download', note: 'euBldgNotCityGml' }] },
+  PL: { name: 'Polen',
+    dem: [{ label: 'GUGiK NMT · 1 m und 5 m', url: 'https://www.geoportal.gov.pl/', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  PT: { name: 'Portugal',
+    dem: [{ label: 'DGT LiDAR, Festland · 0,5 m', url: 'https://cdd.dgterritorio.gov.pt/dgt-fe/catalogos/colecoes?filter=LiDAR+-+Modelos+Digitais+do+Relevo&language=en', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  RO: { name: 'Rumänien',
+    dem: [{ label: 'ANCPI LAKI II · 0,5 m (teilweise)', url: 'https://geoportal.ancpi.ro/portal/apps/webappviewer/index.html?id=3f34ee5af71c400396dda574f0d53274', fmt: 'unclear', note: 'euUnreachable' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  SK: { name: 'Slowakei',
+    dem: [{ label: 'ÚGKK DMR 5.0 · 1 m', url: 'https://geoportal.gov.sk/gallery/datasets/detail/c310bf1e-68a0-43b9-9955-c7dad13a93aa', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  SI: { name: 'Slowenien',
+    dem: [{ label: 'ARSO DMR · 1 m', url: 'https://gis.arso.gov.si/evode/', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
+  ES: { name: 'Spanien',
+    dem: [
+      { label: 'CNIG MDT02 · 2 m', url: 'https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt02-segunda-cobertura', fmt: 'tif', note: 'euPartial' },
+      { label: 'CNIG MDT05 · 5 m', url: 'https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt05-primera-cobertura', fmt: 'tif' }
+    ], bldg: [], bldgNote: 'noEuBldg' },
+  SE: { name: 'Schweden',
+    dem: [{ label: 'Lantmäteriet · 1 m', url: 'https://www.lantmateriet.se/sv/geodata/vara-produkter/produktlista/markhojdmodell-nedladdning/', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' }
+};
+
 /* Datenquellen zu einem Ort ({country: 'DE'|'AT'|..., state, city}); liefert
    {country, region, dem: [...], bldg: [...], bldgNote} oder null, wenn nichts hinterlegt ist */
 function geoSourcesFor(place) {
@@ -1635,11 +1716,13 @@ function geoSourcesFor(place) {
     if (place.city === 'Linz') bldg.push(Object.assign({ label: 'Linz' }, GEO_AT_LINZ_BLDG));
     return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: bldg.length ? null : 'noAtBldg' };
   }
+  const eu = GEO_EU[cc];
+  if (eu) return { country: cc, region: eu.name, dem: eu.dem.slice(), demNote: eu.demNote || null, bldg: eu.bldg.slice(), bldgNote: eu.bldgNote || null };
   return null;
 }
 
 const PHOTON_URL = 'https://photon.komoot.io/api/';
-const PHOTON_BBOX = '5.8,45.7,17.2,55.1';        // Deutschland, Österreich und Nachbarschaft
+const PHOTON_BBOX = '-10.6,34.5,34.7,71.3';       // Festland der EU samt Zypern, Malta und Nordkap
 
 /* Bundesland für die Zuordnung: Stadtstaaten (Berlin, Hamburg, Wien) haben bei Photon kein Feld `state`,
    Bremen heißt dort "Freie Hansestadt Bremen"; Zusätze wie "Freistaat" fallen weg */
@@ -1654,14 +1737,17 @@ function normalizeState(state, city, country) {
   return st;
 }
 
-/* Wandelt die Antwort von Photon in Vorschläge um; nur Deutschland und Österreich */
+/* Länder der Suche: Deutschland, Österreich und die übrigen Länder der EU (GEO_EU) */
+function isSearchCountry(cc) { return cc === 'DE' || cc === 'AT' || Object.prototype.hasOwnProperty.call(GEO_EU, cc); }
+
+/* Wandelt die Antwort von Photon in Vorschläge um; nur Länder der EU */
 function parsePhoton(json) {
   const out = [];
   const feats = (json && json.features) || [];
   feats.forEach(function (f) {
     const p = f.properties || {}, g = f.geometry && f.geometry.coordinates;
     const cc = String(p.countrycode || '').toUpperCase();
-    if (!g || g.length < 2 || (cc !== 'DE' && cc !== 'AT')) return;
+    if (!g || g.length < 2 || !isSearchCountry(cc)) return;
     const street = p.street ? p.street + (p.housenumber ? ' ' + p.housenumber : '') : '';
     const main = p.name && p.name !== p.street ? p.name + (street ? ', ' + street : '') : (street || p.name || p.city || '');
     const city0 = p.city || p.town || p.village || '';
@@ -1743,7 +1829,7 @@ function parseCoordinates(text, defaultEpsg) {
   if (Math.abs(a) < 1000 && Math.abs(b) < 1000) {
     let lat = a, lon = b;
     if (lat < 20 && lon > 40) { lat = b; lon = a; }                 // Länge zuerst
-    if (lat < 40 || lat > 60 || lon < 3 || lon > 20) return null;     // nur Mitteleuropa
+    if (lat < 34 || lat > 72 || lon < -11 || lon > 35) return null;   // nur die EU (Festland)
     return { lat: lat, lon: lon };
   }
   // projizierte Koordinaten
@@ -1756,7 +1842,7 @@ function parseCoordinates(text, defaultEpsg) {
   }
   if (!epsg) return null;
   const g = crsToLonLat(epsg, e, n);
-  if (!g || !isFinite(g.lat) || !isFinite(g.lon) || g.lat < 40 || g.lat > 60 || g.lon < 3 || g.lon > 20) return null;
+  if (!g || !isFinite(g.lat) || !isFinite(g.lon) || g.lat < 34 || g.lat > 72 || g.lon < -11 || g.lon > 35) return null;
   return { lat: g.lat, lon: g.lon, epsg: epsg };
 }
 
@@ -6262,7 +6348,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken oder mit „Bereich wählen“ ein Rechteck aufziehen.\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken oder mit „Bereich wählen“ ein Rechteck aufziehen.\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU).\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -6280,7 +6366,7 @@ const STRINGS = {
     addrSimilar: 'Nichts zu „{q}“ gefunden. Ähnlich:', addrCoordSub: 'Ort und Bundesland werden beim Wählen ermittelt',
     addrCoordFail: 'Ort oder Bundesland konnte nicht ermittelt werden.', addrAt: 'Lage',
     addrSearching: 'Suche …', addrNone: 'Keine Treffer.', addrError: 'Die Suche ist gerade nicht erreichbar.',
-    addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Deutschland und Österreich).',
+    addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Länder der EU).',
     addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD2)',
     geoFmtTif: 'GeoTIFF, direkt ladbar', geoFmtXyz: 'XYZ-Text, direkt ladbar (Bezugssystem wählen)', geoFmtUnclear: 'Format unklar',
     geoNote_dgm025: 'Das DGM1 gibt es hier nur als XYZ-Text, GeoTIFF nur beim DGM025 (0,25 m).',
@@ -6292,6 +6378,12 @@ const STRINGS = {
     geoNote_unverified: 'Nicht geprüft.',
     geoNote_servicesOnly: 'Kein Download gefunden, nur Dienste.',
     geoNote_noAtBldg: 'Es gibt kein landesweites 3D-Gebäudemodell.',
+    geoNote_euNoOpenDem: 'Kein offenes Geländemodell geprüft. Das nationale Geoportal oder das INSPIRE-Geoportal der EU nennen Angebote.',
+    geoNote_noEuBldg: 'Kein amtliches 3D-Gebäudemodell geprüft.',
+    geoNote_euCheckFormat: 'Das Format steht auf der Seite nicht eindeutig; vor dem Laden prüfen (GeoTIFF wird direkt geladen).',
+    geoNote_euPartial: 'Nicht überall verfügbar.',
+    geoNote_euBldgNotCityGml: 'Als CityJSON, GeoPackage oder OBJ; Quick-Site-Design liest nur CityGML.',
+    geoNote_euUnreachable: 'Die Seite war bei der Prüfung nicht erreichbar.',
     xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
     xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
@@ -6432,7 +6524,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place or use “Select area” to drag a rectangle.\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place or use “Select area” to drag a rectangle.\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU).\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -6450,7 +6542,7 @@ const STRINGS = {
     addrSimilar: 'Nothing found for “{q}”. Similar:', addrCoordSub: 'Place and state are looked up when you choose it',
     addrCoordFail: 'The place or state could not be determined.', addrAt: 'Position',
     addrSearching: 'Searching …', addrNone: 'No results.', addrError: 'The search is not reachable right now.',
-    addrOnlyDeAt: 'No data sources are listed for this place (Germany and Austria only).',
+    addrOnlyDeAt: 'No data sources are listed for this place (EU countries only).',
     addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD2)',
     geoFmtTif: 'GeoTIFF, loads directly', geoFmtXyz: 'XYZ text, loads directly (choose the coordinate system)', geoFmtUnclear: 'Format unclear',
     geoNote_dgm025: 'The DGM1 is only offered as XYZ text here, GeoTIFF only for the DGM025 (0.25 m).',
@@ -6462,6 +6554,12 @@ const STRINGS = {
     geoNote_unverified: 'Not checked.',
     geoNote_servicesOnly: 'No download found, services only.',
     geoNote_noAtBldg: 'There is no nationwide 3D building model.',
+    geoNote_euNoOpenDem: 'No open terrain model checked. The national geoportal or the EU INSPIRE geoportal list offers.',
+    geoNote_noEuBldg: 'No official 3D building model checked.',
+    geoNote_euCheckFormat: 'The page does not state the format clearly; check before loading (GeoTIFF loads directly).',
+    geoNote_euPartial: 'Not available everywhere.',
+    geoNote_euBldgNotCityGml: 'As CityJSON, GeoPackage or OBJ; Quick-Site-Design reads CityGML only.',
+    geoNote_euUnreachable: 'The page could not be reached when checked.',
     xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
     xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
@@ -8880,6 +8978,12 @@ function renderPlaceInto(box, place) {
   const grp = function (key) { const g = document.createElement('div'); g.className = 'addr-grp'; g.textContent = T(key); box.appendChild(g); };
   grp('addrDem');
   src.dem.forEach(function (d) { box.appendChild(addrRow(d, 'dem')); });
+  if (src.demNote) {
+    const n = document.createElement('div');
+    n.className = 'addr-note';
+    n.textContent = T('geoNote_' + src.demNote);
+    box.appendChild(n);
+  }
   grp('addrBldg');
   src.bldg.forEach(function (b) { box.appendChild(addrRow(b, 'bldg')); });
   if (src.bldgNote) {

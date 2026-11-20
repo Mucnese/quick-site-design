@@ -208,6 +208,43 @@ Das BEV liefert seine Höhenraster in EPSG:3035 (ETRS89-LAEA). Die Kartengrundla
 (OpenStreetMap) rechnet dieses System nicht um und schaltet sich dort mit einer
 Meldung ab; die Gauß-Krüger-Systeme MGI (EPSG:31254 bis 31256) funktionieren.
 
+### Übrige Länder der EU
+
+Neben Deutschland und Österreich nennt die Adresssuche die Seiten für Geländemodell und Gebäudemodell der anderen
+Länder der EU. Grundlage sind die Seiten der Landesvermessungen und die Übersicht von
+[maps3d.io/dataset](https://maps3d.io/dataset); alle Links antworteten im November 2026. **Geprüft ist nur, ob die Seite
+erreichbar ist und was sie nennt:** Wo die Seite selbst GeoTIFF nennt, steht „GeoTIFF“; sonst „nicht eindeutig“ (vor dem
+Laden prüfen). Lizenz und Auflösung stammen aus den Angaben der Anbieter laut maps3d.io. Länder ohne bekanntes offenes
+Geländemodell stehen unten ohne Link, statt einen zu raten. Viele Länder liefern in einem eigenen Bezugssystem
+(zum Beispiel EPSG:28992 in den Niederlanden); die Karte und die Umrechnung beim IFC-Export kennen davon nur UTM,
+Gauß-Krüger und Web-Mercator.
+
+| Land | Geländemodell | Format | Gebäudemodell | Lizenz (Geländemodell) |
+|---|---|---|---|---|
+| Belgien | [Flandern · 1 m](https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m), [Wallonien · 0,5 m](https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html) | GeoTIFF | — | Flandern: Modelllizenz für freie Weiterverwendung; Wallonien: CC BY 4.0 |
+| Dänemark | [Højdemodel Terræn · 0,4 m](https://dataforsyningen.dk/data/930) | nicht eindeutig | — | CC BY 4.0 |
+| Estland | [Maa-amet · 1 m](https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html) | GeoTIFF (auch ASCII, XYZ) | — | Open-Data-Lizenz des Landesamts |
+| Finnland | [Maanmittauslaitos · 2 m](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m) | GeoTIFF (auch ASCII) | — | CC BY 4.0 |
+| Frankreich | [MNT LiDAR HD · 0,5 m](https://www.data.gouv.fr/datasets/mnt-lidar-hd) (nicht überall), [RGE ALTI · 1 m](https://geoservices.ign.fr/rgealti) | GeoTIFF bzw. nicht eindeutig | [IGN LiDAR HD, Gebäude 3D](https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire) (LoD2, Beta, nicht überall) | Licence Ouverte 2.0 |
+| Italien | [TINITALY · 10 m](https://tinitaly.pi.ingv.it/Download_Area1_1.html), [Südtirol · 2,5 m](https://natur-raum.provinz.bz.it/de/digitale-hohenmodelle) | nicht eindeutig | — | TINITALY: CC BY 4.0 |
+| Lettland | [LĢIA · 20 m](https://www.lgia.gov.lv/en/Digit%C4%81lais%20reljefa%20modelis) | nicht eindeutig | — | CC BY 4.0 |
+| Luxemburg | [LiDAR 2019 · 0,5 m](https://data.public.lu/fr/datasets/lidar-2019-modele-numerique-de-terrain-mnt/) | GeoTIFF, EPSG:2169 | [BD-L-BATI3D](https://data.public.lu/en/datasets/base-de-donnees-nationale-des-batiments-3d-2023/) (LoD2, CityGML) | CC0 |
+| Niederlande | [AHN · 0,5 m](https://www.ahn.nl/dataroom), [PDOK-Download DTM · 0,5 m](https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml) | GeoTIFF (COG), EPSG:28992 | [3DBAG](https://3dbag.nl/en/download) (LoD2.2; CityJSON, GeoPackage, OBJ, **kein CityGML**) | CC0 |
+| Polen | [GUGiK NMT · 1 m und 5 m](https://www.geoportal.gov.pl/) | nicht eindeutig | — | Open Government Data |
+| Portugal | [DGT LiDAR, Festland · 0,5 m](https://cdd.dgterritorio.gov.pt/dgt-fe/catalogos/colecoes?filter=LiDAR+-+Modelos+Digitais+do+Relevo&language=en) | nicht eindeutig | — | CC BY 4.0 |
+| Rumänien | [ANCPI LAKI II · 0,5 m (teilweise)](https://geoportal.ancpi.ro/portal/apps/webappviewer/index.html?id=3f34ee5af71c400396dda574f0d53274) | nicht eindeutig, Seite bei der Prüfung nicht erreichbar | — | OGL-ROU-1.0 |
+| Schweden | [Lantmäteriet · 1 m](https://www.lantmateriet.se/sv/geodata/vara-produkter/produktlista/markhojdmodell-nedladdning/) | nicht eindeutig | — | CC0 |
+| Slowakei | [ÚGKK DMR 5.0 · 1 m](https://geoportal.gov.sk/gallery/datasets/detail/c310bf1e-68a0-43b9-9955-c7dad13a93aa) | nicht eindeutig | — | CC BY 4.0 |
+| Slowenien | [ARSO DMR · 1 m](https://gis.arso.gov.si/evode/) | nicht eindeutig | — | CC BY 4.0 |
+| Spanien | [CNIG MDT02 · 2 m](https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt02-segunda-cobertura) (nicht überall), [CNIG MDT05 · 5 m](https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt05-primera-cobertura) | GeoTIFF | — | CC BY 4.0 |
+| Tschechien | [ČÚZK DMR 4G · 5 m](https://geoportal.cuzk.cz/) | nicht eindeutig | — | CC BY 4.0 |
+| Zypern | [Zypern · 1 m](https://www.data.gov.cy/el/dataset/ypsometria-inspire) | nicht eindeutig | — | CC BY 4.0 |
+
+Für **Bulgarien, Griechenland, Irland, Kroatien, Litauen, Malta und Ungarn** wurde kein offenes Geländemodell gefunden
+und deshalb kein Link aufgenommen; dort hilft das nationale Geoportal oder das INSPIRE-Geoportal der EU. Ein amtliches
+3D-Gebäudemodell wurde außer in Luxemburg, den Niederlanden und (teilweise) Frankreich nirgends gefunden. Hinweise und
+Korrekturen sind willkommen.
+
 ---
 
 ## Aufbau des Repositorys

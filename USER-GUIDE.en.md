@@ -46,7 +46,8 @@ locked.
    disappears as soon as a terrain is loaded. Alternatively: type an address or place in the address bar at the top left (“Where is your
    construction site?”) and pick a suggestion. Below it you get the links to the terrain model
    (DGM) and building model (LoD2) pages of your German state; for Austria, the pages of the federal
-   government and the state. The application downloads nothing here: you open the pages and
+   government and the state, **for all other EU countries** the pages of the national mapping agency (where an open
+   terrain model is known; otherwise a note says so). The search finds places in the whole EU. The application downloads nothing here: you open the pages and
    download the files yourself. The same table is in the [README](README.en.md#where-to-get-the-data).
    - **Nothing suitable found?** Structures such as valley bridges are often named differently or
      missing in OpenStreetMap. If the search finds nothing that fits your input, the bar asks again with

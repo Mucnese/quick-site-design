@@ -720,10 +720,24 @@ await test('Startkarte: Pin setzen öffnet ein Fenster mit den Links zu den Geop
   assert.strictEqual(pop.style.display, 'none', 'Esc schließt');
 });
 
-await test('Startkarte: Ort ohne Daten (nicht Deutschland oder Österreich) nennt das im Fenster, Rechteck hängt das Fenster an die Nordkante', async function () {
+await test('Startkarte: Orte in der EU zeigen die Links ihres Landes, Länder ohne offenes Geländemodell einen Hinweis statt eines Links', async function () {
   const s = startMapScope();
   s.document.getElementById('sm-load')._listeners.click[0]();
-  await s.chooseAddrItem({ main: 'Paris', sub: 'Frankreich', lat: 48.8566, lon: 2.3522, country: 'FR', state: '' }, {});
+  const body = s.document.getElementById('sm-pop-body');
+  await s.chooseAddrItem({ main: 'Dam', sub: 'Amsterdam', lat: 52.373, lon: 4.893, country: 'NL', state: 'Noord-Holland' }, {});
+  assert.ok(body.textContent.indexOf('ahn.nl') >= 0 && body.textContent.indexOf('3dbag.nl') >= 0, body.textContent);
+  assert.ok(body.textContent.indexOf(s.T('geoNote_euBldgNotCityGml')) >= 0, '3DBAG: kein CityGML');
+  await s.chooseAddrItem({ main: 'Sofia', sub: 'Bulgarien', lat: 42.697, lon: 23.322, country: 'BG', state: '' }, {});
+  assert.ok(body.textContent.indexOf(s.T('geoNote_euNoOpenDem')) >= 0 && body.textContent.indexOf(s.T('geoNote_noEuBldg')) >= 0, body.textContent);
+  assert.ok(body.textContent.indexOf('http') < 0, 'kein geratener Link');
+  await s.chooseAddrItem({ main: 'Madrid', sub: 'Spanien', lat: 40.4168, lon: -3.7038, country: 'ES', state: '' }, {});
+  assert.ok(body.textContent.indexOf('cnig.es') >= 0 && body.textContent.indexOf(s.T('geoFmtTif')) >= 0, body.textContent);
+});
+
+await test('Startkarte: Ort ohne Daten (nicht in der EU) nennt das im Fenster, Rechteck hängt das Fenster an die Nordkante', async function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  await s.chooseAddrItem({ main: 'Zürich', sub: 'Schweiz', lat: 47.3769, lon: 8.5417, country: 'CH', state: 'Zürich' }, {});
   assert.ok(s.document.getElementById('sm-pop-body').textContent.indexOf(s.T('addrOnlyDeAt')) >= 0);
   s.smFlyTo(48.7, 11.5, 14);
   s.document.getElementById('sm-select')._listeners.click[0]();
