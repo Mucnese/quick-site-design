@@ -41,6 +41,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   einen Punkt; der genaue Punkt auf Gebäuden wird nachgezogen, sobald die Maus kurz steht.
 
 ### Geändert
+- Achslinie: Neigung und Länge dezenter (kleinere Schrift, durchscheinender Hintergrund, Neigung in Gelb); beim Überfahren treten sie hervor.
 - **Schleppkurve Sattelzug:** Maße und Wenderadien jetzt aus dem Export „Sattelzug 16,5“ von Autodesk Vehicle Tracking
   (ersetzt das Luzerner Blatt). Das Modell trifft dessen Radien auf wenige Zentimeter; das Heck schwingt beim Einlenken
   in der Vorlage etwas weiter aus (siehe Anleitung).

@@ -1716,7 +1716,7 @@ function updateAxisLabels() {
     if (e.input !== document.activeElement && e.input.value !== txt) { e.input.value = txt; fitAxisInput(e.input); }
     e.wrap.style.display = 'block';
     e.wrap.style.transform = 'translate(' + Math.round((v.x * 0.5 + 0.5) * window.innerWidth) + 'px, ' +
-      Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, ' + (e.kind === 'up' ? '-125%' : '25%') + ')';
+      Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, ' + (e.kind === 'up' ? '-110%' : '10%') + ')';
   });
 }
 

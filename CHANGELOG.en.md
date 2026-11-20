@@ -40,6 +40,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   and one point; the exact point on buildings follows as soon as the mouse rests briefly.
 
 ### Changed
+- Axis line: slope and length more subtle (smaller type, translucent background, slope in yellow); they stand out when hovered.
 - **Swept path of the semi-trailer:** dimensions and turning radii now from the “Sattelzug 16,5” export of Autodesk
   Vehicle Tracking (replaces the Luzern sheet). The model matches its radii to within a few centimetres; when turning in,
   the rear swings out a little further in the template (see guide).

@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WDvhDfXgWcB/IUsxnUv62deQMRkz04+vXAMlwdbn9jo=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-0+kMXZcVT5wYYgYdkPSWNIDccdccDiLzgh5BzUU4xPo=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -195,17 +195,17 @@
   #axis-labels { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 4; pointer-events: none; }
   .axis-label {
     display: none; position: fixed; left: 0; top: 0; pointer-events: auto; will-change: transform;
-    background: var(--panel-bg); color: var(--text); border: 1px solid var(--border-strong);
-    border-radius: var(--radius); padding: 0 5px; font-size: 12px; line-height: 1.5;
+    background: rgba(20, 24, 28, 0.55); color: var(--text); border: 1px solid transparent;
+    border-radius: 3px; padding: 0 3px; font-size: 10.5px; line-height: 1.35;
     font-variant-numeric: tabular-nums; white-space: nowrap; cursor: text;
   }
-  .axis-label.up { border-color: #c9a227; }
-  .axis-label:hover, .axis-label:focus-within { border-color: var(--accent); }
+  .axis-label.up { color: #e6cf7a; }
+  .axis-label:hover, .axis-label:focus-within { border-color: var(--accent); background: var(--panel-bg); }
   .axis-label input {
     width: 4ch; border: 0; outline: 0; background: transparent; color: inherit; font: inherit;
     text-align: right; padding: 0; margin: 0; font-variant-numeric: tabular-nums;
   }
-  .axis-label span { opacity: 0.8; padding-left: 3px; }
+  .axis-label span { opacity: 0.75; padding-left: 2px; }
 
   /* ---------- Dateien ---------- */
   .file-row { margin-bottom: 9px; }
@@ -7747,7 +7747,7 @@ function updateAxisLabels() {
     if (e.input !== document.activeElement && e.input.value !== txt) { e.input.value = txt; fitAxisInput(e.input); }
     e.wrap.style.display = 'block';
     e.wrap.style.transform = 'translate(' + Math.round((v.x * 0.5 + 0.5) * window.innerWidth) + 'px, ' +
-      Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, ' + (e.kind === 'up' ? '-125%' : '25%') + ')';
+      Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, ' + (e.kind === 'up' ? '-110%' : '10%') + ')';
   });
 }
 
