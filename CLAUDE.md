@@ -240,6 +240,12 @@ kein Lenk- und Knickwinkelgrenzwert, und das Heck schwingt beim Einlenken in der
 Fahrzeugvorlage und Umrisse; die Schleppkurven selbst stecken in Autodesk-Proxyobjekten und sind nicht lesbar. Neue
 Fahrzeuge: nur `SEMI_TRUCK` ändern und die Kontrollradien erneut prüfen, nicht Werte raten.
 
+**CityJSON.** `parseCityJSON` (app.js, neben `parseCityGML`) liefert dieselbe Ringliste wie CityGML (`[x, y, z, ...]`, Rechtswert, Hochwert,
+Höhe im Bezugssystem der Datei). `parseBuildingText` wählt nach dem ersten Zeichen (`{` oder `[` = JSON). Je CityObject nur die Geometrie mit
+der höchsten LoD (3DBAG liefert 0, 1.2, 1.3, 2.2 übereinander), LoD unter 1 (Grundriss) und TINRelief, Pflanzen, Wasser, Landnutzung fallen weg;
+Löcher werden ignoriert. Formen: CityJSON 1.x/2.0 (`transform` aus Maßstab und Verschiebung), CityJSONSeq (Kopfzeile mit `transform`, je Zeile ein
+`CityJSONFeature`), Merkmalsliste (`features`, `metadata.transform`). Geprüft an einem echten 3DBAG-Merkmal (api.3dbag.nl, EPSG:7415).
+
 **Geoportale der EU.** `GEO_EU` (nach ISO-Code, 25 Länder außer DE/AT) neben `GEO_ENTRIES` und den AT-Tabellen; `geoSourcesFor` liefert
 auch `demNote`. Regeln: nur Links, die bei der Prüfung antworteten; `fmt: 'tif'` nur, wo die Seite selbst GeoTIFF nennt, sonst
 `'unclear'` mit Hinweis; Länder ohne bekanntes offenes DGM tragen `demNote: 'euNoOpenDem'` statt eines geratenen Links. Quelle der

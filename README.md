@@ -29,8 +29,8 @@ Browser.
 - GeoTIFF- und XYZ-Geländemodelle (bei XYZ mit Wahl des EPSG-Codes), mehrere Kacheln gleichzeitig. Die Pixel aller Kacheln
   werden in ein gemeinsames Raster gemittelt, unterschiedliche Auflösungen und
   Überlappungen sind daher unkritisch.
-- CityGML LOD2, ebenfalls als Stapel. Die Achsenreihenfolge wird erkannt,
-  Gebäude außerhalb der Kachel verworfen.
+- CityGML LOD2 und **CityJSON** (auch CityJSONSeq und die Merkmalslisten der 3DBAG-Schnittstelle), ebenfalls als Stapel. Bei
+  CityJSON gilt je Bauteil die höchste Detailstufe. Die Achsenreihenfolge wird erkannt, Gebäude außerhalb der Kachel verworfen.
 - Die Geländeauflösung passt sich automatisch dem Zoom an: nahe Teile in voller
   Datenauflösung (bis 1400 Stützpunkte je Achse), ferne gröber (Kacheln zu
   64 × 64 Zellen). Es gibt keinen Regler dafür. Höhenabfragen, Objekte und
@@ -232,7 +232,7 @@ Gauß-Krüger und Web-Mercator.
 | Lettland | [LĢIA · 20 m](https://www.lgia.gov.lv/en/Digit%C4%81lais%20reljefa%20modelis) | nicht eindeutig | — | CC BY 4.0 |
 | Luxemburg | [LiDAR 2019 · 0,5 m](https://data.public.lu/fr/datasets/lidar-2019-modele-numerique-de-terrain-mnt/) | GeoTIFF, EPSG:2169 | [BD-L-BATI3D](https://data.public.lu/en/datasets/base-de-donnees-nationale-des-batiments-3d-2023/) (LoD2, CityGML) | CC0 |
 | Malta | [DTM 2018 · 1 m](https://portal.data.gov.mt/dataset/digital-terrain-model-2018) | nicht eindeutig (Download und WCS) | — | nicht angegeben |
-| Niederlande | [AHN · 0,5 m](https://www.ahn.nl/dataroom), [PDOK-Download DTM · 0,5 m](https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml) | GeoTIFF (COG), EPSG:28992 | [3DBAG](https://3dbag.nl/en/download) (LoD2.2; CityJSON, GeoPackage, OBJ, **kein CityGML**) | CC0 |
+| Niederlande | [AHN · 0,5 m](https://www.ahn.nl/dataroom), [PDOK-Download DTM · 0,5 m](https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml) | GeoTIFF (COG), EPSG:28992 | [3DBAG](https://3dbag.nl/en/download) (LoD2.2; **CityJSON lässt sich laden**, GeoPackage und OBJ nicht) | CC0 |
 | Polen | [GUGiK NMT · 1 m und 5 m](https://www.geoportal.gov.pl/) | nicht eindeutig | — | Open Government Data |
 | Portugal | [DGT LiDAR, Festland · 0,5 m](https://cdd.dgterritorio.gov.pt/dgt-fe/catalogos/colecoes?filter=LiDAR+-+Modelos+Digitais+do+Relevo&language=en) | nicht eindeutig | — | CC BY 4.0 |
 | Rumänien | [ANCPI LAKI II · 0,5 m (teilweise)](https://geoportal.ancpi.ro/portal/apps/webappviewer/index.html?id=3f34ee5af71c400396dda574f0d53274) | nicht eindeutig, Seite bei der Prüfung nicht erreichbar | — | OGL-ROU-1.0 |

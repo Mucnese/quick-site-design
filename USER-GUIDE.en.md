@@ -61,7 +61,7 @@ locked.
      when you choose it does it ask Photon for the place and state and then show the links.
 2. **Load the terrain.** In the **Data** window click “Choose files” and select the terrain file.
    Several tiles can be selected together and are merged.
-3. **Load buildings (optional).** Also in the **Data** window, row “Buildings · CityGML”.
+3. **Load buildings (optional).** Also in the **Data** window, row “Buildings · CityGML / CityJSON”.
    Buildings outside the terrain are discarded.
 
 ### Which files work?
@@ -71,6 +71,7 @@ locked.
 | Terrain | **GeoTIFF** (`.tif`, `.tiff`) | the coordinate system is in the file |
 | Terrain | **XYZ text** (`.xyz`, `.txt`, `.csv`) | easting, northing, height on a regular grid. The file has no coordinate system: choose it beforehand in the **Data** window under “Coordinate system for XYZ files” or type an EPSG code |
 | Buildings | **CityGML** (`.gml`, `.xml`) | LoD2, the axis order is detected |
+| Buildings | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | also CityJSONSeq and feature lists (3DBAG); the highest level of detail per part, footprints and terrain are dropped. The coordinate system must match the terrain (3DBAG: Rijksdriehoek, matching the AHN) |
 
 ESRI ASCII grids (`.asc`) and decimal commas in XYZ files are not read. Convert them to GeoTIFF
 first, for example with GDAL.

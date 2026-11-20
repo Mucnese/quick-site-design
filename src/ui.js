@@ -46,7 +46,8 @@ const STRINGS = {
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
     ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
-    gmlTooBig: 'Die CityGML-Dateien sind zusammen {s} MB groß, mehr als {m} MB schafft der Browser nicht. Bitte kleinere Ausschnitte laden.',
+    gmlUnreadable: 'Gebäudedatei nicht lesbar:',
+    gmlTooBig: 'Die Gebäudedateien sind zusammen {s} MB groß, mehr als {m} MB schafft der Browser nicht. Bitte kleinere Ausschnitte laden.',
     busyGml: 'Gebäudemodell wird verarbeitet … bei großen Dateien kann das einige Sekunden dauern.', busyGmlRender: 'Gebäudemodell wird gerendert …',
     busyIfc: 'IFC-Datei wird gelesen und gerendert … bei großen Dateien kann das einige Sekunden dauern.',
     ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
@@ -102,13 +103,13 @@ const STRINGS = {
     geoNote_noEuBldg: 'Kein amtliches 3D-Gebäudemodell geprüft.',
     geoNote_euCheckFormat: 'Das Format steht auf der Seite nicht eindeutig; vor dem Laden prüfen (GeoTIFF wird direkt geladen).',
     geoNote_euPartial: 'Nicht überall verfügbar.',
-    geoNote_euBldgNotCityGml: 'Als CityJSON, GeoPackage oder OBJ; Quick-Site-Design liest nur CityGML.',
+    geoNote_euBldgNotCityGml: 'Als CityJSON (lässt sich laden), GeoPackage oder OBJ (nicht).',
     geoNote_euUnreachable: 'Die Seite war bei der Prüfung nicht erreichbar.',
     xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
     xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
     xyzFar: 'Achtung: Im gewählten System {c} liegen die Koordinaten bei Breite {lat}, Länge {lon}, also außerhalb Europas.',
-    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML',
+    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML / CityJSON',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', road: 'Baustraße',
@@ -222,7 +223,8 @@ const STRINGS = {
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
     ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
-    gmlTooBig: 'The CityGML files are {s} MB together; the browser cannot handle more than {m} MB. Please load smaller extracts.',
+    gmlUnreadable: 'Building file not readable:',
+    gmlTooBig: 'The building files are {s} MB together; the browser cannot handle more than {m} MB. Please load smaller extracts.',
     busyGml: 'Building model is being processed … large files can take a few seconds.', busyGmlRender: 'Building model is being rendered …',
     busyIfc: 'IFC file is being read and rendered … large files can take a few seconds.',
     ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
@@ -278,13 +280,13 @@ const STRINGS = {
     geoNote_noEuBldg: 'No official 3D building model checked.',
     geoNote_euCheckFormat: 'The page does not state the format clearly; check before loading (GeoTIFF loads directly).',
     geoNote_euPartial: 'Not available everywhere.',
-    geoNote_euBldgNotCityGml: 'As CityJSON, GeoPackage or OBJ; Quick-Site-Design reads CityGML only.',
+    geoNote_euBldgNotCityGml: 'As CityJSON (can be loaded), GeoPackage or OBJ (cannot).',
     geoNote_euUnreachable: 'The page could not be reached when checked.',
     xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
     xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
     xyzFar: 'Warning: in the chosen system {c} the coordinates lie at latitude {lat}, longitude {lon}, outside Europe.',
-    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML',
+    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML / CityJSON',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', road: 'Haul road',
@@ -3040,7 +3042,7 @@ async function handleDemFiles(files, isDemo) {
   }
 }
 
-/* Obergrenze für CityGML: der Browser liest die Dateien als Text in den Speicher und parst sie als XML;
+/* Obergrenze für Gebäudedateien (CityGML und CityJSON): der Browser liest die Dateien als Text in den Speicher und parst sie als XML;
    darüber hinaus bricht er mit einer unverständlichen Meldung ab oder steht still. Schätzwert, nicht gemessen. */
 const GML_MAX_BYTES = 300e6;
 
@@ -3085,7 +3087,7 @@ async function handleGmlFiles(files, isDemo) {
     }
   } catch (err) {
     setFileStatus('gml', err.message, 'err');
-    setStatus('CityGML nicht lesbar: ' + err.message, true);
+    setStatus(T('gmlUnreadable') + ' ' + err.message, true);
   } finally {
     hideBusy();
   }

@@ -2081,6 +2081,87 @@ test('XYZ: zwei Kacheln werden verschmolzen und tragen den gewählten EPSG-Code,
   await assert.rejects(app.readTiffTiles(items, null), /Bezugssystem/);
 });
 
+/* ---------- CityJSON ---------- */
+
+/* Ein Haus (10 x 8 m, Traufe 5 m) als BuildingPart: LoD 1.2 mit flachem Dach (6 Flächen), LoD 2.2 mit zweigeteiltem Dach (7 Flächen).
+   Koordinaten ganzzahlig mit Maßstab 0,001 und Verschiebung, wie bei 3DBAG; Lage im Gelände von roadTerrain (692000 / 5336000). */
+function cityJsonBox() {
+  const tr = { scale: [0.001, 0.001, 0.001], translate: [692040, 5336040, 500] };
+  const P = [[0, 0, 0], [10000, 0, 0], [10000, 8000, 0], [0, 8000, 0], [0, 0, 5000], [10000, 0, 5000], [10000, 8000, 5000], [0, 8000, 5000], [5000, 0, 7000], [5000, 8000, 7000]];
+  const flat = [[[0, 3, 2, 1]], [[4, 5, 6, 7]], [[0, 1, 5, 4]], [[1, 2, 6, 5]], [[2, 3, 7, 6]], [[3, 0, 4, 7]]];
+  const gable = [[[0, 3, 2, 1]], [[0, 1, 5, 8, 4]], [[1, 2, 6, 5]], [[2, 3, 7, 9, 6]], [[3, 0, 4, 7]], [[4, 8, 9, 7]], [[5, 6, 9, 8]]];
+  return {
+    type: 'CityJSON', version: '2.0', transform: tr, metadata: { referenceSystem: 'https://www.opengis.net/def/crs/EPSG/0/25832' },
+    CityObjects: {
+      'b1': { type: 'Building', children: ['b1-0'], geometry: [{ type: 'MultiSurface', lod: '0', boundaries: [[[0, 1, 2, 3]]] }] },
+      'b1-0': { type: 'BuildingPart', parents: ['b1'], geometry: [
+        { type: 'Solid', lod: '1.2', boundaries: [flat] }, { type: 'Solid', lod: '2.2', boundaries: [gable] } ] },
+      'relief': { type: 'TINRelief', geometry: [{ type: 'MultiSurface', lod: '2', boundaries: [[[0, 1, 2]]] }] }
+    },
+    vertices: P
+  };
+}
+
+test('CityJSON: höchste Detailstufe je Bauteil, Grundriss (LoD 0) und Gelände fallen weg, Koordinaten mit Maßstab und Verschiebung', function () {
+  const rings = app.parseCityJSON(JSON.stringify(cityJsonBox()));
+  assert.strictEqual(rings.length, 7, 'LoD 2.2 hat 7 Flächen (LoD 1.2: 6, LoD 0 und TINRelief zählen nicht)');
+  const r0 = rings[0];                                 // Boden: 0,3,2,1
+  assert.deepStrictEqual(r0.slice(0, 3), [692040, 5336040, 500]);
+  assert.deepStrictEqual(r0.slice(3, 6), [692040, 5336048, 500]);
+  assert.ok(Math.abs(rings[1][11] - 507) < 1e-9, 'First liegt 7 m über dem Boden: ' + rings[1][11]);
+  rings.forEach(function (r) { assert.ok(r.length >= 9 && r.length % 3 === 0); });
+  // nur LoD 1.2 vorhanden: dann diese
+  const d = cityJsonBox(); d.CityObjects['b1-0'].geometry.pop();
+  assert.strictEqual(app.parseCityJSON(JSON.stringify(d)).length, 6);
+});
+
+test('CityJSON: Löcher in einer Fläche zählen nicht, MultiSolid und MultiSurface werden gelesen', function () {
+  const d = cityJsonBox();
+  d.vertices.push([2000, 2000, 0], [3000, 2000, 0], [3000, 3000, 0]);
+  d.CityObjects['b1-0'].geometry = [{ type: 'MultiSurface', lod: '2', boundaries: [[[0, 3, 2, 1], [10, 11, 12]]] }];
+  let rings = app.parseCityJSON(JSON.stringify(d));
+  assert.strictEqual(rings.length, 1, 'nur der äußere Ring');
+  assert.strictEqual(rings[0].length, 12);
+  d.CityObjects['b1-0'].geometry = [{ type: 'MultiSolid', lod: 2, boundaries: [[[[[0, 3, 2, 1]], [[4, 5, 6, 7]]]], [[[[0, 1, 5, 4]]]]] }];
+  rings = app.parseCityJSON(JSON.stringify(d));
+  assert.strictEqual(rings.length, 3, 'zwei Solids mit 2 und 1 Flächen');
+});
+
+test('CityJSON: CityJSONSeq (eine Zeile je Gebäude) und die Merkmalsliste der 3DBAG-Schnittstelle', function () {
+  const d = cityJsonBox();
+  const head = { type: 'CityJSON', version: '2.0', transform: d.transform, metadata: d.metadata, CityObjects: {}, vertices: [] };
+  const f1 = { type: 'CityJSONFeature', id: 'b1', CityObjects: d.CityObjects, vertices: d.vertices };
+  const f2 = { type: 'CityJSONFeature', id: 'b2', CityObjects: { x: { type: 'Building', geometry: [{ type: 'MultiSurface', lod: '2', boundaries: [[[0, 1, 2, 3]]] }] } }, vertices: [[0, 0, 0], [4000, 0, 0], [4000, 4000, 0], [0, 4000, 0]] };
+  const seq = [head, f1, f2].map(function (o) { return JSON.stringify(o); }).join('\n') + '\n';
+  const rings = app.parseCityJSON(seq);
+  assert.strictEqual(rings.length, 8, '7 + 1');
+  assert.deepStrictEqual(rings[7].slice(0, 3), [692040, 5336040, 500], 'Zeile 2 nutzt den Maßstab der ersten Zeile');
+  const api = { type: 'FeatureCollection-ähnlich', metadata: { transform: d.transform, referenceSystem: 'x' }, features: [f1, f2] };
+  assert.strictEqual(app.parseCityJSON(JSON.stringify(api)).length, 8, 'features-Liste mit transform in metadata');
+});
+
+test('CityJSON: Fehler - kein JSON, keine Gebäudeflächen; mergeCityGML erkennt CityJSON und CityGML an der ersten Zeichenfolge', function () {
+  assert.throws(function () { app.parseCityJSON('{ nope'); }, /kein gültiges CityJSON/);
+  assert.throws(function () { app.parseCityJSON('[1, 2]'); }, /kein gültiges CityJSON|Keine Gebäudeflächen/);
+  const d = cityJsonBox(); d.CityObjects['b1-0'].geometry = []; delete d.CityObjects['relief'];
+  assert.throws(function () { app.parseCityJSON(JSON.stringify(d)); }, /Keine Gebäudeflächen/);
+  const m = app.mergeCityGML([{ name: 'kachel.city.json', text: JSON.stringify(cityJsonBox()) }]);
+  assert.strictEqual(m.rings.length, 7);
+  assert.strictEqual(m.files, 1);
+  const bad = app.mergeCityGML([{ name: 'a.json', text: JSON.stringify(cityJsonBox()) }, { name: 'b.json', text: '{ kaputt' }]);
+  assert.strictEqual(bad.failed.length, 1);
+});
+
+test('CityJSON: die Ringe laufen durch dieselbe Dreiecks- und Vorschaukette wie CityGML', function () {
+  roadTerrain(0);
+  const rings = app.parseCityJSON(JSON.stringify(cityJsonBox()));
+  const res = app.triangulateBuildingRings(rings);
+  assert.ok(res.used === 7 && res.skipped === 0, JSON.stringify({ u: res.used, s: res.skipped }));
+  assert.ok(res.triangles.length >= 8);
+  const mesh = app.buildBuildingsMesh(rings);
+  assert.ok(mesh.userData.faces >= 7);
+});
+
 /* ---------- Standortsuche ---------- */
 
 const photonSample = { features: [

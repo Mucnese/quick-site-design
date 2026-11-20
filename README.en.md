@@ -28,8 +28,8 @@ browser.
 - GeoTIFF terrain models, several tiles at once. Pixels from all tiles are
   averaged into a common grid, so differing resolutions and overlaps are not a
   problem.
-- CityGML LOD2, also as a batch. Axis order is detected automatically, buildings
-  outside the tile are discarded.
+- CityGML LOD2 and **CityJSON** (also CityJSONSeq and the feature lists of the 3DBAG API), also as a batch. For CityJSON the
+  highest level of detail of each part is used. Axis order is detected automatically, buildings outside the tile are discarded.
 - Terrain resolution adapts to zoom automatically: nearby parts at full data
   resolution (up to 1400 grid points per axis), distant parts coarser (tiles of
   64 × 64 cells). There is no slider for it. Height lookups, objects and the IFC
@@ -236,7 +236,7 @@ Gauss-Krüger and Web Mercator.
 | Latvia | [LĢIA · 20 m](https://www.lgia.gov.lv/en/Digit%C4%81lais%20reljefa%20modelis) | not clear | — | CC BY 4.0 |
 | Luxembourg | [LiDAR 2019 · 0.5 m](https://data.public.lu/fr/datasets/lidar-2019-modele-numerique-de-terrain-mnt/) | GeoTIFF, EPSG:2169 | [BD-L-BATI3D](https://data.public.lu/en/datasets/base-de-donnees-nationale-des-batiments-3d-2023/) (LoD2, CityGML) | CC0 |
 | Malta | [DTM 2018 · 1 m](https://portal.data.gov.mt/dataset/digital-terrain-model-2018) | not clear (download and WCS) | — | not stated |
-| Netherlands | [AHN · 0.5 m](https://www.ahn.nl/dataroom), [PDOK download DTM · 0.5 m](https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml) | GeoTIFF (COG), EPSG:28992 | [3DBAG](https://3dbag.nl/en/download) (LoD2.2; CityJSON, GeoPackage, OBJ, **no CityGML**) | CC0 |
+| Netherlands | [AHN · 0.5 m](https://www.ahn.nl/dataroom), [PDOK download DTM · 0.5 m](https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml) | GeoTIFF (COG), EPSG:28992 | [3DBAG](https://3dbag.nl/en/download) (LoD2.2; **CityJSON can be loaded**, GeoPackage and OBJ cannot) | CC0 |
 | Poland | [GUGiK NMT · 1 m and 5 m](https://www.geoportal.gov.pl/) | not clear | — | Open Government Data |
 | Portugal | [DGT LiDAR, mainland · 0.5 m](https://cdd.dgterritorio.gov.pt/dgt-fe/catalogos/colecoes?filter=LiDAR+-+Modelos+Digitais+do+Relevo&language=en) | not clear | — | CC BY 4.0 |
 | Romania | [ANCPI LAKI II · 0.5 m (partly)](https://geoportal.ancpi.ro/portal/apps/webappviewer/index.html?id=3f34ee5af71c400396dda574f0d53274) | not clear, page unreachable when checked | — | OGL-ROU-1.0 |

@@ -750,6 +750,21 @@ await test('Startkarte: Ort ohne Daten (nicht in der EU) nennt das im Fenster, R
   assert.strictEqual(s.document.getElementById('sm-info').style.display, 'block', 'und die Größe unten');
 });
 
+await test('Gebäude als CityJSON laden: Dateiauswahl nennt .json/.jsonl, Status zählt die Flächen, Fehler nennt die Datei', async function () {
+  const s = await scopeWithTerrain();
+  const tr = { scale: [0.001, 0.001, 0.001], translate: [692005, 5336005, 500] };
+  const P = [[0, 0, 0], [10000, 0, 0], [10000, 8000, 0], [0, 8000, 0], [0, 0, 5000], [10000, 0, 5000], [10000, 8000, 5000], [0, 8000, 5000]];
+  const doc = { type: 'CityJSON', version: '2.0', transform: tr, vertices: P, CityObjects: { h: { type: 'Building', geometry: [{ type: 'Solid', lod: '2.2',
+    boundaries: [[[[0, 3, 2, 1]], [[4, 5, 6, 7]], [[0, 1, 5, 4]], [[1, 2, 6, 5]], [[2, 3, 7, 6]], [[3, 0, 4, 7]]]] }] } } };
+  await s.handleGmlFiles([fakeFile('haus.city.json', JSON.stringify(doc))], false);
+  const st = s.document.getElementById('gml-status');
+  assert.ok(/^6 Flächen/.test(st.textContent), st.textContent);
+  assert.ok(s.__bridge.STRINGS.de.buildingFile.indexOf('CityJSON') >= 0 && s.__bridge.STRINGS.en.buildingFile.indexOf('CityJSON') >= 0);
+  await s.handleGmlFiles([fakeFile('kaputt.json', '{ nope')], false);
+  assert.ok(/kein gültiges CityJSON/.test(st.textContent), st.textContent);
+  assert.ok(s.document.getElementById('status').textContent.indexOf(s.T('gmlUnreadable')) === 0, s.document.getElementById('status').textContent);
+});
+
 await test('Startkarte: ein Pin zeigt die Links nur im Fenster am Pin; die Adressleiste zeigt sie erst, wenn dort etwas eingegeben wird', async function () {
   const s = startMapScope();
   s.document.getElementById('sm-load')._listeners.click[0]();

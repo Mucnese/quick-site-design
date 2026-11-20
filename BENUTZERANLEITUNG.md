@@ -65,7 +65,7 @@ gesperrt.
      wählst, fragt sie Photon nach Ort und Bundesland und zeigt dann die Links.
 2. **Gelände laden.** Im Fenster **Daten** auf „Dateien auswählen“ klicken und die
    Geländedatei wählen. Mehrere Kacheln lassen sich zusammen auswählen, sie werden verschmolzen.
-3. **Gebäude laden (optional).** Ebenfalls im Fenster **Daten**, Zeile „Gebäude · CityGML“.
+3. **Gebäude laden (optional).** Ebenfalls im Fenster **Daten**, Zeile „Gebäude · CityGML / CityJSON“.
    Gebäude außerhalb des Geländes werden verworfen.
 
 ### Welche Dateien gehen?
@@ -75,6 +75,7 @@ gesperrt.
 | Gelände | **GeoTIFF** (`.tif`, `.tiff`) | Bezugssystem steht in der Datei |
 | Gelände | **XYZ-Text** (`.xyz`, `.txt`, `.csv`) | Rechtswert, Hochwert, Höhe auf einem regelmäßigen Raster. Das Bezugssystem fehlt in der Datei: vorher im Fenster **Daten** unter „Bezugssystem für XYZ-Dateien“ wählen oder einen EPSG-Code eintippen |
 | Gebäude | **CityGML** (`.gml`, `.xml`) | LoD2, die Achsenreihenfolge wird erkannt |
+| Gebäude | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | auch CityJSONSeq und Merkmalslisten (3DBAG); je Bauteil die höchste Detailstufe, Grundrisse und Gelände fallen weg. Das Bezugssystem muss zum Gelände passen (3DBAG: Rijksdriehoek, passend zum AHN) |
 
 Nicht gelesen werden ESRI-ASCII-Raster (`.asc`) und Dezimalkommas in XYZ-Dateien. Wandle sie
 vorher in GeoTIFF um, zum Beispiel mit GDAL.

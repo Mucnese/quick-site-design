@@ -13,6 +13,8 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
+- **CityJSON:** Buildings can also be loaded as CityJSON (CityJSON 1.x and 2.0, CityJSONSeq, feature lists like those of the 3DBAG API). The
+  highest level of detail of each part is used; footprints and terrain are dropped. This makes the Dutch 3DBAG buildings loadable.
 - **EU geoportals:** The address search and the start map now name the pages of the national mapping agency for the terrain model
   of every EU country (and building models where they exist: Luxembourg, the Netherlands, France partly). Countries without a
   known open terrain model carry a note instead of a guessed link. The search and the recognition of coordinates cover the whole EU.

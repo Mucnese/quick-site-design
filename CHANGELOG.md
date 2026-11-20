@@ -14,6 +14,8 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
 
 ### Neu
+- **CityJSON:** Gebäude lassen sich auch als CityJSON laden (CityJSON 1.x und 2.0, CityJSONSeq, Merkmalslisten wie die der 3DBAG-Schnittstelle). Je
+  Bauteil gilt die höchste Detailstufe; Grundrisse und Gelände fallen weg. Damit lassen sich die niederländischen 3DBAG-Gebäude laden.
 - **Geoportale der EU:** Die Adresssuche und die Startkarte nennen jetzt für alle Länder der EU die Seiten der Landesvermessung für
   das Geländemodell (und Gebäudemodelle, wo es sie gibt: Luxemburg, Niederlande, Frankreich teilweise). Länder ohne bekanntes offenes
   Geländemodell tragen einen Hinweis statt eines geratenen Links. Die Suche und das Erkennen von Koordinaten gelten für die ganze EU.

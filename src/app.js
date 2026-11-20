@@ -1803,6 +1803,105 @@ function parseCityGML(text) {
   return rings;
 }
 
+/* =========================================================
+   CityJSON einlesen (CityJSON 1.x/2.0, CityJSONSeq, Merkmalslisten wie die der 3DBAG-Schnittstelle)
+   Ergebnis wie bei parseCityGML: eine Liste von Ringen, jeder als [x, y, z, x, y, z, ...] im Bezugssystem der Datei
+   (x = Rechtswert, y = Hochwert). Je Bauteil gilt nur die höchste Detailstufe (LoD), sonst lägen LoD 1.2, 1.3 und 2.2 von
+   3DBAG übereinander; Grundrisse (LoD unter 1) und Gelände, Pflanzen, Wasser, Landnutzung bleiben weg. Löcher in Flächen
+   werden wie bei CityGML ignoriert.
+   ========================================================= */
+const CITYJSON_SKIP_TYPES = { TINRelief: 1, PlantCover: 1, SolitaryVegetationObject: 1, WaterBody: 1, LandUse: 1 };
+
+function cityJsonLod(g) {
+  const v = parseFloat(g && g.lod);
+  return isFinite(v) ? v : 1;
+}
+
+/* Äußere Ringe (Indexlisten) einer Geometrie, je nach Typ verschieden tief verschachtelt */
+function cityJsonRings(type, b, out) {
+  if (!Array.isArray(b)) return;
+  if (type === 'MultiSurface' || type === 'CompositeSurface') {
+    b.forEach(function (surf) { if (Array.isArray(surf) && Array.isArray(surf[0])) out.push(surf[0]); });
+  } else if (type === 'Solid') {
+    b.forEach(function (shell) { cityJsonRings('MultiSurface', shell, out); });
+  } else if (type === 'MultiSolid' || type === 'CompositeSolid') {
+    b.forEach(function (solid) { cityJsonRings('Solid', solid, out); });
+  }
+}
+
+function parseCityJSON(text) {
+  const docs = [];
+  const t = String(text || '');
+  try {
+    docs.push(JSON.parse(t));
+  } catch (e) {
+    // CityJSONSeq: eine JSON-Zeile je Gebäude
+    const lines = t.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines[i].trim();
+      if (!ln) continue;
+      try { docs.push(JSON.parse(ln)); } catch (e2) { throw new Error('Die Datei ist kein gültiges CityJSON.'); }
+    }
+  }
+  if (!docs.length) throw new Error('Die Datei ist kein gültiges CityJSON.');
+
+  // Maßstab und Verschiebung: aus der Kopfzeile bzw. dem CityJSON-Dokument, bei Merkmalslisten aus metadata
+  let transform = null;
+  docs.forEach(function (d) {
+    if (!transform && d && d.type === 'CityJSON' && d.transform) transform = d.transform;
+    if (!transform && d && d.metadata && d.metadata.transform) transform = d.metadata.transform;
+  });
+
+  const units = [];
+  docs.forEach(function (d) {
+    if (!d || typeof d !== 'object') return;
+    if (d.type === 'CityJSON' || d.type === 'CityJSONFeature') {
+      if (d.CityObjects) units.push({ objs: d.CityObjects, verts: d.vertices || [], tr: d.type === 'CityJSON' ? (d.transform || transform) : transform });
+    }
+    if (Array.isArray(d.features)) {
+      d.features.forEach(function (f) {
+        if (f && f.CityObjects) units.push({ objs: f.CityObjects, verts: f.vertices || [], tr: transform });
+      });
+    }
+  });
+
+  const rings = [];
+  units.forEach(function (u) {
+    const sc = (u.tr && u.tr.scale) || [1, 1, 1], tl = (u.tr && u.tr.translate) || [0, 0, 0];
+    Object.keys(u.objs).forEach(function (id) {
+      const o = u.objs[id];
+      if (!o || CITYJSON_SKIP_TYPES[o.type] || !Array.isArray(o.geometry)) return;
+      let best = null, bestLod = -1;
+      o.geometry.forEach(function (g) {
+        const lod = cityJsonLod(g);
+        if (lod >= 1 && lod > bestLod) { best = g; bestLod = lod; }
+      });
+      if (!best) return;
+      const idx = [];
+      cityJsonRings(best.type, best.boundaries, idx);
+      idx.forEach(function (ring) {
+        if (ring.length < 3) return;
+        const flat = [];
+        for (let i = 0; i < ring.length; i++) {
+          const v = u.verts[ring[i]];
+          if (!v) { flat.length = 0; break; }
+          flat.push(v[0] * sc[0] + tl[0], v[1] * sc[1] + tl[1], v[2] * sc[2] + tl[2]);
+        }
+        if (flat.length >= 9) rings.push(flat);
+      });
+    });
+  });
+
+  if (!rings.length) throw new Error('Keine Gebäudeflächen gefunden. Enthält die Datei LoD1/LoD2-Geometrie?');
+  return rings;
+}
+
+/* CityGML oder CityJSON? JSON beginnt mit { oder [ (Wasserzeichen und Leerraum davor zählen nicht) */
+function parseBuildingText(text) {
+  const head = String(text || '').slice(0, 64).replace(/^[﻿\s]+/, '');
+  return (head[0] === '{' || head[0] === '[') ? parseCityJSON(text) : parseCityGML(text);
+}
+
 function readRing(node) {
   const pl = node.getElementsByTagNameNS('*', 'posList')[0];
   if (pl && pl.textContent) return parseNumbers(pl.textContent);
@@ -1830,14 +1929,14 @@ function parseNumbers(s) {
   return out;
 }
 
-/* Mehrere CityGML-Dateien zu einer Ringliste zusammenführen */
+/* Mehrere Gebäudedateien (CityGML oder CityJSON) zu einer Ringliste zusammenführen */
 function mergeCityGML(files) {
   if (!files || !files.length) throw new Error('Keine Datei ausgewählt.');
   let rings = [];
   const failed = [];
   files.forEach(function (f) {
     try {
-      const r = parseCityGML(f.text);
+      const r = parseBuildingText(f.text);
       for (let i = 0; i < r.length; i++) rings.push(r[i]);
     } catch (e) {
       failed.push(f.name + ': ' + e.message);
@@ -5454,7 +5553,7 @@ if (typeof module !== 'undefined' && module.exports) {
     parseCityGML: parseCityGML,
     readRing: readRing,
     parseNumbers: parseNumbers,
-    mergeCityGML: mergeCityGML,
+    mergeCityGML: mergeCityGML, parseCityJSON: parseCityJSON, parseBuildingText: parseBuildingText,
     detectAxisOrder: detectAxisOrder,
     buildBuildingsMesh: buildBuildingsMesh,
     triNormal: triNormal,

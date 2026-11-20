@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-CmE/miV8i25xcq2FD4tggsZWURBDkZ2FDYRlURxbSco=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-3boSFyMhxgCiJyJNVL3EdI7iydmqDjfTqI0L8/ynOiU=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -728,8 +728,8 @@
         </div>
       </div>
       <div class="file-row">
-        <div class="file-head"><span data-i18n="buildingFile">Gebäude · CityGML</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>
-        <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,text/xml">
+        <div class="file-head"><span data-i18n="buildingFile">Gebäude · CityGML / CityJSON</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>
+        <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,.json,.jsonl,text/xml,application/json">
         <div class="file-status" id="gml-status">Keine Datei</div>
       </div>
       <div class="file-row" id="ifc-row">
@@ -2696,6 +2696,105 @@ function parseCityGML(text) {
   return rings;
 }
 
+/* =========================================================
+   CityJSON einlesen (CityJSON 1.x/2.0, CityJSONSeq, Merkmalslisten wie die der 3DBAG-Schnittstelle)
+   Ergebnis wie bei parseCityGML: eine Liste von Ringen, jeder als [x, y, z, x, y, z, ...] im Bezugssystem der Datei
+   (x = Rechtswert, y = Hochwert). Je Bauteil gilt nur die höchste Detailstufe (LoD), sonst lägen LoD 1.2, 1.3 und 2.2 von
+   3DBAG übereinander; Grundrisse (LoD unter 1) und Gelände, Pflanzen, Wasser, Landnutzung bleiben weg. Löcher in Flächen
+   werden wie bei CityGML ignoriert.
+   ========================================================= */
+const CITYJSON_SKIP_TYPES = { TINRelief: 1, PlantCover: 1, SolitaryVegetationObject: 1, WaterBody: 1, LandUse: 1 };
+
+function cityJsonLod(g) {
+  const v = parseFloat(g && g.lod);
+  return isFinite(v) ? v : 1;
+}
+
+/* Äußere Ringe (Indexlisten) einer Geometrie, je nach Typ verschieden tief verschachtelt */
+function cityJsonRings(type, b, out) {
+  if (!Array.isArray(b)) return;
+  if (type === 'MultiSurface' || type === 'CompositeSurface') {
+    b.forEach(function (surf) { if (Array.isArray(surf) && Array.isArray(surf[0])) out.push(surf[0]); });
+  } else if (type === 'Solid') {
+    b.forEach(function (shell) { cityJsonRings('MultiSurface', shell, out); });
+  } else if (type === 'MultiSolid' || type === 'CompositeSolid') {
+    b.forEach(function (solid) { cityJsonRings('Solid', solid, out); });
+  }
+}
+
+function parseCityJSON(text) {
+  const docs = [];
+  const t = String(text || '');
+  try {
+    docs.push(JSON.parse(t));
+  } catch (e) {
+    // CityJSONSeq: eine JSON-Zeile je Gebäude
+    const lines = t.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines[i].trim();
+      if (!ln) continue;
+      try { docs.push(JSON.parse(ln)); } catch (e2) { throw new Error('Die Datei ist kein gültiges CityJSON.'); }
+    }
+  }
+  if (!docs.length) throw new Error('Die Datei ist kein gültiges CityJSON.');
+
+  // Maßstab und Verschiebung: aus der Kopfzeile bzw. dem CityJSON-Dokument, bei Merkmalslisten aus metadata
+  let transform = null;
+  docs.forEach(function (d) {
+    if (!transform && d && d.type === 'CityJSON' && d.transform) transform = d.transform;
+    if (!transform && d && d.metadata && d.metadata.transform) transform = d.metadata.transform;
+  });
+
+  const units = [];
+  docs.forEach(function (d) {
+    if (!d || typeof d !== 'object') return;
+    if (d.type === 'CityJSON' || d.type === 'CityJSONFeature') {
+      if (d.CityObjects) units.push({ objs: d.CityObjects, verts: d.vertices || [], tr: d.type === 'CityJSON' ? (d.transform || transform) : transform });
+    }
+    if (Array.isArray(d.features)) {
+      d.features.forEach(function (f) {
+        if (f && f.CityObjects) units.push({ objs: f.CityObjects, verts: f.vertices || [], tr: transform });
+      });
+    }
+  });
+
+  const rings = [];
+  units.forEach(function (u) {
+    const sc = (u.tr && u.tr.scale) || [1, 1, 1], tl = (u.tr && u.tr.translate) || [0, 0, 0];
+    Object.keys(u.objs).forEach(function (id) {
+      const o = u.objs[id];
+      if (!o || CITYJSON_SKIP_TYPES[o.type] || !Array.isArray(o.geometry)) return;
+      let best = null, bestLod = -1;
+      o.geometry.forEach(function (g) {
+        const lod = cityJsonLod(g);
+        if (lod >= 1 && lod > bestLod) { best = g; bestLod = lod; }
+      });
+      if (!best) return;
+      const idx = [];
+      cityJsonRings(best.type, best.boundaries, idx);
+      idx.forEach(function (ring) {
+        if (ring.length < 3) return;
+        const flat = [];
+        for (let i = 0; i < ring.length; i++) {
+          const v = u.verts[ring[i]];
+          if (!v) { flat.length = 0; break; }
+          flat.push(v[0] * sc[0] + tl[0], v[1] * sc[1] + tl[1], v[2] * sc[2] + tl[2]);
+        }
+        if (flat.length >= 9) rings.push(flat);
+      });
+    });
+  });
+
+  if (!rings.length) throw new Error('Keine Gebäudeflächen gefunden. Enthält die Datei LoD1/LoD2-Geometrie?');
+  return rings;
+}
+
+/* CityGML oder CityJSON? JSON beginnt mit { oder [ (Wasserzeichen und Leerraum davor zählen nicht) */
+function parseBuildingText(text) {
+  const head = String(text || '').slice(0, 64).replace(/^[﻿\s]+/, '');
+  return (head[0] === '{' || head[0] === '[') ? parseCityJSON(text) : parseCityGML(text);
+}
+
 function readRing(node) {
   const pl = node.getElementsByTagNameNS('*', 'posList')[0];
   if (pl && pl.textContent) return parseNumbers(pl.textContent);
@@ -2723,14 +2822,14 @@ function parseNumbers(s) {
   return out;
 }
 
-/* Mehrere CityGML-Dateien zu einer Ringliste zusammenführen */
+/* Mehrere Gebäudedateien (CityGML oder CityJSON) zu einer Ringliste zusammenführen */
 function mergeCityGML(files) {
   if (!files || !files.length) throw new Error('Keine Datei ausgewählt.');
   let rings = [];
   const failed = [];
   files.forEach(function (f) {
     try {
-      const r = parseCityGML(f.text);
+      const r = parseBuildingText(f.text);
       for (let i = 0; i < r.length; i++) rings.push(r[i]);
     } catch (e) {
       failed.push(f.name + ': ' + e.message);
@@ -6332,7 +6431,8 @@ const STRINGS = {
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
     ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
-    gmlTooBig: 'Die CityGML-Dateien sind zusammen {s} MB groß, mehr als {m} MB schafft der Browser nicht. Bitte kleinere Ausschnitte laden.',
+    gmlUnreadable: 'Gebäudedatei nicht lesbar:',
+    gmlTooBig: 'Die Gebäudedateien sind zusammen {s} MB groß, mehr als {m} MB schafft der Browser nicht. Bitte kleinere Ausschnitte laden.',
     busyGml: 'Gebäudemodell wird verarbeitet … bei großen Dateien kann das einige Sekunden dauern.', busyGmlRender: 'Gebäudemodell wird gerendert …',
     busyIfc: 'IFC-Datei wird gelesen und gerendert … bei großen Dateien kann das einige Sekunden dauern.',
     ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
@@ -6388,13 +6488,13 @@ const STRINGS = {
     geoNote_noEuBldg: 'Kein amtliches 3D-Gebäudemodell geprüft.',
     geoNote_euCheckFormat: 'Das Format steht auf der Seite nicht eindeutig; vor dem Laden prüfen (GeoTIFF wird direkt geladen).',
     geoNote_euPartial: 'Nicht überall verfügbar.',
-    geoNote_euBldgNotCityGml: 'Als CityJSON, GeoPackage oder OBJ; Quick-Site-Design liest nur CityGML.',
+    geoNote_euBldgNotCityGml: 'Als CityJSON (lässt sich laden), GeoPackage oder OBJ (nicht).',
     geoNote_euUnreachable: 'Die Seite war bei der Prüfung nicht erreichbar.',
     xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
     xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
     xyzFar: 'Achtung: Im gewählten System {c} liegen die Koordinaten bei Breite {lat}, Länge {lon}, also außerhalb Europas.',
-    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML',
+    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML / CityJSON',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', road: 'Baustraße',
@@ -6508,7 +6608,8 @@ const STRINGS = {
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
     ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
-    gmlTooBig: 'The CityGML files are {s} MB together; the browser cannot handle more than {m} MB. Please load smaller extracts.',
+    gmlUnreadable: 'Building file not readable:',
+    gmlTooBig: 'The building files are {s} MB together; the browser cannot handle more than {m} MB. Please load smaller extracts.',
     busyGml: 'Building model is being processed … large files can take a few seconds.', busyGmlRender: 'Building model is being rendered …',
     busyIfc: 'IFC file is being read and rendered … large files can take a few seconds.',
     ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
@@ -6564,13 +6665,13 @@ const STRINGS = {
     geoNote_noEuBldg: 'No official 3D building model checked.',
     geoNote_euCheckFormat: 'The page does not state the format clearly; check before loading (GeoTIFF loads directly).',
     geoNote_euPartial: 'Not available everywhere.',
-    geoNote_euBldgNotCityGml: 'As CityJSON, GeoPackage or OBJ; Quick-Site-Design reads CityGML only.',
+    geoNote_euBldgNotCityGml: 'As CityJSON (can be loaded), GeoPackage or OBJ (cannot).',
     geoNote_euUnreachable: 'The page could not be reached when checked.',
     xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
     xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
     xyzFar: 'Warning: in the chosen system {c} the coordinates lie at latitude {lat}, longitude {lon}, outside Europe.',
-    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML',
+    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML / CityJSON',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', road: 'Haul road',
@@ -9326,7 +9427,7 @@ async function handleDemFiles(files, isDemo) {
   }
 }
 
-/* Obergrenze für CityGML: der Browser liest die Dateien als Text in den Speicher und parst sie als XML;
+/* Obergrenze für Gebäudedateien (CityGML und CityJSON): der Browser liest die Dateien als Text in den Speicher und parst sie als XML;
    darüber hinaus bricht er mit einer unverständlichen Meldung ab oder steht still. Schätzwert, nicht gemessen. */
 const GML_MAX_BYTES = 300e6;
 
@@ -9371,7 +9472,7 @@ async function handleGmlFiles(files, isDemo) {
     }
   } catch (err) {
     setFileStatus('gml', err.message, 'err');
-    setStatus('CityGML nicht lesbar: ' + err.message, true);
+    setStatus(T('gmlUnreadable') + ' ' + err.message, true);
   } finally {
     hideBusy();
   }
