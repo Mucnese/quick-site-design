@@ -204,7 +204,9 @@
   #sm-pop .addr-place { padding-right: 18px; }
   #sm-pop .sm-line { font-variant-numeric: tabular-nums; }
   #sm-pop .sm-dim { color: var(--text-dim); font-size: 12px; }
-  #sm-consent { position: absolute; z-index: 4; left: 50%; top: 42%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 28px)); padding: 14px 16px; text-align: left; }
+  #sm-consent { position: absolute; z-index: 4; top: 42%; transform: translateY(-50%); padding: 14px 16px; text-align: left;
+    /* in der freien Fläche rechts neben dem linken Fenster, nie darunter */
+    left: calc(var(--panel-w) + 28px); right: 14px; width: auto; max-width: 380px; margin: 0 auto; }
   #sm-consent .sm-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
   #sm-consent .sm-text { font-size: 12.5px; line-height: 1.5; color: var(--text-dim); margin-bottom: 10px; }
   #sm-tools { position: absolute; z-index: 4; right: 14px; top: 14px; display: none; flex-direction: column; align-items: flex-end; gap: 6px; }
@@ -666,7 +668,7 @@
   <div id="sm-rect"></div>
   <div id="sm-marker"></div>
   <div id="sm-consent" class="panel">
-    <div class="sm-title" data-i18n="smTitle">Karte</div>
+    <div class="sm-title" data-i18n="smTitle">Lade Open-Street Map</div>
     <div class="sm-text" data-i18n="smConsent">Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen.</div>
     <button class="btn-block accent" id="sm-load" data-i18n="smLoad">Karte laden</button>
   </div>

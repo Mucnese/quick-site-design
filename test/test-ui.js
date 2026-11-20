@@ -569,6 +569,7 @@ await test('Startkarte: ohne Gelände sichtbar, aber ohne Kachelanfrage vor dem 
   assert.strictEqual(s.document.getElementById('sm-tiles').children.length, 0, 'noch keine Kachel angefragt');
   assert.strictEqual(s.document.getElementById('sm-tools').style.display, 'none');
   assert.ok(s.T('smConsent').indexOf('tile.openstreetmap.org') >= 0 && s.T('smConsent').indexOf('IP') >= 0);
+  assert.strictEqual(s.T('smTitle'), 'Lade Open-Street Map', 'Titel des Hinweises');
 });
 
 await test('Startkarte: nach dem Klick lädt sie nur OSM-Kacheln, Zoom und Ort holen neue, die Auswahl bleibt im Hinweis', function () {
