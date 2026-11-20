@@ -245,7 +245,8 @@ Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList`, `smRe
 `ui.js`, Abschnitt Startkarte). Kacheln (`OSM_TILE_URL`) werden erst nach dem Klick auf `#sm-load` angefragt (Datenschutz:
 IP-Adresse an OSM); nie beim Start. Klick oder Rechteck rufen `chooseAddrItem` auf (Ort wie eine eingegebene Koordinate,
 Links des Landes über `geoSourcesFor`), `noFly` hält die Karte still. Kein localStorage: die Einwilligung gilt nur bis zum
-Neuladen. Mit `?demo=1` erscheint sie nicht. Die Karte lädt kein Gelände; das tut weiterhin der Nutzer mit den Dateien.
+Neuladen. Zoomen: stufenlos (`smZoomBy`, `smAnimStep`); Kacheln der nächsten ganzen Stufe werden skaliert, zwei grobe Unterlagen (3 und
+6 Stufen darunter) füllen Lücken, alte Kacheln bleiben, bis die neuen geladen UND eingeblendet sind (sonst blitzt der Hintergrund). Mit `?demo=1` erscheint sie nicht. Die Karte lädt kein Gelände; das tut weiterhin der Nutzer mit den Dateien.
 
 **IFC-Koordinaten.** `buildIfc(..., {coords})`: `'abs'` (Voreinstellung der Oberfläche, Auswahl `ifc-coords`)
 schreibt Rechtswert, Hochwert und Höhe ü. NHN in die Geometrie, IfcMapConversion ist dann Nullversatz;

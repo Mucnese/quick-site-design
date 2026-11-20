@@ -576,11 +576,13 @@ await test('Startkarte: nach dem Klick lädt sie nur OSM-Kacheln, Zoom und Ort h
   s.document.getElementById('sm-load')._listeners.click[0]();
   const box = s.document.getElementById('sm-tiles');
   assert.ok(box.children.length >= 6, String(box.children.length));
-  box.children.forEach(function (im) { assert.ok(/^https:\/\/tile\.openstreetmap\.org\/6\/\d+\/\d+\.png$/.test(im.src), im.src); });
+  box.children.forEach(function (im) { assert.ok(/^https:\/\/tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png$/.test(im.src), im.src); });
+  assert.ok(box.children.filter(function (im) { return /\/6\//.test(im.src); }).length >= 6, 'Kacheln der Ansichtsstufe');
+  assert.ok(box.children.some(function (im) { return /\/3\//.test(im.src); }), 'grobe Unterlage drei Stufen darunter');
   assert.strictEqual(s.document.getElementById('sm-consent').style.display, 'none');
   assert.strictEqual(s.document.getElementById('sm-tools').style.display, 'flex');
   s.smFlyTo(48.1374, 11.5755, 16);
-  assert.ok(box.children.every(function (im) { return /\/16\//.test(im.src); }), 'Kacheln der Stufe 16');
+  assert.ok(box.children.every(function (im) { return /\/(16|13|10)\//.test(im.src); }), 'Kacheln der Stufe 16 und die Unterlagen der Stufen 13 und 10');
   assert.ok(box.children.some(function (im) { return /\/16\/34\d\d\d\/22\d\d\d\.png/.test(im.src); }), 'München');
   s.document.getElementById('sm-in')._listeners.click[0]();
   s.smFinishZoom();
@@ -590,7 +592,10 @@ await test('Startkarte: nach dem Klick lädt sie nur OSM-Kacheln, Zoom und Ort h
   assert.ok(at(16).length > 0, 'die alten Kacheln bleiben stehen, bis die neuen geladen sind (kein leerer Bildschirm)');
   at(17).forEach(function (im) { im.complete = true; im.naturalWidth = 256; });
   s.smRender();
-  assert.strictEqual(at(16).length, 0, 'neue Stufe fertig: alte Kacheln weg');
+  assert.ok(at(16).length > 0, 'gerade geladen, noch nicht eingeblendet: die alten bleiben (sonst blitzt der Hintergrund durch)');
+  vm.runInContext('smSettleAt = 1', s);                    // das Einblenden ist vorbei
+  s.smRender();
+  assert.strictEqual(at(16).length, 0, 'neue Stufe fertig und eingeblendet: alte Kacheln weg');
   assert.ok(at(17).length >= 6);
   assert.strictEqual(s.document.getElementById('sm-marker').style.display, 'block');
 });

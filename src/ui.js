@@ -2036,6 +2036,8 @@ let smConsent = false, smVisible = false;
 let smView = { lon: 10.5, lat: 50.6, z: 6 };
 let smSelectMode = false, smRect = null, smPoint = null, smDrag = null;
 let smAnim = null, smAnimBusy = false, smRenderBusy = false;
+let smSettleAt = 0, smSettleTimer = null;       // seit wann alle Kacheln der Ansicht geladen sind
+const SM_FADE_MS = 180;                          // Dauer des Einblendens (CSS .18s)
 const smImgs = {};
 
 function smEl(id) { return document.getElementById(id); }
@@ -2097,7 +2099,18 @@ function smRender() {
   }
   const s = smSize(), list = smTileList(smView, s.w, s.h, 120), cur = {};
   let allLoaded = true;
-  list.forEach(function (t) {
+  // Unterlage: eine viel gröbere Stufe (nur wenige Kacheln). Sie füllt beim Herauszoomen und Verschieben die Flächen, für die
+  // die feinen Kacheln noch fehlen, mit einem unscharfen Kartenbild - statt hellem Hintergrund, der beim Einblenden aufblitzt.
+  const base = [];
+  if (list.length) {
+    // zwei Unterlagen (3 und 6 Stufen gröber): auch bei schnellem Herauszoomen um mehrere Stufen bleibt das Bild gefüllt
+    [list[0].z - 6, list[0].z - 3].forEach(function (lv, i, arr) {
+      const l = Math.max(SM_MIN_ZOOM, lv);
+      if (l < list[0].z && (i === 0 ? l !== Math.max(SM_MIN_ZOOM, arr[1]) : true)) smTileList(smView, s.w, s.h, 40, l).forEach(function (t) { base.push(t); });
+    });
+  }
+  base.concat(list).forEach(function (t) {
+    const fine = t.z === (list.length ? list[0].z : -1);
     const key = t.z + '/' + t.tx + '/' + t.y;
     cur[key] = true;
     let im = smImgs[key];
@@ -2115,16 +2128,25 @@ function smRender() {
       box.appendChild(im);
       smImgs[key] = im;
     }
-    if (!smLoaded(im)) allLoaded = false;
+    if (fine && !smLoaded(im)) allLoaded = false;        // die Unterlage zählt nicht mit
   });
+  // Die alten Kacheln erst entfernen, wenn die neuen ganz eingeblendet sind: sonst scheint für einen Augenblick
+  // der helle Hintergrund durch (Aufblitzen beim Zoomen)
+  const now = Date.now();
+  if (!allLoaded) smSettleAt = 0;
+  else if (!smSettleAt) smSettleAt = now;
+  const settled = allLoaded && now - smSettleAt >= SM_FADE_MS + 40;
+  if (allLoaded && !settled && !smSettleTimer) {
+    smSettleTimer = setTimeout(function () { smSettleTimer = null; smRender(); }, SM_FADE_MS + 60);
+  }
   // Alle Kacheln der Ansicht (auch die alten Stufen, solange sie gebraucht werden) an ihre Stelle setzen
   Object.keys(smImgs).forEach(function (k) {
     const im = smImgs[k], t = im._t;
-    if (!cur[k] && allLoaded) { smDropImg(k); return; }      // neue Stufe fertig: alte Kacheln weg
+    if (!cur[k] && settled) { smDropImg(k); return; }        // neue Stufe fertig und eingeblendet: alte Kacheln weg
     const sc = Math.pow(2, smView.z - t.z), c = smWorldPx(smView.lon, smView.lat, t.z);
     const left = (t.tx * SM_TILE - c.x) * sc + s.w / 2, top = (t.y * SM_TILE - c.y) * sc + s.h / 2;
-    if (!cur[k] && (left > s.w || top > s.h || left + SM_TILE * sc < 0 || top + SM_TILE * sc < 0 || Math.abs(t.z - smView.z) > 3)) {
-      smDropImg(k);                                          // alte Kachel ganz außerhalb des Fensters
+    if (!cur[k] && (left > s.w || top > s.h || left + SM_TILE * sc < 0 || top + SM_TILE * sc < 0 || sc > 70 || Object.keys(smImgs).length > 260)) {
+      smDropImg(k);                                          // alte Kachel außerhalb des Fensters oder viel zu stark vergrößert
       return;
     }
     // Rundung der Größe nach oben: kein feiner Spalt zwischen den Kacheln

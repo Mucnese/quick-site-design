@@ -13,7 +13,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
-- **Start map** (smooth zoom without empty areas, panning also with the middle and right button): without terrain the page shows an OSM map. Tiles load only after clicking “Load map”. Clicking a place or dragging a
+- **Start map** (smooth zoom without empty areas and without flashing, coarse tiles as an underlay, panning also with the middle and right button): without terrain the page shows an OSM map. Tiles load only after clicking “Load map”. Clicking a place or dragging a
   rectangle gives the size and UTM values; the links to the state's terrain and building data appear in the address bar.
 - **Axis line** (the fields disappear for all sections of a road at once when zooming out): every finished road shows its centre line. Above the line is the longitudinal slope per section, below it the
   length (two decimals); both can be typed in. Different slopes show as “variable” in the properties window, the slider makes

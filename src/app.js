@@ -1074,9 +1074,10 @@ function smMetersPerPx(lat, z) {
 /* Sichtbare Kacheln für eine Ansicht {lon, lat, z} (z darf gebrochen sein) in einem Fenster w x h: Liste
    {z, x, y, tx, left, top, scale}. Die Kacheln stammen von der nächsten ganzen Stufe z und erscheinen mit
    scale = 2^(Ansicht - z) verkleinert oder vergrößert; tx läuft ohne Umbruch, x um die Erde herum (Rest);
-   y außerhalb 0..n-1 entfällt. Höchstens `cap` Kacheln. */
-function smTileList(view, w, h, cap) {
-  const zt = Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, Math.round(view.z)));
+   y außerhalb 0..n-1 entfällt. Höchstens `cap` Kacheln. Mit `level` kommt die Liste für diese Stufe. */
+function smTileList(view, w, h, cap, level) {
+  const zt = level !== undefined ? Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, level))
+                                 : Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, Math.round(view.z)));
   const sc = Math.pow(2, view.z - zt);
   const c = smWorldPx(view.lon, view.lat, zt);
   const n = Math.pow(2, zt);
