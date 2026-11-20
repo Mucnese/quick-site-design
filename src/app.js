@@ -734,7 +734,9 @@ const GEO_EU = {
       { label: 'Wallonien · 0,5 m', url: 'https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html', fmt: 'tif' }
     ], bldg: [], bldgNote: 'noEuBldg' },
   BG: { name: 'Bulgarien', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
-  HR: { name: 'Kroatien', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  HR: { name: 'Kroatien',
+    dem: [{ label: 'DGU Digitalni model reljefa (WMS)', url: 'https://data.gov.hr/ckan/en/dataset/digitalni-model-reljefa', fmt: 'unclear', note: 'servicesOnly' }],
+    bldg: [], bldgNote: 'noEuBldg' },
   CY: { name: 'Zypern',
     dem: [{ label: 'Zypern · 1 m', url: 'https://www.data.gov.cy/el/dataset/ypsometria-inspire', fmt: 'unclear', note: 'euCheckFormat' }],
     bldg: [], bldgNote: 'noEuBldg' },
@@ -758,7 +760,9 @@ const GEO_EU = {
     bldg: [{ label: 'IGN LiDAR HD, Gebäude 3D (LoD2, Beta)', url: 'https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire', note: 'euPartial' }] },
   GR: { name: 'Griechenland', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
   HU: { name: 'Ungarn', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
-  IE: { name: 'Irland', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  IE: { name: 'Irland',
+    dem: [{ label: 'GSI Open LiDAR · 0,13 bis 2 m', url: 'https://data.gov.ie/en_GB/dataset/open-topographic-lidar-data', fmt: 'tif', note: 'euPartial' }],
+    bldg: [], bldgNote: 'noEuBldg' },
   IT: { name: 'Italien',
     dem: [
       { label: 'TINITALY · 10 m', url: 'https://tinitaly.pi.ingv.it/Download_Area1_1.html', fmt: 'unclear', note: 'euCheckFormat' },
@@ -771,7 +775,9 @@ const GEO_EU = {
   LU: { name: 'Luxemburg',
     dem: [{ label: 'LiDAR 2019 · 0,5 m', url: 'https://data.public.lu/fr/datasets/lidar-2019-modele-numerique-de-terrain-mnt/', fmt: 'tif' }],
     bldg: [{ label: 'BD-L-BATI3D (LoD2, CityGML)', url: 'https://data.public.lu/en/datasets/base-de-donnees-nationale-des-batiments-3d-2023/' }] },
-  MT: { name: 'Malta', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
+  MT: { name: 'Malta',
+    dem: [{ label: 'DTM 2018 · 1 m', url: 'https://portal.data.gov.mt/dataset/digital-terrain-model-2018', fmt: 'unclear', note: 'euCheckFormat' }],
+    bldg: [], bldgNote: 'noEuBldg' },
   NL: { name: 'Niederlande',
     dem: [
       { label: 'AHN · 0,5 m (COG)', url: 'https://www.ahn.nl/dataroom', fmt: 'tif' },

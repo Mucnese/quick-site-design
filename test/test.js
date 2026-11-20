@@ -2233,7 +2233,10 @@ test('Standortsuche: Datenquellen der übrigen EU-Länder - alle 25 Länder, Lin
   assert.strictEqual(app.geoSourcesFor({ country: 'GB', state: '' }), null, 'nicht in der EU');
   assert.strictEqual(app.geoSourcesFor({ country: 'CH', state: 'Zürich' }), null);
   // die Zusammenfassung im README nennt alle Länder ohne Link
-  ['Bulgarien', 'Griechenland', 'Irland', 'Kroatien', 'Litauen', 'Malta', 'Ungarn'].forEach(function (n) { assert.ok(readmes[0].indexOf(n) >= 0, n); });
+  ['Bulgarien', 'Griechenland', 'Litauen', 'Ungarn'].forEach(function (n) { assert.ok(readmes[0].indexOf(n) >= 0, n); });
+  ['BG', 'GR', 'LT', 'HU'].forEach(function (cc) { assert.deepStrictEqual(app.GEO_EU[cc].dem, [], cc + ': kein geratener Link'); });
+  assert.strictEqual(app.GEO_EU.IE.dem[0].fmt, 'tif');
+  assert.strictEqual(app.GEO_EU.HR.dem[0].note, 'servicesOnly', 'Kroatien: nur ein Webdienst');
 });
 
 test('Standortsuche: Photon-Vorschläge aus der ganzen EU, Länder außerhalb fallen weg', function () {
