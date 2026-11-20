@@ -1071,19 +1071,24 @@ function smMetersPerPx(lat, z) {
   return 2 * Math.PI * 6378137 * Math.cos(lat * Math.PI / 180) / (SM_TILE * Math.pow(2, z));
 }
 
-/* Sichtbare Kacheln für eine Ansicht {lon, lat, z} in einem Fenster w x h: Liste {z, x, y, left, top}.
-   x läuft um die Erde herum (Rest), y außerhalb 0..n-1 entfällt. Höchstens `cap` Kacheln. */
+/* Sichtbare Kacheln für eine Ansicht {lon, lat, z} (z darf gebrochen sein) in einem Fenster w x h: Liste
+   {z, x, y, tx, left, top, scale}. Die Kacheln stammen von der nächsten ganzen Stufe z und erscheinen mit
+   scale = 2^(Ansicht - z) verkleinert oder vergrößert; tx läuft ohne Umbruch, x um die Erde herum (Rest);
+   y außerhalb 0..n-1 entfällt. Höchstens `cap` Kacheln. */
 function smTileList(view, w, h, cap) {
-  const c = smWorldPx(view.lon, view.lat, view.z);
-  const n = Math.pow(2, view.z);
-  const x0 = c.x - w / 2, y0 = c.y - h / 2;
+  const zt = Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, Math.round(view.z)));
+  const sc = Math.pow(2, view.z - zt);
+  const c = smWorldPx(view.lon, view.lat, zt);
+  const n = Math.pow(2, zt);
+  const hw = w / (2 * sc), hh = h / (2 * sc);
   const out = [];
-  const tx0 = Math.floor(x0 / SM_TILE), tx1 = Math.floor((x0 + w) / SM_TILE);
-  const ty0 = Math.floor(y0 / SM_TILE), ty1 = Math.floor((y0 + h) / SM_TILE);
+  const tx0 = Math.floor((c.x - hw) / SM_TILE), tx1 = Math.floor((c.x + hw) / SM_TILE);
+  const ty0 = Math.floor((c.y - hh) / SM_TILE), ty1 = Math.floor((c.y + hh) / SM_TILE);
   for (let ty = ty0; ty <= ty1; ty++) {
     if (ty < 0 || ty >= n) continue;
     for (let tx = tx0; tx <= tx1; tx++) {
-      out.push({ z: view.z, x: ((tx % n) + n) % n, y: ty, left: tx * SM_TILE - x0, top: ty * SM_TILE - y0 });
+      out.push({ z: zt, x: ((tx % n) + n) % n, y: ty, tx: tx, scale: sc,
+                 left: (tx * SM_TILE - c.x) * sc + w / 2, top: (ty * SM_TILE - c.y) * sc + h / 2 });
       if (out.length >= (cap || 120)) return out;
     }
   }

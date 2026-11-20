@@ -2028,10 +2028,14 @@ function demStatusText(t) {
 /* ---------- Startkarte ----------
    Solange kein Gelände geladen ist, zeigt die Seite eine OSM-Karte: Ort suchen oder anklicken, Bereich als Rechteck
    aufziehen. Das Fenster nennt Größe und UTM-Werte; die Links zu Gelände- und Gebäudedaten des Landes stehen in der
-   Adressleiste (der Klick wählt den Ort wie eine Adresse). Die Kacheln laden erst nach dem Klick "Karte laden". */
+   Adressleiste (der Klick wählt den Ort wie eine Adresse). Die Kacheln laden erst nach dem Klick "Karte laden".
+   Bedienung: Ziehen mit der linken, mittleren oder rechten Taste verschiebt (links im Auswahlmodus: Rechteck), das
+   Mausrad zoomt stufenlos. Beim Zoomen bleiben die Kacheln der alten Stufe stehen (skaliert), bis die neuen geladen
+   sind - sonst blitzt die leere Fläche auf. */
 let smConsent = false, smVisible = false;
 let smView = { lon: 10.5, lat: 50.6, z: 6 };
-let smSelectMode = false, smRect = null, smPoint = null, smDrag = null, smWheelT = 0;
+let smSelectMode = false, smRect = null, smPoint = null, smDrag = null;
+let smAnim = null, smAnimBusy = false, smRenderBusy = false;
 const smImgs = {};
 
 function smEl(id) { return document.getElementById(id); }
@@ -2041,22 +2045,41 @@ function smSize() {
   return { w: el.clientWidth || window.innerWidth || 1024, h: el.clientHeight || window.innerHeight || 768 };
 }
 
+function smOrigin() {
+  const el = smEl('sm-tiles'), r = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+  return { left: (r && r.left) || 0, top: (r && r.top) || 0 };
+}
+
 function smToScreen(lon, lat) {
   const s = smSize(), c = smWorldPx(smView.lon, smView.lat, smView.z), p = smWorldPx(lon, lat, smView.z);
   return { x: p.x - c.x + s.w / 2, y: p.y - c.y + s.h / 2 };
 }
 
 function smFromClient(cx, cy) {
-  const el = smEl('sm-tiles'), s = smSize();
-  const r = el.getBoundingClientRect ? el.getBoundingClientRect() : { left: 0, top: 0 };
-  const c = smWorldPx(smView.lon, smView.lat, smView.z);
-  return smLonLat(c.x + (cx - (r.left || 0)) - s.w / 2, c.y + (cy - (r.top || 0)) - s.h / 2, smView.z);
+  const s = smSize(), o = smOrigin(), c = smWorldPx(smView.lon, smView.lat, smView.z);
+  return smLonLat(c.x + (cx - o.left) - s.w / 2, c.y + (cy - o.top) - s.h / 2, smView.z);
 }
 
 function smClampView() {
   smView.lat = Math.max(-80, Math.min(80, smView.lat));
   smView.z = Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, smView.z));
   smView.lon = ((smView.lon + 540) % 360) - 180;
+}
+
+function smDropImg(key) {
+  const im = smImgs[key];
+  delete smImgs[key];
+  if (im && im.parentNode && im.parentNode.removeChild) im.parentNode.removeChild(im);
+  else if (im && im.remove) im.remove();
+}
+
+function smLoaded(im) { return !!im && im.complete === true && im.naturalWidth > 0; }
+
+/* Mehrere Änderungen in einem Bild zusammenfassen (Kachel geladen, Mausbewegung) */
+function smSchedule() {
+  if (smRenderBusy) return;
+  smRenderBusy = true;
+  requestAnimationFrame(function () { smRenderBusy = false; smRender(); });
 }
 
 function smRender() {
@@ -2072,24 +2095,41 @@ function smRender() {
     smEl('sm-info').style.display = 'none';
     return;
   }
-  const s = smSize(), list = smTileList(smView, s.w, s.h, 120), keep = {};
+  const s = smSize(), list = smTileList(smView, s.w, s.h, 120), cur = {};
+  let allLoaded = true;
   list.forEach(function (t) {
-    const key = t.z + '/' + t.x + '/' + t.y;
-    keep[key] = true;
+    const key = t.z + '/' + t.tx + '/' + t.y;
+    cur[key] = true;
     let im = smImgs[key];
     if (!im) {
       im = document.createElement('img');
       im.alt = '';
       im.draggable = false;
+      im.style.opacity = '0';                           // erst zeigen, wenn geladen: kein Bruchbild, kein Aufblitzen
+      im.style.zIndex = String(t.z);                    // feinere Stufe liegt über der gröberen
       im.src = OSM_TILE_URL.replace('{z}', t.z).replace('{x}', t.x).replace('{y}', t.y);
+      im.addEventListener('load', function () { im.style.opacity = '1'; smSchedule(); });
       // Schlägt das Laden fehl (Netz weg), verschwindet das Bild; beim nächsten Verschieben oder Zoomen wird es neu angefragt
       im.addEventListener('error', function () { if (smImgs[key] === im) smDropImg(key); });
+      im._t = { z: t.z, tx: t.tx, y: t.y };
       box.appendChild(im);
       smImgs[key] = im;
     }
-    im.style.transform = 'translate(' + Math.round(t.left) + 'px,' + Math.round(t.top) + 'px)';
+    if (!smLoaded(im)) allLoaded = false;
   });
-  Object.keys(smImgs).forEach(function (k) { if (!keep[k]) smDropImg(k); });
+  // Alle Kacheln der Ansicht (auch die alten Stufen, solange sie gebraucht werden) an ihre Stelle setzen
+  Object.keys(smImgs).forEach(function (k) {
+    const im = smImgs[k], t = im._t;
+    if (!cur[k] && allLoaded) { smDropImg(k); return; }      // neue Stufe fertig: alte Kacheln weg
+    const sc = Math.pow(2, smView.z - t.z), c = smWorldPx(smView.lon, smView.lat, t.z);
+    const left = (t.tx * SM_TILE - c.x) * sc + s.w / 2, top = (t.y * SM_TILE - c.y) * sc + s.h / 2;
+    if (!cur[k] && (left > s.w || top > s.h || left + SM_TILE * sc < 0 || top + SM_TILE * sc < 0 || Math.abs(t.z - smView.z) > 3)) {
+      smDropImg(k);                                          // alte Kachel ganz außerhalb des Fensters
+      return;
+    }
+    // Rundung der Größe nach oben: kein feiner Spalt zwischen den Kacheln
+    im.style.transform = 'translate(' + left.toFixed(2) + 'px,' + top.toFixed(2) + 'px) scale(' + sc.toFixed(5) + ')';
+  });
   const rc = smEl('sm-rect');
   if (smRect) {
     const a = smToScreen(smRect.a.lon, smRect.a.lat), b = smToScreen(smRect.b.lon, smRect.b.lat);
@@ -2104,13 +2144,6 @@ function smRender() {
   } else mk.style.display = 'none';
 }
 
-function smDropImg(key) {
-  const im = smImgs[key];
-  delete smImgs[key];
-  if (im && im.parentNode && im.parentNode.removeChild) im.parentNode.removeChild(im);
-  else if (im && im.remove) im.remove();
-}
-
 function showStartMap(on) {
   const want = !!on && !demoRequested();
   smVisible = want;
@@ -2119,6 +2152,7 @@ function showStartMap(on) {
 }
 
 function smFlyTo(lat, lon, z) {
+  smAnim = null;
   smView = { lon: lon, lat: lat, z: z };
   smClampView();
   smPoint = { lon: lon, lat: lat };
@@ -2127,18 +2161,48 @@ function smFlyTo(lat, lon, z) {
   smRender();
 }
 
-function smZoomAt(dir, cx, cy) {
-  const z = Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, Math.round(smView.z) + dir));
-  if (z === smView.z) return;
+/* Zoomstufe z setzen, der Punkt `anchor` (Breite/Länge) bleibt an der Bildschirmstelle (px, py) */
+function smSetZoom(z, anchor, px, py) {
   const s = smSize();
-  const rect = smEl('sm-tiles').getBoundingClientRect ? smEl('sm-tiles').getBoundingClientRect() : { left: 0, top: 0 };
-  const px = cx === undefined ? s.w / 2 : cx - (rect.left || 0), py = cy === undefined ? s.h / 2 : cy - (rect.top || 0);
-  const under = cx === undefined ? { lon: smView.lon, lat: smView.lat } : smFromClient(cx, cy);
-  const p = smWorldPx(under.lon, under.lat, z);
+  const p = smWorldPx(anchor.lon, anchor.lat, z);
   const c = smLonLat(p.x - (px - s.w / 2), p.y - (py - s.h / 2), z);
   smView = { lon: c.lon, lat: c.lat, z: z };
   smClampView();
+}
+
+/* Ein Schritt der Zoomfahrt; liefert true, solange sie läuft */
+function smAnimStep() {
+  const a = smAnim;
+  if (!a) return false;
+  const dz = a.target - smView.z;
+  const z = Math.abs(dz) < 0.01 ? a.target : smView.z + dz * 0.25;
+  smSetZoom(z, a.anchor, a.px, a.py);
   smRender();
+  if (z === a.target) { smAnim = null; return false; }
+  return true;
+}
+
+function smAnimLoop() {
+  smAnimBusy = false;
+  if (smAnimStep() && !smAnimBusy) { smAnimBusy = true; requestAnimationFrame(smAnimLoop); }
+}
+
+/* Ziel der Zoomfahrt um dz Stufen verschieben; (cx, cy) in Fensterkoordinaten, ohne Angabe die Mitte */
+function smZoomBy(dz, cx, cy) {
+  const s = smSize(), o = smOrigin();
+  const px = cx === undefined ? s.w / 2 : cx - o.left, py = cy === undefined ? s.h / 2 : cy - o.top;
+  const base = smAnim ? smAnim.target : smView.z;
+  const target = Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, base + dz));
+  if (Math.abs(target - smView.z) < 1e-6 && !smAnim) return;
+  smAnim = { target: target, px: px, py: py,
+             anchor: cx === undefined ? { lon: smView.lon, lat: smView.lat } : smFromClient(cx, cy) };
+  if (!smAnimBusy) { smAnimBusy = true; requestAnimationFrame(smAnimLoop); }
+}
+
+/* Zoomfahrt sofort beenden (Tests, oder wenn der Nutzer zieht) */
+function smFinishZoom() {
+  let guard = 0;
+  while (smAnim && guard++ < 200) smAnimStep();
 }
 
 function smInfo() {
@@ -2178,32 +2242,36 @@ function smSetSelectMode(on) {
   b.textContent = T(smSelectMode ? 'smSelectOn' : 'smSelect');
 }
 
+const SM_BUTTON_MASK = { 0: 1, 1: 4, 2: 2 };      // button -> Bit in event.buttons
+
 function smPointerDown(e) {
-  if (!smConsent || (e.button !== undefined && e.button !== 0)) return;
+  const btn = e.button === undefined ? 0 : e.button;
+  if (!smConsent || !(btn in SM_BUTTON_MASK)) return;
+  smAnim = null;                                     // eine laufende Zoomfahrt endet, wenn gezogen wird
   const start = smFromClient(e.clientX, e.clientY);
   smDrag = { x: e.clientX, y: e.clientY, view: { lon: smView.lon, lat: smView.lat, z: smView.z }, start: start,
-             moved: false, rect: smSelectMode };
-  smEl('sm-tiles').className = smSelectMode ? 'select' : 'drag';
+             moved: false, rect: smSelectMode && btn === 0, btn: btn };
+  smEl('sm-tiles').className = smDrag.rect ? 'select' : 'drag';
   window.addEventListener('pointermove', smPointerMove);
   window.addEventListener('pointerup', smPointerUp);
   window.addEventListener('pointercancel', smPointerUp);
-  if (e.preventDefault) e.preventDefault();
+  if (e.preventDefault) e.preventDefault();          // Mitteltaste: kein Autoscroll des Browsers
 }
 
 function smPointerMove(e) {
   const d = smDrag;
   if (!d) return;
-  if (e.buttons !== undefined && !(e.buttons & 1)) { smPointerUp(e); return; }
+  if (e.buttons !== undefined && !(e.buttons & SM_BUTTON_MASK[d.btn])) { smPointerUp(e); return; }
   const dx = e.clientX - d.x, dy = e.clientY - d.y;
   if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
   if (d.rect) {
-    if (d.moved) { smRect = { a: d.start, b: smFromClient(e.clientX, e.clientY) }; smRender(); }
+    if (d.moved) { smRect = { a: d.start, b: smFromClient(e.clientX, e.clientY) }; smSchedule(); }
     return;
   }
   const c = smWorldPx(d.view.lon, d.view.lat, d.view.z), q = smLonLat(c.x - dx, c.y - dy, d.view.z);
   smView = { lon: q.lon, lat: q.lat, z: d.view.z };
   smClampView();
-  smRender();
+  smSchedule();
 }
 
 function smPointerUp(e) {
@@ -2229,32 +2297,33 @@ function smPointerUp(e) {
     smRender();
     return;
   }
-  if (!d.moved) {                                      // Klick ohne Ziehen: Ort wählen
+  if (d.btn === 0 && !d.moved) {                       // Klick ohne Ziehen: Ort wählen
     smPoint = { lon: d.start.lon, lat: d.start.lat };
     smRect = null;
     chooseAddrItem({ coord: true, main: d.start.lat.toFixed(5) + ', ' + d.start.lon.toFixed(5), sub: T('addrCoordSub'), lat: d.start.lat, lon: d.start.lon }, { noFly: true });
     smInfo();
-    smRender();
   }
+  smRender();
 }
 
 function smWheel(e) {
   if (!smConsent) return;
   if (e.preventDefault) e.preventDefault();
-  const now = Date.now();
-  if (now - smWheelT < 140) return;
-  smWheelT = now;
-  smZoomAt(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
+  let d = e.deltaY || 0;
+  if (e.deltaMode === 1) d *= 33;                      // Zeilen statt Pixel
+  smZoomBy(Math.max(-1, Math.min(1, -d * 0.006)), e.clientX, e.clientY);   // ein Rastenschritt etwa 0,6 Stufen
 }
 
 function initStartMap() {
   smEl('sm-load').addEventListener('click', function () { smConsent = true; smRender(); smInfo(); });
   smEl('sm-select').addEventListener('click', function () { smSetSelectMode(!smSelectMode); });
-  smEl('sm-in').addEventListener('click', function () { smZoomAt(1); });
-  smEl('sm-out').addEventListener('click', function () { smZoomAt(-1); });
+  smEl('sm-in').addEventListener('click', function () { smZoomBy(1); });
+  smEl('sm-out').addEventListener('click', function () { smZoomBy(-1); });
   const box = smEl('sm-tiles');
   box.addEventListener('pointerdown', smPointerDown);
   box.addEventListener('wheel', smWheel);
+  box.addEventListener('contextmenu', function (e) { if (e.preventDefault) e.preventDefault(); });   // rechte Taste zieht
+  box.addEventListener('mousedown', function (e) { if (e.button === 1 && e.preventDefault) e.preventDefault(); });
   window.addEventListener('resize', function () { if (smVisible) smRender(); });
   smSetSelectMode(false);
 }

@@ -582,11 +582,64 @@ await test('Startkarte: nach dem Klick lädt sie nur OSM-Kacheln, Zoom und Ort h
   s.smFlyTo(48.1374, 11.5755, 16);
   assert.ok(box.children.every(function (im) { return /\/16\//.test(im.src); }), 'Kacheln der Stufe 16');
   assert.ok(box.children.some(function (im) { return /\/16\/34\d\d\d\/22\d\d\d\.png/.test(im.src); }), 'München');
-  const n = box.children.length;
   s.document.getElementById('sm-in')._listeners.click[0]();
-  assert.ok(box.children.every(function (im) { return /\/17\//.test(im.src); }), 'Zoom +1');
-  assert.ok(box.children.length <= n * 2, 'alte Kacheln werden entfernt');
+  s.smFinishZoom();
+  assert.ok(vm.runInContext('smView.z', s) === 17, 'Zoom +1');
+  const at = function (z) { return box.children.filter(function (im) { return new RegExp('/' + z + '/').test(im.src); }); };
+  assert.ok(at(17).length >= 6, 'Kacheln der neuen Stufe');
+  assert.ok(at(16).length > 0, 'die alten Kacheln bleiben stehen, bis die neuen geladen sind (kein leerer Bildschirm)');
+  at(17).forEach(function (im) { im.complete = true; im.naturalWidth = 256; });
+  s.smRender();
+  assert.strictEqual(at(16).length, 0, 'neue Stufe fertig: alte Kacheln weg');
+  assert.ok(at(17).length >= 6);
   assert.strictEqual(s.document.getElementById('sm-marker').style.display, 'block');
+});
+
+await test('Startkarte: stufenloses Zoomen - der Punkt unter dem Mauszeiger bleibt, Kacheln der nächsten ganzen Stufe werden skaliert', function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  s.smFlyTo(48.7, 11.5, 14);
+  const before = s.smFromClient(700, 150);
+  s.smZoomBy(0.6, 700, 150);
+  s.smFinishZoom();
+  const z = vm.runInContext('smView.z', s);
+  assert.ok(Math.abs(z - 14.6) < 1e-9, String(z));
+  const after = s.smFromClient(700, 150);
+  assert.ok(Math.abs(after.lon - before.lon) < 1e-7 && Math.abs(after.lat - before.lat) < 1e-7, 'Anker bleibt unter dem Zeiger');
+  const imgs = s.document.getElementById('sm-tiles').children.filter(function (im) { return /\/15\//.test(im.src); });
+  assert.ok(imgs.length > 0, 'Stufe 15 (nächste ganze Stufe zu 14,6)');
+  assert.ok(/scale\(0\.757/.test(imgs[0].style.transform), imgs[0].style.transform);        // 2^(14,6-15)
+  s.smZoomBy(50);                                          // nicht über die größte Stufe hinaus
+  s.smFinishZoom();
+  assert.strictEqual(vm.runInContext('smView.z', s), 19);
+  s.smWheel({ deltaY: -100, deltaMode: 0, clientX: 400, clientY: 300, preventDefault: function () {} });
+  s.smZoomBy(-60); s.smFinishZoom();
+  assert.strictEqual(vm.runInContext('smView.z', s), 3, 'nicht unter die kleinste Stufe');
+});
+
+await test('Startkarte: Mittel- und rechte Taste verschieben die Karte, auch im Auswahlmodus; die linke zieht dort das Rechteck', function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  s.smFlyTo(48.7, 11.5, 14);
+  s.document.getElementById('sm-select')._listeners.click[0]();
+  const box = s.document.getElementById('sm-tiles');
+  [[1, 4], [2, 2]].forEach(function (b) {
+    const lon0 = vm.runInContext('smView.lon', s);
+    box._listeners.pointerdown[0]({ button: b[0], clientX: 300, clientY: 200, preventDefault: function () {} });
+    s.smPointerMove({ clientX: 360, clientY: 230, buttons: b[1] });
+    s.smPointerUp({ clientX: 360, clientY: 230 });
+    assert.ok(vm.runInContext('smView.lon', s) < lon0, 'Taste ' + b[0] + ' verschiebt');
+    assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'none', 'kein Rechteck mit Taste ' + b[0]);
+    assert.strictEqual(vm.runInContext('smSelectMode', s), true, 'Auswahlmodus bleibt');
+  });
+  const lon1 = vm.runInContext('smView.lon', s);
+  box._listeners.pointerdown[0]({ button: 2, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 330, clientY: 200, buttons: 0 });          // Taste längst oben: Geste endet
+  assert.strictEqual(vm.runInContext('smDrag', s), null);
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 420, clientY: 320, buttons: 1 });
+  s.smPointerUp({ clientX: 420, clientY: 320 });
+  assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'block', 'linke Taste: Rechteck');
 });
 
 await test('Startkarte: Rechteck aufziehen nennt Größe und UTM-Werte und übernimmt die Mitte als Ort (Links des Landes)', async function () {

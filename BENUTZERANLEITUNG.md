@@ -38,7 +38,8 @@ gesperrt.
 
 1. **Daten finden.** Beim Start zeigt die Seite eine **Karte**. Nach dem Klick auf **Karte laden**
    (erst dann werden Kacheln von OpenStreetMap geladen und deine IP-Adresse übertragen) kannst du sie
-   verschieben (Ziehen) und zoomen (Mausrad, **+**/**−**). Ein Klick wählt einen Ort; **Bereich wählen**
+   verschieben (Ziehen mit einer beliebigen Maustaste, auch mit gedrückter Mitteltaste) und stufenlos zoomen (Mausrad,
+   **+**/**−**). Ein Klick wählt einen Ort; **Bereich wählen**
    und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs. Die Links zu den Geodaten des
    Landes erscheinen links unter der Adressleiste. Die Karte verschwindet, sobald ein Gelände geladen ist.
    Alternativ: Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine

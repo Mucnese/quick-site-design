@@ -182,11 +182,12 @@
   #point-label .msrc { color: var(--text-dim2); font-size: 0.9em; margin-top: 2px; }
 
   /* ---------- Startkarte (vor dem Laden des Geländes) ---------- */
-  #startmap { position: fixed; inset: 0; z-index: 2; background: var(--bg, #1b2126); overflow: hidden; }
+  #startmap { position: fixed; inset: 0; z-index: 2; background: #e6e3dd; overflow: hidden; }
   #sm-tiles { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
   #sm-tiles.select { cursor: crosshair; }
   #sm-tiles.drag { cursor: grabbing; }
-  #sm-tiles img { position: absolute; left: 0; top: 0; width: 256px; height: 256px; max-width: none; pointer-events: none; user-select: none; }
+  #sm-tiles img { position: absolute; left: 0; top: 0; width: 256px; height: 256px; max-width: none; pointer-events: none; user-select: none;
+    transform-origin: 0 0; transition: opacity .18s ease-out; will-change: transform; }
   #sm-rect { position: absolute; display: none; pointer-events: none; border: 2px solid var(--accent); background: rgba(80, 160, 255, 0.14); }
   #sm-marker { position: absolute; display: none; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; pointer-events: none;
     background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }

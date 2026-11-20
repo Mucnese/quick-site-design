@@ -36,8 +36,8 @@ The application needs at least a **terrain model**. Without terrain the building
 locked.
 
 1. **Find the data.** At the start the page shows a **map**. After you click **Load map** (only then are
-   tiles loaded from OpenStreetMap and your IP address transmitted) you can pan it (drag) and zoom it (mouse
-   wheel, **+**/**−**). A click picks a place; **Select area** and a dragged rectangle give the size and UTM
+   tiles loaded from OpenStreetMap and your IP address transmitted) you can pan it (drag with any mouse button,
+   including the pressed middle button) and zoom it smoothly (mouse wheel, **+**/**−**). A click picks a place; **Select area** and a dragged rectangle give the size and UTM
    values of the area. The links to the state's geodata appear on the left below the address bar. The map
    disappears as soon as a terrain is loaded. Alternatively: type an address or place in the address bar at the top left (“Where is your
    construction site?”) and pick a suggestion. Below it you get the links to the terrain model

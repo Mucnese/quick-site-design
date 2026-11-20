@@ -1873,6 +1873,21 @@ test('Startkarte: sichtbare Kacheln füllen das Fenster, die Mitte liegt unter d
   assert.strictEqual(app.smTileList(view, 5000, 5000, 10).length, 10, 'Obergrenze');
 });
 
+test('Startkarte: gebrochene Zoomstufe - Kacheln der nächsten ganzen Stufe, skaliert und an der richtigen Stelle', function () {
+  const view = { lon: 11.5755, lat: 48.1374, z: 15.5 };
+  const w = 1000, h = 700;
+  const t = app.smTileList(view, w, h);
+  t.forEach(function (q) { assert.strictEqual(q.z, 16); assert.ok(Math.abs(q.scale - Math.pow(2, -0.5)) < 1e-12); });
+  const c = app.smWorldPx(view.lon, view.lat, 16);
+  const hit = t.filter(function (q) { return q.tx === Math.floor(c.x / 256) && q.y === Math.floor(c.y / 256); })[0];
+  assert.ok(hit);
+  assert.ok(Math.abs(hit.left - ((hit.tx * 256 - c.x) * hit.scale + w / 2)) < 1e-9);
+  assert.ok(Math.min.apply(null, t.map(function (q) { return q.left; })) <= 0, 'füllt das Fenster links');
+  assert.ok(Math.max.apply(null, t.map(function (q) { return q.left + 256 * q.scale; })) >= w, 'und rechts');
+  assert.ok(Math.max.apply(null, t.map(function (q) { return q.top + 256 * q.scale; })) >= h, 'und unten');
+  assert.strictEqual(app.smTileList({ lon: 0, lat: 0, z: 2.4 }, 400, 400)[0].z, 3, 'nicht unter Stufe 3');
+});
+
 test('Startkarte: Rechteck - Seitenlängen in m und UTM-Werte stimmen mit PROJ überein (EPSG:25832, 713500/5420500 = 11.9133363 / 48.9006176)', function () {
   const r = app.smRectInfo({ lon: 11.9133363, lat: 48.9006176 }, { lon: 11.9133363 + 0.01, lat: 48.9006176 + 0.01 });
   assert.ok(Math.abs(r.widthM - 0.01 * 111320 * Math.cos(48.9056 * Math.PI / 180)) < 2, String(r.widthM));
