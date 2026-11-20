@@ -8,6 +8,14 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-20
 
+### Changed
+- **Mouse wheel zooms linearly:** every wheel step changes the distance by the same length (a sixtieth of the terrain edge, at least 5 m) instead of the same
+  percentage; close to the terrain the step no longer becomes tiny.
+
+### Fixed
+- **Coordinate system for XYZ:** the choice worked only the first time. If you change the system (or the EPSG code) after loading, the application re-reads the XYZ files
+  and the terrain moves to the new location.
+
 ### Removed
 - **Select area** on the start map (dragging a rectangle with size and UTM display) is gone. The map keeps pin and address; for very large raster files
   the 1000 m window around the pin still applies.

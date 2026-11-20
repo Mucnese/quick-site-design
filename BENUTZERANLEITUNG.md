@@ -72,7 +72,7 @@ gesperrt.
 | Art | Format | Hinweis |
 |---|---|---|
 | Gelände | **GeoTIFF** (`.tif`, `.tiff`) | Bezugssystem steht in der Datei |
-| Gelände | **XYZ-Text** (`.xyz`, `.txt`, `.csv`) | Rechtswert, Hochwert, Höhe auf einem regelmäßigen Raster. Das Bezugssystem fehlt in der Datei: vorher im Fenster **Daten** unter „Bezugssystem für XYZ-Dateien“ wählen oder einen EPSG-Code eintippen |
+| Gelände | **XYZ-Text** (`.xyz`, `.txt`, `.csv`) | Rechtswert, Hochwert, Höhe auf einem regelmäßigen Raster. Das Bezugssystem fehlt in der Datei: vorher im Fenster **Daten** unter „Bezugssystem für XYZ-Dateien“ wählen oder einen EPSG-Code eintippen. Ändert man die Wahl später, liest die Anwendung die Datei mit dem neuen System neu und das Gelände wandert dorthin |
 | Gebäude | **CityGML** (`.gml`, `.xml`) | LoD2, die Achsenreihenfolge wird erkannt |
 | Gebäude | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | auch CityJSONSeq und Merkmalslisten (3DBAG); je Bauteil die höchste Detailstufe, Grundrisse und Gelände fallen weg. Das Bezugssystem muss zum Gelände passen (3DBAG: Rijksdriehoek, passend zum AHN) |
 
@@ -116,7 +116,7 @@ lieber selbst vorher einen Ausschnitt schneidet, kann `gdal_translate -projwin <
   zieht, dreht um genau diesen Punkt. Wer auf den Hintergrund klickt, kreist die ganze Szene
   um das Zentrum.
 - **Rechte oder mittlere Taste ziehen:** verschieben (zügig: etwa doppelt so schnell wie der Mauszeiger auf dem Boden).
-- **Mausrad:** zoomen.
+- **Mausrad:** zoomen, in gleichmäßigen Schritten (je Rastenschritt ein Sechzigstel der Geländekante, mindestens 5 m), egal wie nah die Kamera ist.
 - **Linksklick** auf Gelände oder Gebäude: setzt einen **Messpunkt**. Er zeigt Rechtswert, Hochwert
   und Höhe und wird zum Dreh- und Zoomzentrum.
 - **2D:** senkrecht von oben. Ein Ziehen kippt die Ansicht wieder frei in den Raum.

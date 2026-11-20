@@ -1564,6 +1564,61 @@ await test('XYZ-Datei: ohne Bezugssystem vorgemerkt, mit gewähltem System oder 
   assert.ok(g2('dem-status').className.indexOf('ok') > 0, g2('dem-status').textContent);
 });
 
+await test('XYZ-Datei: ein anderes Bezugssystem nach dem Laden liest die Datei neu, das Gelände wandert; Zwischenschritte bleiben stabil', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  const tick = async function () { for (let i = 0; i < 6; i++) await new Promise(function (r) { setImmediate(r); }); };
+  s.buildXyzCrsOptions();
+  g('xyz-crs').value = '25832';
+  await s.handleDemFiles([xyzFile('hh.xyz', 4)]);
+  const t1 = vm.runInContext('TERRAIN', s);
+  assert.strictEqual(t1.epsg, 25832);
+  const g1 = vm.runInContext('crsToLonLat(TERRAIN.epsg, TERRAIN.originE, TERRAIN.originN)', s);
+  g('xyz-crs').value = '25833';                     // zweite Wahl nach dem Laden
+  s.onXyzCrsChanged();
+  await tick();
+  const t2 = vm.runInContext('TERRAIN', s);
+  assert.strictEqual(t2.epsg, 25833, 'das Gelände liegt jetzt im neuen System');
+  const g2 = vm.runInContext('crsToLonLat(TERRAIN.epsg, TERRAIN.originE, TERRAIN.originN)', s);
+  assert.ok(Math.abs(g2.lon - g1.lon) > 1, 'der Ort wandert: ' + g1.lon.toFixed(2) + ' -> ' + g2.lon.toFixed(2));
+  g('xyz-crs').value = '31468';                     // und noch einmal
+  s.onXyzCrsChanged();
+  await tick();
+  assert.strictEqual(vm.runInContext('TERRAIN', s).epsg, 31468);
+  g('xyz-crs').value = 'other'; g('xyz-epsg').value = '25832';
+  s.onXyzCrsChanged();
+  await tick();
+  assert.strictEqual(vm.runInContext('TERRAIN', s).epsg, 25832, 'auch über das Eingabefeld');
+  // ein GeoTIFF danach: keine XYZ-Neulesung mehr
+  vm.runInContext('lastXyzLoad = null', s);
+  g('xyz-crs').value = '25833';
+  s.onXyzCrsChanged();
+  await tick();
+  assert.strictEqual(vm.runInContext('TERRAIN', s).epsg, 25832, 'ohne vorgemerkte XYZ-Dateien bleibt es');
+});
+
+await test('Mausrad: feste Schritte in Metern, nahe wie fern gleich lang (nicht prozentual)', async function () {
+  const s = await scopeWithTerrain();
+  const cam = s.__bridge.camera, ctl = s.__bridge.controls;
+  const step = s.wheelStepMeters();
+  const after = function (dist, dy) {
+    const f = Math.pow(0.95, s.linearZoomSpeed(dist, dy, 0));
+    return dy < 0 ? dist * f : dist / f;           // so wendet OrbitControls den Faktor an
+  };
+  [400, 100, 40].forEach(function (d) {
+    assert.ok(Math.abs((d - after(d, -100)) - step) < 1e-9, 'heran um ' + step + ' m bei Abstand ' + d);
+    assert.ok(Math.abs((after(d, 100) - d) - step) < 1e-9, 'weg um ' + step + ' m bei Abstand ' + d);
+  });
+  assert.ok(Math.abs((200 - after(200, -50)) - step / 2) < 1e-9, 'halber Ausschlag, halber Schritt');
+  assert.ok(Math.abs((200 - after(200, -1000)) - step * 3) < 1e-9, 'höchstens drei Schritte auf einmal');
+  assert.ok(after(ctl.minDistance + 1, -100) >= ctl.minDistance - 1e-9, 'nie über die kleinste Entfernung hinaus');
+  // der Handler setzt zoomSpeed aus dem aktuellen Abstand
+  ctl.target.set(0, 0, 0);
+  cam.position.set(0, 0, 300);
+  s.onCanvasWheel({ buttons: 0, deltaY: -100, deltaMode: 0 });
+  assert.ok(Math.abs(300 * Math.pow(0.95, ctl.zoomSpeed) - (300 - step)) < 1e-9);
+});
+
 await test('XYZ-Datei: ein Code, der die Koordinaten weit außerhalb Europas legt, bekommt eine Warnung', async function () {
   const s = newScope();
   const g = function (id) { return s.document.getElementById(id); };

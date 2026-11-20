@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-2u0T8Yfm9e/AQ/Nx7+OKY+v7u+q5X5B/TvE1xX6bveo=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-npt6X+hovowpO1MEDWUH+N3G9p75dcF+K5VZvcpF+PI=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -9559,6 +9559,7 @@ function removeIfc() {
    Dateien vorgemerkt und werden mit der Wahl gelesen. */
 const XYZ_CRS_CHOICES = [25832, 25833, 25831, 4647, 31467, 31468, 31466, 31469, 31255, 31256, 31254];
 let pendingDemFiles = null;
+let lastXyzLoad = null;      // zuletzt gelesene XYZ-Dateien: ändert sich das Bezugssystem, werden sie damit neu gelesen
 
 function buildXyzCrsOptions() {
   const sel = document.getElementById('xyz-crs');
@@ -9590,10 +9591,8 @@ function getXyzEpsg() {
 function onXyzCrsChanged() {
   const sel = document.getElementById('xyz-crs'), inp = document.getElementById('xyz-epsg');
   inp.style.display = sel.value === 'other' ? '' : 'none';
-  if (pendingDemFiles && getXyzEpsg()) {
-    const p = pendingDemFiles;
-    handleDemFiles(p.files, p.isDemo);
-  }
+  const p = pendingDemFiles || lastXyzLoad;           // noch wartend, oder schon gelesen: dann mit dem neuen Bezugssystem neu lesen
+  if (p && getXyzEpsg()) handleDemFiles(p.files, p.isDemo);
 }
 
 async function handleDemFiles(files, isDemo) {
@@ -9626,6 +9625,7 @@ async function handleDemFiles(files, isDemo) {
     }
     lastDemTiles = await readTiffTiles(items, xyzEpsg);
     lastDemNames = items.map(function (x) { return x.name; });
+    lastXyzLoad = hasXyz ? { files: list, isDemo: isDemo } : null;
     const t = gridTiles(lastDemTiles, GRID_MAX);
     // XYZ ohne Bezugssystem in der Datei: liegt das Ergebnis weit weg von Europa, stimmt der Code vermutlich nicht
     let crsWarn = '';
@@ -10115,9 +10115,40 @@ function endOrbitDrag() {
   window.removeEventListener('pointercancel', endOrbitDrag);
 }
 
+/* Mausrad: gleichmäßige Schritte in Metern statt Prozent vom Abstand. OrbitControls skaliert den Abstand je Rastenschritt um
+   denselben Faktor (0,95^zoomSpeed), dadurch wird jeder Schritt kürzer, je näher die Kamera kommt. Hier wird zoomSpeed je
+   Ereignis so gesetzt, dass der Abstand um eine feste Strecke wächst oder schrumpft (Schrittweite: ein Sechzigstel der
+   Geländekante, mindestens 5 m; ein Rastenschritt = deltaY 100). Die Grenzen minDistance/maxDistance gelten weiter. */
+const WHEEL_STEP_DIV = 60, WHEEL_STEP_MIN = 5;
+
+function wheelStepMeters() {
+  const t = typeof TERRAIN !== 'undefined' ? TERRAIN : null;
+  return t ? Math.max(WHEEL_STEP_MIN, Math.max(t.w, t.d) / WHEEL_STEP_DIV) : 15;
+}
+
+/* zoomSpeed für OrbitControls, damit dieser Schritt den Abstand `dist` um eine feste Strecke ändert (deltaY < 0: heran) */
+function linearZoomSpeed(dist, deltaY, deltaMode) {
+  let dy = deltaY || 0;
+  if (deltaMode === 1) dy *= 33;                         // Zeilen statt Pixel
+  if (!dy || !(dist > 0)) return 1;
+  const step = wheelStepMeters() * Math.max(0.1, Math.min(3, Math.abs(dy) / 100));
+  let f;                                                 // Faktor, den OrbitControls als 0,95^zoomSpeed anwendet
+  if (dy < 0) {
+    const room = dist - (controls ? controls.minDistance : 0);
+    const st = Math.min(step, Math.max(0, room));
+    f = (dist - st) / dist;                              // heran: Abstand - Schritt
+  } else {
+    f = dist / (dist + step);                            // weg: Abstand + Schritt (OrbitControls teilt durch f)
+  }
+  return Math.log(f) / Math.log(0.95);
+}
+
 function onCanvasWheel(event) {
   if (pivotDrag && !(event.buttons & 1)) endOrbitDrag();
   settleCameraFlight();
+  if (typeof controls !== 'undefined' && controls && typeof camera !== 'undefined' && camera && event.deltaY) {
+    controls.zoomSpeed = linearZoomSpeed(camera.position.distanceTo(controls.target), event.deltaY, event.deltaMode);
+  }
 }
 
 function isPivotDragging() { return pivotDrag !== null; }
@@ -10435,7 +10466,7 @@ function initUI() {
   window.addEventListener('pointerdown', onOrbitPointerDown, true);
   // Mausrad: eine laufende Kamerafahrt zum Klickpunkt endet, sonst zieht sie die Kamera zurück;
   // ging das Loslassen verloren, ist OrbitControls wieder frei (controls.enabled blieb sonst aus)
-  dom.addEventListener('wheel', onCanvasWheel, true);
+  window.addEventListener('wheel', function (e) { if (e.target === dom) onCanvasWheel(e); }, { capture: true, passive: true });   // vor OrbitControls
   window.addEventListener('blur', endOrbitDrag);
   dom.addEventListener('pointerleave', onCanvasPointerCancel);
   window.addEventListener('keydown', onKeyDown);

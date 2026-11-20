@@ -9,6 +9,14 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-20
 
+### Geändert
+- **Mausrad zoomt linear:** Jeder Rastenschritt ändert den Abstand um dieselbe Strecke (ein Sechzigstel der Geländekante, mindestens 5 m), nicht mehr um denselben
+  Prozentsatz; nahe am Gelände wird der Schritt nicht mehr winzig.
+
+### Behoben
+- **Bezugssystem für XYZ:** Die Auswahl wirkte nur beim ersten Mal. Wechselt man das System (oder den EPSG-Code) nach dem Laden, liest die Anwendung die XYZ-Dateien
+  neu und das Gelände wandert an den neuen Ort.
+
 ### Entfernt
 - **Bereich wählen** auf der Startkarte (Rechteck aufziehen mit Größen- und UTM-Anzeige) ist weg. Die Karte bleibt bei Pin und Adresse; für sehr große Rasterdateien
   gilt weiter das 1000-m-Fenster um den Pin.

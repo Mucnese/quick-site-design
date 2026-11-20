@@ -68,7 +68,7 @@ locked.
 | Kind | Format | Note |
 |---|---|---|
 | Terrain | **GeoTIFF** (`.tif`, `.tiff`) | the coordinate system is in the file |
-| Terrain | **XYZ text** (`.xyz`, `.txt`, `.csv`) | easting, northing, height on a regular grid. The file has no coordinate system: choose it beforehand in the **Data** window under “Coordinate system for XYZ files” or type an EPSG code |
+| Terrain | **XYZ text** (`.xyz`, `.txt`, `.csv`) | easting, northing, height on a regular grid. The file has no coordinate system: choose it beforehand in the **Data** window under “Coordinate system for XYZ files” or type an EPSG code. If you change the choice later, the application re-reads the file with the new system and the terrain moves there |
 | Buildings | **CityGML** (`.gml`, `.xml`) | LoD2, the axis order is detected |
 | Buildings | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | also CityJSONSeq and feature lists (3DBAG); the highest level of detail per part, footprints and terrain are dropped. The coordinate system must match the terrain (3DBAG: Rijksdriehoek, matching the AHN) |
 
@@ -113,7 +113,7 @@ to cut out an area yourself first, you can use
   block, it rotates around exactly that point. If you click the background, the whole scene
   orbits around the centre.
 - **Drag with the right or middle button:** pan.
-- **Mouse wheel:** zoom.
+- **Mouse wheel:** zoom in even steps (one step is a sixtieth of the terrain edge, at least 5 m), no matter how close the camera is.
 - **Left click** on terrain or a building: sets a **measuring point**. It shows easting, northing
   and height and becomes the centre for rotating and zooming.
 - **2D:** straight from above. Dragging tilts the view freely again.

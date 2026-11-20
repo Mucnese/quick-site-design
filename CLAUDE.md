@@ -70,11 +70,14 @@ eine Datei geladen ist.
 **Kein `localStorage`/`sessionStorage`.** Einstellungen gelten nur für die
 Sitzung. Die Datenschutzerklärung sagt das ausdrücklich zu.
 
+**Mausrad (3D-Ansicht).** `onCanvasWheel` setzt `controls.zoomSpeed` je Ereignis so (`linearZoomSpeed`), dass der Abstand um eine feste Strecke wächst oder schrumpft
+(`wheelStepMeters`: Geländekante / 60, mindestens 5 m); `lib/OrbitControls.js` bleibt unverändert. Der Listener hängt am `window` (Capture), damit er vor OrbitControls läuft.
+
 **XYZ-Dateien.** `readXyzTile` (über `readTiffTiles(items, epsg)`, Endungen `.xyz/.txt/.csv`)
 macht aus Textzeilen (Rechts Hoch Höhe, Punkt als Dezimalzeichen) dieselbe Kachel wie `readTiffTile`:
 Rasterweite = häufigster Koordinatenabstand, Punkte gelten als Zellmitten, Lücken sind NoData
 (-9999). Die Datei trägt kein Bezugssystem; die Oberfläche fragt es ab (`xyz-crs`, `xyz-epsg`,
-`getXyzEpsg`, vorgemerkte Dateien in `pendingDemFiles`) und warnt, wenn der Code die Mitte weit
+`getXyzEpsg`, vorgemerkte Dateien in `pendingDemFiles`, zuletzt gelesene in `lastXyzLoad`: ein späterer Wechsel liest sie neu) und warnt, wenn der Code die Mitte weit
 außerhalb Europas legt. Grenze `XYZ_MAX_POINTS` (30 Mio.). ESRI-ASCII-Raster werden abgelehnt.
 
 **Linke Spalte.** Suche, Übersicht und Daten (`#col-left-body > .panel`) schrumpfen bei Platzmangel; nur das Datenfenster scrollt, Adresseingabe (`#locate`) und Übersicht (`#overview`) nie; `#about` (Quellen, Recht) steht fest darunter.
