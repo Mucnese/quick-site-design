@@ -14,7 +14,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
 
 ### Neu
-- **Startkarte** (Pin mit Fenster und den Links zu den Geoportalen, nur dort; unter der Adressleiste nur bei Eingabe, weiches Zoomen ohne leere Flächen und ohne Aufblitzen, grobe Kacheln als Unterlage, Verschieben auch mit Mittel- und rechter Taste): Ohne Gelände zeigt die Seite eine OSM-Karte. Kacheln laden erst nach dem Klick „Karte laden“. Ort anklicken oder
+- **Startkarte** (für Österreich: fertiger `gdal_translate`-Befehl zum Zuschneiden großer Dateien mit Kopieren-Knopf, Pin mit Fenster und den Links zu den Geoportalen, nur dort; unter der Adressleiste nur bei Eingabe, weiches Zoomen ohne leere Flächen und ohne Aufblitzen, grobe Kacheln als Unterlage, Verschieben auch mit Mittel- und rechter Taste): Ohne Gelände zeigt die Seite eine OSM-Karte. Kacheln laden erst nach dem Klick „Karte laden“. Ort anklicken oder
   Rechteck aufziehen nennt Größe und UTM-Werte; die Links zu Gelände- und Gebäudedaten des Landes erscheinen in der Adressleiste.
 - **Achslinie** (Felder verschwinden beim Herauszoomen für alle Abschnitte einer Straße gleichzeitig): Jede fertige Straße zeigt ihre Mittellinie. Über der Linie steht die Längsneigung je Abschnitt, darunter die
   Länge (zwei Nachkommastellen); beide lassen sich eintippen. Verschiedene Neigungen zeigt das Eigenschaftsfenster als

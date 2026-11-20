@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Sza1YXyAEtcG6F3MMTZZTXpcoc6uT59ONbsqdRbpUFs=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-xfzU4k1FmG137aeKHz6rAzNx6wvS0p/lJdM2he0a/V0=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -198,11 +198,17 @@
   #sm-pop { position: absolute; display: none; width: 300px; padding: 10px 12px 11px; font-size: 12.5px; line-height: 1.45; z-index: 3; text-align: left; }
   #sm-pop .sm-x { position: absolute; right: 6px; top: 4px; width: 22px; height: 22px; border: 0; background: transparent; color: var(--text-dim); font-size: 17px; line-height: 1; cursor: pointer; padding: 0; }
   #sm-pop .sm-x:hover { color: var(--accent); }
+  #sm-pop-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  #sm-pop.side #sm-pop-arrow { display: none; }
   #sm-pop-arrow { position: absolute; width: 12px; height: 12px; transform: rotate(45deg); background: var(--panel-bg); border: 1px solid var(--border-strong); }
   #sm-pop.above #sm-pop-arrow { bottom: -7px; border-top: 0; border-left: 0; }
   #sm-pop.below #sm-pop-arrow { top: -7px; border-bottom: 0; border-right: 0; }
   #sm-pop .addr-place { padding-right: 18px; }
   #sm-pop .sm-line { font-variant-numeric: tabular-nums; }
+  #sm-pop .sm-cut { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--border); }
+  #sm-pop .sm-code { display: block; margin: 5px 0 6px; padding: 5px 7px; font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace; background: var(--field);
+    border: 1px solid var(--border); border-radius: 3px; word-break: break-all; user-select: all; }
+  #sm-pop .sm-copy { width: auto; margin: 0; padding: 3px 12px; }
   #sm-pop .sm-dim { color: var(--text-dim); font-size: 12px; }
   #sm-consent { position: absolute; z-index: 4; top: 42%; transform: translateY(-50%); padding: 14px 16px; text-align: left;
     /* in der freien Fläche rechts neben dem linken Fenster, nie darunter */
@@ -681,7 +687,7 @@
   </div>
   <div id="sm-pop" class="panel">
     <button id="sm-pop-close" class="sm-x" aria-label="Schließen">×</button>
-    <div id="sm-pop-body"></div>
+    <div id="sm-pop-scroll"><div id="sm-pop-body"></div></div>
     <div id="sm-pop-arrow"></div>
   </div>
   <div id="sm-info" class="panel"></div>
@@ -1999,6 +2005,27 @@ function smRectInfo(a, b) {
     info.utm = { epsg: epsg, e0: Math.min(p.e, q.e), e1: Math.max(p.e, q.e), n0: Math.min(p.n, q.n), n1: Math.max(p.n, q.n) };
   }
   return info;
+}
+
+/* Ausschnitt einer großen Rasterdatei: Fenster um einen Punkt (Seitenlänge `size` m) oder das aufgezogene Rechteck, in
+   Länge/Breite. Daraus der gdal_translate-Befehl; -projwin_srs EPSG:4326 macht ihn unabhängig vom Bezugssystem der Datei
+   (BEV-Raster liegen in EPSG:3035). */
+const SM_CUT_SIZE = 1000;
+
+function smCutWindow(anchor, rect, size) {
+  if (rect) {
+    const i = smRectInfo(rect.a, rect.b);
+    return { w: i.lon0, e: i.lon1, s: i.lat0, n: i.lat1, around: false };
+  }
+  const half = (size || SM_CUT_SIZE) / 2;
+  const dLat = half / 111132, dLon = half / (111320 * Math.cos(anchor.lat * Math.PI / 180));
+  return { w: anchor.lon - dLon, e: anchor.lon + dLon, s: anchor.lat - dLat, n: anchor.lat + dLat, around: true };
+}
+
+function gdalCutCommand(win) {
+  const f = function (v) { return v.toFixed(6); };
+  return 'gdal_translate -projwin_srs EPSG:4326 -projwin ' + f(win.w) + ' ' + f(win.n) + ' ' + f(win.e) + ' ' + f(win.s) +
+         ' -co COMPRESS=DEFLATE eingabe.tif ausschnitt.tif';
 }
 
 const OSM_TILE = 256;
@@ -6198,6 +6225,9 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
     smHint: 'Die Links zu Gelände und Gebäuden des Landes stehen im Fenster am Bereich. Danach die Dateien unter „Daten“ laden.',
     smPopHint: 'Dateien herunterladen und links unter „Daten“ laden.',
+    smCutTitle: 'Datei zu groß? Ausschnitt mit GDAL zuschneiden:',
+    smCutAround: '{s} × {s} m um den Pin', smCutRect: 'Bereich wie das Rechteck',
+    smCutCopy: 'Kopieren', smCutDone: 'Kopiert',
     osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
     osmNote: 'Aus. Beim Einschalten lädt Ihr Browser Kartenkacheln von tile.openstreetmap.org; dabei wird Ihre IP-Adresse übertragen.',
     osmLoading: 'Lade Kacheln …', osmLoaded: 'Karte geladen ({n} Kacheln).',
@@ -6364,6 +6394,9 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
     smHint: 'The links to the state’s terrain and buildings are in the window at the area. Then load the files under “Data”.',
     smPopHint: 'Download the files and load them under “Data” on the left.',
+    smCutTitle: 'File too large? Cut out an area with GDAL:',
+    smCutAround: '{s} × {s} m around the pin', smCutRect: 'Area like the rectangle',
+    smCutCopy: 'Copy', smCutDone: 'Copied',
     osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
     osmNote: 'Off. Turning it on makes your browser load map tiles from tile.openstreetmap.org; your IP address is transmitted.',
     osmLoading: 'Loading tiles …', osmLoaded: 'Map loaded ({n} tiles).',
@@ -8408,13 +8441,42 @@ function smAnchor() {
   return smPoint ? { lon: smPoint.lon, lat: smPoint.lat, rect: false } : null;
 }
 
+/* Österreich: Die BEV-Raster sind riesig (Datei über 1 GB geht nicht in den Browser). Das Fenster nennt den fertigen Befehl zum
+   Zuschneiden des Ausschnitts um den Pin oder des Rechtecks, mit Knopf zum Kopieren. */
+function smAddCutBlock(body, a) {
+  if (String(addrPlace.country || '').toUpperCase() !== 'AT' || addrPlace.pending) return;
+  const win = smCutWindow(a, smRect, SM_CUT_SIZE);
+  const cmd = gdalCutCommand(win);
+  const box = document.createElement('div');
+  box.className = 'sm-cut';
+  const t = document.createElement('div');
+  t.className = 'sm-line sm-dim';
+  t.textContent = T('smCutTitle') + ' ' + (win.around ? T('smCutAround').replace(/\{s\}/g, String(SM_CUT_SIZE)) : T('smCutRect'));
+  box.appendChild(t);
+  const code = document.createElement('code');
+  code.className = 'sm-code';
+  code.textContent = cmd;
+  box.appendChild(code);
+  const btn = document.createElement('button');
+  btn.className = 'btn-block sm-copy';
+  btn.textContent = T('smCutCopy');
+  btn.addEventListener('click', function () {
+    const done = function () { btn.textContent = T('smCutDone'); };
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cmd).then(done, function () {});
+    else done();
+  });
+  box.appendChild(btn);
+  body.appendChild(box);
+}
+
 function smRenderPop() {
   const pop = smEl('sm-pop');
   const a = smAnchor();
   if (!smVisible || !smConsent || !smPopOpen || !a || !addrPlace) { pop.style.display = 'none'; smPopKey = ''; return; }
   const s = smSize(), p = smToScreen(a.lon, a.lat);
   if (p.x < -20 || p.y < -20 || p.x > s.w + 20 || p.y > s.h + 20) { pop.style.display = 'none'; return; }
-  const key = [addrPlace.main, addrPlace.sub, addrPlace.pending, addrPlace.failed, addrPlace.country, addrPlace.state, a.lon.toFixed(6), a.lat.toFixed(6)].join('|');
+  const key = [addrPlace.main, addrPlace.sub, addrPlace.pending, addrPlace.failed, addrPlace.country, addrPlace.state, a.lon.toFixed(6), a.lat.toFixed(6),
+               smRect ? smRect.a.lon.toFixed(6) + smRect.a.lat.toFixed(6) + smRect.b.lon.toFixed(6) + smRect.b.lat.toFixed(6) : ''].join('|');
   const body = smEl('sm-pop-body');
   if (key !== smPopKey) {                               // nur neu aufbauen, wenn sich Ort oder Daten ändern (nicht bei jedem Verschieben)
     smPopKey = key;
@@ -8432,16 +8494,31 @@ function smRenderPop() {
     hint.className = 'sm-line sm-dim';
     hint.textContent = T('smPopHint');
     body.appendChild(hint);
+    smAddCutBlock(body, a);
   }
   pop.style.display = 'block';
-  const w = pop.offsetWidth || 300, h = pop.offsetHeight || 170;
+  const bottomLimit = s.h - 160;                        // darunter liegen Werkzeugleiste, Knöpfe und die Quellenangabe
+  const sc = smEl('sm-pop-scroll');
+  sc.style.maxHeight = Math.max(120, bottomLimit - 10 - 34) + 'px';       // zu hoch (mehrere Quellen): im Fenster scrollen
+  const w = pop.offsetWidth || 300, h = Math.min(pop.offsetHeight || 170, bottomLimit - 10);
   const gap = a.rect ? 8 : 36;                          // der Pin ist 27 px hoch
-  const above = p.y - gap - h > 10;
+  const belowGap = a.rect ? 8 : 14;
   const minLeft = s.w > 900 ? 350 : 14;                 // nicht unter das linke Fenster schieben
-  const left = Math.max(minLeft, Math.min(s.w - w - 14, p.x - w / 2));
+  const above = p.y - gap - h > 10;
+  const below = !above && p.y + belowGap + h < bottomLimit;
+  let left, top, mode;
+  if (above || below) {
+    left = Math.max(minLeft, Math.min(s.w - w - 14, p.x - w / 2));
+    top = above ? p.y - gap - h : p.y + belowGap;
+    mode = above ? 'above' : 'below';
+  } else {                                              // passt weder oben noch unten: neben den Pin
+    left = p.x + 24 + w < s.w - 14 ? p.x + 24 : Math.max(minLeft, p.x - w - 24);
+    top = Math.max(10, Math.min(bottomLimit - h, p.y - h / 2));
+    mode = 'side';
+  }
   pop.style.left = Math.round(left) + 'px';
-  pop.style.top = Math.round(above ? p.y - gap - h : p.y + (a.rect ? 8 : 14)) + 'px';
-  pop.className = 'panel ' + (above ? 'above' : 'below');
+  pop.style.top = Math.round(top) + 'px';
+  pop.className = 'panel ' + mode;
   smEl('sm-pop-arrow').style.left = Math.round(Math.max(14, Math.min(w - 26, p.x - left - 6))) + 'px';
 }
 

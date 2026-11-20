@@ -33,6 +33,9 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
     smHint: 'Die Links zu Gelände und Gebäuden des Landes stehen im Fenster am Bereich. Danach die Dateien unter „Daten“ laden.',
     smPopHint: 'Dateien herunterladen und links unter „Daten“ laden.',
+    smCutTitle: 'Datei zu groß? Ausschnitt mit GDAL zuschneiden:',
+    smCutAround: '{s} × {s} m um den Pin', smCutRect: 'Bereich wie das Rechteck',
+    smCutCopy: 'Kopieren', smCutDone: 'Kopiert',
     osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
     osmNote: 'Aus. Beim Einschalten lädt Ihr Browser Kartenkacheln von tile.openstreetmap.org; dabei wird Ihre IP-Adresse übertragen.',
     osmLoading: 'Lade Kacheln …', osmLoaded: 'Karte geladen ({n} Kacheln).',
@@ -199,6 +202,9 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
     smHint: 'The links to the state’s terrain and buildings are in the window at the area. Then load the files under “Data”.',
     smPopHint: 'Download the files and load them under “Data” on the left.',
+    smCutTitle: 'File too large? Cut out an area with GDAL:',
+    smCutAround: '{s} × {s} m around the pin', smCutRect: 'Area like the rectangle',
+    smCutCopy: 'Copy', smCutDone: 'Copied',
     osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
     osmNote: 'Off. Turning it on makes your browser load map tiles from tile.openstreetmap.org; your IP address is transmitted.',
     osmLoading: 'Loading tiles …', osmLoaded: 'Map loaded ({n} tiles).',
@@ -2243,13 +2249,42 @@ function smAnchor() {
   return smPoint ? { lon: smPoint.lon, lat: smPoint.lat, rect: false } : null;
 }
 
+/* Österreich: Die BEV-Raster sind riesig (Datei über 1 GB geht nicht in den Browser). Das Fenster nennt den fertigen Befehl zum
+   Zuschneiden des Ausschnitts um den Pin oder des Rechtecks, mit Knopf zum Kopieren. */
+function smAddCutBlock(body, a) {
+  if (String(addrPlace.country || '').toUpperCase() !== 'AT' || addrPlace.pending) return;
+  const win = smCutWindow(a, smRect, SM_CUT_SIZE);
+  const cmd = gdalCutCommand(win);
+  const box = document.createElement('div');
+  box.className = 'sm-cut';
+  const t = document.createElement('div');
+  t.className = 'sm-line sm-dim';
+  t.textContent = T('smCutTitle') + ' ' + (win.around ? T('smCutAround').replace(/\{s\}/g, String(SM_CUT_SIZE)) : T('smCutRect'));
+  box.appendChild(t);
+  const code = document.createElement('code');
+  code.className = 'sm-code';
+  code.textContent = cmd;
+  box.appendChild(code);
+  const btn = document.createElement('button');
+  btn.className = 'btn-block sm-copy';
+  btn.textContent = T('smCutCopy');
+  btn.addEventListener('click', function () {
+    const done = function () { btn.textContent = T('smCutDone'); };
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cmd).then(done, function () {});
+    else done();
+  });
+  box.appendChild(btn);
+  body.appendChild(box);
+}
+
 function smRenderPop() {
   const pop = smEl('sm-pop');
   const a = smAnchor();
   if (!smVisible || !smConsent || !smPopOpen || !a || !addrPlace) { pop.style.display = 'none'; smPopKey = ''; return; }
   const s = smSize(), p = smToScreen(a.lon, a.lat);
   if (p.x < -20 || p.y < -20 || p.x > s.w + 20 || p.y > s.h + 20) { pop.style.display = 'none'; return; }
-  const key = [addrPlace.main, addrPlace.sub, addrPlace.pending, addrPlace.failed, addrPlace.country, addrPlace.state, a.lon.toFixed(6), a.lat.toFixed(6)].join('|');
+  const key = [addrPlace.main, addrPlace.sub, addrPlace.pending, addrPlace.failed, addrPlace.country, addrPlace.state, a.lon.toFixed(6), a.lat.toFixed(6),
+               smRect ? smRect.a.lon.toFixed(6) + smRect.a.lat.toFixed(6) + smRect.b.lon.toFixed(6) + smRect.b.lat.toFixed(6) : ''].join('|');
   const body = smEl('sm-pop-body');
   if (key !== smPopKey) {                               // nur neu aufbauen, wenn sich Ort oder Daten ändern (nicht bei jedem Verschieben)
     smPopKey = key;
@@ -2267,16 +2302,31 @@ function smRenderPop() {
     hint.className = 'sm-line sm-dim';
     hint.textContent = T('smPopHint');
     body.appendChild(hint);
+    smAddCutBlock(body, a);
   }
   pop.style.display = 'block';
-  const w = pop.offsetWidth || 300, h = pop.offsetHeight || 170;
+  const bottomLimit = s.h - 160;                        // darunter liegen Werkzeugleiste, Knöpfe und die Quellenangabe
+  const sc = smEl('sm-pop-scroll');
+  sc.style.maxHeight = Math.max(120, bottomLimit - 10 - 34) + 'px';       // zu hoch (mehrere Quellen): im Fenster scrollen
+  const w = pop.offsetWidth || 300, h = Math.min(pop.offsetHeight || 170, bottomLimit - 10);
   const gap = a.rect ? 8 : 36;                          // der Pin ist 27 px hoch
-  const above = p.y - gap - h > 10;
+  const belowGap = a.rect ? 8 : 14;
   const minLeft = s.w > 900 ? 350 : 14;                 // nicht unter das linke Fenster schieben
-  const left = Math.max(minLeft, Math.min(s.w - w - 14, p.x - w / 2));
+  const above = p.y - gap - h > 10;
+  const below = !above && p.y + belowGap + h < bottomLimit;
+  let left, top, mode;
+  if (above || below) {
+    left = Math.max(minLeft, Math.min(s.w - w - 14, p.x - w / 2));
+    top = above ? p.y - gap - h : p.y + belowGap;
+    mode = above ? 'above' : 'below';
+  } else {                                              // passt weder oben noch unten: neben den Pin
+    left = p.x + 24 + w < s.w - 14 ? p.x + 24 : Math.max(minLeft, p.x - w - 24);
+    top = Math.max(10, Math.min(bottomLimit - h, p.y - h / 2));
+    mode = 'side';
+  }
   pop.style.left = Math.round(left) + 'px';
-  pop.style.top = Math.round(above ? p.y - gap - h : p.y + (a.rect ? 8 : 14)) + 'px';
-  pop.className = 'panel ' + (above ? 'above' : 'below');
+  pop.style.top = Math.round(top) + 'px';
+  pop.className = 'panel ' + mode;
   smEl('sm-pop-arrow').style.left = Math.round(Math.max(14, Math.min(w - 26, p.x - left - 6))) + 'px';
 }
 

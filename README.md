@@ -168,7 +168,8 @@ muss man mit GDAL in GeoTIFF umwandeln.
 Dateien über 1 GB, Kacheln über 100 Mio. Pixel und mehr als 150 Mio. Pixel (2 GB)
 insgesamt vor dem Einlesen mit einer Meldung ab. Das betrifft vor allem Österreich:
 Die BEV-Raster mit 1 m und die 10-m-Datei für ganz Österreich sind viel größer. Dort
-vorher einen Ausschnitt schneiden, etwa mit `gdal_translate -projwin`.
+vorher einen Ausschnitt schneiden, etwa mit `gdal_translate -projwin`. Die Startkarte nennt für Österreich den fertigen Befehl
+(`-projwin_srs EPSG:4326`, damit er für das Bezugssystem der Datei passt, auch EPSG:3035).
 
 **Saarland.** Die Seite des LVGL beschreibt das DGM1, enthält aber keinen
 Download, und die Angaben zur Lizenz widersprechen sich. Bis das geklärt ist,

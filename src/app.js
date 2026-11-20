@@ -1116,6 +1116,27 @@ function smRectInfo(a, b) {
   return info;
 }
 
+/* Ausschnitt einer großen Rasterdatei: Fenster um einen Punkt (Seitenlänge `size` m) oder das aufgezogene Rechteck, in
+   Länge/Breite. Daraus der gdal_translate-Befehl; -projwin_srs EPSG:4326 macht ihn unabhängig vom Bezugssystem der Datei
+   (BEV-Raster liegen in EPSG:3035). */
+const SM_CUT_SIZE = 1000;
+
+function smCutWindow(anchor, rect, size) {
+  if (rect) {
+    const i = smRectInfo(rect.a, rect.b);
+    return { w: i.lon0, e: i.lon1, s: i.lat0, n: i.lat1, around: false };
+  }
+  const half = (size || SM_CUT_SIZE) / 2;
+  const dLat = half / 111132, dLon = half / (111320 * Math.cos(anchor.lat * Math.PI / 180));
+  return { w: anchor.lon - dLon, e: anchor.lon + dLon, s: anchor.lat - dLat, n: anchor.lat + dLat, around: true };
+}
+
+function gdalCutCommand(win) {
+  const f = function (v) { return v.toFixed(6); };
+  return 'gdal_translate -projwin_srs EPSG:4326 -projwin ' + f(win.w) + ' ' + f(win.n) + ' ' + f(win.e) + ' ' + f(win.s) +
+         ' -co COMPRESS=DEFLATE eingabe.tif ausschnitt.tif';
+}
+
 const OSM_TILE = 256;
 // höchstens 12 x 12 Kacheln, das Bild bleibt unter 3100 px. Je feiner die Stufe, desto kleiner erscheint die
 // Beschriftung der Karte auf dem Gelände (die Schrift ist in jeder Kachel gleich groß in Pixeln).
@@ -5284,6 +5305,7 @@ if (typeof module !== 'undefined' && module.exports) {
     initScene: initScene,
     initSharedResources: initSharedResources,
     getScene: function () { return scene; },
+    smCutWindow: smCutWindow, gdalCutCommand: gdalCutCommand, SM_CUT_SIZE: SM_CUT_SIZE,
     smWorldPx: smWorldPx, smLonLat: smLonLat, smMetersPerPx: smMetersPerPx, smTileList: smTileList, smRectInfo: smRectInfo,
     focusOnPoint: focusOnPoint,
     settleCameraFlight: settleCameraFlight,

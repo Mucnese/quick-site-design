@@ -53,6 +53,11 @@ function makeElement() {
   };
   // Wie im echten DOM: textContent eines Elements mit Kindern ist die
   // Verkettung der Kind-textContent, nicht ein eigenes Feld.
+  // innerHTML = '' leert die Kinder wie im echten DOM (sonst bleiben alte Zeilen stehen)
+  Object.defineProperty(el, 'innerHTML', {
+    get: function () { return ''; },
+    set: function (v) { if (v === '') { el.children = []; ownText = ''; } }
+  });
   Object.defineProperty(el, 'textContent', {
     get: function () {
       if (!el.children.length) return ownText;
@@ -759,6 +764,27 @@ await test('Startkarte: ein Pin zeigt die Links nur im Fenster am Pin; die Adres
   box._listeners.pointerdown[0]({ button: 0, clientX: 320, clientY: 210, preventDefault: function () {} });
   s.smPointerUp({ clientX: 320, clientY: 210 });
   assert.strictEqual(s.document.getElementById('addr-result').style.display, 'none');
+});
+
+await test('Startkarte: für Österreich nennt das Fenster einen Befehl zum Zuschneiden großer Dateien, mit Kopieren; sonst nicht', async function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  await s.chooseAddrItem({ main: 'Salzburg', sub: 'Österreich', lat: 47.8095, lon: 13.055, country: 'AT', state: 'Salzburg' }, {});
+  const body = s.document.getElementById('sm-pop-body');
+  const txt = body.textContent;
+  assert.ok(txt.indexOf(s.T('smCutTitle')) >= 0 && txt.indexOf('1000 × 1000 m um den Pin') >= 0, txt);
+  const cmd = /gdal_translate [^\n]*ausschnitt\.tif/.exec(txt);
+  assert.ok(cmd && cmd[0].indexOf('-projwin 13.0') >= 0 || cmd && /-projwin 1[23]\.\d+ 47\.\d+ 1[34]\.\d+ 47\.\d+/.test(cmd[0]), cmd && cmd[0]);
+  let copied = null;
+  s.navigator = { clipboard: { writeText: function (t) { copied = t; return { then: function (f) { f(); } }; } } };
+  const find = function (n) { let r = null; (function walk(e) { if (e.className && String(e.className).indexOf('sm-copy') >= 0) r = e; (e.children || []).forEach(walk); })(n); return r; };
+  const btn = find(body);
+  assert.ok(btn, 'Kopieren-Knopf');
+  btn._listeners.click[0]();
+  assert.ok(copied && /^gdal_translate -projwin_srs EPSG:4326/.test(copied), String(copied));
+  assert.strictEqual(btn.textContent, s.T('smCutDone'));
+  await s.chooseAddrItem({ main: 'München', sub: 'Bayern', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
+  assert.ok(body.textContent.indexOf(s.T('smCutTitle')) < 0, 'nur Österreich: ' + body.textContent.slice(0, 200));
 });
 
 await test('Startkarte: sobald ein Gelände geladen ist, verschwindet sie; ohne Gelände kommt sie zurück', async function () {

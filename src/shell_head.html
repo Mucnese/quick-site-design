@@ -198,11 +198,17 @@
   #sm-pop { position: absolute; display: none; width: 300px; padding: 10px 12px 11px; font-size: 12.5px; line-height: 1.45; z-index: 3; text-align: left; }
   #sm-pop .sm-x { position: absolute; right: 6px; top: 4px; width: 22px; height: 22px; border: 0; background: transparent; color: var(--text-dim); font-size: 17px; line-height: 1; cursor: pointer; padding: 0; }
   #sm-pop .sm-x:hover { color: var(--accent); }
+  #sm-pop-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  #sm-pop.side #sm-pop-arrow { display: none; }
   #sm-pop-arrow { position: absolute; width: 12px; height: 12px; transform: rotate(45deg); background: var(--panel-bg); border: 1px solid var(--border-strong); }
   #sm-pop.above #sm-pop-arrow { bottom: -7px; border-top: 0; border-left: 0; }
   #sm-pop.below #sm-pop-arrow { top: -7px; border-bottom: 0; border-right: 0; }
   #sm-pop .addr-place { padding-right: 18px; }
   #sm-pop .sm-line { font-variant-numeric: tabular-nums; }
+  #sm-pop .sm-cut { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--border); }
+  #sm-pop .sm-code { display: block; margin: 5px 0 6px; padding: 5px 7px; font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace; background: var(--field);
+    border: 1px solid var(--border); border-radius: 3px; word-break: break-all; user-select: all; }
+  #sm-pop .sm-copy { width: auto; margin: 0; padding: 3px 12px; }
   #sm-pop .sm-dim { color: var(--text-dim); font-size: 12px; }
   #sm-consent { position: absolute; z-index: 4; top: 42%; transform: translateY(-50%); padding: 14px 16px; text-align: left;
     /* in der freien Fläche rechts neben dem linken Fenster, nie darunter */
@@ -681,7 +687,7 @@
   </div>
   <div id="sm-pop" class="panel">
     <button id="sm-pop-close" class="sm-x" aria-label="Schließen">×</button>
-    <div id="sm-pop-body"></div>
+    <div id="sm-pop-scroll"><div id="sm-pop-body"></div></div>
     <div id="sm-pop-arrow"></div>
   </div>
   <div id="sm-info" class="panel"></div>

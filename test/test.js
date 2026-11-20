@@ -1888,6 +1888,22 @@ test('Startkarte: gebrochene Zoomstufe - Kacheln der nächsten ganzen Stufe, ska
   assert.strictEqual(app.smTileList({ lon: 0, lat: 0, z: 2.4 }, 400, 400)[0].z, 3, 'nicht unter Stufe 3');
 });
 
+test('Startkarte: Zuschneide-Befehl - 1000-m-Fenster um den Pin und das aufgezogene Rechteck, in Länge/Breite für gdal_translate', function () {
+  const w = app.smCutWindow({ lon: 14.0, lat: 47.5 }, null);
+  assert.strictEqual(w.around, true);
+  assert.ok(Math.abs((w.n - w.s) * 111132 - 1000) < 0.5, 'Höhe 1000 m');
+  assert.ok(Math.abs((w.e - w.w) * 111320 * Math.cos(47.5 * Math.PI / 180) - 1000) < 0.5, 'Breite 1000 m');
+  assert.ok(Math.abs((w.w + w.e) / 2 - 14.0) < 1e-12 && Math.abs((w.s + w.n) / 2 - 47.5) < 1e-12, 'Pin in der Mitte');
+  const cmd = app.gdalCutCommand(w);
+  assert.ok(/^gdal_translate -projwin_srs EPSG:4326 -projwin \d+\.\d{6} \d+\.\d{6} \d+\.\d{6} \d+\.\d{6} -co COMPRESS=DEFLATE eingabe\.tif ausschnitt\.tif$/.test(cmd), cmd);
+  const parts = cmd.split(' ');                       // -projwin ulx uly lrx lry = West Nord Ost Süd
+  const i = parts.indexOf('-projwin');
+  assert.ok(+parts[i + 1] < +parts[i + 3] && +parts[i + 2] > +parts[i + 4], 'West < Ost, Nord > Süd');
+  const r = app.smCutWindow(null, { a: { lon: 12.0, lat: 48.0 }, b: { lon: 11.9, lat: 48.1 } });
+  assert.strictEqual(r.around, false);
+  assert.ok(Math.abs(r.w - 11.9) < 1e-12 && Math.abs(r.e - 12.0) < 1e-12 && Math.abs(r.s - 48.0) < 1e-12 && Math.abs(r.n - 48.1) < 1e-12);
+});
+
 test('Startkarte: Rechteck - Seitenlängen in m und UTM-Werte stimmen mit PROJ überein (EPSG:25832, 713500/5420500 = 11.9133363 / 48.9006176)', function () {
   const r = app.smRectInfo({ lon: 11.9133363, lat: 48.9006176 }, { lon: 11.9133363 + 0.01, lat: 48.9006176 + 0.01 });
   assert.ok(Math.abs(r.widthM - 0.01 * 111320 * Math.cos(48.9056 * Math.PI / 180)) < 2, String(r.widthM));

@@ -41,7 +41,9 @@ gesperrt.
    verschieben (Ziehen mit einer beliebigen Maustaste, auch mit gedrückter Mitteltaste) und stufenlos zoomen (Mausrad,
    **+**/**−**). Ein Klick setzt einen **Pin**; daneben öffnet sich ein
    **Fenster mit den Links zu den Geoportalen** des Landes (Gelände- und Gebäudemodell), mit Ort und UTM-Werten
-   (schließen mit **×** oder **Esc**). Die Links stehen dann nur dort; unter der Adressleiste
+   (schließen mit **×** oder **Esc**). Für **Österreich** nennt das Fenster zusätzlich einen fertigen **`gdal_translate`-Befehl**, der aus einer sehr großen
+   Rasterdatei (zum Beispiel BEV 1 m, über 1 GB) den Ausschnitt um den Pin (1000 × 1000 m) oder das Rechteck schneidet; **Kopieren**
+   legt ihn in die Zwischenablage. Die Links stehen dann nur dort; unter der Adressleiste
    erscheinen sie, wenn du dort etwas eintippst. **Bereich wählen**
    und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs; das Fenster hängt dann an der Nordkante. Die Karte verschwindet, sobald ein Gelände geladen ist.
    Alternativ: Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine
