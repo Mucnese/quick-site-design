@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yu1U5+jAp/NOHcTlZF3/Ogz5j7so0/i6IReX8TPutag=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Sza1YXyAEtcG6F3MMTZZTXpcoc6uT59ONbsqdRbpUFs=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -668,7 +668,7 @@
   <div id="sm-rect"></div>
   <div id="sm-marker"></div>
   <div id="sm-consent" class="panel">
-    <div class="sm-title" data-i18n="smTitle">Lade Open-Street Map</div>
+    <div class="sm-title" data-i18n="smTitle">Lade OpenStreetMap</div>
     <div class="sm-text" data-i18n="smConsent">Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen.</div>
     <button class="btn-block accent" id="sm-load" data-i18n="smLoad">Karte laden</button>
   </div>
@@ -6188,7 +6188,7 @@ const STRINGS = {
     clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
-    smTitle: 'Lade Open-Street Map',
+    smTitle: 'Lade OpenStreetMap',
     smConsent: 'Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen. Erst nach Ihrem Klick.',
     smLoad: 'Karte laden',
     smSelect: 'Bereich wählen', smSelectOn: 'Bereich wählen: Rechteck aufziehen',
@@ -6354,7 +6354,7 @@ const STRINGS = {
     clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
-    smTitle: 'Load Open-Street Map',
+    smTitle: 'Load OpenStreetMap',
     smConsent: 'The map loads tiles from tile.openstreetmap.org. Your IP address is transmitted. Only after your click.',
     smLoad: 'Load map',
     smSelect: 'Select area', smSelectOn: 'Select area: drag a rectangle',
