@@ -586,6 +586,23 @@ await test('Achslinie: Felder über (Neigung) und unter (Länge) der Mittellinie
   assert.deepStrictEqual(s.roadSlopeList(obj.params), [6.5, -2], 'Unsinn ändert nichts');
 });
 
+await test('Achslinie: beim Herauszoomen verschwinden alle Felder einer Straße gleichzeitig, auch die langer Abschnitte', function () {
+  const s = newScope();
+  s.initUI();
+  const p = s.defaultRoadParams();
+  p.points = [{ x: -60, z: 0 }, { x: 40, z: 0 }, { x: 45, z: 0 }];     // Abschnitte von 100 m und 5 m
+  p.width = 6; p.radius = 1; p.slope = 1;
+  s.addObject('road', 0, 0, p);
+  const els = s.document.getElementById('axis-labels').children;
+  const shown = function () { return els.filter(function (e) { return e.style.display === 'block'; }).length; };
+  s.__bridge.camera.position.set(0, 20, 12);
+  s.updateAxisLabels();
+  assert.strictEqual(shown(), 4, 'nah: alle vier Felder');
+  s.__bridge.camera.position.set(0, 150, 100);                          // der lange Abschnitt wäre noch groß genug
+  s.updateAxisLabels();
+  assert.strictEqual(shown(), 0, 'weit weg: kein einziges Feld, nicht nur die des kurzen Abschnitts');
+});
+
 await test('Achslinie: beim Zeichnen und Messen sind die Felder ausgeblendet', function () {
   const s = newScope();
   s.initUI();

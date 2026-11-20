@@ -13,7 +13,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
-- **Axis line:** every finished road shows its centre line. Above the line is the longitudinal slope per section, below it the
+- **Axis line** (the fields disappear for all sections of a road at once when zooming out): every finished road shows its centre line. Above the line is the longitudinal slope per section, below it the
   length (two decimals); both can be typed in. Different slopes show as “variable” in the properties window, the slider makes
   them uniform again. The length moves the end point, the following points move with it.
 - **Measure:** tool in the toolbar. Click points on terrain and buildings; every segment shows its

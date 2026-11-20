@@ -195,8 +195,8 @@ Beide Felder lassen sich anklicken und überschreiben (Zahl eintippen, **Enter**
 - Die **Länge** verschiebt den Endpunkt des Abschnitts in Richtung der Strecke; alle folgenden Punkte
   rücken mit, ihre Lage zueinander bleibt. Ausgerundete Ecken zählen mit.
 - Ein neuer Punkt teilt seinen Abschnitt (beide Hälften behalten die Neigung), ein gelöschter führt zwei
-  zusammen. Beim Zeichnen und Messen sind die Felder ausgeblendet; zu kurze Abschnitte auf dem
-  Bildschirm zeigen keine Felder (näher heranzoomen).
+  zusammen. Beim Zeichnen und Messen sind die Felder ausgeblendet. Beim Herauszoomen verschwinden
+  alle Felder einer Straße gleichzeitig, sobald ihr kürzester Abschnitt auf dem Bildschirm zu kurz wird.
 - Die Achslinie ist nur Darstellung und kommt nicht in die IFC-Datei.
 
 ### Baugrube

@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-aVEtxJ0hTOML3d0xBg5al7UHf+QrLnhxldQm6IZGbdI=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Qsb1edA5rz9Yq2AEKPH+a7BplhD+9NIOQkqzuq5sWFg=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -7646,7 +7646,7 @@ function updateSegLabels() {
    seine Länge in m; beide sind Eingabefelder. Eine Neigung gilt nur für ihren Abschnitt; die Länge verschiebt den
    Endpunkt des Abschnitts (die folgenden Punkte rücken mit). Pro Bild an die Bildschirmstelle gesetzt. */
 let axisEls = [];
-const AXIS_MIN_PX = 90;       // kürzere Abschnitte auf dem Bildschirm bekommen keine Felder (zu eng)
+const AXIS_MIN_PX = 70;       // ist der kürzeste Abschnitt einer Straße auf dem Bildschirm kürzer, blendet die Straße alle Felder aus (zu eng)
 
 function axisSlopeText(v) { return String(Math.round(v * 100) / 100); }
 function axisLenText(v) { return v.toFixed(2); }
@@ -7718,15 +7718,21 @@ function updateAxisLabels() {
   if (n) camera.updateMatrixWorld();
   const v = new THREE.Vector3();
   const focal = (window.innerHeight || 768) / 2 / Math.tan(camera.fov * Math.PI / 360);
+  // Pro Straße gemeinsam: ist der kürzeste Abschnitt zu kurz, verschwinden alle Felder der Straße zugleich
+  const minPx = {};
+  list.forEach(function (it) {
+    v.set(it.part.x, it.part.y, it.part.z);
+    const d = camera.position.distanceTo(v);
+    const px = d > 0 ? it.part.len * focal / d : 0;
+    if (minPx[it.obj.id] === undefined || px < minPx[it.obj.id]) minPx[it.obj.id] = px;
+  });
   axisEls.forEach(function (e, k) {
     const item = list[k >> 1];
     if (!item) { if (e.wrap.style.display !== 'none') e.wrap.style.display = 'none'; e.ref = null; return; }
     const pt = item.part;
     v.set(pt.x, pt.y, pt.z);
-    const dist = camera.position.distanceTo(v);
     v.project(camera);
-    const px = dist > 0 ? pt.len * focal / dist : 0;
-    if (v.z > 1 || px < AXIS_MIN_PX) {
+    if (v.z > 1 || minPx[item.obj.id] < AXIS_MIN_PX) {
       if (e.wrap.style.display !== 'none') e.wrap.style.display = 'none';
       return;
     }

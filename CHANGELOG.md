@@ -14,7 +14,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
 
 ### Neu
-- **Achslinie:** Jede fertige Straße zeigt ihre Mittellinie. Über der Linie steht die Längsneigung je Abschnitt, darunter die
+- **Achslinie** (Felder verschwinden beim Herauszoomen für alle Abschnitte einer Straße gleichzeitig): Jede fertige Straße zeigt ihre Mittellinie. Über der Linie steht die Längsneigung je Abschnitt, darunter die
   Länge (zwei Nachkommastellen); beide lassen sich eintippen. Verschiedene Neigungen zeigt das Eigenschaftsfenster als
   „variabel“, der Regler macht sie wieder einheitlich. Die Länge verschiebt den Endpunkt, die folgenden Punkte rücken mit.
 - **Messen:** Werkzeug in der Leiste. Punkte auf Gelände und Gebäuden anklicken; an jeder Strecke stehen

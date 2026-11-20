@@ -192,8 +192,8 @@ clicked and overwritten (type a number, **Enter**; **Esc** discards):
 - The **length** moves the end point of the section along its direction; all following points move
   with it and keep their position relative to each other. Rounded corners count.
 - A new point splits its section (both halves keep the slope), a deleted point joins two sections.
-  While drawing and measuring the fields are hidden; sections that are too short on screen show no
-  fields (zoom in).
+  While drawing and measuring the fields are hidden. When zooming out, all fields of a road disappear
+  at the same time as soon as its shortest section becomes too short on screen.
 - The axis line is only a display and is not written to the IFC file.
 
 ### Excavation

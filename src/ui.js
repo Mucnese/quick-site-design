@@ -1615,7 +1615,7 @@ function updateSegLabels() {
    seine Länge in m; beide sind Eingabefelder. Eine Neigung gilt nur für ihren Abschnitt; die Länge verschiebt den
    Endpunkt des Abschnitts (die folgenden Punkte rücken mit). Pro Bild an die Bildschirmstelle gesetzt. */
 let axisEls = [];
-const AXIS_MIN_PX = 90;       // kürzere Abschnitte auf dem Bildschirm bekommen keine Felder (zu eng)
+const AXIS_MIN_PX = 70;       // ist der kürzeste Abschnitt einer Straße auf dem Bildschirm kürzer, blendet die Straße alle Felder aus (zu eng)
 
 function axisSlopeText(v) { return String(Math.round(v * 100) / 100); }
 function axisLenText(v) { return v.toFixed(2); }
@@ -1687,15 +1687,21 @@ function updateAxisLabels() {
   if (n) camera.updateMatrixWorld();
   const v = new THREE.Vector3();
   const focal = (window.innerHeight || 768) / 2 / Math.tan(camera.fov * Math.PI / 360);
+  // Pro Straße gemeinsam: ist der kürzeste Abschnitt zu kurz, verschwinden alle Felder der Straße zugleich
+  const minPx = {};
+  list.forEach(function (it) {
+    v.set(it.part.x, it.part.y, it.part.z);
+    const d = camera.position.distanceTo(v);
+    const px = d > 0 ? it.part.len * focal / d : 0;
+    if (minPx[it.obj.id] === undefined || px < minPx[it.obj.id]) minPx[it.obj.id] = px;
+  });
   axisEls.forEach(function (e, k) {
     const item = list[k >> 1];
     if (!item) { if (e.wrap.style.display !== 'none') e.wrap.style.display = 'none'; e.ref = null; return; }
     const pt = item.part;
     v.set(pt.x, pt.y, pt.z);
-    const dist = camera.position.distanceTo(v);
     v.project(camera);
-    const px = dist > 0 ? pt.len * focal / dist : 0;
-    if (v.z > 1 || px < AXIS_MIN_PX) {
+    if (v.z > 1 || minPx[item.obj.id] < AXIS_MIN_PX) {
       if (e.wrap.style.display !== 'none') e.wrap.style.display = 'none';
       return;
     }
