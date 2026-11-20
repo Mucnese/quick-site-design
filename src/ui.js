@@ -1615,7 +1615,7 @@ function updateSegLabels() {
    seine Länge in m; beide sind Eingabefelder. Eine Neigung gilt nur für ihren Abschnitt; die Länge verschiebt den
    Endpunkt des Abschnitts (die folgenden Punkte rücken mit). Pro Bild an die Bildschirmstelle gesetzt. */
 let axisEls = [];
-const AXIS_MIN_PX = 70;       // ist der kürzeste Abschnitt einer Straße auf dem Bildschirm kürzer, blendet die Straße alle Felder aus (zu eng)
+const AXIS_MIN_PX = 160;       // ist der kürzeste Abschnitt einer Straße auf dem Bildschirm kürzer, blendet die Straße alle Felder aus (zu eng)
 
 function axisSlopeText(v) { return String(Math.round(v * 100) / 100); }
 function axisLenText(v) { return v.toFixed(2); }
