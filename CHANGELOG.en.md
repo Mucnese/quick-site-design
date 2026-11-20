@@ -13,6 +13,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
+- **Axis line:** every finished road shows its centre line. Above the line is the longitudinal slope per section, below it the
+  length (two decimals); both can be typed in. Different slopes show as “variable” in the properties window, the slider makes
+  them uniform again. The length moves the end point, the following points move with it.
 - **Measure:** tool in the toolbar. Click points on terrain and buildings; every segment shows its
   horizontal length and height difference (two decimals). The window gives totals (horizontal and in
   space), height difference, slope in percent and the heights of start and end.

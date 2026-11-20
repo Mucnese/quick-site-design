@@ -533,6 +533,72 @@ await test('Baustraße: Längsneigung nur im Eigenschaftsfenster, Zahl im Kopf d
   assert.strictEqual(ref.input.max, 30);
 });
 
+function threePointRoadUi(s, slopes) {
+  const p = s.defaultRoadParams();
+  p.points = [{ x: -40, z: 0 }, { x: 0, z: 0 }, { x: 30, z: 0 }];
+  p.width = 6; p.radius = 1;
+  if (slopes) p.sectionSlopes = slopes; else p.slope = 1;
+  return s.addObject('road', 0, 0, p);
+}
+
+await test('Baustraße: verschiedene Neigungen je Abschnitt - das Feld zeigt "variabel", gleiche Neigungen zeigen die Zahl', function () {
+  const s = newScope();
+  const obj = threePointRoadUi(s, [4, -2]);
+  const form = s.buildForm('road', obj.params, function () {}, true);
+  s.markRoadSlope(obj, form.refs);
+  assert.strictEqual(form.refs.slope.num.value, '', 'kein Zahlenwert');
+  assert.strictEqual(form.refs.slope.num.placeholder, s.T('slopeVariable'));
+  s.setRoadSectionSlope(obj, 1, 4);
+  s.markRoadSlope(obj, form.refs);
+  assert.strictEqual(form.refs.slope.num.value, 4);
+  assert.strictEqual(form.refs.slope.input.value, 4);
+  assert.strictEqual(s.T('slopeVariable'), 'variabel');
+});
+
+await test('Achslinie: Felder über (Neigung) und unter (Länge) der Mittellinie, Eingabe ändert den Abschnitt', function () {
+  const s = newScope();
+  s.initUI();
+  const obj = threePointRoadUi(s, [4, -2]);
+  const cam = s.__bridge.camera;
+  cam.position.set(0, 40, 30);
+  s.updateAxisLabels();
+  const els = s.document.getElementById('axis-labels').children;
+  assert.strictEqual(els.length, 4, 'zwei Abschnitte, je ein Feld oben und unten');
+  const inputOf = function (i) { return els[i].children[0]; };
+  assert.strictEqual(inputOf(0).value, '4');
+  assert.strictEqual(inputOf(1).value, '40.00');
+  assert.strictEqual(inputOf(2).value, '-2');
+  assert.strictEqual(inputOf(3).value, '30.00');
+  assert.strictEqual(els[0].className, 'axis-label up');
+  assert.strictEqual(els[1].className, 'axis-label down');
+
+  inputOf(0).value = '6,5';                                // Komma wie in der deutschen Schreibweise
+  inputOf(0).fire('change');
+  assert.deepStrictEqual(s.roadSlopeList(obj.params), [6.5, -2]);
+
+  inputOf(3).value = '45';
+  inputOf(3).fire('change');
+  assert.ok(Math.abs(obj.group.userData.parts[1].len - 45) < 0.02, String(obj.group.userData.parts[1].len));
+  assert.ok(Math.abs(obj.params.points[2].x - 45) < 0.02, 'Endpunkt rückt mit');
+
+  inputOf(0).value = 'abc';
+  inputOf(0).fire('change');
+  assert.deepStrictEqual(s.roadSlopeList(obj.params), [6.5, -2], 'Unsinn ändert nichts');
+});
+
+await test('Achslinie: beim Zeichnen und Messen sind die Felder ausgeblendet', function () {
+  const s = newScope();
+  s.initUI();
+  threePointRoadUi(s, [4, -2]);
+  s.__bridge.camera.position.set(0, 40, 30);
+  s.updateAxisLabels();
+  const els = s.document.getElementById('axis-labels').children;
+  assert.strictEqual(els[0].style.display, 'block');
+  s.selectTool('road');
+  s.updateAxisLabels();
+  assert.strictEqual(els[0].style.display, 'none', 'Straße zeichnen');
+});
+
 await test('Mindestradius: tatsächlich erreichter Wert steht neben dem Feld, der Wunschwert im Feld bleibt', function () {
   const s = newScope();
   const p = s.defaultRoadParams();

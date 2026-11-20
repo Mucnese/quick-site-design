@@ -33,6 +33,7 @@ function start() {
     updateControls();
     updatePointLabel();
     updateSegLabels();
+    updateAxisLabels();
     updateRulerScale();
     updateCompass();
     renderer.render(scene, camera);

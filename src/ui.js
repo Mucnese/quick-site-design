@@ -62,7 +62,7 @@ const STRINGS = {
     helpS4T: 'Bearbeiten',
     helpS4B: '- Objekt anklicken: Verschieben, Duplizieren, Löschen.\n- Straße und Baugrube: Stützpunkte anklicken und versetzen, „Punkt hinzufügen“, „Punkt löschen“.\n- Ein Eintrag in der Übersicht wählt die ganze Gruppe.',
     helpS5T: 'Mengen und Prüfungen',
-    helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.\n- „Messen“ (Leiste): Punkte anklicken, an jeder Strecke stehen waagerechte Länge und Höhenunterschied (2 Nachkommastellen); Rechtsklick oder Leertaste beendet, Rücktaste nimmt den letzten Punkt zurück, Esc beendet.',
+    helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Die Achslinie zeigt über der Mittellinie die Neigung, darunter die Länge je Abschnitt; beide lassen sich eintippen (Enter).\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.\n- „Messen“ (Leiste): Punkte anklicken, an jeder Strecke stehen waagerechte Länge und Höhenunterschied (2 Nachkommastellen); Rechtsklick oder Leertaste beendet, Rücktaste nimmt den letzten Punkt zurück, Esc beendet.',
     helpS6T: 'Karte und Export',
     helpS6B: '- Knopf „Karte“ (unten links) → „Karte · OpenStreetMap“ legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände, Gebäude und auf Wunsch die Bausteine als IFC-Datei heruntergeladen, auch in einem anderen Koordinatensystem.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
     helpS7T: 'Tastatur',
@@ -154,6 +154,9 @@ const STRINGS = {
     fRadius: 'Ausladung', fMast: 'Turmbreite', fJibRot: 'Winkel Ausleger',
     fBaseRot: 'Winkel Fundament', fVehRot: 'Winkel Fahrzeug', fShowRadius: 'Arbeitsradius zeigen',
     fWidth: 'Straßenbreite', fMinRadius: 'Mindestradius Kurve', fShowEdge: 'Ränder zeigen',
+    axisSlopeTip: 'Längsneigung dieses Abschnitts in % (Zahl eingeben, Enter)',
+    axisLenTip: 'Länge dieses Abschnitts in m entlang der Achse (Zahl eingeben, Enter). Der Endpunkt und alle folgenden Punkte rücken mit.',
+    slopeVariable: 'variabel',
     fSwept: 'Schleppkurve Sattelzug prüfen',
     sweptNeed: 'Sattelzug 16,50 m braucht {n} m bei Fahrt auf der Straßenmitte (Fahrbahn {w} m).',
     sweptOk: 'Passt.', sweptOver: 'Passt nicht: ragt bis {o} m über den Fahrbahnrand.',
@@ -215,7 +218,7 @@ const STRINGS = {
     helpS4T: 'Editing',
     helpS4B: '- Click an object: move, duplicate, delete.\n- Road and excavation: click nodes and move them, “Add node”, “Delete node”.\n- An entry in the overview selects the whole group.',
     helpS5T: 'Quantities and checks',
-    helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.\n- “Measure” (toolbar): click points, every segment shows horizontal length and height difference (2 decimals); right-click or space finishes, backspace removes the last point, Esc ends.',
+    helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- The axis line shows the slope above and the length below the centre line for every section; both can be typed in (Enter).\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.\n- “Measure” (toolbar): click points, every segment shows horizontal length and height difference (2 decimals); right-click or space finishes, backspace removes the last point, Esc ends.',
     helpS6T: 'Map and export',
     helpS6B: '- “Map” button (bottom left) → “Map · OpenStreetMap” puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain, buildings and, optionally, the blocks are downloaded as an IFC file, also in another coordinate system.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
     helpS7T: 'Keyboard',
@@ -307,6 +310,9 @@ const STRINGS = {
     fRadius: 'Radius', fMast: 'Mast width', fJibRot: 'Jib angle',
     fBaseRot: 'Base angle', fVehRot: 'Carrier angle', fShowRadius: 'Show working radius',
     fWidth: 'Road width', fMinRadius: 'Minimum curve radius', fShowEdge: 'Show edges',
+    axisSlopeTip: 'Longitudinal slope of this section in % (type a number, Enter)',
+    axisLenTip: 'Length of this section in m along the axis (type a number, Enter). The end point and all following points move with it.',
+    slopeVariable: 'variable',
     fSwept: 'Check swept path (semi-trailer)',
     sweptNeed: 'Semi-trailer 16.50 m needs {n} m when driving on the road centre (road {w} m).',
     sweptOk: 'It fits.', sweptOver: 'Does not fit: sticks out up to {o} m beyond the road edge.',
@@ -1020,19 +1026,21 @@ function showObjectEditor(id) {
       return;
     }
     obj.params[key] = v;
+    if (obj.type === 'road' && key === 'slope') obj.params.sectionSlopes = null;    // der Regler macht alle Abschnitte gleich
     if (key === 'model') applyModelDefaults(obj.params, form.refs, obj.type);
     rebuildObject(obj);
     renderOverview();
     document.getElementById('param-title').textContent = labelFor(obj.type, obj.params);
     if (obj.type === 'road') {
       markRoadRadius(obj, form.refs);
+      markRoadSlope(obj, form.refs);
       document.getElementById('param-hint').textContent = roadHintText(obj);
       renderRoadEarth(obj, earthEl);
     }
   }, true);
   formRefs = form.refs;
   panel.appendChild(form.element);
-  if (obj.type === 'road') markRoadRadius(obj, form.refs);
+  if (obj.type === 'road') { markRoadRadius(obj, form.refs); markRoadSlope(obj, form.refs); }
 
   let earthEl = null;
   if (obj.type === 'road') {
@@ -1287,6 +1295,28 @@ function renderRoadEarth(obj, el) {
 
 /* Färbt den Radiusregler, sobald der Wunschradius nicht gehalten werden kann.
    Der Regler bleibt bedienbar, damit man ihn zurückdrehen kann. */
+/* Längsneigung im Eigenschaftsfenster: haben die Abschnitte verschiedene Neigungen, steht "variabel" im Feld. Der Regler
+   macht dann beim nächsten Verschieben alle Abschnitte wieder gleich. */
+function markRoadSlope(obj, refs) {
+  const ref = refs && refs.slope;
+  if (!ref || !ref.num) return;
+  const variable = roadSlopeVariable(obj.params);
+  if (ref.num.dataset && ref.num.dataset.w === undefined) ref.num.dataset.w = ref.num.style.width || '';
+  ref.num.placeholder = T('slopeVariable');
+  if (variable) {
+    ref.num.value = '';
+    ref.num.style.width = '8ch';
+    const list = roadSlopeList(obj.params);
+    ref.input.value = Math.round(list.reduce(function (a, b) { return a + b; }, 0) / list.length * 10) / 10;
+  } else {
+    const v = roadSlopeList(obj.params)[0];
+    ref.num.value = isFinite(v) ? v : ref.num.value;
+    ref.input.value = ref.num.value;
+    if (ref.num.dataset) ref.num.style.width = ref.num.dataset.w;
+  }
+  if (ref.row && ref.row.classList) ref.row.classList.toggle('field-variable', variable);
+}
+
 function markRoadRadius(obj, refs) {
   const ref = refs && refs.radius;
   if (!ref) return null;
@@ -1577,6 +1607,104 @@ function updateSegLabels() {
     el.style.display = 'block';
     el.style.transform = 'translate(' + Math.round((v.x * 0.5 + 0.5) * window.innerWidth) + 'px, ' +
       Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, -130%)';
+  });
+}
+
+/* ---------- Achslinie: Neigung (oben) und Länge (unten) je Abschnitt ----------
+   Jede fertige Straße zeigt ihre Mittellinie. Über der Linie steht die Längsneigung des Abschnitts in %, darunter
+   seine Länge in m; beide sind Eingabefelder. Eine Neigung gilt nur für ihren Abschnitt; die Länge verschiebt den
+   Endpunkt des Abschnitts (die folgenden Punkte rücken mit). Pro Bild an die Bildschirmstelle gesetzt. */
+let axisEls = [];
+const AXIS_MIN_PX = 90;       // kürzere Abschnitte auf dem Bildschirm bekommen keine Felder (zu eng)
+
+function axisSlopeText(v) { return String(Math.round(v * 100) / 100); }
+function axisLenText(v) { return v.toFixed(2); }
+
+function parseAxisNumber(text) {
+  const v = parseFloat(String(text).replace(',', '.').replace(/[^0-9eE+\-.]/g, ''));
+  return isFinite(v) ? v : null;
+}
+
+function makeAxisLabel(kind) {
+  const wrap = document.createElement('div');
+  wrap.className = 'axis-label ' + kind;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.setAttribute('inputmode', 'decimal');
+  input.title = T(kind === 'up' ? 'axisSlopeTip' : 'axisLenTip');
+  const unit = document.createElement('span');
+  unit.textContent = kind === 'up' ? '%' : 'm';
+  wrap.appendChild(input);
+  wrap.appendChild(unit);
+  const entry = { wrap: wrap, input: input, kind: kind, ref: null };
+  input.addEventListener('change', function () { applyAxisEdit(entry); });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { if (input.blur) input.blur(); }
+    else if (e.key === 'Escape') { entry.cancel = true; if (input.blur) input.blur(); }
+  });
+  input.addEventListener('focus', function () { if (input.select) input.select(); });
+  return entry;
+}
+
+function applyAxisEdit(entry) {
+  const ref = entry.ref;
+  if (!ref) return;
+  const obj = findObject(ref.objId);
+  const part = obj && obj.group.userData.parts && obj.group.userData.parts[ref.index];
+  if (entry.cancel) {                       // Esc: alten Wert wiederherstellen
+    entry.cancel = false;
+    if (part) entry.input.value = entry.kind === 'up' ? axisSlopeText(part.slope) : axisLenText(part.len);
+    return;
+  }
+  if (!obj || !part) return;
+  const v = parseAxisNumber(entry.input.value);
+  if (v === null) { entry.input.value = entry.kind === 'up' ? axisSlopeText(part.slope) : axisLenText(part.len); return; }
+  if (entry.kind === 'up') setRoadSectionSlope(obj, ref.index, v);
+  else setRoadSectionLength(obj, ref.index, v);
+  renderOverview();
+  showObjectEditor(obj.id);                 // Eigenschaftsfenster zeigt die neuen Werte ("variabel")
+}
+
+function axisPartList() {
+  const out = [];
+  objects.forEach(function (o) {
+    const parts = o.type === 'road' && o.group.userData.parts;
+    if (parts) parts.forEach(function (pt, i) { out.push({ obj: o, part: pt, index: i }); });
+  });
+  return out;
+}
+
+function updateAxisLabels() {
+  const box = document.getElementById('axis-labels');
+  if (!box) return;
+  const list = (rulerActive || isDrawTool(activeTool)) ? [] : axisPartList();
+  const n = list.length;
+  while (axisEls.length < n * 2) {
+    const a = makeAxisLabel('up'), b = makeAxisLabel('down');
+    box.appendChild(a.wrap); box.appendChild(b.wrap);
+    axisEls.push(a, b);
+  }
+  if (n) camera.updateMatrixWorld();
+  const v = new THREE.Vector3();
+  const focal = (window.innerHeight || 768) / 2 / Math.tan(camera.fov * Math.PI / 360);
+  axisEls.forEach(function (e, k) {
+    const item = list[k >> 1];
+    if (!item) { if (e.wrap.style.display !== 'none') e.wrap.style.display = 'none'; e.ref = null; return; }
+    const pt = item.part;
+    v.set(pt.x, pt.y, pt.z);
+    const dist = camera.position.distanceTo(v);
+    v.project(camera);
+    const px = dist > 0 ? pt.len * focal / dist : 0;
+    if (v.z > 1 || px < AXIS_MIN_PX) {
+      if (e.wrap.style.display !== 'none') e.wrap.style.display = 'none';
+      return;
+    }
+    e.ref = { objId: item.obj.id, index: item.index };
+    const txt = e.kind === 'up' ? axisSlopeText(pt.slope) : axisLenText(pt.len);
+    if (e.input !== document.activeElement && e.input.value !== txt) e.input.value = txt;
+    e.wrap.style.display = 'block';
+    e.wrap.style.transform = 'translate(' + Math.round((v.x * 0.5 + 0.5) * window.innerWidth) + 'px, ' +
+      Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, ' + (e.kind === 'up' ? '-125%' : '25%') + ')';
   });
 }
 

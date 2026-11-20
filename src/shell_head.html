@@ -191,6 +191,22 @@
   }
   .seg-label.live { border-color: var(--accent); }
 
+  /* Achslinie: Neigung (oben) und Länge (unten) je Abschnitt, zum Eintippen */
+  #axis-labels { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 4; pointer-events: none; }
+  .axis-label {
+    display: none; position: fixed; left: 0; top: 0; pointer-events: auto; will-change: transform;
+    background: var(--panel-bg); color: var(--text); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 0 5px; font-size: 12px; line-height: 1.5;
+    font-variant-numeric: tabular-nums; white-space: nowrap; cursor: text;
+  }
+  .axis-label.up { border-color: #c9a227; }
+  .axis-label:hover, .axis-label:focus-within { border-color: var(--accent); }
+  .axis-label input {
+    width: 5.2ch; border: 0; outline: 0; background: transparent; color: inherit; font: inherit;
+    text-align: right; padding: 0; margin: 0; font-variant-numeric: tabular-nums;
+  }
+  .axis-label span { opacity: 0.8; padding-left: 2px; }
+
   /* ---------- Dateien ---------- */
   .file-row { margin-bottom: 9px; }
   .file-row:last-child { margin-bottom: 0; }
@@ -717,6 +733,7 @@
 </div>
 
 <div id="seg-labels"></div>
+<div id="axis-labels"></div>
 <div id="point-label">
   <div class="mrow"><span class="mk">R</span><span class="mv" id="measure-r">–</span></div>
   <div class="mrow"><span class="mk">H</span><span class="mv" id="measure-h">–</span></div>

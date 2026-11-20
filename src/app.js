@@ -203,6 +203,7 @@ function initSharedResources() {
   MAT.roadEdge    = new THREE.LineBasicMaterial({ color: 0xf2e6c8, transparent: true, opacity: 0.7 });
   MAT.road        = new THREE.MeshLambertMaterial({ color: 0x6f6a60, side: THREE.DoubleSide });
   MAT.roadEdge    = new THREE.LineBasicMaterial({ color: 0xe8e2d2, transparent: true, opacity: 0.75 });
+  MAT.roadAxis    = new THREE.MeshBasicMaterial({ color: 0xffd23f, side: THREE.DoubleSide });
   // Böschungen: Auftrag hell (aufgeschüttet), Abtrag dunkel (angeschnitten)
   MAT.roadFill    = new THREE.MeshLambertMaterial({ color: 0xc9a45c, side: THREE.DoubleSide });
   MAT.roadCut     = new THREE.MeshLambertMaterial({ color: 0x9a5a44, side: THREE.DoubleSide });
@@ -2240,7 +2241,9 @@ function thickLine(points, width, material, closed) {
    wie nötig und das Ergebnis gemeldet.
    ========================================================= */
 function defaultRoadParams() {
-  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null, embank: 1, showSwept: false };
+  // slope: einheitliche Längsneigung in % (null = aus Anfangs- und Endhöhe); sectionSlopes: eigene Neigung je Abschnitt
+  // (Strecke zwischen zwei gesetzten Punkten), null = einheitlich
+  return { points: [], width: 6.0, radius: 15, showEdge: true, slope: null, sectionSlopes: null, embank: 1, showSwept: false };
 }
 
 function dist2d(a, b) {
@@ -2391,6 +2394,154 @@ function autoRoadSlope(p) {
   return Math.round(Math.max(-ROAD_SLOPE_MAX, Math.min(ROAD_SLOPE_MAX, pct)) * 10) / 10;
 }
 
+/* ---------- Abschnitte (Achslinie) ----------
+   Ein Abschnitt ist die Strecke zwischen zwei gesetzten Punkten, gemessen entlang der ausgerundeten Straßenmitte. Jeder
+   Abschnitt hat eine eigene Längsneigung; sind alle gleich, gilt die einheitliche params.slope. */
+
+function isNum(v) { return typeof v === 'number' && isFinite(v); }
+
+/* Eigene Neigungen je Abschnitt, falls gesetzt und passend zur Punktzahl, sonst null */
+function roadOwnSlopes(p) {
+  const n = Math.max(0, ((p && p.points) || []).length - 1);
+  const a = p && p.sectionSlopes;
+  return (Array.isArray(a) && a.length === n && n > 0 && a.every(isNum)) ? a : null;
+}
+
+/* Neigung je Abschnitt in % (immer n Werte) */
+function roadSlopeList(p) {
+  const n = Math.max(0, ((p && p.points) || []).length - 1);
+  const own = roadOwnSlopes(p);
+  if (own) return own.slice();
+  const s = isNum(p && p.slope) ? p.slope : autoRoadSlope(p);
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(s);
+  return out;
+}
+
+/* Sind die Neigungen der Abschnitte verschieden? (Anzeige "variabel") */
+function roadSlopeVariable(p) {
+  const own = roadOwnSlopes(p);
+  if (!own) return false;
+  return own.some(function (v) { return Math.abs(v - own[0]) > 0.0005; });
+}
+
+/* Neigung eines Abschnitts setzen. Sind danach alle gleich, bleibt eine einheitliche Neigung. */
+function setRoadSectionSlope(obj, index, value) {
+  if (!obj || obj.type !== 'road') return false;
+  const p = obj.params, n = (p.points || []).length - 1;
+  if (index < 0 || index >= n || !isNum(value)) return false;
+  const v = Math.round(Math.max(-ROAD_SLOPE_MAX, Math.min(ROAD_SLOPE_MAX, value)) * 100) / 100;
+  const list = roadSlopeList(p);
+  list[index] = v;
+  if (list.every(function (x) { return Math.abs(x - list[0]) < 0.0005; })) {
+    p.slope = list[0];
+    p.sectionSlopes = null;
+  } else {
+    p.sectionSlopes = list;
+    p.slope = null;
+  }
+  rebuildObject(obj);
+  return true;
+}
+
+/* Einheitliche Neigung für alle Abschnitte (der Regler im Eigenschaftsfenster) */
+function setRoadUniformSlope(obj, value) {
+  if (!obj || obj.type !== 'road' || !isNum(value)) return false;
+  obj.params.slope = Math.max(-ROAD_SLOPE_MAX, Math.min(ROAD_SLOPE_MAX, value));
+  obj.params.sectionSlopes = null;
+  rebuildObject(obj);
+  return true;
+}
+
+/* Nach Änderungen an den Punkten: einheitliche Neigung wie bisher aus Anfangs- und Endhöhe neu bestimmen. Eigene
+   Neigungen je Abschnitt bleiben stehen, solange die Punktzahl gleich ist (verschieben); sonst fallen sie weg. */
+function resetRoadSlope(obj) {
+  if (!obj || obj.type !== 'road') return;
+  if (!roadOwnSlopes(obj.params)) {
+    obj.params.sectionSlopes = null;
+    obj.params.slope = autoRoadSlope(obj.params);
+  }
+}
+
+/* Station (Weglänge ab Anfang) des Wegpunkts, der dem Punkt q am nächsten liegt */
+function stationNear(frames, q) {
+  let best = Infinity, st = 0;
+  for (let i = 1; i < frames.length; i++) {
+    const a = frames[i - 1], b = frames[i];
+    const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+    if (l2 < 1e-12) continue;
+    const t = Math.max(0, Math.min(1, ((q.x - a.x) * dx + (q.z - a.z) * dz) / l2));
+    const ex = q.x - (a.x + dx * t), ez = q.z - (a.z + dz * t);
+    const d = ex * ex + ez * ez;
+    if (d < best) { best = d; st = a.s + t * (b.s - a.s); }
+  }
+  return st;
+}
+
+/* Stationen der gesetzten Punkte entlang der Straßenmitte (nicht abnehmend, erster 0, letzter = Länge) */
+function nodeStations(pts, frames) {
+  const L = frames.length ? frames[frames.length - 1].s : 0;
+  const out = pts.map(function (q, i) {
+    if (i === 0) return 0;
+    if (i === pts.length - 1) return L;
+    return stationNear(frames, q);
+  });
+  for (let i = 1; i < out.length; i++) if (out[i] < out[i - 1]) out[i] = out[i - 1];
+  return out;
+}
+
+/* Punkt der Straßenmitte bei Station s */
+function pointAtStation(frames, s) {
+  if (!frames.length) return { x: 0, z: 0 };
+  if (s <= 0) return { x: frames[0].x, z: frames[0].z };
+  for (let i = 1; i < frames.length; i++) {
+    if (s <= frames[i].s || i === frames.length - 1) {
+      const a = frames[i - 1], b = frames[i], l = b.s - a.s;
+      const t = l > 1e-9 ? Math.max(0, Math.min(1, (s - a.s) / l)) : 0;
+      return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
+    }
+  }
+  return { x: frames[frames.length - 1].x, z: frames[frames.length - 1].z };
+}
+
+/* Länge des Abschnitts i entlang der Straßenmitte (m), ohne Mesh-Aufbau */
+function roadSectionLength(p, i) {
+  const pts = p.points || [];
+  if (i < 0 || i >= pts.length - 1) return 0;
+  const fr = roadFrames(roadPathOf(p).path);
+  const st = nodeStations(pts, fr);
+  return st[i + 1] - st[i];
+}
+
+/* Länge des Abschnitts i ändern: der Endpunkt wandert in Richtung der Strecke, alle folgenden Punkte wandern
+   um dasselbe Stück mit, damit ihre Lage zueinander bleibt. Die Länge zählt entlang der ausgerundeten
+   Straßenmitte, deshalb wird sie in wenigen Schritten angenähert. */
+function setRoadSectionLength(obj, index, target) {
+  if (!obj || obj.type !== 'road' || !isNum(target)) return false;
+  const pts = obj.params.points || [];
+  if (index < 0 || index >= pts.length - 1) return false;
+  const a = pts[index], b = pts[index + 1];
+  let dx = b.x - a.x, dz = b.z - a.z;
+  const d0 = Math.hypot(dx, dz);
+  if (d0 < 1e-6) return false;
+  dx /= d0; dz /= d0;
+  const want = Math.max(1, Math.min(20000, target));
+  let moved = 0;
+  for (let k = 0; k < 8; k++) {
+    const cur = roadSectionLength(obj.params, index);
+    const err = want - cur;
+    if (Math.abs(err) < 0.005) break;
+    const step = Math.max(err, -(d0 + moved) + 0.5);     // der Endpunkt darf nicht hinter den Anfang rutschen
+    for (let j = index + 1; j < pts.length; j++) pts[j] = { x: pts[j].x + dx * step, z: pts[j].z + dz * step };
+    moved += step;
+  }
+  const c = roadCentroid(pts);
+  obj.x = c.x; obj.z = c.z;
+  resetRoadSlope(obj);
+  rebuildObject(obj);
+  return true;
+}
+
 /* Böschung einer Seite: sucht vom Fahrbahnrand nach außen den ersten
    Schnitt der 1:n-Linie mit dem Gelände (n m Breite je 1 m Höhe). */
 function embankmentSide(f, sign, hr, half, n) {
@@ -2435,12 +2586,26 @@ function computeRoad(p) {
   const rp = roadPathOf(p);
   const frames = roadFrames(rp.path);
   const length = frames.length ? frames[frames.length - 1].s : 0;
-  const slope = (typeof p.slope === 'number' && isFinite(p.slope)) ? p.slope : autoRoadSlope(p);
   const h0 = getHeightAt(rp.path[0].x, rp.path[0].z);
   const embN = embankmentOf(p);
 
+  // Höhenverlauf: zwischen den gesetzten Punkten linear, mit der Neigung des jeweiligen Abschnitts
+  const slopes = roadSlopeList(p);
+  const stations = nodeStations(p.points || [], frames);
+  const nodeH = [h0];
+  for (let i = 0; i < slopes.length; i++) nodeH.push(nodeH[i] + slopes[i] / 100 * (stations[i + 1] - stations[i]));
+  function heightAtStation(s) {
+    for (let i = 0; i < slopes.length; i++) {
+      if (s <= stations[i + 1] || i === slopes.length - 1) return nodeH[i] + slopes[i] / 100 * (s - stations[i]);
+    }
+    return h0;
+  }
+  const variable = roadSlopeVariable(p);
+  const slope = variable ? (length > 0.5 ? (nodeH[nodeH.length - 1] - h0) / length * 100 : 0)
+                         : (slopes.length ? slopes[0] : (isNum(p.slope) ? p.slope : autoRoadSlope(p)));
+
   const sections = frames.map(function (f) {
-    const hr = h0 + slope / 100 * f.s;
+    const hr = heightAtStation(f.s);
     const left = embankmentSide(f, 1, hr, half, embN);
     const right = embankmentSide(f, -1, hr, half, embN);
 
@@ -2476,6 +2641,12 @@ function computeRoad(p) {
   return {
     fil: rp.fil, path: rp.path, width: width, half: half, length: length,
     area: length * width, slope: slope, h0: h0, sections: sections,
+    slopes: slopes, slopeVariable: variable, stations: stations,
+    parts: slopes.map(function (sl, i) {
+      const sm = (stations[i] + stations[i + 1]) / 2, m = pointAtStation(frames, sm);
+      return { i: i, s0: stations[i], s1: stations[i + 1], len: stations[i + 1] - stations[i], slope: sl,
+               x: m.x, z: m.z, y: heightAtStation(sm) + ROAD_LIFT };
+    }),
     earthworks: { fill: fill, cut: cut, maxReach: maxReach, unreached: unreached, embank: embN }
   };
 }
@@ -2598,6 +2769,42 @@ function addCutOverlay(g, secs, ePos, cutIdx) {
   }
 }
 
+/* Achslinie: gestrichelte Mittellinie der Straße mit Querstrichen an den gesetzten Punkten. Nur Darstellung,
+   wird nicht in die IFC-Datei geschrieben. */
+const AXIS_DASH = 2.4, AXIS_GAP = 1.6, AXIS_WIDTH = 0.25;
+
+function addRoadAxis(g, rd) {
+  const secs = rd.sections;
+  if (secs.length < 2 || !(rd.length > 0.5)) return;
+  function at(s) {
+    for (let i = 1; i < secs.length; i++) {
+      if (s <= secs[i].f.s || i === secs.length - 1) {
+        const a = secs[i - 1], b = secs[i], l = b.f.s - a.f.s;
+        const t = l > 1e-9 ? Math.max(0, Math.min(1, (s - a.f.s) / l)) : 0;
+        return { x: a.f.x + (b.f.x - a.f.x) * t, z: a.f.z + (b.f.z - a.f.z) * t,
+                 y: a.hr + (b.hr - a.hr) * t + ROAD_LIFT + 0.06, nx: b.f.nx, nz: b.f.nz };
+      }
+    }
+    return null;
+  }
+  const lines = new THREE.Group();
+  function add(a, b, w) {
+    const piece = thickLine([new THREE.Vector3(a.x, a.y, a.z), new THREE.Vector3(b.x, b.y, b.z)], w, MAT.roadAxis, false);
+    piece.children.forEach(function (m) { m.userData.kind = 'roadAxis'; });
+    lines.add(piece);
+  }
+  for (let s = 0; s < rd.length; s += AXIS_DASH + AXIS_GAP) {
+    add(at(s), at(Math.min(s + AXIS_DASH, rd.length)), AXIS_WIDTH);
+  }
+  // Querstriche an den gesetzten Punkten (Anfang, Ende und dazwischen)
+  rd.stations.forEach(function (st) {
+    const c = at(st), h = Math.min(rd.half, 1.2);
+    add({ x: c.x - c.nx * h, y: c.y, z: c.z - c.nz * h }, { x: c.x + c.nx * h, y: c.y, z: c.z + c.nz * h }, AXIS_WIDTH);
+  });
+  lines.userData.kind = 'roadAxis';
+  g.add(lines);
+}
+
 function buildRoad(p) {
   const g = new THREE.Group();
   const pts = p.points || [];
@@ -2681,6 +2888,8 @@ function buildRoad(p) {
     g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(right), MAT.roadEdge));
   }
 
+  addRoadAxis(g, rd);
+
   let minx = Infinity, maxx = -Infinity, minz = Infinity, maxz = -Infinity;
   rd.path.forEach(function (q) {
     if (q.x < minx) minx = q.x;
@@ -2698,6 +2907,8 @@ function buildRoad(p) {
   g.userData.length = rd.length;
   g.userData.area = rd.area;
   g.userData.slope = rd.slope;
+  g.userData.slopeVariable = rd.slopeVariable;
+  g.userData.parts = rd.parts;
   g.userData.earthworks = rd.earthworks;
   g.userData.reduced = rd.fil.reduced;
   g.userData.minRadius = rd.fil.minRadius;
@@ -3600,7 +3811,7 @@ function moveObject(obj, x, z) {
     obj.params.points = (obj.params.points || []).map(function (q) {
       return { x: q.x + dx, z: q.z + dz };
     });
-    if (obj.type === 'road') obj.params.slope = autoRoadSlope(obj.params);    // anderes Gelände, neue Anfangs-/Endhöhe
+    resetRoadSlope(obj);                                                  // anderes Gelände, neue Anfangs-/Endhöhe
     rebuildObject(obj);
     return;
   }
@@ -3994,7 +4205,7 @@ function moveRoadNode(obj, index, x, z) {
   pts[index] = { x: x, z: z };
   const c = roadCentroid(pts);
   obj.x = c.x; obj.z = c.z;
-  if (obj.type === 'road') obj.params.slope = autoRoadSlope(obj.params);
+  resetRoadSlope(obj);
   rebuildObject(obj);
   refreshRoadNodes();
   return true;
@@ -4005,10 +4216,15 @@ function removeRoadNode(obj, index) {
   if (!hasNodes(obj)) return false;
   const pts = obj.params.points;
   if (!pts || pts.length <= minNodes(obj) || index < 0 || index >= pts.length) return false;
+  const own = obj.type === 'road' && roadOwnSlopes(obj.params) ? roadOwnSlopes(obj.params).slice() : null;
   pts.splice(index, 1);
+  if (own) {                                  // zwei Abschnitte werden einer: der hintere Wert fällt weg (am Ende der vordere)
+    own.splice(Math.min(index, own.length - 1), 1);
+    obj.params.sectionSlopes = own;
+  }
   const c = roadCentroid(pts);
   obj.x = c.x; obj.z = c.z;
-  if (obj.type === 'road') obj.params.slope = autoRoadSlope(obj.params);
+  resetRoadSlope(obj);
   activeNode = null;
   rebuildObject(obj);
   refreshRoadNodes();
@@ -4043,11 +4259,18 @@ function addRoadNode(obj, x, z) {
   if (!closed && best === 0 && bestT < 0) at = 0;
   else if (!closed && best === nSeg - 1 && bestT > 1) at = pts.length;
   else at = best + 1;
+  const own = obj.type === 'road' && roadOwnSlopes(obj.params) ? roadOwnSlopes(obj.params).slice() : null;
   pts.splice(at, 0, { x: x, z: z });
+  if (own) {                                  // der Abschnitt wird geteilt, beide Hälften behalten seine Neigung
+    if (at === 0) own.unshift(own[0]);
+    else if (at >= own.length + 1) own.push(own[own.length - 1]);
+    else own.splice(at - 1, 0, own[at - 1]);
+    obj.params.sectionSlopes = own;
+  }
 
   const c = roadCentroid(pts);
   obj.x = c.x; obj.z = c.z;
-  if (obj.type === 'road') obj.params.slope = autoRoadSlope(obj.params);
+  resetRoadSlope(obj);
   activeNode = null;
   rebuildObject(obj);
   refreshRoadNodes();
@@ -4335,7 +4558,7 @@ const IFC_COLOR_BUILDING = [0.82, 0.8, 0.76];
 const IFC_COLOR_OBJECT = [0.65, 0.65, 0.65];
 
 /* Darstellungshilfen der Straße (blaue Schleppkurve, Überlagerungen im Abtrag): kein Bauteil, nicht exportieren */
-const IFC_SKIP_KINDS = { sweptFill: 1, sweptLine: 1, sweptOver: 1, cutOverlay: 1, roadOverlay: 1, cutCrest: 1 };
+const IFC_SKIP_KINDS = { roadAxis: 1, sweptFill: 1, sweptLine: 1, sweptOver: 1, cutOverlay: 1, roadOverlay: 1, cutCrest: 1 };
 
 /* Alle Dreiecke eines Bausteins (Straße, Baugrube, Kran, Container) in Weltkoordinaten [x, y, z].
    Linien (Kranradius, Kanten) und Darstellungshilfen bleiben draußen; bei Instanzen (Container, Kranteile)
@@ -4995,6 +5218,8 @@ if (typeof module !== 'undefined' && module.exports) {
     getScene: function () { return scene; },
     focusOnPoint: focusOnPoint,
     settleCameraFlight: settleCameraFlight,
+    setRoadSectionSlope: setRoadSectionSlope, setRoadUniformSlope: setRoadUniformSlope, setRoadSectionLength: setRoadSectionLength,
+    roadSlopeVariable: roadSlopeVariable, roadSlopeList: roadSlopeList, IFC_SKIP_KINDS: IFC_SKIP_KINDS,
     getCameraGoals: function () { return { cam: camGoal, focus: focusGoal }; },
     getControls: function () { return controls; },
     getCamera: function () { return camera; },

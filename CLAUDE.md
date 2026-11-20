@@ -190,10 +190,18 @@ Bauart. Deshalb hat der Turmdrehkran auch keinen Datenblatt-Link mehr im
 Objekt-Editor – nur noch der Mobilkran, der ein echtes Herstellerprodukt
 bleibt.
 
-**Baustraße.** Konstante Längsneigung (`params.slope`, in %), keine Querneigung,
-Start auf der Geländehöhe des ersten Punkts. Die Neigung wird beim Setzen und
-bei jeder Punktänderung neu aus dem Gelände abgeleitet (`autoRoadSlope`), der
-Regler überschreibt sie danach. Böschung wählbar 1:1, 1:1,5 oder 1:2
+**Baustraße.** Längsneigung (`params.slope`, in %; einheitlich) oder je Abschnitt (`params.sectionSlopes`,
+ein Wert je Strecke zwischen zwei gesetzten Punkten; sind alle gleich, wird sie wieder einheitlich),
+keine Querneigung, Start auf der Geländehöhe des ersten Punkts. Die einheitliche Neigung wird beim Setzen und
+bei jeder Punktänderung neu aus dem Gelände abgeleitet (`autoRoadSlope`, `resetRoadSlope`), der
+Regler überschreibt sie danach und macht alle Abschnitte gleich (`setRoadUniformSlope`, im Fenster steht bei
+verschiedenen Werten „variabel“, `markRoadSlope`). Eigene Neigungen bleiben beim Verschieben eines Punkts
+erhalten, ein neuer Punkt teilt, ein gelöschter vereint Abschnitte. Der Höhenverlauf ist zwischen den
+Stationen der Punkte (`nodeStations`, Weglänge entlang der ausgerundeten Mitte) linear (`computeRoad`,
+`parts` mit Länge, Neigung, Mitte). Achslinie (`addRoadAxis`, `kind: 'roadAxis'`, nicht im IFC) und die
+Eingabefelder über/unter der Linie (`updateAxisLabels` in `ui.js`, ein `#axis-labels`-Container wie bei
+`#seg-labels`): Neigung `setRoadSectionSlope`, Länge `setRoadSectionLength` (Endpunkt und folgende Punkte
+rücken um dieselbe Strecke, die Länge wird in wenigen Schritten angenähert). Böschung wählbar 1:1, 1:1,5 oder 1:2
 (`params.embank` = n m Breite je 1 m Höhe, Standard und Rückfall 1:1); Auftrag und Abtrag aus dem
 Mittelflächenverfahren in `computeRoad`. Alles Volumen stammt aus dieser einen
 Funktion – nicht in der Oberfläche nachrechnen.

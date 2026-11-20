@@ -173,13 +173,28 @@ A polyline with **filleted corners**.
   between two nodes it is reduced there and the slider turns coloured. Then set the points further
   apart or reduce the radius.
 - **Longitudinal slope** in percent (±30 %). It is preset to the slope that connects start and end
-  point on the terrain.
+  point on the terrain. If each section has its own slope (see axis line), the field shows
+  **“variable”**; moving the slider then gives all sections the same slope again.
 - **Embankment** 1:1, 1:1.5 or 1:2. If the carriageway is above or below the terrain, an
   embankment joins it down or up to the terrain (search limit 80 m).
 - **Show edges** shows the carriageway edges.
 - **Check swept path (semi-trailer):** see section 6.
 
 Length, area and the tightest radius are shown in the properties window.
+
+**Axis line.** A finished road shows its **centre line** (yellow, dashed, with cross marks at the points
+you set). Every stretch between two points is a **section**. **Above** the line is the section's
+**longitudinal slope** in percent, **below** it its **length** in metres along the axis. Both fields can be
+clicked and overwritten (type a number, **Enter**; **Esc** discards):
+
+- The **slope** applies to this section only, so a road with a ramp and a flat stretch can be planned.
+  The properties window then shows “variable”.
+- The **length** moves the end point of the section along its direction; all following points move
+  with it and keep their position relative to each other. Rounded corners count.
+- A new point splits its section (both halves keep the slope), a deleted point joins two sections.
+  While drawing and measuring the fields are hidden; sections that are too short on screen show no
+  fields (zoom in).
+- The axis line is only a display and is not written to the IFC file.
 
 ### Excavation
 

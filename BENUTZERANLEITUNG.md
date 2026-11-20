@@ -176,13 +176,28 @@ Ein Polygonzug mit **ausgerundeten Ecken**.
   zwischen zwei Stützpunkte, wird er dort verkleinert, und der Regler färbt sich. Dann Punkte weiter
   auseinander setzen oder den Radius verkleinern.
 - **Längsneigung** in Prozent (±30 %). Vorbelegt ist die Neigung, die Anfangs- und Endpunkt auf dem
-  Gelände verbindet.
+  Gelände verbindet. Hat jeder Abschnitt seine eigene Neigung (siehe Achslinie), steht im Feld
+  **„variabel“**; bewegst du dann den Regler, bekommen alle Abschnitte wieder dieselbe Neigung.
 - **Böschung** 1:1, 1:1,5 oder 1:2. Liegt die Fahrbahn über oder unter dem Gelände, schließt
   eine Böschung bis zum Gelände an (Suchgrenze 80 m).
 - **Ränder zeigen** blendet die Fahrbahnkanten ein.
 - **Schleppkurve Sattelzug prüfen:** siehe Abschnitt 6.
 
 Länge, Fläche und der engste Radius stehen im Eigenschaftsfenster.
+
+**Achslinie.** Eine fertige Straße zeigt ihre **Mittellinie** (gelb gestrichelt, mit Querstrichen an den
+gesetzten Punkten). Jede Strecke zwischen zwei Punkten ist ein **Abschnitt**. **Über** der Linie steht die
+**Längsneigung** des Abschnitts in Prozent, **darunter** seine **Länge** in Metern entlang der Achse.
+Beide Felder lassen sich anklicken und überschreiben (Zahl eintippen, **Enter**; **Esc** verwirft):
+
+- Die **Neigung** gilt nur für diesen Abschnitt. So lässt sich eine Straße mit Rampe und flachem Stück
+  planen. Das Eigenschaftsfenster zeigt dann „variabel“.
+- Die **Länge** verschiebt den Endpunkt des Abschnitts in Richtung der Strecke; alle folgenden Punkte
+  rücken mit, ihre Lage zueinander bleibt. Ausgerundete Ecken zählen mit.
+- Ein neuer Punkt teilt seinen Abschnitt (beide Hälften behalten die Neigung), ein gelöschter führt zwei
+  zusammen. Beim Zeichnen und Messen sind die Felder ausgeblendet; zu kurze Abschnitte auf dem
+  Bildschirm zeigen keine Felder (näher heranzoomen).
+- Die Achslinie ist nur Darstellung und kommt nicht in die IFC-Datei.
 
 ### Baugrube
 

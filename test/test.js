@@ -971,7 +971,7 @@ test('Straße verschieben oder Stützpunkt ändern: Neigung wird neu aus dem Gel
 });
 
 function overlayKinds(g) {
-  return g.children.map(function (c) { return c.userData && c.userData.kind; }).filter(Boolean).sort();
+  return g.children.map(function (c) { return c.userData && c.userData.kind; }).filter(function (k) { return k && k !== 'roadAxis'; }).sort();
 }
 
 test('Abtrag: Böschung, eingegrabene Fahrbahn und Oberkante werden über dem Gelände sichtbar gemacht', function () {
@@ -1728,6 +1728,99 @@ test('Schleppkurve in der Baustraße: ohne Schalter nichts, mit Schalter Fläche
   assert.ok(narrow.userData.swept.over > 0.3);
   assert.ok(overlayKinds(narrow).indexOf('sweptOver') >= 0, 'roter Rand fehlt');
   assert.strictEqual(app.defaultRoadParams().showSwept, false);
+});
+
+/* ---------- Achslinie: Neigung und Länge je Abschnitt ---------- */
+
+function threePointRoad(slopes) {
+  roadTerrain(0);
+  const p = app.defaultRoadParams();
+  p.points = [{ x: -60, z: 0 }, { x: 0, z: 0 }, { x: 40, z: 0 }];
+  p.radius = 1; p.width = 6; p.slope = 0;
+  if (slopes) { p.sectionSlopes = slopes; p.slope = null; }
+  return app.addObject('road', 0, 0, p);
+}
+
+test('Achslinie: jeder Abschnitt hat seine eigene Neigung, die Höhen folgen Abschnitt für Abschnitt', function () {
+  const o = threePointRoad([5, -3]);
+  const rd = app.computeRoad(o.params);
+  assert.strictEqual(rd.slopeVariable, true);
+  assert.strictEqual(rd.parts.length, 2);
+  assert.ok(Math.abs(rd.parts[0].len - 60) < 0.05 && Math.abs(rd.parts[1].len - 40) < 0.05, rd.parts[0].len + ' / ' + rd.parts[1].len);
+  const first = rd.sections[0], mid = rd.sections.reduce(function (b, c) { return Math.abs(c.f.x) < Math.abs(b.f.x) ? c : b; });
+  const last = rd.sections[rd.sections.length - 1];
+  assert.ok(Math.abs((mid.hr - first.hr) - 3.0) < 0.05, 'Anstieg im ersten Abschnitt ' + (mid.hr - first.hr));
+  assert.ok(Math.abs((last.hr - mid.hr) - (-1.2)) < 0.05, 'Gefälle im zweiten Abschnitt ' + (last.hr - mid.hr));
+  assert.deepStrictEqual(rd.parts.map(function (q) { return q.slope; }), [5, -3]);
+});
+
+test('Achslinie: die Straße trägt eine gestrichelte Mittellinie mit Querstrichen an den Punkten, sie kommt nicht ins IFC', function () {
+  const o = threePointRoad();
+  const axis = o.group.children.filter(function (c) { return c.userData && c.userData.kind === 'roadAxis'; });
+  assert.strictEqual(axis.length, 1, 'eine Gruppe Achslinie');
+  const n = axis[0].children.length;
+  const L = o.group.userData.length;
+  assert.ok(n >= Math.floor(L / 4) + 3, n + ' Teile für ' + L.toFixed(0) + ' m');          // Striche plus 3 Querstriche
+  axis[0].children.forEach(function (c) { c.children.forEach(function (m) { assert.strictEqual(m.userData.kind, 'roadAxis'); }); });
+  assert.strictEqual(app.IFC_SKIP_KINDS.roadAxis, 1);
+});
+
+test('Achslinie: einheitliche Neigung bleibt einheitlich, ein Abschnitt macht sie "variabel", Angleichen macht sie wieder einheitlich', function () {
+  const o = threePointRoad();
+  assert.strictEqual(app.roadSlopeVariable(o.params), false);
+  assert.ok(app.setRoadSectionSlope(o, 1, 4));
+  assert.strictEqual(app.roadSlopeVariable(o.params), true);
+  assert.deepStrictEqual(app.roadSlopeList(o.params), [0, 4]);
+  assert.strictEqual(o.group.userData.slopeVariable, true);
+  assert.ok(app.setRoadSectionSlope(o, 0, 4), 'beide gleich');
+  assert.strictEqual(app.roadSlopeVariable(o.params), false);
+  assert.strictEqual(o.params.sectionSlopes, null);
+  assert.strictEqual(o.params.slope, 4);
+  app.setRoadSectionSlope(o, 0, -8);
+  assert.ok(app.setRoadUniformSlope(o, 2.5), 'der Regler macht alle Abschnitte gleich');
+  assert.strictEqual(app.roadSlopeVariable(o.params), false);
+  assert.deepStrictEqual(app.roadSlopeList(o.params), [2.5, 2.5]);
+  assert.strictEqual(o.params.sectionSlopes, null);
+  assert.strictEqual(app.setRoadSectionSlope(o, 5, 1), false, 'unbekannter Abschnitt');
+  app.setRoadSectionSlope(o, 0, 99);
+  assert.strictEqual(app.roadSlopeList(o.params)[0], app.ROAD_SLOPE_MAX, 'auf die Grenze gekürzt');
+});
+
+test('Achslinie: Länge eines Abschnitts ändern - Endpunkt und alle folgenden wandern mit, Richtung und Neigungen bleiben', function () {
+  const o = threePointRoad([2, -1]);
+  assert.ok(app.setRoadSectionLength(o, 0, 80));
+  const pts = o.params.points;
+  assert.ok(Math.abs(pts[1].x - 20) < 0.01 && Math.abs(pts[2].x - 60) < 0.01, JSON.stringify(pts));
+  assert.strictEqual(pts[1].z, 0);
+  const rd = app.computeRoad(o.params);
+  assert.ok(Math.abs(rd.parts[0].len - 80) < 0.02 && Math.abs(rd.parts[1].len - 40) < 0.02);
+  assert.deepStrictEqual(app.roadSlopeList(o.params), [2, -1]);
+  assert.ok(app.setRoadSectionLength(o, 1, 25));
+  assert.ok(Math.abs(app.computeRoad(o.params).parts[1].len - 25) < 0.02);
+  assert.strictEqual(app.setRoadSectionLength(o, 9, 5), false);
+});
+
+test('Achslinie: Länge mit Ausrundung - die Länge zählt entlang der gerundeten Straßenmitte', function () {
+  roadTerrain(0);
+  const p = app.defaultRoadParams();
+  p.points = [{ x: -60, z: 0 }, { x: 0, z: 0 }, { x: 0, z: -50 }];
+  p.radius = 10; p.width = 6; p.slope = 0;
+  const o = app.addObject('road', 0, 0, p);
+  app.setRoadSectionLength(o, 0, 50);
+  assert.ok(Math.abs(app.computeRoad(o.params).parts[0].len - 50) < 0.02, String(app.computeRoad(o.params).parts[0].len));
+});
+
+test('Achslinie: Punkt einfügen teilt den Abschnitt mit gleicher Neigung, Punkt entfernen führt zwei zusammen', function () {
+  const o = threePointRoad([5, -3]);
+  const at = app.addRoadNode(o, -30, 0);
+  assert.strictEqual(at, 1);
+  assert.deepStrictEqual(app.roadSlopeList(o.params), [5, 5, -3]);
+  assert.ok(app.removeRoadNode(o, 1));
+  assert.deepStrictEqual(app.roadSlopeList(o.params), [5, -3]);
+  app.moveRoadNode(o, 1, 10, 0);
+  assert.deepStrictEqual(app.roadSlopeList(o.params), [5, -3], 'Verschieben eines Punkts lässt die Neigungen stehen');
+  app.addRoadNode(o, 80, 0);                                // hinten angehängt
+  assert.deepStrictEqual(app.roadSlopeList(o.params), [5, -3, -3]);
 });
 
 /* ---------- Karte (OpenStreetMap) ---------- */
