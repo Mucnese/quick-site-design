@@ -1837,6 +1837,54 @@ test('Achslinie: Punkt einfügen teilt den Abschnitt mit gleicher Neigung, Punkt
   assert.deepStrictEqual(app.roadSlopeList(o.params), [5, -3, -3]);
 });
 
+/* ---------- Startkarte ---------- */
+
+test('Startkarte: Breite/Länge und Weltpixel sind zueinander invers, München liegt in Kachel 10/544/355', function () {
+  const lon = 11.5755, lat = 48.1374;
+  [3, 10, 15, 19].forEach(function (z) {
+    const p = app.smWorldPx(lon, lat, z), q = app.smLonLat(p.x, p.y, z);
+    assert.ok(Math.abs(q.lon - lon) < 1e-9 && Math.abs(q.lat - lat) < 1e-9, 'Zoom ' + z);
+  });
+  const p = app.smWorldPx(lon, lat, 10);
+  assert.strictEqual(Math.floor(p.x / 256), 544);
+  assert.strictEqual(Math.floor(p.y / 256), 355);
+  const o = app.smWorldPx(0, 0, 3);
+  assert.ok(Math.abs(o.x - 1024) < 1e-9 && Math.abs(o.y - 1024) < 1e-9, 'Nullpunkt in der Mitte der Weltkarte');
+  assert.ok(Math.abs(app.smMetersPerPx(0, 0) - 156543.03) < 0.05, 'Äquator, Zoom 0');
+  assert.ok(Math.abs(app.smMetersPerPx(48, 16) - 156543.03 * Math.cos(48 * Math.PI / 180) / 65536) < 1e-4, 'München, Zoom 16: etwa 1,6 m je Pixel');
+});
+
+test('Startkarte: sichtbare Kacheln füllen das Fenster, die Mitte liegt unter der Fenstermitte, am Rand wird umgebrochen', function () {
+  const view = { lon: 11.5755, lat: 48.1374, z: 15 };
+  const w = 1000, h = 700;
+  const tiles = app.smTileList(view, w, h);
+  assert.ok(tiles.length >= 20 && tiles.length <= 40, String(tiles.length));
+  tiles.forEach(function (t) { assert.strictEqual(t.z, 15); });
+  const minL = Math.min.apply(null, tiles.map(function (t) { return t.left; }));
+  const maxR = Math.max.apply(null, tiles.map(function (t) { return t.left + 256; }));
+  assert.ok(minL <= 0 && maxR >= w, 'Fenster ist in der Breite voll');
+  const c = app.smWorldPx(view.lon, view.lat, 15);
+  const hit = tiles.filter(function (t) { return t.x === Math.floor(c.x / 256) && t.y === Math.floor(c.y / 256); })[0];
+  assert.ok(hit, 'Mittelkachel fehlt');
+  assert.ok(Math.abs(hit.left - (Math.floor(c.x / 256) * 256 - (c.x - w / 2))) < 1e-9);
+  const wrap = app.smTileList({ lon: 179.9, lat: 0, z: 3 }, 800, 400);
+  assert.ok(wrap.some(function (t) { return t.x === 0; }) && wrap.some(function (t) { return t.x === 7; }), 'um die Erde herum');
+  assert.strictEqual(app.smTileList({ lon: 0, lat: 84, z: 3 }, 800, 800).filter(function (t) { return t.y < 0; }).length, 0);
+  assert.strictEqual(app.smTileList(view, 5000, 5000, 10).length, 10, 'Obergrenze');
+});
+
+test('Startkarte: Rechteck - Seitenlängen in m und UTM-Werte stimmen mit PROJ überein (EPSG:25832, 713500/5420500 = 11.9133363 / 48.9006176)', function () {
+  const r = app.smRectInfo({ lon: 11.9133363, lat: 48.9006176 }, { lon: 11.9133363 + 0.01, lat: 48.9006176 + 0.01 });
+  assert.ok(Math.abs(r.widthM - 0.01 * 111320 * Math.cos(48.9056 * Math.PI / 180)) < 2, String(r.widthM));
+  assert.ok(Math.abs(r.heightM - 1111.32) < 1, String(r.heightM));
+  assert.strictEqual(r.utm.epsg, 25832);
+  assert.ok(Math.abs(r.utm.e0 - 713500) < 0.1 && Math.abs(r.utm.n0 - 5420500) < 0.1, r.utm.e0 + ' / ' + r.utm.n0);
+  assert.ok(r.utm.e1 > r.utm.e0 && r.utm.n1 > r.utm.n0);
+  const swap = app.smRectInfo({ lon: 12.0, lat: 49.0 }, { lon: 11.9, lat: 48.9 });
+  assert.ok(swap.lon0 < swap.lon1 && swap.lat0 < swap.lat1, 'Ecken in beliebiger Reihenfolge');
+  assert.strictEqual(app.smRectInfo({ lon: 50, lat: 10 }, { lon: 50.1, lat: 10.1 }).utm, null, 'außerhalb von Zone 28 bis 38 kein UTM');
+});
+
 /* ---------- Karte (OpenStreetMap) ---------- */
 
 test('Karte: Umrechnung ins Längen-/Breitengrad stimmt mit PROJ (pyproj 3.8) überein', function () {

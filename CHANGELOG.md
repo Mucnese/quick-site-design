@@ -14,6 +14,8 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
 
 ### Neu
+- **Startkarte:** Ohne Gelände zeigt die Seite eine OSM-Karte. Kacheln laden erst nach dem Klick „Karte laden“. Ort anklicken oder
+  Rechteck aufziehen nennt Größe und UTM-Werte; die Links zu Gelände- und Gebäudedaten des Landes erscheinen in der Adressleiste.
 - **Achslinie** (Felder verschwinden beim Herauszoomen für alle Abschnitte einer Straße gleichzeitig): Jede fertige Straße zeigt ihre Mittellinie. Über der Linie steht die Längsneigung je Abschnitt, darunter die
   Länge (zwei Nachkommastellen); beide lassen sich eintippen. Verschiedene Neigungen zeigt das Eigenschaftsfenster als
   „variabel“, der Regler macht sie wieder einheitlich. Die Länge verschiebt den Endpunkt, die folgenden Punkte rücken mit.

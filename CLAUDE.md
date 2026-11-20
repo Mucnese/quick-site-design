@@ -240,6 +240,13 @@ kein Lenk- und Knickwinkelgrenzwert, und das Heck schwingt beim Einlenken in der
 Fahrzeugvorlage und Umrisse; die Schleppkurven selbst stecken in Autodesk-Proxyobjekten und sind nicht lesbar. Neue
 Fahrzeuge: nur `SEMI_TRUCK` ändern und die Kontrollradien erneut prüfen, nicht Werte raten.
 
+**Startkarte.** Solange `TERRAIN` null ist (`updateTerrainInfo` -> `showStartMap`), liegt `#startmap` über dem Canvas: eigene
+Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList`, `smRectInfo` in `app.js`, Darstellung und Maus in
+`ui.js`, Abschnitt Startkarte). Kacheln (`OSM_TILE_URL`) werden erst nach dem Klick auf `#sm-load` angefragt (Datenschutz:
+IP-Adresse an OSM); nie beim Start. Klick oder Rechteck rufen `chooseAddrItem` auf (Ort wie eine eingegebene Koordinate,
+Links des Landes über `geoSourcesFor`), `noFly` hält die Karte still. Kein localStorage: die Einwilligung gilt nur bis zum
+Neuladen. Mit `?demo=1` erscheint sie nicht. Die Karte lädt kein Gelände; das tut weiterhin der Nutzer mit den Dateien.
+
 **IFC-Koordinaten.** `buildIfc(..., {coords})`: `'abs'` (Voreinstellung der Oberfläche, Auswahl `ifc-coords`)
 schreibt Rechtswert, Hochwert und Höhe ü. NHN in die Geometrie, IfcMapConversion ist dann Nullversatz;
 `'local'` ist die IFC4-übliche Form (Geometrie ab der Nordwestecke, Lage in IfcMapConversion). In beiden

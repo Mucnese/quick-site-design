@@ -40,7 +40,8 @@ function makeElement() {
       toggle: function () {}, add: function () {}, remove: function () {},
       contains: function () { return false; }
     },
-    appendChild: function (c) { this.children.push(c); return c; },
+    appendChild: function (c) { this.children.push(c); c.parentNode = this; return c; },
+    removeChild: function (c) { this.children = this.children.filter(function (x) { return x !== c; }); c.parentNode = null; return c; },
     setAttribute: function (k, v) { this['attr_' + k] = v; },
     focus: function () {},
     _listeners: {},
@@ -553,6 +554,98 @@ await test('Baustraße: verschiedene Neigungen je Abschnitt - das Feld zeigt "va
   assert.strictEqual(form.refs.slope.num.value, 4);
   assert.strictEqual(form.refs.slope.input.value, 4);
   assert.strictEqual(s.T('slopeVariable'), 'variabel');
+});
+
+function startMapScope() {
+  const s = newScope();
+  s.initUI();
+  return s;
+}
+
+await test('Startkarte: ohne Gelände sichtbar, aber ohne Kachelanfrage vor dem Klick auf "Karte laden"', function () {
+  const s = startMapScope();
+  assert.strictEqual(s.document.getElementById('startmap').style.display, 'block');
+  assert.strictEqual(s.document.getElementById('sm-consent').style.display, 'block', 'Hinweis mit Knopf');
+  assert.strictEqual(s.document.getElementById('sm-tiles').children.length, 0, 'noch keine Kachel angefragt');
+  assert.strictEqual(s.document.getElementById('sm-tools').style.display, 'none');
+  assert.ok(s.T('smConsent').indexOf('tile.openstreetmap.org') >= 0 && s.T('smConsent').indexOf('IP') >= 0);
+});
+
+await test('Startkarte: nach dem Klick lädt sie nur OSM-Kacheln, Zoom und Ort holen neue, die Auswahl bleibt im Hinweis', function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  const box = s.document.getElementById('sm-tiles');
+  assert.ok(box.children.length >= 6, String(box.children.length));
+  box.children.forEach(function (im) { assert.ok(/^https:\/\/tile\.openstreetmap\.org\/6\/\d+\/\d+\.png$/.test(im.src), im.src); });
+  assert.strictEqual(s.document.getElementById('sm-consent').style.display, 'none');
+  assert.strictEqual(s.document.getElementById('sm-tools').style.display, 'flex');
+  s.smFlyTo(48.1374, 11.5755, 16);
+  assert.ok(box.children.every(function (im) { return /\/16\//.test(im.src); }), 'Kacheln der Stufe 16');
+  assert.ok(box.children.some(function (im) { return /\/16\/34\d\d\d\/22\d\d\d\.png/.test(im.src); }), 'München');
+  const n = box.children.length;
+  s.document.getElementById('sm-in')._listeners.click[0]();
+  assert.ok(box.children.every(function (im) { return /\/17\//.test(im.src); }), 'Zoom +1');
+  assert.ok(box.children.length <= n * 2, 'alte Kacheln werden entfernt');
+  assert.strictEqual(s.document.getElementById('sm-marker').style.display, 'block');
+});
+
+await test('Startkarte: Rechteck aufziehen nennt Größe und UTM-Werte und übernimmt die Mitte als Ort (Links des Landes)', async function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  s.smFlyTo(48.7, 11.5, 14);
+  s.document.getElementById('sm-select')._listeners.click[0]();
+  assert.strictEqual(s.document.getElementById('sm-select').textContent, s.T('smSelectOn'));
+  const box = s.document.getElementById('sm-tiles');
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 500, clientY: 330, buttons: 1 });
+  s.smPointerUp({ clientX: 500, clientY: 330 });
+  assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'block');
+  const info = s.document.getElementById('sm-info').textContent;
+  assert.ok(/Bereich ≈ \d+ × \d+ m/.test(info), info);
+  assert.ok(/EPSG:25832 · Rechts \d+–\d+ · Hoch \d+–\d+/.test(info), info);
+  assert.strictEqual(s.document.getElementById('sm-select').textContent, s.T('smSelect'), 'Auswahlmodus endet nach einem Rechteck');
+  const place = vm.runInContext('addrPlace', s);
+  assert.ok(place && place.coord && isFinite(place.lat) && isFinite(place.lon), 'Ort für die Links gesetzt');
+  assert.ok(Math.abs(place.lat - 48.7) < 0.1 && Math.abs(place.lon - 11.5) < 0.1);
+});
+
+await test('Startkarte: ein Klick ohne Ziehen setzt einen Punkt, Ziehen verschiebt die Karte, zu kleines Rechteck zählt nicht', function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  s.smFlyTo(48.7, 11.5, 14);
+  const box = s.document.getElementById('sm-tiles');
+  const lon0 = vm.runInContext('smView.lon', s);
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 360, clientY: 200, buttons: 1 });
+  s.smPointerUp({ clientX: 360, clientY: 200 });
+  assert.ok(vm.runInContext('smView.lon', s) < lon0, 'Karte nach rechts gezogen: Mitte wandert nach Westen');
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerUp({ clientX: 300, clientY: 200 });
+  assert.ok(/Punkt \d+\.\d+, \d+\.\d+/.test(s.document.getElementById('sm-info').textContent), s.document.getElementById('sm-info').textContent);
+  s.document.getElementById('sm-select')._listeners.click[0]();
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 305, clientY: 204, buttons: 1 });
+  s.smPointerUp({ clientX: 305, clientY: 204 });
+  assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'none');
+});
+
+await test('Startkarte: sobald ein Gelände geladen ist, verschwindet sie; ohne Gelände kommt sie zurück', async function () {
+  const s = await scopeWithTerrain();
+  assert.strictEqual(s.document.getElementById('startmap').style.display, 'none');
+  s.showStartMap(true);
+  assert.strictEqual(s.document.getElementById('startmap').style.display, 'block');
+  s.updateTerrainInfo();
+  assert.strictEqual(s.document.getElementById('startmap').style.display, 'none');
+});
+
+await test('Startkarte: eine gewählte Adresse setzt die Karte dorthin, auch vor "Karte laden" (ohne Kachelanfrage)', async function () {
+  const s = startMapScope();
+  await s.chooseAddrItem({ main: 'Marienplatz', sub: 'München', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
+  const v = vm.runInContext('smView', s);
+  assert.ok(Math.abs(v.lat - 48.1374) < 1e-9 && v.z === 15);
+  assert.strictEqual(s.document.getElementById('sm-tiles').children.length, 0, 'ohne Einwilligung keine Kachel');
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  assert.ok(s.document.getElementById('sm-tiles').children.length > 0);
 });
 
 await test('Achslinie: Felder über (Neigung) und unter (Länge) der Mittellinie, Eingabe ändert den Abschnitt', function () {

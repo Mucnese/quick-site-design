@@ -1047,6 +1047,69 @@ function crsToLonLat(epsg, e, n) {
   return d.helmert ? helmertToWgs84(g.lat, g.lon, d.ell, d.helmert) : g;
 }
 
+/* ---------- Startkarte (Web-Mercator, Kacheln 256 px) ----------
+   Reine Rechnung für die Karte vor dem Laden des Geländes: Breite/Länge <-> Weltpixel einer Zoomstufe,
+   die sichtbaren Kacheln und die Maße eines aufgezogenen Rechtecks. Die Darstellung steht in ui.js. */
+const SM_TILE = 256;
+const SM_MIN_ZOOM = 3, SM_MAX_ZOOM = 19;
+const SM_MAX_LAT = 85.0511287798;
+
+function smWorldPx(lon, lat, z) {
+  const n = SM_TILE * Math.pow(2, z);
+  const la = Math.max(-SM_MAX_LAT, Math.min(SM_MAX_LAT, lat)) * Math.PI / 180;
+  return { x: (lon + 180) / 360 * n, y: (1 - Math.log(Math.tan(la) + 1 / Math.cos(la)) / Math.PI) / 2 * n };
+}
+
+function smLonLat(x, y, z) {
+  const n = SM_TILE * Math.pow(2, z);
+  const t = Math.PI * (1 - 2 * y / n);
+  return { lon: x / n * 360 - 180, lat: Math.atan(Math.sinh(t)) * 180 / Math.PI };
+}
+
+/* Meter je Pixel bei Breite lat und Zoomstufe z */
+function smMetersPerPx(lat, z) {
+  return 2 * Math.PI * 6378137 * Math.cos(lat * Math.PI / 180) / (SM_TILE * Math.pow(2, z));
+}
+
+/* Sichtbare Kacheln für eine Ansicht {lon, lat, z} in einem Fenster w x h: Liste {z, x, y, left, top}.
+   x läuft um die Erde herum (Rest), y außerhalb 0..n-1 entfällt. Höchstens `cap` Kacheln. */
+function smTileList(view, w, h, cap) {
+  const c = smWorldPx(view.lon, view.lat, view.z);
+  const n = Math.pow(2, view.z);
+  const x0 = c.x - w / 2, y0 = c.y - h / 2;
+  const out = [];
+  const tx0 = Math.floor(x0 / SM_TILE), tx1 = Math.floor((x0 + w) / SM_TILE);
+  const ty0 = Math.floor(y0 / SM_TILE), ty1 = Math.floor((y0 + h) / SM_TILE);
+  for (let ty = ty0; ty <= ty1; ty++) {
+    if (ty < 0 || ty >= n) continue;
+    for (let tx = tx0; tx <= tx1; tx++) {
+      out.push({ z: view.z, x: ((tx % n) + n) % n, y: ty, left: tx * SM_TILE - x0, top: ty * SM_TILE - y0 });
+      if (out.length >= (cap || 120)) return out;
+    }
+  }
+  return out;
+}
+
+/* Maße des Rechtecks zwischen zwei Ecken (Breite/Länge): ungefähre Seitenlängen in m, Mitte und, wo es ein
+   UTM-Bezugssystem gibt (ETRS89, Zonen 28 bis 38), die Rechts-/Hochwerte der Ecken */
+function smRectInfo(a, b) {
+  const lon0 = Math.min(a.lon, b.lon), lon1 = Math.max(a.lon, b.lon);
+  const lat0 = Math.min(a.lat, b.lat), lat1 = Math.max(a.lat, b.lat);
+  const clat = (lat0 + lat1) / 2, clon = (lon0 + lon1) / 2;
+  const k = 2 * Math.PI * 6378137 * Math.cos(clat * Math.PI / 180) / 360;
+  const info = {
+    lon0: lon0, lon1: lon1, lat0: lat0, lat1: lat1, clat: clat, clon: clon,
+    widthM: (lon1 - lon0) * k, heightM: (lat1 - lat0) * 111132, utm: null
+  };
+  const zone = Math.floor((clon + 180) / 6) + 1, epsg = 25800 + zone;
+  const def = crsGeoDefinition(epsg);
+  if (def) {
+    const p = transverseMercatorForward(lat0, lon0, def), q = transverseMercatorForward(lat1, lon1, def);
+    info.utm = { epsg: epsg, e0: Math.min(p.e, q.e), e1: Math.max(p.e, q.e), n0: Math.min(p.n, q.n), n1: Math.max(p.n, q.n) };
+  }
+  return info;
+}
+
 const OSM_TILE = 256;
 // höchstens 12 x 12 Kacheln, das Bild bleibt unter 3100 px. Je feiner die Stufe, desto kleiner erscheint die
 // Beschriftung der Karte auf dem Gelände (die Schrift ist in jeder Kachel gleich groß in Pixeln).
@@ -5215,6 +5278,7 @@ if (typeof module !== 'undefined' && module.exports) {
     initScene: initScene,
     initSharedResources: initSharedResources,
     getScene: function () { return scene; },
+    smWorldPx: smWorldPx, smLonLat: smLonLat, smMetersPerPx: smMetersPerPx, smTileList: smTileList, smRectInfo: smRectInfo,
     focusOnPoint: focusOnPoint,
     settleCameraFlight: settleCameraFlight,
     setRoadSectionSlope: setRoadSectionSlope, setRoadUniformSlope: setRoadUniformSlope, setRoadSectionLength: setRoadSectionLength,

@@ -23,6 +23,15 @@ const STRINGS = {
     clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
+    smTitle: 'Karte',
+    smConsent: 'Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen. Erst nach Ihrem Klick.',
+    smLoad: 'Karte laden',
+    smSelect: 'Bereich wählen', smSelectOn: 'Bereich wählen: Rechteck aufziehen',
+    smZoomIn: 'Vergrößern', smZoomOut: 'Verkleinern',
+    smAttrib: '-Mitwirkende',
+    smArea: 'Bereich ≈ {w} × {h} m', smPoint: 'Punkt', smClear: 'Auswahl löschen',
+    smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
+    smHint: 'Gelände und Gebäude des Landes: Links links unter der Adresse. Danach die Dateien unter „Daten“ laden.',
     osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
     osmNote: 'Aus. Beim Einschalten lädt Ihr Browser Kartenkacheln von tile.openstreetmap.org; dabei wird Ihre IP-Adresse übertragen.',
     osmLoading: 'Lade Kacheln …', osmLoaded: 'Karte geladen ({n} Kacheln).',
@@ -54,7 +63,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken oder mit „Bereich wählen“ ein Rechteck aufziehen.\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -179,6 +188,15 @@ const STRINGS = {
     clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
+    smTitle: 'Map',
+    smConsent: 'The map loads tiles from tile.openstreetmap.org. Your IP address is transmitted. Only after your click.',
+    smLoad: 'Load map',
+    smSelect: 'Select area', smSelectOn: 'Select area: drag a rectangle',
+    smZoomIn: 'Zoom in', smZoomOut: 'Zoom out',
+    smAttrib: ' contributors',
+    smArea: 'Area ≈ {w} × {h} m', smPoint: 'Point', smClear: 'Clear selection',
+    smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
+    smHint: 'Terrain and buildings of the state: links on the left below the address. Then load the files under “Data”.',
     osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
     osmNote: 'Off. Turning it on makes your browser load map tiles from tile.openstreetmap.org; your IP address is transmitted.',
     osmLoading: 'Loading tiles …', osmLoaded: 'Map loaded ({n} tiles).',
@@ -210,7 +228,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- Type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place or use “Select area” to drag a rectangle.\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -1538,10 +1556,12 @@ function updateTerrainInfo() {
     document.getElementById('stat-relief').textContent = '–';
     setNeedsData(true);
     renderOsmUi();
+    showStartMap(true);
     return;
   }
   setNeedsData(false);
   renderOsmUi();
+  showStartMap(false);
   document.getElementById('tile-label').textContent = t.label;
   document.getElementById('tile-size').textContent = Math.round(t.w) + ' × ' + Math.round(t.d) + ' m';
   document.getElementById('tile-grid').textContent = t.nx + ' × ' + t.nz;
@@ -2005,6 +2025,240 @@ function demStatusText(t) {
   return st;
 }
 
+/* ---------- Startkarte ----------
+   Solange kein Gelände geladen ist, zeigt die Seite eine OSM-Karte: Ort suchen oder anklicken, Bereich als Rechteck
+   aufziehen. Das Fenster nennt Größe und UTM-Werte; die Links zu Gelände- und Gebäudedaten des Landes stehen in der
+   Adressleiste (der Klick wählt den Ort wie eine Adresse). Die Kacheln laden erst nach dem Klick "Karte laden". */
+let smConsent = false, smVisible = false;
+let smView = { lon: 10.5, lat: 50.6, z: 6 };
+let smSelectMode = false, smRect = null, smPoint = null, smDrag = null, smWheelT = 0;
+const smImgs = {};
+
+function smEl(id) { return document.getElementById(id); }
+
+function smSize() {
+  const el = smEl('sm-tiles');
+  return { w: el.clientWidth || window.innerWidth || 1024, h: el.clientHeight || window.innerHeight || 768 };
+}
+
+function smToScreen(lon, lat) {
+  const s = smSize(), c = smWorldPx(smView.lon, smView.lat, smView.z), p = smWorldPx(lon, lat, smView.z);
+  return { x: p.x - c.x + s.w / 2, y: p.y - c.y + s.h / 2 };
+}
+
+function smFromClient(cx, cy) {
+  const el = smEl('sm-tiles'), s = smSize();
+  const r = el.getBoundingClientRect ? el.getBoundingClientRect() : { left: 0, top: 0 };
+  const c = smWorldPx(smView.lon, smView.lat, smView.z);
+  return smLonLat(c.x + (cx - (r.left || 0)) - s.w / 2, c.y + (cy - (r.top || 0)) - s.h / 2, smView.z);
+}
+
+function smClampView() {
+  smView.lat = Math.max(-80, Math.min(80, smView.lat));
+  smView.z = Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, smView.z));
+  smView.lon = ((smView.lon + 540) % 360) - 180;
+}
+
+function smRender() {
+  const consent = smEl('sm-consent'), tools = smEl('sm-tools'), attrib = smEl('sm-attrib');
+  consent.style.display = smVisible && !smConsent ? 'block' : 'none';
+  tools.style.display = smVisible && smConsent ? 'flex' : 'none';
+  attrib.style.display = smVisible && smConsent ? 'block' : 'none';
+  const box = smEl('sm-tiles');
+  if (!smVisible || !smConsent) {
+    Object.keys(smImgs).forEach(function (k) { smDropImg(k); });
+    smEl('sm-rect').style.display = 'none';
+    smEl('sm-marker').style.display = 'none';
+    smEl('sm-info').style.display = 'none';
+    return;
+  }
+  const s = smSize(), list = smTileList(smView, s.w, s.h, 120), keep = {};
+  list.forEach(function (t) {
+    const key = t.z + '/' + t.x + '/' + t.y;
+    keep[key] = true;
+    let im = smImgs[key];
+    if (!im) {
+      im = document.createElement('img');
+      im.alt = '';
+      im.draggable = false;
+      im.src = OSM_TILE_URL.replace('{z}', t.z).replace('{x}', t.x).replace('{y}', t.y);
+      // Schlägt das Laden fehl (Netz weg), verschwindet das Bild; beim nächsten Verschieben oder Zoomen wird es neu angefragt
+      im.addEventListener('error', function () { if (smImgs[key] === im) smDropImg(key); });
+      box.appendChild(im);
+      smImgs[key] = im;
+    }
+    im.style.transform = 'translate(' + Math.round(t.left) + 'px,' + Math.round(t.top) + 'px)';
+  });
+  Object.keys(smImgs).forEach(function (k) { if (!keep[k]) smDropImg(k); });
+  const rc = smEl('sm-rect');
+  if (smRect) {
+    const a = smToScreen(smRect.a.lon, smRect.a.lat), b = smToScreen(smRect.b.lon, smRect.b.lat);
+    rc.style.display = 'block';
+    rc.style.left = Math.min(a.x, b.x) + 'px'; rc.style.top = Math.min(a.y, b.y) + 'px';
+    rc.style.width = Math.abs(a.x - b.x) + 'px'; rc.style.height = Math.abs(a.y - b.y) + 'px';
+  } else rc.style.display = 'none';
+  const mk = smEl('sm-marker');
+  if (smPoint) {
+    const p = smToScreen(smPoint.lon, smPoint.lat);
+    mk.style.display = 'block'; mk.style.left = p.x + 'px'; mk.style.top = p.y + 'px';
+  } else mk.style.display = 'none';
+}
+
+function smDropImg(key) {
+  const im = smImgs[key];
+  delete smImgs[key];
+  if (im && im.parentNode && im.parentNode.removeChild) im.parentNode.removeChild(im);
+  else if (im && im.remove) im.remove();
+}
+
+function showStartMap(on) {
+  const want = !!on && !demoRequested();
+  smVisible = want;
+  smEl('startmap').style.display = want ? 'block' : 'none';
+  smRender();
+}
+
+function smFlyTo(lat, lon, z) {
+  smView = { lon: lon, lat: lat, z: z };
+  smClampView();
+  smPoint = { lon: lon, lat: lat };
+  smRect = null;
+  smInfo();
+  smRender();
+}
+
+function smZoomAt(dir, cx, cy) {
+  const z = Math.max(SM_MIN_ZOOM, Math.min(SM_MAX_ZOOM, Math.round(smView.z) + dir));
+  if (z === smView.z) return;
+  const s = smSize();
+  const rect = smEl('sm-tiles').getBoundingClientRect ? smEl('sm-tiles').getBoundingClientRect() : { left: 0, top: 0 };
+  const px = cx === undefined ? s.w / 2 : cx - (rect.left || 0), py = cy === undefined ? s.h / 2 : cy - (rect.top || 0);
+  const under = cx === undefined ? { lon: smView.lon, lat: smView.lat } : smFromClient(cx, cy);
+  const p = smWorldPx(under.lon, under.lat, z);
+  const c = smLonLat(p.x - (px - s.w / 2), p.y - (py - s.h / 2), z);
+  smView = { lon: c.lon, lat: c.lat, z: z };
+  smClampView();
+  smRender();
+}
+
+function smInfo() {
+  const box = smEl('sm-info');
+  box.innerHTML = '';
+  const rect = smRect, pt = smPoint;
+  if (!smVisible || !smConsent || (!rect && !pt)) { box.style.display = 'none'; return; }
+  const line = function (text, cls) {
+    const d = document.createElement('div');
+    d.className = 'sm-line' + (cls ? ' ' + cls : '');
+    d.textContent = text;
+    box.appendChild(d);
+  };
+  const r = Math.round;
+  if (rect) {
+    const i = smRectInfo(rect.a, rect.b);
+    line(T('smArea').replace('{w}', r(i.widthM)).replace('{h}', r(i.heightM)));
+    if (i.utm) line(T('smUtm').replace('{c}', i.utm.epsg).replace('{e0}', r(i.utm.e0)).replace('{e1}', r(i.utm.e1))
+      .replace('{n0}', r(i.utm.n0)).replace('{n1}', r(i.utm.n1)), 'sm-dim');
+  } else {
+    line(T('smPoint') + ' ' + pt.lat.toFixed(5) + ', ' + pt.lon.toFixed(5));
+    const zone = Math.floor((pt.lon + 180) / 6) + 1, def = crsGeoDefinition(25800 + zone);
+    if (def) {
+      const q = transverseMercatorForward(pt.lat, pt.lon, def);
+      line(T('smUtmPoint').replace('{c}', 25800 + zone).replace('{e}', r(q.e)).replace('{n}', r(q.n)), 'sm-dim');
+    }
+  }
+  line(T('smHint'), 'sm-dim');
+  box.style.display = 'block';
+}
+
+function smSetSelectMode(on) {
+  smSelectMode = !!on;
+  smEl('sm-tiles').className = smSelectMode ? 'select' : '';
+  const b = smEl('sm-select');
+  if (b.classList) b.classList.toggle('on', smSelectMode);
+  b.textContent = T(smSelectMode ? 'smSelectOn' : 'smSelect');
+}
+
+function smPointerDown(e) {
+  if (!smConsent || (e.button !== undefined && e.button !== 0)) return;
+  const start = smFromClient(e.clientX, e.clientY);
+  smDrag = { x: e.clientX, y: e.clientY, view: { lon: smView.lon, lat: smView.lat, z: smView.z }, start: start,
+             moved: false, rect: smSelectMode };
+  smEl('sm-tiles').className = smSelectMode ? 'select' : 'drag';
+  window.addEventListener('pointermove', smPointerMove);
+  window.addEventListener('pointerup', smPointerUp);
+  window.addEventListener('pointercancel', smPointerUp);
+  if (e.preventDefault) e.preventDefault();
+}
+
+function smPointerMove(e) {
+  const d = smDrag;
+  if (!d) return;
+  if (e.buttons !== undefined && !(e.buttons & 1)) { smPointerUp(e); return; }
+  const dx = e.clientX - d.x, dy = e.clientY - d.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+  if (d.rect) {
+    if (d.moved) { smRect = { a: d.start, b: smFromClient(e.clientX, e.clientY) }; smRender(); }
+    return;
+  }
+  const c = smWorldPx(d.view.lon, d.view.lat, d.view.z), q = smLonLat(c.x - dx, c.y - dy, d.view.z);
+  smView = { lon: q.lon, lat: q.lat, z: d.view.z };
+  smClampView();
+  smRender();
+}
+
+function smPointerUp(e) {
+  const d = smDrag;
+  if (!d) return;
+  smDrag = null;
+  window.removeEventListener('pointermove', smPointerMove);
+  window.removeEventListener('pointerup', smPointerUp);
+  window.removeEventListener('pointercancel', smPointerUp);
+  smEl('sm-tiles').className = smSelectMode ? 'select' : '';
+  if (d.rect) {
+    if (d.moved && smRect) {
+      const a = smToScreen(smRect.a.lon, smRect.a.lat), b = smToScreen(smRect.b.lon, smRect.b.lat);
+      if (Math.abs(a.x - b.x) < 12 || Math.abs(a.y - b.y) < 12) smRect = null;
+    } else smRect = null;
+    if (smRect) {
+      smPoint = null;
+      smSetSelectMode(false);                          // danach verschiebt Ziehen wieder die Karte
+      const i = smRectInfo(smRect.a, smRect.b);
+      chooseAddrItem({ coord: true, main: i.clat.toFixed(5) + ', ' + i.clon.toFixed(5), sub: T('addrCoordSub'), lat: i.clat, lon: i.clon }, { noFly: true });
+    }
+    smInfo();
+    smRender();
+    return;
+  }
+  if (!d.moved) {                                      // Klick ohne Ziehen: Ort wählen
+    smPoint = { lon: d.start.lon, lat: d.start.lat };
+    smRect = null;
+    chooseAddrItem({ coord: true, main: d.start.lat.toFixed(5) + ', ' + d.start.lon.toFixed(5), sub: T('addrCoordSub'), lat: d.start.lat, lon: d.start.lon }, { noFly: true });
+    smInfo();
+    smRender();
+  }
+}
+
+function smWheel(e) {
+  if (!smConsent) return;
+  if (e.preventDefault) e.preventDefault();
+  const now = Date.now();
+  if (now - smWheelT < 140) return;
+  smWheelT = now;
+  smZoomAt(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
+}
+
+function initStartMap() {
+  smEl('sm-load').addEventListener('click', function () { smConsent = true; smRender(); smInfo(); });
+  smEl('sm-select').addEventListener('click', function () { smSetSelectMode(!smSelectMode); });
+  smEl('sm-in').addEventListener('click', function () { smZoomAt(1); });
+  smEl('sm-out').addEventListener('click', function () { smZoomAt(-1); });
+  const box = smEl('sm-tiles');
+  box.addEventListener('pointerdown', smPointerDown);
+  box.addEventListener('wheel', smWheel);
+  window.addEventListener('resize', function () { if (smVisible) smRender(); });
+  smSetSelectMode(false);
+}
+
 /* ---------- Standortsuche (Adressleiste) ----------
    Vorschläge von Photon beim Tippen (mind. 3 Zeichen, 350 ms Pause); nach der Wahl
    stehen Links zur DGM- und zur Gebäudemodell-Seite des Landes darunter. */
@@ -2103,6 +2357,13 @@ function onAddrInput() {
 async function chooseAddr(i) {
   const it = addrItems[i];
   if (!it) return;
+  return chooseAddrItem(it, {});
+}
+
+/* Ort übernehmen (aus der Liste oder aus einem Klick auf die Startkarte). opts.noFly: Karte nicht verschieben */
+async function chooseAddrItem(it, opts) {
+  if (!it) return;
+  if (!(opts && opts.noFly) && isFinite(it.lat) && isFinite(it.lon)) smFlyTo(it.lat, it.lon, it.coord ? 16 : 15);
   if (addrTimer) clearTimeout(addrTimer);
   addrSeq++;                 // eine noch laufende Suche darf die Liste nicht wieder öffnen
   addrStale = false;
@@ -3314,6 +3575,7 @@ function initUI() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
+  initStartMap();
   applySettings();
   applyLanguage();
   showPanel(false);

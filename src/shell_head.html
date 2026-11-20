@@ -181,6 +181,30 @@
   #point-label .mv { font-variant-numeric: tabular-nums; flex: 1 1 auto; text-align: right; }
   #point-label .msrc { color: var(--text-dim2); font-size: 0.9em; margin-top: 2px; }
 
+  /* ---------- Startkarte (vor dem Laden des Geländes) ---------- */
+  #startmap { position: fixed; inset: 0; z-index: 2; background: var(--bg, #1b2126); overflow: hidden; }
+  #sm-tiles { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+  #sm-tiles.select { cursor: crosshair; }
+  #sm-tiles.drag { cursor: grabbing; }
+  #sm-tiles img { position: absolute; left: 0; top: 0; width: 256px; height: 256px; max-width: none; pointer-events: none; user-select: none; }
+  #sm-rect { position: absolute; display: none; pointer-events: none; border: 2px solid var(--accent); background: rgba(80, 160, 255, 0.14); }
+  #sm-marker { position: absolute; display: none; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; pointer-events: none;
+    background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+  #sm-consent { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 28px)); padding: 14px 16px; text-align: left; }
+  #sm-consent .sm-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  #sm-consent .sm-text { font-size: 12.5px; line-height: 1.5; color: var(--text-dim); margin-bottom: 10px; }
+  #sm-tools { position: absolute; right: 14px; top: 14px; display: none; flex-direction: column; align-items: flex-end; gap: 6px; }
+  #sm-tools .btn-block { width: auto; margin: 0; padding: 6px 12px; }
+  #sm-tools .btn-block.on { border-color: var(--accent); color: var(--accent); }
+  #sm-zoom { display: flex; flex-direction: column; gap: 4px; }
+  #sm-zoom .btn-block { width: 34px; padding: 4px 0; font-size: 16px; line-height: 1.1; text-align: center; }
+  #sm-info { position: absolute; right: 14px; bottom: 124px; display: none; max-width: min(420px, calc(100vw - 28px)); padding: 9px 12px; font-size: 12.5px; line-height: 1.5; }
+  #sm-info .sm-line { font-variant-numeric: tabular-nums; }
+  #sm-info .sm-dim { color: var(--text-dim); }
+  #sm-attrib { position: absolute; right: 8px; bottom: 56px; display: none; font-size: 11px; padding: 1px 6px; border-radius: 3px;
+    background: rgba(255,255,255,.75); color: #333; }
+  #sm-attrib a { color: #1a4f8a; }
+
   /* Streckenlängen beim Zeichnen */
   #seg-labels { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 5; pointer-events: none; }
   .seg-label {
@@ -622,6 +646,26 @@
 
 <div id="loading" data-i18n="loading">Lade</div>
 <div id="canvas-container"></div>
+
+<div id="startmap" style="display:none">
+  <div id="sm-tiles"></div>
+  <div id="sm-rect"></div>
+  <div id="sm-marker"></div>
+  <div id="sm-consent" class="panel">
+    <div class="sm-title" data-i18n="smTitle">Karte</div>
+    <div class="sm-text" data-i18n="smConsent">Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen.</div>
+    <button class="btn-block accent" id="sm-load" data-i18n="smLoad">Karte laden</button>
+  </div>
+  <div id="sm-tools">
+    <button class="btn-block" id="sm-select" data-i18n="smSelect">Bereich wählen</button>
+    <div id="sm-zoom">
+      <button class="btn-block" id="sm-in" aria-label="+">+</button>
+      <button class="btn-block" id="sm-out" aria-label="−">−</button>
+    </div>
+  </div>
+  <div id="sm-info" class="panel"></div>
+  <div id="sm-attrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a><span data-i18n="smAttrib">-Mitwirkende</span></div>
+</div>
 
 <div id="col-left">
  <div id="col-left-body">

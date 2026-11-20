@@ -35,7 +35,11 @@ and buildings) and you can place blocks right away.
 The application needs at least a **terrain model**. Without terrain the building blocks stay
 locked.
 
-1. **Find the data.** Type an address or place in the address bar at the top left (“Where is your
+1. **Find the data.** At the start the page shows a **map**. After you click **Load map** (only then are
+   tiles loaded from OpenStreetMap and your IP address transmitted) you can pan it (drag) and zoom it (mouse
+   wheel, **+**/**−**). A click picks a place; **Select area** and a dragged rectangle give the size and UTM
+   values of the area. The links to the state's geodata appear on the left below the address bar. The map
+   disappears as soon as a terrain is loaded. Alternatively: type an address or place in the address bar at the top left (“Where is your
    construction site?”) and pick a suggestion. Below it you get the links to the terrain model
    (DGM) and building model (LoD2) pages of your German state; for Austria, the pages of the federal
    government and the state. The application downloads nothing here: you open the pages and
@@ -324,7 +328,7 @@ excavation lies below the terrain surface.
   embankments.
 - **No saving.** There is no save. The IFC model contains terrain, buildings and, optionally, the blocks.
 - **Privacy.** All data stays in the browser. Two functions connect to the outside, both only on
-  your input: the **address bar** (suggestions from `photon.komoot.io`) and the **map** (tiles from
+  your input: the **address bar** (suggestions from `photon.komoot.io`) and the **map** (the start map too, only after “Load map”; tiles from
   `tile.openstreetmap.org`). Details in the [privacy statement](datenschutz.html) (German).
 - **Data licences.** Geodata mostly requires attribution. The exact wording is in the metadata of
   the respective state.

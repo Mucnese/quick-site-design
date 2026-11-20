@@ -36,7 +36,12 @@ Hänge `?demo=1` an die Adresse der Seite. Dann lädt die Anwendung einen Beispi
 Die Anwendung braucht mindestens ein **Geländemodell**. Ohne Gelände bleiben die Bausteine
 gesperrt.
 
-1. **Daten finden.** Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine
+1. **Daten finden.** Beim Start zeigt die Seite eine **Karte**. Nach dem Klick auf **Karte laden**
+   (erst dann werden Kacheln von OpenStreetMap geladen und deine IP-Adresse übertragen) kannst du sie
+   verschieben (Ziehen) und zoomen (Mausrad, **+**/**−**). Ein Klick wählt einen Ort; **Bereich wählen**
+   und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs. Die Links zu den Geodaten des
+   Landes erscheinen links unter der Adressleiste. Die Karte verschwindet, sobald ein Gelände geladen ist.
+   Alternativ: Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine
    Adresse oder einen Ort ein und wähle einen Vorschlag. Darunter erscheinen die Links zur
    Seite des Geländemodells (DGM) und des Gebäudemodells (LoD2) deines Bundeslandes, bei
    Österreich die Seiten von Bund und Land. Die Anwendung lädt dabei nichts herunter, du
@@ -329,7 +334,7 @@ unter der Geländefläche.
 - **Kein Speichern.** Es gibt keinen Speicherstand. Das IFC-Modell enthält Gelände, Gebäude und auf Wunsch die Bausteine.
 - **Datenschutz.** Alle Daten bleiben im Browser. Zwei Funktionen nehmen Verbindung nach außen auf,
   beide nur auf deine Eingabe: die **Adressleiste** (Vorschläge von `photon.komoot.io`) und die
-  **Karte** (Kacheln von `tile.openstreetmap.org`). Näheres in der [Datenschutzerklärung](datenschutz.html).
+  **Karte** (Kacheln von `tile.openstreetmap.org`, auch die Startkarte erst nach „Karte laden“). Näheres in der [Datenschutzerklärung](datenschutz.html).
 - **Lizenz der Daten.** Geodaten verlangen meist eine Quellenangabe. Die Wortlaute stehen in den
   Metadaten des jeweiligen Landes.
 
