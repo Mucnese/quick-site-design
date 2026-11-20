@@ -240,6 +240,14 @@ kein Lenk- und Knickwinkelgrenzwert, und das Heck schwingt beim Einlenken in der
 Fahrzeugvorlage und Umrisse; die Schleppkurven selbst stecken in Autodesk-Proxyobjekten und sind nicht lesbar. Neue
 Fahrzeuge: nur `SEMI_TRUCK` ändern und die Kontrollradien erneut prüfen, nicht Werte raten.
 
+**Große GeoTIFF.** Dateien über `TIFF_BLOB_BYTES` (300 MB) gehen nicht über `arrayBuffer()`, sondern als Blob in `readTiffTileWindow`
+(`GeoTIFF.fromBlob`: liest nur Kopf und die Blöcke des Fensters). Das Fenster kommt aus der Startkarte (`currentSiteWindow` in `ui.js`: Rechteck
+`{w,e,s,n}` in Länge/Breite oder Quadrat `{lon,lat,size}` um den Pin, in Metern im Bezugssystem der Datei). Ohne Fenster nur, wenn das Raster
+unter `TIFF_MAX_PIXELS` bleibt. Ein Fenster außerhalb der Datei gibt `null` (Meldung nur, wenn es in keiner liegt). Geprüft an der echten
+BEV-Kachel (ALS_DTM_CRS3035RES50000mN2800000E4750000.tif: BigTIFF, COG, 512er Blöcke, LZW mit Gleitkomma-Prädiktor, 7,9 GB): Fenster 1 km in
+0,5 s, 5,5 MB gelesen, Werte gleich GDAL. In Node geht das nur mit einem eigenen Blob-Ersatz: `fs.openAsBlob` meldet über 4 GB die Größe modulo
+2^32. EPSG:3035 (`laeaForward`/`laeaInverse`, `projForward`/`projInverse` in `app.js`) ist gegen `gdaltransform` auf 1 cm geprüft.
+
 **CityJSON.** `parseCityJSON` (app.js, neben `parseCityGML`) liefert dieselbe Ringliste wie CityGML (`[x, y, z, ...]`, Rechtswert, Hochwert,
 Höhe im Bezugssystem der Datei). `parseBuildingText` wählt nach dem ersten Zeichen (`{` oder `[` = JSON). Je CityObject nur die Geometrie mit
 der höchsten LoD (3DBAG liefert 0, 1.2, 1.3, 2.2 übereinander), LoD unter 1 (Grundriss) und TINRelief, Pflanzen, Wasser, Landnutzung fallen weg;

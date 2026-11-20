@@ -164,11 +164,13 @@ regular grid) directly. They carry no coordinate system, so you choose it in the
 window or type the EPSG code. ESRI ASCII grids (`.asc`) are not read; convert them to
 GeoTIFF with GDAL.
 
-**File size.** The tool reads each file completely into memory. It therefore
-rejects, with a message and before reading, files over 1 GB, tiles over 100 million
-pixels and more than 150 million pixels (2 GB) in total. This mainly concerns
-Austria: the BEV 1 m rasters and the 10 m file for all of Austria are far larger.
-Cut out an area first, for example with `gdal_translate -projwin`.
+**File size.** Small GeoTIFF files are read completely into memory. **Files over 300 MB are not read completely, only the
+area around the chosen place** (pin, rectangle or address on the start map): `geotiff.js` then fetches only the header and the
+blocks the window touches. For the BEV height raster (COG in EPSG:3035, 50 × 50 km, 7.9 GB) that is about 5 MB for 1 × 1 km and
+roughly half a second; the values match GDAL. If there is no place, the place is not in the file or the area is larger than
+100 million pixels, a message appears. Other limits before reading: files up to 300 MB at most 1 GB each, tiles over
+100 million pixels and more than 150 million pixels (2 GB) in total. If you prefer to cut yourself: `gdal_translate -projwin`;
+the start map gives the ready command for Austria (`-projwin_srs EPSG:4326`, fits any coordinate system).
 
 **Saarland.** The LVGL page describes the DGM1 but contains no download, and
 the licence statements contradict each other. Until that is settled, "free as
@@ -203,9 +205,9 @@ not checked.
 | Burgenland | [Elevation models and orthophotos](https://geodaten.bgld.gv.at/de/downloads/hoehenmodelle-orthofotos.html) | not checked | — | not checked |
 | Linz (city) | — | — | [3D geodata LoD2 2018](https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e), Gauss-Krüger M31 | CC BY 4.0 |
 
-The BEV delivers its height rasters in EPSG:3035 (ETRS89-LAEA). The base map
-(OpenStreetMap) does not convert that system and switches itself off with a
-message; the Gauss-Krüger systems MGI (EPSG:31254 to 31256) work.
+The BEV delivers its height rasters in EPSG:3035 (ETRS89-LAEA). The application knows this system (map, conversion in the
+IFC export, checked against GDAL to 1 cm) and reads only the area around the chosen place from the huge BEV files. The
+Gauss-Krüger systems MGI (EPSG:31254 to 31256) work as well.
 
 Data from other countries works too, as long as the GeoTIFF carries a projected
 coordinate system and the CityGML uses the same one.

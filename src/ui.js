@@ -33,7 +33,8 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
     smHint: 'Die Links zu Gelände und Gebäuden des Landes stehen im Fenster am Bereich. Danach die Dateien unter „Daten“ laden.',
     smPopHint: 'Dateien herunterladen und links unter „Daten“ laden.',
-    smCutToggle: 'Datei zu groß? Für Fortgeschrittene: zuschneiden mit GDAL',
+    smBigHint: 'Sehr große Datei (z. B. BEV, mehrere GB)? Einfach unter „Daten“ wählen: Die Anwendung liest nur den Ausschnitt um den Pin.',
+    smCutToggle: 'Lieber selbst zuschneiden? Für Fortgeschrittene: GDAL',
     smCutTitle: 'GDAL ist ein kostenloses Kommandozeilenprogramm. Dieser Befehl schneidet den Ausschnitt aus der großen Datei:',
     smCutAround: '{s} × {s} m um den Pin', smCutRect: 'Bereich wie das Rechteck',
     smCutCopy: 'Kopieren', smCutDone: 'Kopiert',
@@ -46,6 +47,7 @@ const STRINGS = {
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
     ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
+    demWindow: 'Ausschnitt',
     gmlUnreadable: 'Gebäudedatei nicht lesbar:',
     gmlTooBig: 'Die Gebäudedateien sind zusammen {s} MB groß, mehr als {m} MB schafft der Browser nicht. Bitte kleinere Ausschnitte laden.',
     busyGml: 'Gebäudemodell wird verarbeitet … bei großen Dateien kann das einige Sekunden dauern.', busyGmlRender: 'Gebäudemodell wird gerendert …',
@@ -94,7 +96,7 @@ const STRINGS = {
     geoNote_berlin: 'Berlin liegt vermutlich in den Brandenburg-Daten (nicht geprüft).',
     geoNote_catalog: 'Katalogeintrag, nicht selbst geprüft.',
     geoNote_saarland: 'Seite ohne Download, Lizenz unklar.',
-    geoNote_epsg3035: 'Sehr große Kacheln, vorher Ausschnitt schneiden. Koordinaten in EPSG:3035, die Karte funktioniert damit nicht.',
+    geoNote_epsg3035: 'Sehr große Kacheln (EPSG:3035): Die Anwendung liest daraus nur einen Ausschnitt um den gewählten Ort. Zuerst Pin oder Rechteck setzen, dann die Datei wählen.',
     geoNote_asc: 'Gemeindeweise als TIF und ASCII.',
     geoNote_unverified: 'Nicht geprüft.',
     geoNote_servicesOnly: 'Kein Download gefunden, nur Dienste.',
@@ -210,7 +212,8 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
     smHint: 'The links to the state’s terrain and buildings are in the window at the area. Then load the files under “Data”.',
     smPopHint: 'Download the files and load them under “Data” on the left.',
-    smCutToggle: 'File too large? For advanced users: cut it with GDAL',
+    smBigHint: 'Very large file (e.g. BEV, several GB)? Just choose it under “Data”: the application reads only the area around the pin.',
+    smCutToggle: 'Prefer to cut it yourself? For advanced users: GDAL',
     smCutTitle: 'GDAL is a free command-line program. This command cuts the area out of the large file:',
     smCutAround: '{s} × {s} m around the pin', smCutRect: 'Area like the rectangle',
     smCutCopy: 'Copy', smCutDone: 'Copied',
@@ -223,6 +226,7 @@ const STRINGS = {
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
     ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
+    demWindow: 'extract',
     gmlUnreadable: 'Building file not readable:',
     gmlTooBig: 'The building files are {s} MB together; the browser cannot handle more than {m} MB. Please load smaller extracts.',
     busyGml: 'Building model is being processed … large files can take a few seconds.', busyGmlRender: 'Building model is being rendered …',
@@ -271,7 +275,7 @@ const STRINGS = {
     geoNote_berlin: 'Berlin is probably part of the Brandenburg data (not checked).',
     geoNote_catalog: 'Catalogue entry, not checked myself.',
     geoNote_saarland: 'Page without a download, licence unclear.',
-    geoNote_epsg3035: 'Very large tiles, cut out an area first. Coordinates in EPSG:3035, the map does not work with it.',
+    geoNote_epsg3035: 'Very large tiles (EPSG:3035): the application reads only an area around the chosen place. Set a pin or rectangle first, then choose the file.',
     geoNote_asc: 'Per municipality as TIF and ASCII.',
     geoNote_unverified: 'Not checked.',
     geoNote_servicesOnly: 'No download found, services only.',
@@ -2044,6 +2048,7 @@ function demStatusText(t) {
   let st = lastDemNames.length > 1
     ? lastDemNames.length + ' Kacheln verbunden'
     : (lastDemNames[0] || '');
+  if (lastDemTiles && lastDemTiles.some(function (x) { return x.windowed; })) st += ' · ' + T('demWindow');
   st += ' · ' + t.nx + '×' + t.nz;
   if (t.gaps) st += ' · ' + t.gaps + ' Lücken gefüllt';
   return st;
@@ -2273,6 +2278,10 @@ function smAddCutBlock(body, a) {
   const cmd = gdalCutCommand(win);
   const box = document.createElement('div');
   box.className = 'sm-cut';
+  const big = document.createElement('div');
+  big.className = 'sm-line';
+  big.textContent = T('smBigHint');
+  box.appendChild(big);
   const toggle = document.createElement('button');                  // zugeklappt: das ist etwas für Fortgeschrittene
   toggle.className = 'sm-cut-toggle';
   toggle.textContent = (smCutOpen ? '▾ ' : '▸ ') + T('smCutToggle');
@@ -2357,6 +2366,16 @@ function smRenderPop() {
   pop.style.top = Math.round(top) + 'px';
   pop.className = 'panel ' + mode;
   smEl('sm-pop-arrow').style.left = Math.round(Math.max(14, Math.min(w - 26, p.x - left - 6))) + 'px';
+}
+
+/* Ausschnitt für große Rasterdateien: das Rechteck, sonst ein Quadrat von SM_CUT_SIZE m um den Pin (auch eine gewählte Adresse setzt den Pin) */
+function currentSiteWindow() {
+  if (smRect) {
+    const i = smRectInfo(smRect.a, smRect.b);
+    return { w: i.lon0, e: i.lon1, s: i.lat0, n: i.lat1 };
+  }
+  if (smPoint) return { lon: smPoint.lon, lat: smPoint.lat, size: SM_CUT_SIZE };
+  return null;
 }
 
 function smInfo() {
@@ -2991,11 +3010,14 @@ async function handleDemFiles(files, isDemo) {
   pendingDemFiles = null;
   setFileStatus('dem', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Kacheln', 'busy');
   try {
-    // Größen prüfen, bevor die erste Datei in den Speicher gelesen wird
-    checkTiffFiles(list.map(function (f) { return { name: f.name, size: f.size }; }));
+    // Sehr große GeoTIFF-Dateien werden nicht ganz gelesen, sondern nur der Ausschnitt um den gewählten Ort (Pin, Rechteck oder Adresse)
+    const isBig = function (f) { return !isXyzName(f.name) && f.size > TIFF_BLOB_BYTES; };
+    const win = list.some(isBig) ? currentSiteWindow() : null;
+    // Größen prüfen, bevor die erste Datei in den Speicher gelesen wird (die großen entscheidet der Fensterleser nach dem Kopf)
+    checkTiffFiles(list.filter(function (f) { return !isBig(f); }).map(function (f) { return { name: f.name, size: f.size }; }));
     const items = [];
     for (let i = 0; i < list.length; i++) {
-      items.push({ buffer: await list[i].arrayBuffer(), name: list[i].name });
+      items.push(isBig(list[i]) ? { blob: list[i], name: list[i].name, window: win } : { buffer: await list[i].arrayBuffer(), name: list[i].name });
     }
     lastDemTiles = await readTiffTiles(items, xyzEpsg);
     lastDemNames = items.map(function (x) { return x.name; });

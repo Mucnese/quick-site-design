@@ -164,12 +164,13 @@ Anwendung direkt. Da sie kein Bezugssystem enthalten, wählt man es im Datenfens
 oder tippt den EPSG-Code ein. ESRI-ASCII-Raster (`.asc`) werden nicht gelesen, die
 muss man mit GDAL in GeoTIFF umwandeln.
 
-**Dateigröße.** Das Tool liest jede Datei ganz in den Speicher. Es lehnt deshalb
-Dateien über 1 GB, Kacheln über 100 Mio. Pixel und mehr als 150 Mio. Pixel (2 GB)
-insgesamt vor dem Einlesen mit einer Meldung ab. Das betrifft vor allem Österreich:
-Die BEV-Raster mit 1 m und die 10-m-Datei für ganz Österreich sind viel größer. Dort
-vorher einen Ausschnitt schneiden, etwa mit `gdal_translate -projwin`. Die Startkarte nennt für Österreich den fertigen Befehl
-(`-projwin_srs EPSG:4326`, damit er für das Bezugssystem der Datei passt, auch EPSG:3035).
+**Dateigröße.** Kleine GeoTIFF-Dateien liest das Tool ganz in den Speicher. **Dateien über 300 MB liest es nicht ganz, sondern
+nur den Ausschnitt um den gewählten Ort** (Pin, Rechteck oder Adresse auf der Startkarte): `geotiff.js` holt dann nur den Kopf und die
+Blöcke, die das Fenster berühren. Beim BEV-Höhenraster (COG in EPSG:3035, 50 × 50 km, 7,9 GB) sind das für 1 × 1 km rund 5 MB und
+etwa eine halbe Sekunde; die Werte stimmen mit GDAL überein. Gibt es keinen Ort, liegt der Ort nicht in der Datei oder ist der
+Ausschnitt größer als 100 Mio. Pixel, kommt eine Meldung. Andere Grenzen vor dem Einlesen: Dateien bis 300 MB höchstens 1 GB je Datei, Kacheln
+über 100 Mio. Pixel und mehr als 150 Mio. Pixel (2 GB) insgesamt. Wer lieber selbst schneidet: `gdal_translate -projwin`; die Startkarte nennt
+für Österreich den fertigen Befehl (`-projwin_srs EPSG:4326`, passt zu jedem Bezugssystem).
 
 **Saarland.** Die Seite des LVGL beschreibt das DGM1, enthält aber keinen
 Download, und die Angaben zur Lizenz widersprechen sich. Bis das geklärt ist,
@@ -204,9 +205,9 @@ Vorarlberg sind nicht geprüft.
 | Burgenland | [Höhenmodelle und Orthofotos](https://geodaten.bgld.gv.at/de/downloads/hoehenmodelle-orthofotos.html) | nicht geprüft | — | nicht geprüft |
 | Linz (Stadt) | — | — | [3D-Geodaten LoD2 2018](https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e), Gauß-Krüger M31 | CC BY 4.0 |
 
-Das BEV liefert seine Höhenraster in EPSG:3035 (ETRS89-LAEA). Die Kartengrundlage
-(OpenStreetMap) rechnet dieses System nicht um und schaltet sich dort mit einer
-Meldung ab; die Gauß-Krüger-Systeme MGI (EPSG:31254 bis 31256) funktionieren.
+Das BEV liefert seine Höhenraster in EPSG:3035 (ETRS89-LAEA). Die Anwendung kennt dieses System (Karte, Umrechnung im
+IFC-Export, geprüft gegen GDAL auf 1 cm) und liest aus den riesigen BEV-Dateien nur den Ausschnitt um den gewählten Ort. Auch die
+Gauß-Krüger-Systeme MGI (EPSG:31254 bis 31256) funktionieren.
 
 ### Übrige Länder der EU
 

@@ -620,6 +620,7 @@ const EPSG_NAMES = {
   5650: 'ETRS89 / UTM 33N (Zone)', 4647: 'ETRS89 / UTM 32N (Zone)',
   31466: 'DHDN / GK 2', 31467: 'DHDN / GK 3', 31468: 'DHDN / GK 4', 31469: 'DHDN / GK 5',
   31254: 'MGI / Austria GK West', 31255: 'MGI / Austria GK Central', 31256: 'MGI / Austria GK East',
+  3035: 'ETRS89-extended / LAEA Europe',
   4326: 'WGS 84', 4258: 'ETRS89', 3857: 'Web Mercator'
 };
 
@@ -1015,6 +1016,7 @@ function crsGeoDefinition(epsg) {
   if (epsg >= 31254 && epsg <= 31256) {
     return { ell: GEO_ELL.bessel, lon0: [10 + 1 / 3, 13 + 1 / 3, 16 + 1 / 3][epsg - 31254], k0: 1, fe: 0, fn: -5000000, helmert: HELMERT_MGI };
   }
+  if (epsg === 3035) return { laea: true, ell: GEO_ELL.grs80, lat0: 52, lon0: 10, fe: 4321000, fn: 3210000 };   // BEV-Höhenraster, EU-weite Karten
   if (epsg === 3857) return { merc: true };
   return null;
 }
@@ -1102,6 +1104,51 @@ function helmertFromWgs84(lat, lon, ell, h) {
   return { lat: ph / rad, lon: Math.atan2(y2, x2) / rad };
 }
 
+/* Lambert-Azimutal-Flächentreue Abbildung (ellipsoidisch, schräg), EPSG:3035 ETRS89-LAEA. Formeln nach Snyder, "Map Projections",
+   Gl. 3-12 bis 3-14, 24-27 bis 24-35 und 3-18; geprüft gegen GDAL (gdaltransform) in den Tests. */
+function laeaConstants(d) {
+  if (d._k) return d._k;
+  const a = d.ell.a, f = d.ell.f, e2 = f * (2 - f), e = Math.sqrt(e2), rad = Math.PI / 180;
+  const q = function (phi) {
+    const s = Math.sin(phi);
+    return (1 - e2) * (s / (1 - e2 * s * s) - (1 / (2 * e)) * Math.log((1 - e * s) / (1 + e * s)));
+  };
+  const phi0 = d.lat0 * rad, qp = q(Math.PI / 2), q0 = q(phi0);
+  const beta0 = Math.asin(q0 / qp), Rq = a * Math.sqrt(qp / 2);
+  const D = a * (Math.cos(phi0) / Math.sqrt(1 - e2 * Math.sin(phi0) * Math.sin(phi0))) / (Rq * Math.cos(beta0));
+  d._k = { a: a, e2: e2, e: e, q: q, qp: qp, beta0: beta0, Rq: Rq, D: D, lam0: d.lon0 * rad };
+  return d._k;
+}
+
+function laeaForward(lat, lon, d) {
+  const k = laeaConstants(d), rad = Math.PI / 180;
+  const beta = Math.asin(Math.max(-1, Math.min(1, k.q(lat * rad) / k.qp)));
+  const dl = lon * rad - k.lam0;
+  const B = k.Rq * Math.sqrt(2 / (1 + Math.sin(k.beta0) * Math.sin(beta) + Math.cos(k.beta0) * Math.cos(beta) * Math.cos(dl)));
+  return {
+    e: d.fe + B * k.D * Math.cos(beta) * Math.sin(dl),
+    n: d.fn + (B / k.D) * (Math.cos(k.beta0) * Math.sin(beta) - Math.sin(k.beta0) * Math.cos(beta) * Math.cos(dl))
+  };
+}
+
+function laeaInverse(e, n, d) {
+  const k = laeaConstants(d), x = e - d.fe, y = n - d.fn;
+  const rho = Math.sqrt((x / k.D) * (x / k.D) + (k.D * y) * (k.D * y));
+  if (rho < 1e-9) return { lat: d.lat0, lon: d.lon0 };
+  const C = 2 * Math.asin(Math.min(1, rho / (2 * k.Rq)));
+  const sC = Math.sin(C), cC = Math.cos(C);
+  const betap = Math.asin(Math.max(-1, Math.min(1, cC * Math.sin(k.beta0) + (k.D * y * sC * Math.cos(k.beta0)) / rho)));
+  const lam = k.lam0 + Math.atan2(x * sC, k.D * rho * Math.cos(k.beta0) * cC - k.D * k.D * y * Math.sin(k.beta0) * sC);
+  const e2 = k.e2, e4 = e2 * e2, e6 = e4 * e2;
+  const phi = betap + (e2 / 3 + 31 * e4 / 180 + 517 * e6 / 5040) * Math.sin(2 * betap) +
+              (23 * e4 / 360 + 251 * e6 / 3780) * Math.sin(4 * betap) + (761 * e6 / 45360) * Math.sin(6 * betap);
+  return { lat: phi * 180 / Math.PI, lon: lam * 180 / Math.PI };
+}
+
+/* Abbildung einer Definition aus crsGeoDefinition: Rechts-/Hochwert <-> Breite/Länge */
+function projInverse(d, e, n) { return d.laea ? laeaInverse(e, n, d) : transverseMercatorInverse(e, n, d); }
+function projForward(d, lat, lon) { return d.laea ? laeaForward(lat, lon, d) : transverseMercatorForward(lat, lon, d); }
+
 /* Zielsysteme für die Umrechnung der Koordinaten im IFC-Export (Reihenfolge wie in der Auswahl) */
 const IFC_TARGET_CRS = [25832, 25833, 25831, 4647, 5650, 31466, 31467, 31468, 31469, 31254, 31255, 31256];
 
@@ -1114,10 +1161,10 @@ function crsTransformer(fromEpsg, toEpsg) {
   if (!from || !to || from.merc || to.merc) return null;
   if (fromEpsg === toEpsg) return function (e, n) { return { e: e, n: n }; };
   return function (e, n) {
-    let g = transverseMercatorInverse(e, n, from);
+    let g = projInverse(from, e, n);
     if (from.helmert) g = helmertToWgs84(g.lat, g.lon, from.ell, from.helmert);
     if (to.helmert) g = helmertFromWgs84(g.lat, g.lon, to.ell, to.helmert);
-    return transverseMercatorForward(g.lat, g.lon, to);
+    return projForward(to, g.lat, g.lon);
   };
 }
 
@@ -1135,7 +1182,7 @@ function crsToLonLat(epsg, e, n) {
     const R = 6378137;
     return { lon: e / R * 180 / Math.PI, lat: (2 * Math.atan(Math.exp(n / R)) - Math.PI / 2) * 180 / Math.PI };
   }
-  const g = transverseMercatorInverse(e, n, d);
+  const g = projInverse(d, e, n);
   return d.helmert ? helmertToWgs84(g.lat, g.lon, d.ell, d.helmert) : g;
 }
 
@@ -1450,6 +1497,16 @@ async function readTiffTile(arrayBuffer, fileName, soFarPixels) {
   const band = rasters[0];
   if (!band || !band.length) throw new Error(fileName + ': keine Höhenwerte.');
 
+  const g = tiffGeoInfo(image);
+  return {
+    name: fileName, W: W, H: H, band: band,
+    originX: g.originX, originY: g.originY, resX: g.resX, resY: g.resY,
+    nodata: g.nodata, epsg: g.epsg, srcRes: Math.min(g.resX, g.resY)
+  };
+}
+
+/* Ursprung (obere linke Ecke), Zellgröße, NoData-Wert und EPSG-Code aus dem Kopf eines GeoTIFF-Bilds */
+function tiffGeoInfo(image) {
   let originX = 0, originY = 0, resX = 1, resY = 1;
   try {
     const o = image.getOrigin();
@@ -1477,17 +1534,75 @@ async function readTiffTile(arrayBuffer, fileName, soFarPixels) {
     if (gk) epsg = gk.ProjectedCSTypeGeoKey || gk.GeographicTypeGeoKey || null;
   } catch (e) { /* ohne GeoKeys weiterarbeiten */ }
 
-  return {
-    name: fileName, W: W, H: H, band: band,
-    originX: originX, originY: originY, resX: resX, resY: resY,
-    nodata: nodata, epsg: epsg, srcRes: Math.min(resX, resY)
-  };
+  return { originX: originX, originY: originY, resX: resX, resY: resY, nodata: nodata, epsg: epsg };
 }
 
 function tileIsNoData(tile, v) {
   if (!isFinite(v)) return true;
   if (tile.nodata !== null && Math.abs(v - tile.nodata) < 1e-6) return true;
   return v < -1000 || v > 9000;
+}
+
+/* ---------- Ausschnitt aus einer sehr großen GeoTIFF-Datei ----------
+   Dateien über TIFF_BLOB_BYTES werden nicht ganz in den Speicher gelesen: GeoTIFF.fromBlob liest nur den Kopf und die Blöcke, die das
+   Fenster berühren (bei einem COG wie dem BEV-Höhenraster: wenige MB aus mehreren GB). Das Fenster kommt vom gewählten Ort:
+   {lon, lat, size} = Quadrat von size Metern im Bezugssystem der Datei um den Punkt, oder {w, e, s, n} = Rechteck in Länge/Breite
+   (die Ecken werden ins Bezugssystem der Datei umgerechnet, es zählt der umschließende Kasten). Ohne Fenster wird nur gelesen, was
+   ohnehin unter die Pixelgrenze passt. */
+const TIFF_BLOB_BYTES = 300e6;
+
+/* Breite/Länge (WGS 84 / ETRS89) -> Rechts-/Hochwert im System einer Definition aus crsGeoDefinition */
+function lonLatToCrs(def, lat, lon) {
+  let g = { lat: lat, lon: lon };
+  if (def.helmert) g = helmertFromWgs84(lat, lon, def.ell, def.helmert);
+  return projForward(def, g.lat, g.lon);
+}
+
+async function readTiffTileWindow(blob, fileName, win, soFarPixels) {
+  if (typeof GeoTIFF === 'undefined' || !GeoTIFF.fromBlob) throw new Error('Die Datei lib/geotiff.js fehlt oder ist zu alt. Siehe lib/LIESMICH.txt.');
+  const tiff = await GeoTIFF.fromBlob(blob);
+  const image = await tiff.getImage();
+  const W = image.getWidth(), H = image.getHeight();
+  if (!W || !H) throw new Error(fileName + ': kein lesbares Raster.');
+  const g = tiffGeoInfo(image);
+
+  let x0 = 0, y0 = 0, x1 = W, y1 = H;
+  if (win) {
+    const def = crsGeoDefinition(g.epsg);
+    if (!def || def.merc) {
+      throw new Error(fileName + ': Das Bezugssystem ' + (g.epsg ? 'EPSG:' + g.epsg : '(unbekannt)') +
+        ' kennt die Anwendung nicht, der Ausschnitt lässt sich daraus nicht bestimmen.' + TIFF_CUT_HINT);
+    }
+    let minE, maxE, minN, maxN;
+    if (win.size) {
+      const c = lonLatToCrs(def, win.lat, win.lon), h = win.size / 2;
+      minE = c.e - h; maxE = c.e + h; minN = c.n - h; maxN = c.n + h;
+    } else {
+      const pts = [[win.s, win.w], [win.s, win.e], [win.n, win.w], [win.n, win.e]].map(function (p) { return lonLatToCrs(def, p[0], p[1]); });
+      minE = Math.min.apply(null, pts.map(function (p) { return p.e; })); maxE = Math.max.apply(null, pts.map(function (p) { return p.e; }));
+      minN = Math.min.apply(null, pts.map(function (p) { return p.n; })); maxN = Math.max.apply(null, pts.map(function (p) { return p.n; }));
+    }
+    // Pixelgrenzen (die Datei ist nicht gedreht: Ursprung oben links, y nach unten); ein Pixel Rand
+    x0 = Math.max(0, Math.floor((minE - g.originX) / g.resX) - 1);
+    x1 = Math.min(W, Math.ceil((maxE - g.originX) / g.resX) + 1);
+    y0 = Math.max(0, Math.floor((g.originY - maxN) / g.resY) - 1);
+    y1 = Math.min(H, Math.ceil((g.originY - minN) / g.resY) + 1);
+    if (x1 <= x0 || y1 <= y0) return null;                   // der Ausschnitt liegt nicht in dieser Datei
+  } else if (W * H > TIFF_MAX_PIXELS) {
+    throw new Error(fileName + ': ' + W + ' × ' + H + ' Pixel (' + Math.round(W * H / 1e6) + ' Mio.) sind zu viel für den Browser. ' +
+      'Wähle zuerst auf der Karte einen Ort (Pin) oder ein Rechteck, oder gib eine Adresse ein: Dann liest die Anwendung nur diesen ' +
+      'Ausschnitt aus der Datei.');
+  }
+
+  checkTiffPixels(fileName + ' (Ausschnitt)', x1 - x0, y1 - y0, soFarPixels);
+  const rasters = await image.readRasters(win ? { window: [x0, y0, x1, y1], samples: [0] } : { samples: [0] });
+  const band = rasters[0];
+  if (!band || !band.length) throw new Error(fileName + ': keine Höhenwerte.');
+  return {
+    name: fileName, W: x1 - x0, H: y1 - y0, band: band,
+    originX: g.originX + x0 * g.resX, originY: g.originY - y0 * g.resY, resX: g.resX, resY: g.resY,
+    nodata: g.nodata, epsg: g.epsg, srcRes: Math.min(g.resX, g.resY), windowed: !!win, fileW: W, fileH: H
+  };
 }
 
 /* Mehrere GeoTIFF-Kacheln zu einem Gelände verschmelzen.
@@ -1500,13 +1615,19 @@ async function readTiffTiles(items, xyzEpsg) {
     throw new Error('Die Datei lib/geotiff.js fehlt. Siehe lib/LIESMICH.txt.');
   }
   const tiles = [];
-  let pixels = 0;
+  let pixels = 0, outside = 0;
   for (let i = 0; i < items.length; i++) {
-    const t = isXyzName(items[i].name)
-      ? readXyzTile(items[i].buffer, items[i].name, xyzEpsg, pixels)
-      : await readTiffTile(items[i].buffer, items[i].name, pixels);
+    const it = items[i];
+    const t = isXyzName(it.name)
+      ? readXyzTile(it.buffer, it.name, xyzEpsg, pixels)
+      : (it.blob ? await readTiffTileWindow(it.blob, it.name, it.window, pixels) : await readTiffTile(it.buffer, it.name, pixels));
+    if (!t) { outside++; continue; }                           // der gewählte Ausschnitt liegt nicht in dieser Datei
     pixels += t.W * t.H;
     tiles.push(t);
+  }
+  if (!tiles.length && outside) {
+    throw new Error('Der gewählte Ausschnitt liegt in keiner der ' + (outside === 1 ? 'Datei' : outside + ' Dateien') +
+      '. Prüfe, ob Ort (Pin oder Rechteck) und Datei zusammenpassen.');
   }
   return tiles;
 }
@@ -1714,7 +1835,7 @@ function gridTiles(tiles, maxGrid) {
   for (let i = 0; i < abs.length; i++) rel[i] = abs[i] - vmin;
 
   const label = tiles.length === 1
-    ? tiles[0].name + ' · ' + tiles[0].W + '×' + tiles[0].H + ' px · ' + tiles[0].resX.toFixed(1) + ' m'
+    ? tiles[0].name + (tiles[0].windowed ? ' · Ausschnitt ' : ' · ') + tiles[0].W + '×' + tiles[0].H + ' px · ' + tiles[0].resX.toFixed(1) + ' m'
     : tiles.length + ' Kacheln · ' + Math.round(widthM) + '×' + Math.round(depthM) + ' m · ' + cell.toFixed(1) + ' m Zelle';
 
   return {
@@ -5129,7 +5250,7 @@ function buildIfc(geo, rectMinX, rectMinZ, epsg, opts) {
   }
   const projectedCrs = add('IFCPROJECTEDCRS',
     str('EPSG:' + outEpsg) + ',' + (EPSG_NAMES[outEpsg] ? str(EPSG_NAMES[outEpsg]) : '$') + ',' +
-    (datum === '$' ? '$' : str(datum)) + ',$,' + (crsDef && !crsDef.merc ? str('TransverseMercator') : '$') + ',' +
+    (datum === '$' ? '$' : str(datum)) + ',$,' + (crsDef && !crsDef.merc ? str(crsDef.laea ? 'LambertAzimuthalEqualArea' : 'TransverseMercator') : '$') + ',' +
     (zone === '$' ? '$' : str(zone)) + ',' + lengthUnit);
   // OrthogonalHeight: die reale Höhe, die lokal Z=0 entspricht. Lokal Z=0
   // ist TERRAIN.zmin (dort setzt auch die Höhe im Szenengraphen auf 0),
@@ -5613,7 +5734,7 @@ if (typeof module !== 'undefined' && module.exports) {
     roadInfo: roadInfo,
     segmentLabels: segmentLabels,
     getRoadPreviewLabels: function () { return roadPreviewLabels; },
-    TIFF_MAX_PIXELS: TIFF_MAX_PIXELS,
+    TIFF_MAX_PIXELS: TIFF_MAX_PIXELS, TIFF_BLOB_BYTES: TIFF_BLOB_BYTES, readTiffTileWindow: readTiffTileWindow, lonLatToCrs: lonLatToCrs,
     TIFF_MAX_TOTAL_PIXELS: TIFF_MAX_TOTAL_PIXELS,
     TIFF_MAX_FILE_BYTES: TIFF_MAX_FILE_BYTES,
     checkTiffFiles: checkTiffFiles,
@@ -5647,7 +5768,7 @@ if (typeof module !== 'undefined' && module.exports) {
     crsToLonLat: crsToLonLat,
     crsTransformer: crsTransformer,
     crsTransformIsApprox: crsTransformIsApprox,
-    transverseMercatorForward: transverseMercatorForward,
+    transverseMercatorForward: transverseMercatorForward, laeaForward: laeaForward, laeaInverse: laeaInverse, projForward: projForward, projInverse: projInverse,
     IFC_TARGET_CRS: IFC_TARGET_CRS,
     objectTriangles: objectTriangles,
     collectExportObjects: collectExportObjects,

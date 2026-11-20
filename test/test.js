@@ -551,6 +551,19 @@ test('buildIfc: IfcProjectedCRS nennt Beschreibung, Datum, Abbildung und Zone, I
   assert.ok(crs2.indexOf("'EPSG:12345',$,$,$,$,$,") > 0, crs2);
 });
 
+test('buildIfc: Ziel EPSG:3035 (LAEA) - Koordinaten umgerechnet, IfcProjectedCRS nennt die Lambert-Azimutal-Abbildung', function () {
+  terrainForExportTests();
+  const e0 = 692000, n0 = 5336000;
+  const ring = [e0 - 3, n0 - 3, 505, e0 + 3, n0 - 3, 505, e0 + 3, n0 + 3, 512, e0 - 3, n0 + 3, 512];
+  const geo = app.collectExportGeometry([ring], -10, -10, 10, 10);
+  const ifc = app.buildIfc(geo, -10, -10, 25832, { coords: 'abs', targetEpsg: 3035 });
+  const crs = ifc.split('\n').filter(function (l) { return /IFCPROJECTEDCRS/.test(l); })[0];
+  assert.ok(crs.indexOf("'EPSG:3035'") > 0 && crs.indexOf('LAEA') > 0 && crs.indexOf("'LambertAzimuthalEqualArea'") > 0 && crs.indexOf('TransverseMercator') < 0, crs);
+  const pts = ifc.split('\n').filter(function (l) { return /IFCCARTESIANPOINTLIST3D/.test(l); })[0];
+  const nums = pts.slice(pts.indexOf('LIST3D(') + 7).match(/-?\d+\.?\d*/g).map(Number);
+  assert.ok(nums[0] > 4.0e6 && nums[0] < 4.5e6 && nums[1] > 2.7e6 && nums[1] < 3.0e6, 'Koordinaten in LAEA: ' + nums[0] + ' / ' + nums[1]);
+});
+
 test('buildIfc: leerer Ausschnitt wirft eine verständliche Meldung', function () {
   terrainForExportTests();
   assert.throws(function () { app.buildIfc({ terrain: [], buildings: [] }, 0, 0, 25832); }, /Geometrie/);
@@ -1941,6 +1954,29 @@ test('Karte: Umrechnung ins Längen-/Breitengrad stimmt mit PROJ (pyproj 3.8) ü
   assert.strictEqual(app.crsGeoDefinition(4326), null, 'Grad-Systeme gehen nicht als Geländebezug durch');
 });
 
+test('EPSG:3035 (ETRS89-LAEA): Abbildung und Umkehrung stimmen mit GDAL überein (BEV-Höhenraster)', function () {
+  // [Länge, Breite, Rechtswert, Hochwert] aus gdaltransform -s_srs EPSG:4326 -t_srs EPSG:3035
+  const ref = [
+    [16.3725, 48.2082, 4794184.3419502, 2808731.08132034], [10, 52, 4321000, 3210000], [-9.14, 38.72, 2665402.84004598, 1946531.12440811],
+    [24.94, 60.17, 5145382.16170416, 4206177.50404137], [13.36, 38.12, 4617623.46279218, 1677548.38829252],
+    [2.3522, 48.8566, 3760771.86483801, 2889484.8019008], [28.0, 45.0, 5727010.21361574, 2602853.37143179], [5.0, 60.0, 4041548.12525336, 4109791.65987687]
+  ];
+  const d = app.crsGeoDefinition(3035);
+  assert.ok(d && d.laea);
+  ref.forEach(function (r) {
+    const f = app.laeaForward(r[1], r[0], d);
+    assert.ok(Math.hypot(f.e - r[2], f.n - r[3]) < 0.01, 'vorwärts ' + r[0] + '/' + r[1] + ': ' + (f.e - r[2]).toFixed(4) + ' / ' + (f.n - r[3]).toFixed(4));
+    const g = app.crsToLonLat(3035, r[2], r[3]);
+    const dm = Math.hypot((g.lon - r[0]) * 111320 * Math.cos(r[1] * Math.PI / 180), (g.lat - r[1]) * 110540);
+    assert.ok(dm < 0.01, 'rückwärts ' + r[0] + '/' + r[1] + ': ' + dm.toFixed(5) + ' m');
+  });
+  // Umrechnung in UTM über die Breite/Länge: Wien liegt in Zone 33, Madrid in Zone 30
+  const toUtm = app.crsTransformer(3035, 25833), w = toUtm(4794184.3419502, 2808731.08132034);
+  assert.ok(w.e > 600000 && w.e < 620000 && w.n > 5340000 && w.n < 5350000, JSON.stringify(w));
+  assert.strictEqual(app.crsLabel(3035), 'EPSG:3035 · ETRS89-extended / LAEA Europe');
+  assert.strictEqual(app.crsTransformIsApprox(3035, 25833), false);
+});
+
 test('Karte: Kachelplan für ein 1000-m-Gelände in EPSG:25832 - höchstens 36 Kacheln, Abbildung trifft die Mitte', function () {
   const t = { w: 1000, d: 1000, originE: 713500, originN: 5420500, epsg: 25832 };
   const plan = app.osmMapPlan(t);
@@ -2032,6 +2068,93 @@ test('GeoTIFF: die Gesamtgrenze für mehrere Kacheln greift, bevor die dritte en
     { buffer: new ArrayBuffer(0), name: 'k1.tif' }, { buffer: new ArrayBuffer(0), name: 'k2.tif' }, { buffer: new ArrayBuffer(0), name: 'k3.tif' }]),
     function (e) { return /k3\.tif/.test(e.message) && /192 Mio\./.test(e.message); });
   assert.strictEqual(reads, 2);
+  delete global.GeoTIFF;
+});
+
+/* Künstliches BEV-Raster: 50001 x 50001 Pixel in EPSG:3035, Zellwert = Spalte + Zeile / 1000 (so verrät jeder Wert seine Lage).
+   fromBlob liefert nur das angeforderte Fenster; reads zählt die Aufrufe von readRasters, windows merkt sich die Fenster. */
+function fakeBevTiff(state) {
+  const W = 50001, H = 50001;
+  return {
+    fromBlob: function () {
+      return Promise.resolve({
+        getImage: function () {
+          return Promise.resolve({
+            getWidth: function () { return W; }, getHeight: function () { return H; },
+            getOrigin: function () { return [4749999.5, 2850000.5, 0]; }, getResolution: function () { return [1, -1, 0]; },
+            getFileDirectory: function () { return { GDAL_NODATA: '-9999' }; }, getGeoKeys: function () { return { ProjectedCSTypeGeoKey: state.epsg || 3035 }; },
+            readRasters: function (o) {
+              state.reads = (state.reads || 0) + 1;
+              const w = o && o.window ? o.window : [0, 0, W, H];
+              state.windows = (state.windows || []).concat([w]);
+              const cw = w[2] - w[0], ch = w[3] - w[1], band = new Float32Array(cw * ch);
+              for (let r = 0; r < ch; r++) for (let c = 0; c < cw; c++) band[r * cw + c] = (w[0] + c) + (w[1] + r) / 1000;
+              return Promise.resolve([band]);
+            }
+          });
+        }
+      });
+    }
+  };
+}
+
+test('GeoTIFF-Ausschnitt: nur das Fenster um den Pin wird gelesen, Ursprung und Zellwerte stimmen (BEV-Kachel, EPSG:3035)', async function () {
+  const st = {};
+  global.GeoTIFF = fakeBevTiff(st);
+  const blob = { size: 7.9e9 };
+  const wien = { lon: 16.3725, lat: 48.2082 };
+  const t = await app.readTiffTileWindow(blob, 'ALS_DTM.tif', { lon: wien.lon, lat: wien.lat, size: 1000 }, 0);
+  assert.strictEqual(st.reads, 1);
+  assert.ok(t.W >= 1000 && t.W <= 1004 && t.H >= 1000 && t.H <= 1004, t.W + ' x ' + t.H);
+  assert.strictEqual(t.windowed, true);
+  assert.strictEqual(t.epsg, 3035);
+  assert.strictEqual(t.nodata, -9999);
+  // die Mitte des Fensters ist der Pin: Rechtswert 4794184.34, Hochwert 2808731.08 (gdaltransform)
+  const cx = t.originX + t.W / 2 * t.resX, cy = t.originY - t.H / 2 * t.resY;
+  assert.ok(Math.abs(cx - 4794184.34) < 3 && Math.abs(cy - 2808731.08) < 3, cx + ' / ' + cy);
+  // Zellwert = Spalte + Zeile/1000 der GANZEN Datei: das zeigt, dass Ursprung und Fenster zusammenpassen
+  const w = st.windows[0];
+  assert.strictEqual(t.band[0], w[0] + w[1] / 1000);
+  assert.ok(Math.abs(t.originX - (4749999.5 + w[0])) < 1e-9 && Math.abs(t.originY - (2850000.5 - w[1])) < 1e-9);
+  const col = Math.round((4794184.34 - t.originX) / t.resX - 0.5), row = Math.round((t.originY - 2808731.08) / t.resY - 0.5);
+  assert.strictEqual(Math.floor(t.band[row * t.W + col]), 44184 + 0 * 1, 'Spalte des Pins in der Datei (4794184 - 4749999.5 = 44184.5)');
+  delete global.GeoTIFF;
+});
+
+test('GeoTIFF-Ausschnitt: Rechteck in Länge/Breite, Ort außerhalb der Datei, zu großer Ausschnitt, ohne Ort, unbekanntes Bezugssystem', async function () {
+  const st = {};
+  global.GeoTIFF = fakeBevTiff(st);
+  const blob = { size: 7.9e9 };
+  const r = await app.readTiffTileWindow(blob, 'k.tif', { w: 16.36, e: 16.38, s: 48.20, n: 48.215 }, 0);
+  assert.ok(r.W > 1400 && r.W < 1800 && r.H > 1600 && r.H < 1900, 'umschließender Kasten des gedrehten Rechtecks: ' + r.W + ' x ' + r.H);
+  // Salzburg liegt nicht in dieser Kachel
+  assert.strictEqual(await app.readTiffTileWindow(blob, 'k.tif', { lon: 13.055, lat: 47.8095, size: 1000 }, 0), null);
+  // 50 km x 50 km sind 2,5 Mrd. Pixel
+  await assert.rejects(app.readTiffTileWindow(blob, 'k.tif', { w: 15.9, e: 16.4, s: 48.15, n: 48.55 }, 0), /Mio\./);
+  // ohne Ausschnitt und riesig: Hinweis auf die Karte, nichts gelesen
+  const before = st.reads;
+  await assert.rejects(app.readTiffTileWindow(blob, 'k.tif', null, 0), /Wähle zuerst auf der Karte einen Ort/);
+  assert.strictEqual(st.reads, before, 'nichts entpackt');
+  global.GeoTIFF = fakeBevTiff({ epsg: 12345 });
+  await assert.rejects(app.readTiffTileWindow(blob, 'k.tif', { lon: 16.37, lat: 48.2, size: 1000 }, 0), /EPSG:12345/);
+  delete global.GeoTIFF;
+});
+
+test('GeoTIFF-Ausschnitt: mehrere Dateien - nur die, in denen der Ort liegt, zählen; liegt er in keiner, kommt eine Meldung', async function () {
+  const st = {};
+  global.GeoTIFF = fakeBevTiff(st);
+  const blob = { size: 7.9e9 };
+  const win = { lon: 16.3725, lat: 48.2082, size: 1000 };
+  const tiles = await app.readTiffTiles([{ blob: blob, name: 'a.tif', window: win }, { blob: blob, name: 'b.tif', window: { lon: 13.055, lat: 47.8095, size: 1000 } }]);
+  assert.strictEqual(tiles.length, 1);
+  assert.strictEqual(tiles[0].name, 'a.tif');
+  await assert.rejects(app.readTiffTiles([{ blob: blob, name: 'x.tif', window: { lon: 13.055, lat: 47.8095, size: 1000 } }]), /keiner der Datei|in keiner/);
+  // bis zum fertigen Gelände: Beschriftung nennt den Ausschnitt, Bezugssystem EPSG:3035, Größe etwa 1 km
+  const ter = app.gridTiles(tiles, 1400);
+  assert.ok(/Ausschnitt 100\d×100\d px/.test(ter.label), ter.label);
+  assert.strictEqual(ter.epsg, 3035);
+  assert.ok(ter.w >= 1000 && ter.w <= 1004 && ter.d >= 1000 && ter.d <= 1004, ter.w + ' x ' + ter.d);
+  assert.ok(ter.zmax > 44000, 'Höhen sind die Zellwerte der künstlichen Datei');
   delete global.GeoTIFF;
 });
 

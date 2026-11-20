@@ -80,12 +80,15 @@ gesperrt.
 Nicht gelesen werden ESRI-ASCII-Raster (`.asc`) und Dezimalkommas in XYZ-Dateien. Wandle sie
 vorher in GeoTIFF um, zum Beispiel mit GDAL.
 
-**Größe.** Das Tool liest jede Datei ganz in den Speicher. Es lehnt deshalb vor dem Lesen ab:
-Dateien über 1 GB, Kacheln über 100 Millionen Pixel und mehr als 150 Millionen Pixel (oder 2 GB)
-zusammen; bei XYZ mehr als 30 Millionen Punkte; bei CityGML insgesamt mehr als 300 MB; bei IFC mehr als 300 MB je Datei. Die Meldung nennt die Datei und die Zahl. Dann
-vorher einen Ausschnitt schneiden, etwa mit
-`gdal_translate -projwin <links> <oben> <rechts> <unten> -of GTiff eingabe.tif ausschnitt.tif`.
-Das betrifft vor allem Österreich, wo die BEV-Raster sehr groß sind.
+**Sehr große GeoTIFF (zum Beispiel BEV, 7,9 GB).** Dateien über 300 MB liest das Tool **nicht ganz, sondern nur den Ausschnitt um
+den gewählten Ort**. Setze zuerst auf der Startkarte einen Pin, ziehe ein Rechteck auf oder wähle eine Adresse, dann wähle die Datei
+unter „Daten“. Beim BEV-Raster dauert das etwa eine halbe Sekunde; im Datenfenster steht „Ausschnitt“. Ohne gewählten Ort, bei
+einem Ort außerhalb der Datei oder einem Ausschnitt über 100 Millionen Pixel erscheint eine Meldung.
+
+**Größe.** Kleinere Dateien liest das Tool ganz in den Speicher. Es lehnt deshalb vor dem Lesen ab:
+Dateien über 1 GB (bei GeoTIFF über 300 MB gilt der Ausschnitt, s. o.), Kacheln über 100 Millionen Pixel und mehr als 150 Millionen Pixel (oder 2 GB)
+zusammen; bei XYZ mehr als 30 Millionen Punkte; bei CityGML insgesamt mehr als 300 MB; bei IFC mehr als 300 MB je Datei. Die Meldung nennt die Datei und die Zahl. Wer
+lieber selbst vorher einen Ausschnitt schneidet, kann `gdal_translate -projwin <links> <oben> <rechts> <unten> -of GTiff eingabe.tif ausschnitt.tif` nehmen.
 
 ---
 
@@ -266,8 +269,8 @@ Gelände. Er ist **standardmäßig aus**. Beim Einschalten lädt dein Browser Ka
 „© OpenStreetMap-Mitwirkende“.
 
 - Die Karte braucht ein Bezugssystem, das die Anwendung in Längen- und Breitengrad umrechnen kann:
-  UTM (ETRS89 und WGS 84), Gauß-Krüger (DHDN) und Gauß-Krüger Österreich (MGI, EPSG:31254 bis 31256).
-  Bei anderen Systemen, zum Beispiel EPSG:3035 des BEV, schaltet sich die Karte mit einer Meldung ab.
+  UTM (ETRS89 und WGS 84), Gauß-Krüger (DHDN), Gauß-Krüger Österreich (MGI, EPSG:31254 bis 31256) und das europäische
+  ETRS89-LAEA (EPSG:3035, BEV). Bei anderen Systemen schaltet sich die Karte mit einer Meldung ab.
 - Bei Bessel-Systemen (DHDN, MGI) liegt die Karte auf etwa 1 bis 2 m genau.
 - Die Karte lädt je nach Größe des Geländes bis zu 144 Kacheln auf einmal. Je kleiner das Gelände, desto feiner die Stufe und desto kleiner wirkt die Beschriftung.
 - Nach einem neuen Gelände lädt sich die Karte von selbst neu.

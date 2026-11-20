@@ -802,6 +802,7 @@ await test('Startkarte: für Österreich nennt das Fenster einen Befehl zum Zusc
   const body = s.document.getElementById('sm-pop-body');
   const txt = body.textContent;
   assert.ok(txt.indexOf(s.T('smCutToggle')) >= 0, 'Schalter für Fortgeschrittene');
+  assert.ok(txt.indexOf(s.T('smBigHint')) >= 0 && txt.indexOf('liest nur den Ausschnitt') > 0, 'Hinweis: große Datei direkt wählen');
   assert.ok(txt.indexOf(s.T('smCutTitle')) >= 0 && txt.indexOf('1000 × 1000 m um den Pin') >= 0, txt);
   const findCls = function (n, c) { let r = null; (function walk(e) { if (e.className && String(e.className).indexOf(c) >= 0) r = e; (e.children || []).forEach(walk); })(n); return r; };
   const inner = findCls(body, 'sm-cut-body'), tog = findCls(body, 'sm-cut-toggle');
@@ -1421,14 +1422,81 @@ await test('Karte (OpenStreetMap): Schalter nur mit Gelände, Hinweis zur IP-Adr
   assert.strictEqual(g('osm-status').textContent, 'Map loaded (36 tiles).');
 });
 
-await test('GeoTIFF zu groß: klare Meldung im Datenfenster, bestehendes Gelände bleibt', async function () {
+/* Künstliches BEV-Raster (50001 x 50001, EPSG:3035); fromBlob liefert nur das angeforderte Fenster, Zellwert = Spalte + Zeile/1000 */
+function fakeBevGeoTIFF(state) {
+  const W = 50001, H = 50001;
+  return {
+    fromBlob: function () {
+      return Promise.resolve({ getImage: function () {
+        return Promise.resolve({
+          getWidth: function () { return W; }, getHeight: function () { return H; },
+          getOrigin: function () { return [4749999.5, 2850000.5, 0]; }, getResolution: function () { return [1, -1, 0]; },
+          getFileDirectory: function () { return { GDAL_NODATA: '-9999' }; }, getGeoKeys: function () { return { ProjectedCSTypeGeoKey: 3035 }; },
+          readRasters: function (o) {
+            state.windows = (state.windows || []).concat([o && o.window]);
+            const w = o && o.window ? o.window : [0, 0, W, H], cw = w[2] - w[0], ch = w[3] - w[1], band = new Float32Array(cw * ch);
+            for (let r = 0; r < ch; r++) for (let c = 0; c < cw; c++) band[r * cw + c] = 150 + ((w[0] + c) % 100) / 10 + ((w[1] + r) % 100) / 10;
+            return Promise.resolve([band]);
+          }
+        });
+      } });
+    }
+  };
+}
+
+function bigBevFile(name) {
+  const f = fakeFile(name, '');
+  f.size = 7.9e9;
+  f.arrayBuffer = function () { throw new Error('die ganze Datei darf nicht gelesen werden'); };
+  return f;
+}
+
+await test('GeoTIFF riesig (BEV 7,9 GB): ohne Ort klare Meldung, das bestehende Gelände bleibt', async function () {
   const s = newScope();
-  const f = fakeFile('bev_als_dtm.tif', '');
-  f.size = 2.4e9;
-  await s.handleDemFiles([f]);
+  s.GeoTIFF = fakeBevGeoTIFF({});
+  await s.handleDemFiles([bigBevFile('ALS_DTM_CRS3035.tif')]);
   const txt = s.document.getElementById('dem-status').textContent;
-  assert.ok(txt.indexOf('bev_als_dtm.tif') >= 0 && txt.indexOf('zu groß') > 0 && txt.indexOf('gdal_translate') > 0, txt);
+  assert.ok(txt.indexOf('ALS_DTM_CRS3035.tif') >= 0 && txt.indexOf('zu viel für den Browser') > 0 && txt.indexOf('Wähle zuerst auf der Karte einen Ort') > 0, txt);
   assert.strictEqual(s.document.getElementById('dem-status').className.indexOf('err') > 0, true);
+  assert.strictEqual(vm.runInContext('TERRAIN', s), null);
+});
+
+await test('GeoTIFF riesig (BEV 7,9 GB): mit Pin wird nur der Ausschnitt gelesen und als Gelände gebaut, Rechteck wählt den Bereich', async function () {
+  const s = newScope();
+  s.initUI();
+  const st = {};
+  s.GeoTIFF = fakeBevGeoTIFF(st);
+  s.smFlyTo(48.2082, 16.3725, 15);                        // Pin in Wien (liegt in der Kachel E4750000 N2800000)
+  await s.handleDemFiles([bigBevFile('ALS_DTM_CRS3035.tif')]);
+  const t = vm.runInContext('TERRAIN', s);
+  assert.ok(t, s.document.getElementById('dem-status').textContent);
+  assert.strictEqual(t.epsg, 3035);
+  assert.ok(t.w >= 1000 && t.w <= 1004 && t.d >= 1000 && t.d <= 1004, t.w + ' x ' + t.d);
+  assert.strictEqual(st.windows.length, 1);
+  const w = st.windows[0];
+  assert.ok(w[2] - w[0] <= 1004 && w[3] - w[1] <= 1004, 'nur ein Fenster von rund 1000 Pixeln');
+  const status = s.document.getElementById('dem-status').textContent;
+  assert.ok(status.indexOf('ALS_DTM_CRS3035.tif') >= 0 && status.indexOf(s.T('demWindow')) > 0 && s.document.getElementById('dem-status').className.indexOf('ok') > 0, status);
+  assert.strictEqual(s.document.getElementById('startmap').style.display, 'none', 'die Startkarte verschwindet');
+  // Rechteck statt Pin: Fenster entsprechend größer
+  vm.runInContext('smRect = { a: { lon: 16.36, lat: 48.20 }, b: { lon: 16.39, lat: 48.22 } }', s);
+  const st2 = {};
+  s.GeoTIFF = fakeBevGeoTIFF(st2);
+  await s.handleDemFiles([bigBevFile('ALS_DTM_CRS3035.tif')]);
+  const w2 = st2.windows[0];
+  assert.ok(w2[2] - w2[0] > 2000 && w2[3] - w2[1] > 2000, 'Rechteck ca. 2,2 x 2,2 km: ' + (w2[2] - w2[0]) + ' x ' + (w2[3] - w2[1]));
+});
+
+await test('GeoTIFF riesig: liegt der Pin nicht in der Datei, nennt die Meldung das; kleine Dateien laden wie bisher ganz', async function () {
+  const s = newScope();
+  s.initUI();
+  s.GeoTIFF = fakeBevGeoTIFF({});
+  s.smFlyTo(47.8095, 13.055, 15);                          // Salzburg: nicht in der Wiener Kachel
+  await s.handleDemFiles([bigBevFile('ALS_DTM_CRS3035.tif')]);
+  const txt = s.document.getElementById('dem-status').textContent;
+  assert.ok(/liegt in keiner der Datei|in keiner/.test(txt) && s.document.getElementById('dem-status').className.indexOf('err') > 0, txt);
+  const small = await scopeWithTerrain();
+  assert.ok(vm.runInContext('TERRAIN', small), 'eine kleine Datei (Größe 0) geht den alten Weg über arrayBuffer');
 });
 
 function xyzFile(name, n) {

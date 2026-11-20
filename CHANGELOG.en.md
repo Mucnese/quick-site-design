@@ -13,6 +13,10 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
+- **Reading large GeoTIFFs directly:** Files over 300 MB (for example the BEV height raster, 7.9 GB) are not read completely, only the area around
+  the chosen place (pin, rectangle or address on the start map). For the BEV raster about 5 MB and half a second for 1 × 1 km; the values match
+  GDAL. Cutting with GDAL is no longer necessary.
+- **EPSG:3035 (ETRS89-LAEA):** The map, the conversion and the IFC export know the coordinate system of the BEV rasters (checked against GDAL to 1 cm).
 - **CityJSON:** Buildings can also be loaded as CityJSON (CityJSON 1.x and 2.0, CityJSONSeq, feature lists like those of the 3DBAG API). The
   highest level of detail of each part is used; footprints and terrain are dropped. This makes the Dutch 3DBAG buildings loadable.
 - **EU geoportals:** The address search and the start map now name the pages of the national mapping agency for the terrain model

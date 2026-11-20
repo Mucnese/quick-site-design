@@ -76,12 +76,16 @@ locked.
 ESRI ASCII grids (`.asc`) and decimal commas in XYZ files are not read. Convert them to GeoTIFF
 first, for example with GDAL.
 
-**Size.** The tool reads each file completely into memory. Before reading it therefore rejects:
-files over 1 GB, tiles over 100 million pixels, and more than 150 million pixels (or 2 GB) in
-total; for XYZ more than 30 million points; for CityGML more than 300 MB in total; for IFC more than 300 MB per file. The message names the file and the number. In that case
-cut out an area first, for example with
+**Very large GeoTIFF (for example BEV, 7.9 GB).** Files over 300 MB are **not read completely, only the area around the chosen place**.
+First set a pin on the start map, drag a rectangle or choose an address, then choose the file under “Data”. With the BEV raster this takes
+about half a second; the data window says “extract”. Without a chosen place, with a place outside the file or an area over
+100 million pixels a message appears.
+
+**Size.** Smaller files are read completely into memory. Before reading the tool therefore rejects:
+files over 1 GB (for GeoTIFF over 300 MB the extract applies, see above), tiles over 100 million pixels, and more than 150 million pixels (or 2 GB) in
+total; for XYZ more than 30 million points; for CityGML more than 300 MB in total; for IFC more than 300 MB per file. The message names the file and the number. If you prefer
+to cut out an area yourself first, you can use
 `gdal_translate -projwin <left> <top> <right> <bottom> -of GTiff input.tif cutout.tif`.
-This mainly concerns Austria, where the BEV rasters are very large.
 
 ---
 
@@ -260,8 +264,8 @@ transmitted (see [privacy](datenschutz.html)). At the bottom left the attributio
 “© OpenStreetMap contributors” appears.
 
 - The map needs a coordinate system the application can convert to latitude and longitude: UTM
-  (ETRS89 and WGS 84), Gauss-Krüger (DHDN) and Gauss-Krüger Austria (MGI, EPSG:31254 to 31256).
-  For other systems, for example EPSG:3035 of the BEV, the map switches itself off with a message.
+  (ETRS89 and WGS 84), Gauss-Krüger (DHDN), Gauss-Krüger Austria (MGI, EPSG:31254 to 31256) and the European
+  ETRS89-LAEA (EPSG:3035, BEV). For other systems the map switches itself off with a message.
 - For Bessel systems (DHDN, MGI) the map is accurate to about 1 to 2 m.
 - Depending on the terrain size the map loads up to 144 tiles at once. The smaller the terrain, the finer the zoom level and the smaller the labels look.
 - After a new terrain the map reloads on its own.
