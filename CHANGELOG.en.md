@@ -39,6 +39,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   and one point; the exact point on buildings follows as soon as the mouse rests briefly.
 
 ### Changed
+- **Swept path of the semi-trailer:** dimensions and turning radii now from the “Sattelzug 16,5” export of Autodesk
+  Vehicle Tracking (replaces the Luzern sheet). The model matches its radii to within a few centimetres; when turning in,
+  the rear swings out a little further in the template (see guide).
 - Excavation: the depth now goes down to −100 m (before −30 m).
 - Help window: “Close” stays at the top, only the text scrolls.
 - No fog when zooming out; the background behind the terrain is light.

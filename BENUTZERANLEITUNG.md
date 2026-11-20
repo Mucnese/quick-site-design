@@ -225,8 +225,12 @@ Hinweis: Objekte, die in einer Grube stehen, sitzen auf der Höhe des ursprüngl
   fährt einen Sattelzug von 16,50 m Länge und 2,55 m Breite auf der Straßenmitte entlang. Die
   überstrichene Fläche liegt als blaue Fläche mit Rand auf der Straße, **rot** dort, wo sie über die
   Fahrbahn hinausragt. Das Fenster nennt die benötigte Breite und „Passt“ oder „Passt nicht“ mit
-  dem Überstand. Grundlage ist das Blatt 736.107.2 des Kantons Luzern (2006), nicht die RBSV;
-  die Werte wurden an den Kurven dieses Blatts abgeglichen (90 % der Punkte innerhalb von 7 cm).
+  dem Überstand. Grundlage sind die Maße und Wenderadien des Sattelzugs 16,5 m aus
+  **Autodesk Vehicle Tracking** (Entwurfsgeschwindigkeit 5 km/h): Das Modell trifft dessen Radien
+  (äußere Karosserie 12,5 m, inneres Rad 5,28 m, bei Vollausschlag 7,9 m) auf wenige Zentimeter.
+  Einschränkungen: Lenkeinschlag und Knickwinkel werden nicht begrenzt, und das Heck schwingt beim Einlenken
+  in der Vorlage etwas weiter nach außen aus (0,42 m statt 0,30 m bei R = 10 m). Wo es knapp wird, mit
+  Vehicle Tracking nachprüfen.
 - **Kranradien:** überschneiden sie sich, erscheint eine Warnung in der Übersicht.
 - **Messen:** Die Karte **Messen** (unten, ganz rechts) misst Strecken auf Gelände und Gebäuden. Punkte
   nacheinander anklicken; an jeder Strecke stehen die **waagerechte Länge** und der **Höhenunterschied**

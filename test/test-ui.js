@@ -639,7 +639,7 @@ await test('Baustraße: Schleppkurve Sattelzug - Schalter im Formular, Ergebnis 
   const txt = el.textContent;
   assert.ok(txt.indexOf('Sattelzug 16,50 m braucht') >= 0, txt);
   assert.ok(txt.indexOf('Passt nicht') >= 0, txt);
-  assert.ok(txt.indexOf('Luzern') < 0, 'Quelle steht nicht im Fenster');
+  assert.ok(txt.indexOf('Vehicle Tracking') < 0, 'Quelle steht nicht im Fenster');
   obj.params.width = 9; s.rebuildObject(obj);
   s.renderRoadEarth(obj, el);
   assert.ok(el.textContent.indexOf(s.T('sweptOk')) >= 0 && el.textContent.indexOf('Passt nicht') < 0, el.textContent);

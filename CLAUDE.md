@@ -228,15 +228,17 @@ Zugmaschine und Ersatzachse des Aufliegers laufen ohne Schlupf nach, 5 Teilschri
 0,25 m) und `checkSemiTruck` (größte seitliche Abweichung links/rechts von der Mitte,
 Bedarf = 2 × das Größere, `fits`/`over`). `sweptOutlines` (Raster und Marching Squares)
 und `addSweptOverlay` sind nur Darstellung (blaue Fläche, Rand; rot, wo er über die
-Fahrbahn hinausragt). Fahrzeugwerte stehen in `SEMI_TRUCK` mit Quelle: Kanton Luzern,
-Blatt 736.107.2 (2006), Sattelschlepper 16,50 m; die RBSV 2020 liegt nicht vor. Die
-Maße der Seitenansicht (Anhängerachse 7,66 m hinter dem Sattelzapfen) trafen die Kurven
-des Blatts schlecht; kalibriert wurde auf eine Ersatzachse 5,90 m hinter dem Sattelzapfen,
-Sattelzapfen 0,60 m vor der Hinterachse, Heck 6,00 m hinter der Ersatzachse (Gesamtlänge
-bleibt 16,50 m). Der Test "Ränder stimmen mit den Kurven des Luzerner Blatts überein"
-hält das fest: 90 % der Punkte der acht Kurven (22,5–180°, R = 10 m) lagen im Abgleich
-innerhalb von 7 cm. Neue Fahrzeuge oder RBSV-Werte: nur `SEMI_TRUCK` ändern und den
-Abgleich wiederholen, nicht Werte raten.
+Fahrbahn hinausragt). Fahrzeugwerte stehen in `SEMI_TRUCK` mit Quelle: Autodesk Vehicle Tracking, Export
+"Sattelzug 16,5" (V26.00, 5 km/h; ersetzt seit 2026-11-20 das Luzerner Blatt 736.107.2). Aus der DXF stammen die
+Maße der Fahrzeugzeichnung (Stoßfänger–Vorderachse 1,43, Radstand 3,95, Sattelzapfen 4,65 vom Stoßfänger, Zugmaschine
+6,20, Auflieger 13,59, Achsen 6,2/7,6/9,0 m hinter dem Sattelzapfen, Heck 2,85 hinter der letzten Achse) und die
+Kontrollradien (äußere Karosserie 12,5, äußeres Rad 11,962, inneres Rad 5,277 bei Hinterachse auf 10,0 m; Vollausschlag
+7,028 und 7,9 m Wand zu Wand). Die drei Achsen des Aufliegers sind durch eine Ersatzachse in ihrer Mitte (7,6 m)
+ersetzt; damit stimmen die Radien auf wenige cm (Test "Wenderadien der Vehicle-Tracking-Vorlage"). Bekannte Lücken:
+kein Lenk- und Knickwinkelgrenzwert, und das Heck schwingt beim Einlenken in der Vorlage weiter aus (0,42 m statt
+0,30 m bei R = 10 m; 1,38 m statt 0,60 m bei Vollausschlag, wo VT mit 4 s Lenkzeit fährt). Die DXF enthält nur die
+Fahrzeugvorlage und Umrisse; die Schleppkurven selbst stecken in Autodesk-Proxyobjekten und sind nicht lesbar. Neue
+Fahrzeuge: nur `SEMI_TRUCK` ändern und die Kontrollradien erneut prüfen, nicht Werte raten.
 
 **IFC-Koordinaten.** `buildIfc(..., {coords})`: `'abs'` (Voreinstellung der Oberfläche, Auswahl `ifc-coords`)
 schreibt Rechtswert, Hochwert und Höhe ü. NHN in die Geometrie, IfcMapConversion ist dann Nullversatz;

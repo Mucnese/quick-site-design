@@ -40,6 +40,9 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   einen Punkt; der genaue Punkt auf Gebäuden wird nachgezogen, sobald die Maus kurz steht.
 
 ### Geändert
+- **Schleppkurve Sattelzug:** Maße und Wenderadien jetzt aus dem Export „Sattelzug 16,5“ von Autodesk Vehicle Tracking
+  (ersetzt das Luzerner Blatt). Das Modell trifft dessen Radien auf wenige Zentimeter; das Heck schwingt beim Einlenken
+  in der Vorlage etwas weiter aus (siehe Anleitung).
 - Baugrube: die Tiefe reicht jetzt bis −100 m (vorher −30 m).
 - Hilfefenster: „Schließen“ bleibt oben stehen, nur der Text scrollt.
 - Kein Nebel mehr beim Herauszoomen; der Hintergrund hinter dem Gelände ist hell.

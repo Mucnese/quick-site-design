@@ -2932,32 +2932,31 @@ function roadInfo(p) {
 /* =========================================================
    Schleppkurve Sattelzug
    Einspurmodell: die Mitte der Vorderachse folgt der Straßenmitte (Leitlinie),
-   die Hinterachse der Zugmaschine und die Achsgruppe des Aufliegers laufen
+   die Hinterachse der Zugmaschine und die Ersatzachse des Aufliegers laufen
    ohne Querschlupf nach. Zugmaschine und Auflieger sind Rechtecke; überstrichen
    wird, was sie dabei zusammen belegen.
-   Vorgabe: Sattelzug 16,50 m, Breite 2,55 m, starre Nachläuferachse, ohne
-   Sicherheitszuschlag - Kanton Luzern, Blatt 736.107.2 "Schleppkurven
-   Sattelschlepper L=16.50m" (2006). Die RBSV 2020 liegt nicht vor; deren Werte
-   ersetzen später nur die Zahlen in SEMI_TRUCK.
-   Kalibrierung: Das Blatt nennt Maße einer Seitenansicht (nicht maßstäblich).
-   Mit den Zeichenmaßen (Anhängerachse 7,66 m hinter dem Sattelzapfen) liegen
-   die berechneten Ränder im Mittel 17 cm neben den Kurven des Blatts und bei
-   Kurveneintritt bis 0,7 m zu eng. Mit einer Ersatzachse 5,90 m hinter dem
-   Sattelzapfen (Achsgruppe, Sattelzapfen 0,60 m vor der Hinterachse, Länge
-   bis zum Heck 6,00 m bei gleicher Gesamtlänge von 16,50 m) liegen 90 % der
-   Punkte der acht Kurven (22,5 bis 180 Grad, R = 10 m) innerhalb von 7 cm.
+   Fahrzeug: Sattelzug 16,50 m, Breite 2,55 m, ohne Sicherheitszuschlag. Die Maße stammen aus dem Export
+   "Sattelzug 16,5" von Autodesk Vehicle Tracking (V26.00, Entwurfsgeschwindigkeit 5 km/h): Stoßfänger bis
+   Vorderachse 1,43 m, Radstand 3,95 m, Sattelzapfen 4,65 m hinter dem Stoßfänger (also 0,73 m vor der
+   Hinterachse), Zugmaschine 6,20 m lang, Auflieger 13,59 m lang und 1,74 m vor dem Sattelzapfen beginnend,
+   drei starre Achsen 6,20 / 7,60 / 9,00 m hinter dem Sattelzapfen, Heck 2,85 m hinter der letzten Achse.
+   Die drei Achsen des Aufliegers sind durch eine Ersatzachse in ihrer Mitte (7,60 m hinter dem Sattelzapfen)
+   ersetzt. Das trifft die Wenderadien der Vorlage: äußere Karosserie 12,5 m, äußeres Rad 11,962 m und inneres
+   Rad 5,277 m bei Hinterachse auf 10,0 m (hier 12,50 / 11,955 / 5,265), bei Vollausschlag äußeres Rad 7,028 m
+   und Wand zu Wand 7,9 m. Nicht übernommen sind der Lenkeinschlag und der Knickwinkel (Vorlage: 90 Grad). Beim
+   Einlenken schwingt das Heck in der Vorlage weiter nach außen aus als hier (0,42 m gegen 0,30 m bei R = 10 m).
    ========================================================= */
 const SEMI_TRUCK = {
   name: 'Sattelzug 16,50 m',
-  source: 'Kanton Luzern 736.107.2 (2006)',
+  source: 'Autodesk Vehicle Tracking, Sattelzug 16,5 m',
   width: 2.55,            // Fahrzeugbreite
-  front: 1.25,            // Stoßfänger bis Vorderachse
+  front: 1.43,            // Stoßfänger bis Vorderachse
   wheelbase: 3.95,        // Radstand der Zugmaschine
-  tailTractor: 0.95,      // Hinterachse bis Ende des Zugmaschinenrahmens
-  kingpinAhead: 0.60,     // Sattelzapfen liegt so weit vor der Hinterachse
-  kingpinToAxle: 5.90,    // Sattelzapfen bis Ersatzachse des Aufliegers
-  kingpinToFront: 2.07,   // Sattelzapfen bis Vorderkante des Aufliegers
-  axleToRear: 6.00        // Ersatzachse bis Heck
+  tailTractor: 0.82,      // Hinterachse bis Ende des Zugmaschinenrahmens
+  kingpinAhead: 0.73,     // Sattelzapfen liegt so weit vor der Hinterachse
+  kingpinToAxle: 7.60,    // Sattelzapfen bis Ersatzachse (Mitte der drei Achsen) des Aufliegers
+  kingpinToFront: 1.74,   // Sattelzapfen bis Vorderkante des Aufliegers
+  axleToRear: 4.25        // Ersatzachse bis Heck (letzte Achse 1,40 m dahinter, dann 2,85 m)
 };
 const SWEPT_STEP = 0.25;      // Schritt der Vorderachse in m
 const SWEPT_RUN = 25;         // gerade Anfahrt vor dem ersten Punkt in m

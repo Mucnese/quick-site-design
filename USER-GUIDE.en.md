@@ -221,9 +221,12 @@ Note: objects standing in a pit sit at the height of the original ground.
 - **Swept path of a semi-trailer:** the switch in the haul road properties (off by default) drives a
   semi-trailer truck of 16.50 m length and 2.55 m width along the road centre. The swept area lies on
   the road as a blue area with an outline, **red** where it leaves the carriageway. The window shows
-  the required width and “It fits” or “Does not fit” with the overhang. The basis is sheet 736.107.2
-  of Kanton Luzern (2006), not the German RBSV; the values were matched to the curves of that sheet
-  (90 % of the points within 7 cm).
+  the required width and “It fits” or “Does not fit” with the overhang. The basis are the dimensions
+  and turning radii of the 16.5 m semi-trailer from **Autodesk Vehicle Tracking** (design speed 5 km/h):
+  the model matches its radii (outer body 12.5 m, inner wheel 5.28 m, at full lock 7.9 m) to within a few
+  centimetres. Limitations: steering angle and articulation angle are not limited, and when turning in, the
+  rear swings out a little further in the template (0.42 m instead of 0.30 m at R = 10 m). Where it is tight,
+  check with Vehicle Tracking.
 - **Crane radii:** if they overlap, a warning appears in the overview.
 - **Measure:** the **Measure** card (bottom, far right) measures distances on terrain and buildings.
   Click points one after another; every segment shows its **horizontal length** and the **height

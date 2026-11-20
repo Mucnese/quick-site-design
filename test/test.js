@@ -1626,7 +1626,7 @@ test('Draufsicht schaltet die OrbitControls-Trägheit aus, sonst dreht sich die 
 
 /* ---------- Schleppkurve Sattelzug ---------- */
 
-/* Leitlinie wie auf dem Luzerner Blatt: gerade nach Osten, Bogen R rechtsrum um
+/* Leitlinie: gerade nach Osten, Bogen R rechtsrum um
    (0,0) mit Winkel alpha, danach gerade weiter. Welt: Norden = -z. */
 function turnPath(R, alphaDeg, run, post) {
   const a = alphaDeg * Math.PI / 180, pts = [];
@@ -1638,12 +1638,18 @@ function turnPath(R, alphaDeg, run, post) {
   return pts;
 }
 
-test('Sattelzug: Gesamtlänge 16,50 m und Breite 2,55 m laut Blatt 736.107.2', function () {
+test('Sattelzug: Maße laut Vehicle-Tracking-Zeichnung (Gesamtlänge 16,50 m, Breite 2,55 m, Zugmaschine 6,20 m, Auflieger 13,59 m)', function () {
+  const v = app.SEMI_TRUCK;
   assert.ok(Math.abs(app.semiTruckLength() - 16.5) < 1e-9);
-  assert.strictEqual(app.SEMI_TRUCK.width, 2.55);
-  assert.strictEqual(app.SEMI_TRUCK.front, 1.25);
-  assert.strictEqual(app.SEMI_TRUCK.wheelbase, 3.95);
-  assert.strictEqual(app.SEMI_TRUCK.kingpinToFront, 2.07);
+  assert.strictEqual(v.width, 2.55);
+  assert.strictEqual(v.front, 1.43);
+  assert.strictEqual(v.wheelbase, 3.95);
+  assert.ok(Math.abs(v.front + v.wheelbase - v.kingpinAhead - 4.65) < 1e-9, 'Sattelzapfen 4,65 m hinter dem Stoßfänger');
+  assert.ok(Math.abs(v.front + v.wheelbase + v.tailTractor - 6.2) < 1e-9, 'Zugmaschine 6,20 m');
+  assert.ok(Math.abs(v.kingpinToFront + v.kingpinToAxle + v.axleToRear - 13.59) < 1e-9, 'Auflieger 13,59 m');
+  assert.strictEqual(v.kingpinToFront, 1.74);
+  assert.strictEqual(v.kingpinToAxle, 7.6, 'Mitte der drei Achsen bei 6,2 / 7,6 / 9,0 m');
+  assert.ok(/Vehicle Tracking/.test(v.source));
 });
 
 test('Sattelzug: gerade Straße - das Fahrzeug braucht genau seine Breite, 1,275 m je Seite', function () {
@@ -1683,20 +1689,28 @@ test('Sattelzug: engere Kurve braucht mehr Breite, die Prüfung kippt mit der Fa
   assert.strictEqual(app.checkSemiTruck([{ x: 0, z: 0 }], 6), null);
 });
 
-test('Sattelzug: Ränder stimmen mit den Kurven des Luzerner Blatts überein (R = 10 m, 22,5 bis 180 Grad)', function () {
-  // Aus dem Blatt gemessen (Vektorzeichnung, Maßstab 1:200): Höhe der Außenkante über der
-  // Leitlinie im Bogeneintritt; Leitlinie liegt bei y = 10 m, Norden oben.
-  const sheet = [[-10, 11.58], [-6, 12.04], [-3, 12.18], [0, 11.91], [3, 11.06]];
-  const outlines = [22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180].map(function (a) {
-    return app.sweptOutlines(app.sweepSemiTruck(turnPath(10, a, 40, 45), app.SEMI_TRUCK, 2), 0.1, 0.02);
-  });
-  sheet.forEach(function (row) {
-    let top = -Infinity;
-    outlines.forEach(function (loops) {
-      loops.forEach(function (lp) { lp.forEach(function (q) { if (Math.abs(q.x - row[0]) < 0.12 && -q.z > top) top = -q.z; }); });
-    });
-    assert.ok(Math.abs(top - row[1]) < 0.12, 'x=' + row[0] + ': ' + top.toFixed(2) + ' statt ' + row[1]);
-  });
+test('Sattelzug: Wenderadien der Vehicle-Tracking-Vorlage (äußere Karosserie 12,5 m, äußeres Rad 11,962 m, inneres Rad 5,277 m; Vollausschlag 7,028 m und 7,9 m)', function () {
+  // Kreisfahrt im eingeschwungenen Zustand, Hinterachse der Zugmaschine auf Rr; Mittelpunkt (0, 0)
+  function steady(Rr) {
+    const v = app.SEMI_TRUCK, Rf = Math.hypot(Rr, v.wheelbase), pts = [];
+    for (let i = 0; i <= 1080; i++) { const t = i * Math.PI / 180; pts.push({ x: Rf * Math.sin(t), z: -Rf * Math.cos(t) }); }
+    const sw = app.sweepSemiTruck(pts, v, 1);
+    const st = sw.steps[sw.steps.length - 400];
+    const rad = function (q) { return Math.hypot(q[0], q[1]); };
+    const half = v.width / 2;
+    return {
+      body: Math.max(rad(st.tr[0]), rad(st.tr[1])),                         // vordere Ecke außen
+      wheel: Math.sqrt(Math.pow(rad(st.r) + half, 2) + v.wheelbase * v.wheelbase),   // Vorderrad außen
+      inner: rad(st.t) - half                                                  // Auflieger innen (Ersatzachse)
+    };
+  }
+  const a = steady(10.0);
+  assert.ok(Math.abs(a.body - 12.5) < 0.03, 'Karosserie ' + a.body.toFixed(3));
+  assert.ok(Math.abs(a.wheel - 11.962) < 0.03, 'äußeres Rad ' + a.wheel.toFixed(3));
+  assert.ok(Math.abs(a.inner - 5.277) < 0.03, 'inneres Rad ' + a.inner.toFixed(3));
+  const m = steady(4.538);                                                   // Vollausschlag laut Vorlage
+  assert.ok(Math.abs(m.wheel - 7.028) < 0.03, 'äußeres Rad bei Vollausschlag ' + m.wheel.toFixed(3));
+  assert.ok(Math.abs(m.body - 7.9) < 0.03, 'Wand zu Wand ' + m.body.toFixed(3));
 });
 
 test('Sattelzug: Umriss der überstrichenen Fläche ist eine geschlossene Schleife um das Fahrzeug', function () {
