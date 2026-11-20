@@ -40,7 +40,7 @@ gesperrt.
    (erst dann werden Kacheln von OpenStreetMap geladen und deine IP-Adresse übertragen) kannst du sie
    verschieben (Ziehen mit einer beliebigen Maustaste, auch mit gedrückter Mitteltaste) und stufenlos zoomen (Mausrad,
    **+**/**−**). Ein Klick setzt einen **Pin**; daneben öffnet sich ein
-   **Fenster mit den Links zu den Geoportalen** des Landes (Gelände- und Gebäudemodell), mit Ort und UTM-Werten
+   **Fenster mit den Links zu den Geoportalen** des Landes (Gelände- und Gebäudemodell) und, wenn die Stadt in der Tabelle steht, den **Stadtgeoportalen** (Karte, Offene Daten, teils 3D-Stadtmodell), mit Ort und UTM-Werten
    (schließen mit **×** oder **Esc**). Für **Österreich** nennt das Fenster zusätzlich (zugeklappt unter „Für Fortgeschrittene“) einen fertigen **`gdal_translate`-Befehl**, der aus einer sehr großen
    Rasterdatei (zum Beispiel BEV 1 m, über 1 GB) den Ausschnitt um den Pin (1000 × 1000 m) schneidet; **Kopieren**
    legt ihn in die Zwischenablage. Die Links stehen dann nur dort; unter der Adressleiste
@@ -49,7 +49,7 @@ gesperrt.
    Adresse oder einen Ort ein und wähle einen Vorschlag. Darunter erscheinen die Links zur
    Seite des Geländemodells (DGM) und des Gebäudemodells (LoD2) deines Bundeslandes, bei
    Österreich die Seiten von Bund und Land, **für alle übrigen Länder der EU** die Seiten der Landesvermessung (soweit
-   ein offenes Geländemodell bekannt ist; sonst steht dort ein Hinweis). Die Suche findet Orte in der ganzen EU. Die Anwendung lädt dabei nichts herunter, du
+   ein offenes Geländemodell bekannt ist; sonst steht dort ein Hinweis). **In Hauptstädten und Großstädten der EU** (zum Beispiel Wien, Berlin, München, Paris, Prag, Madrid) kommt eine Gruppe **Stadtgeoportale** mit den Karten- und Open-Data-Seiten der Stadt dazu. Die Suche findet Orte in der ganzen EU. Die Anwendung lädt dabei nichts herunter, du
    öffnest die Seiten und lädst die Dateien selbst herunter. Die gleiche Tabelle steht in der
    [README](README.md#datenquellen).
    - **Nichts Passendes gefunden?** Bauwerke wie Talbrücken stehen in OpenStreetMap oft anders oder

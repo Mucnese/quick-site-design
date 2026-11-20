@@ -257,6 +257,11 @@ der höchsten LoD (3DBAG liefert 0, 1.2, 1.3, 2.2 übereinander), LoD unter 1 (G
 Löcher werden ignoriert. Formen: CityJSON 1.x/2.0 (`transform` aus Maßstab und Verschiebung), CityJSONSeq (Kopfzeile mit `transform`, je Zeile ein
 `CityJSONFeature`), Merkmalsliste (`features`, `metadata.transform`). Geprüft an einem echten 3DBAG-Merkmal (api.3dbag.nl, EPSG:7415).
 
+**Stadtgeoportale.** `GEO_CITIES` (`app.js`, Liste von `{cc, name, names, links:[{kind: 'map'|'data'|'3d', label, url}]}`) ist eine eigene Tabelle neben den Ländern;
+`cityPortalsFor(place)` gleicht Land und Stadtname (`place.city` von Photon, ohne Akzente über `addrNorm`) mit `names` ab, `renderPlaceInto` hängt die Gruppe `addrCity` an
+(Adressleiste und Fenster am Pin). Regeln wie bei `GEO_EU`: nur Links, die bei der Prüfung antworteten, keine geratenen. Ein Test hält die Tabelle und beide README-Tabellen
+(Abschnitt „Stadtgeoportale“) gleich.
+
 **Geoportale der EU.** `GEO_EU` (nach ISO-Code, 25 Länder außer DE/AT) neben `GEO_ENTRIES` und den AT-Tabellen; `geoSourcesFor` liefert
 auch `demNote`. Regeln: nur Links, die bei der Prüfung antworteten; `fmt: 'tif'` nur, wo die Seite selbst GeoTIFF nennt, sonst
 `'unclear'` mit Hinweis; Länder ohne bekanntes offenes DGM tragen `demNote: 'euNoOpenDem'` statt eines geratenen Links. Quelle der

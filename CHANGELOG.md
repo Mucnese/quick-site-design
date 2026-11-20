@@ -9,6 +9,11 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-20
 
+### Neu
+- **Stadtgeoportale:** Für 76 Hauptstädte und Großstädte der EU (in 22 Ländern) nennt die Anwendung zusätzlich zu den Seiten des Landes die Geoportale und Open-Data-Portale
+  der Stadt, zum Beispiel für Wien den Geodatenviewer der Stadtvermessung. Eigene Tabelle `GEO_CITIES`, auch als Tabelle in der README; Links erscheinen unter der
+  Adressleiste und im Fenster am Pin der Startkarte. Jeder Link wurde aufgerufen; Städte ohne belegbaren Link (zum Beispiel Budapest, Bukarest, Sevilla) fehlen.
+
 ### Geändert
 - **Mausrad zoomt linear:** Jeder Rastenschritt ändert den Abstand um dieselbe Strecke (ein Sechzigstel der Geländekante, mindestens 5 m), nicht mehr um denselben
   Prozentsatz; nahe am Gelände wird der Schritt nicht mehr winzig.

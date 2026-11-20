@@ -68,7 +68,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU).\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -88,6 +88,7 @@ const STRINGS = {
     addrSearching: 'Suche …', addrNone: 'Keine Treffer.', addrError: 'Die Suche ist gerade nicht erreichbar.',
     addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Länder der EU).',
     addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD2)',
+    addrCity: 'Stadtgeoportale · {c}', cityKind_map: 'Karte / Geoportal', cityKind_data: 'Offene Daten / Downloads', cityKind_3d: '3D-Stadtmodell',
     geoFmtTif: 'GeoTIFF, direkt ladbar', geoFmtXyz: 'XYZ-Text, direkt ladbar (Bezugssystem wählen)', geoFmtUnclear: 'Format unklar',
     geoNote_dgm025: 'Das DGM1 gibt es hier nur als XYZ-Text, GeoTIFF nur beim DGM025 (0,25 m).',
     geoNote_berlin: 'Berlin liegt vermutlich in den Brandenburg-Daten (nicht geprüft).',
@@ -244,7 +245,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU).\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -264,6 +265,7 @@ const STRINGS = {
     addrSearching: 'Searching …', addrNone: 'No results.', addrError: 'The search is not reachable right now.',
     addrOnlyDeAt: 'No data sources are listed for this place (EU countries only).',
     addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD2)',
+    addrCity: 'City geoportals · {c}', cityKind_map: 'Map / geoportal', cityKind_data: 'Open data / downloads', cityKind_3d: '3D city model',
     geoFmtTif: 'GeoTIFF, loads directly', geoFmtXyz: 'XYZ text, loads directly (choose the coordinate system)', geoFmtUnclear: 'Format unclear',
     geoNote_dgm025: 'The DGM1 is only offered as XYZ text here, GeoTIFF only for the DGM025 (0.25 m).',
     geoNote_berlin: 'Berlin is probably part of the Brandenburg data (not checked).',
@@ -2613,6 +2615,12 @@ function addrRow(src, kind) {
     f.textContent = T(src.fmt === 'tif' ? 'geoFmtTif' : (src.fmt === 'xyz' ? 'geoFmtXyz' : 'geoFmtUnclear'));
     row.appendChild(f);
   }
+  if (kind === 'city' && src.kind) {
+    const f = document.createElement('div');
+    f.className = 'addr-fmt';
+    f.textContent = T('cityKind_' + src.kind);
+    row.appendChild(f);
+  }
   if (src.note) {
     const n = document.createElement('div');
     n.className = 'addr-note';
@@ -2662,7 +2670,7 @@ function renderPlaceInto(box, place) {
     box.appendChild(n);
     return;
   }
-  const grp = function (key) { const g = document.createElement('div'); g.className = 'addr-grp'; g.textContent = T(key); box.appendChild(g); };
+  const grp = function (key, text) { const g = document.createElement('div'); g.className = 'addr-grp'; g.textContent = text || T(key); box.appendChild(g); };
   grp('addrDem');
   src.dem.forEach(function (d) { box.appendChild(addrRow(d, 'dem')); });
   if (src.demNote) {
@@ -2678,6 +2686,12 @@ function renderPlaceInto(box, place) {
     n.className = 'addr-note';
     n.textContent = T('geoNote_' + src.bldgNote);
     box.appendChild(n);
+  }
+  // Stadtgeoportale (eigene Tabelle GEO_CITIES): zusätzlich zu den Seiten des Landes
+  const city = cityPortalsFor(place);
+  if (city) {
+    grp('', T('addrCity').replace('{c}', place.city));
+    city.links.forEach(function (l) { box.appendChild(addrRow(l, 'city')); });
   }
 }
 

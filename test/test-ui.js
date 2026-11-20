@@ -707,6 +707,29 @@ await test('Startkarte: Ort ohne Daten (nicht in der EU) nennt das im Fenster', 
   assert.ok(s.document.getElementById('sm-pop-body').textContent.indexOf(s.T('addrOnlyDeAt')) >= 0);
 });
 
+await test('Stadtgeoportale: Pin und Adresse in Wien nennen zusätzlich die Links der Stadt, außerhalb einer Stadt der Tabelle nicht', async function () {
+  const s = startMapScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  g('sm-load')._listeners.click[0]();
+  await s.chooseAddrItem({ main: 'Rathausplatz', sub: '1010 Wien', lat: 48.2105, lon: 16.3588, country: 'AT', state: 'Wien', city: 'Wien' }, {});
+  const body = g('sm-pop-body');
+  assert.ok(body.textContent.indexOf(s.T('addrCity').replace('{c}', 'Wien')) >= 0, body.textContent);
+  assert.ok(body.textContent.indexOf('wien.gv.at') >= 0 && body.textContent.indexOf(s.T('cityKind_map')) >= 0 && body.textContent.indexOf(s.T('cityKind_data')) >= 0, body.textContent);
+  assert.ok(body.textContent.indexOf('data.gv.at') >= 0, 'Landes- und Bundeslinks bleiben');
+  const hrefs = [];
+  (function walk(n) { if (n.href) hrefs.push(n.href); (n.children || []).forEach(walk); })(body);
+  assert.ok(hrefs.indexOf('https://www.wien.gv.at/ma41datenviewer/public/start.aspx') >= 0, hrefs.join(' '));
+  // Adressleiste: dieselbe Gruppe
+  await s.chooseAddrItem({ main: 'Marienplatz', sub: 'München', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern', city: 'München' }, {});
+  assert.ok(g('addr-result').textContent.indexOf(s.T('addrCity').replace('{c}', 'München')) >= 0, g('addr-result').textContent);
+  assert.ok(g('addr-result').textContent.indexOf('geoportal-muenchen') >= 0 || g('addr-result').textContent.indexOf('stadt.muenchen.de') >= 0);
+  // Ort ohne Stadteintrag: keine Gruppe
+  await s.chooseAddrItem({ main: 'Dorf', sub: 'Hinterdorf', lat: 48.0, lon: 11.0, country: 'DE', state: 'Bayern', city: 'Hinterdorf' }, {});
+  assert.strictEqual(g('addr-result').textContent.indexOf(s.T('addrCity').split('{c}')[0]), -1, 'keine Stadtgruppe');
+  // Englisch
+  assert.ok(s.__bridge.STRINGS.de.addrCity.indexOf('{c}') > 0 && s.__bridge.STRINGS.en.addrCity.indexOf('{c}') > 0);
+});
+
 await test('Gebäude als CityJSON laden: Dateiauswahl nennt .json/.jsonl, Status zählt die Flächen, Fehler nennt die Datei', async function () {
   const s = await scopeWithTerrain();
   const tr = { scale: [0.001, 0.001, 0.001], translate: [692005, 5336005, 500] };

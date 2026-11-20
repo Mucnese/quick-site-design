@@ -815,6 +815,271 @@ const GEO_EU = {
     bldg: [], bldgNote: 'noEuBldg' }
 };
 
+/* Stadtgeoportale: für Großstädte der EU (Hauptstädte und weitere Städte, soweit ein Geoportal oder Open-Data-Portal der Stadt gefunden wurde).
+   Eine eigene Tabelle neben den Ländern: sie ergänzt die Seiten des Landes. Zusammengestellt im November 2026; jeder Link wurde aufgerufen
+   (drei Seiten antworten Skripten nur mit einer Bot-Sperre: Tallinn, Vilnius, Den Haag; dort belegt eine Suche die Adresse).
+   Städte ohne belegbaren Link stehen nicht darin, statt einen zu raten. kind: 'map' Karte/Geoportal, 'data' offene Daten, '3d' 3D-Stadtmodell.
+   names: Schreibweisen, wie Photon die Stadt liefert (deutsch, englisch, Landessprache); verglichen wird ohne Akzente (addrNorm).
+   Die Links stehen auch in README.md und README.en.md (Test vergleicht beides). */
+const GEO_CITIES = [
+  { cc: 'AT', name: 'Wien', names: ['Wien', 'Vienna'], links: [
+    { kind: 'map', label: 'Geodatenviewer der Stadtvermessung Wien', url: 'https://www.wien.gv.at/ma41datenviewer/public/start.aspx' },
+    { kind: 'data', label: 'Geodaten der MA 41', url: 'https://www.wien.gv.at/stadtplanung/ma41-geodaten' },
+    { kind: 'data', label: 'Open Government Data Wien', url: 'https://www.data.gv.at/auftritte/stadt-wien' }
+  ] },
+  { cc: 'AT', name: 'Graz', names: ['Graz'], links: [
+    { kind: 'data', label: 'Open Government Data Graz', url: 'https://www.data.gv.at/auftritte/stadt-graz' }
+  ] },
+  { cc: 'AT', name: 'Linz', names: ['Linz'], links: [
+    { kind: 'map', label: 'WebGIS Linz', url: 'https://www.linz.at/stadtentwicklung/webgis.php' },
+    { kind: 'data', label: 'Open Government Data Linz', url: 'https://www.data.gv.at/auftritte/stadt-linz' }
+  ] },
+  { cc: 'AT', name: 'Salzburg', names: ['Salzburg'], links: [
+    { kind: 'map', label: 'Stadtplan Salzburg', url: 'https://maps.stadt-salzburg.at/' },
+    { kind: '3d', label: '3D-Stadtmodell Salzburg', url: 'https://maps.stadt-salzburg.at/3d/' }
+  ] },
+  { cc: 'AT', name: 'Innsbruck', names: ['Innsbruck'], links: [
+    { kind: 'map', label: 'geoHub Innsbruck', url: 'https://geohub-1-magibk.hub.arcgis.com/' }
+  ] },
+  { cc: 'BE', name: 'Brüssel', names: ['Brüssel', 'Brussel', 'Bruxelles', 'Brussels', 'Brussels Capital', 'Bruxelles Brussel'], links: [
+    { kind: 'map', label: 'Geoportal der Stadt Brüssel', url: 'https://www.brussels.be/geoportal' },
+    { kind: 'data', label: 'UrbIS (Region Brüssel-Hauptstadt)', url: 'https://be.brussels/en/about-region/urbis-data' },
+    { kind: 'data', label: 'Datastore Brussels', url: 'https://datastore.brussels/' },
+    { kind: 'data', label: 'opendata.brussels.be', url: 'https://opendata.brussels.be/pages/home/' }
+  ] },
+  { cc: 'BE', name: 'Antwerpen', names: ['Antwerpen', 'Antwerp', 'Anvers'], links: [
+    { kind: 'data', label: 'Stad Antwerpen', url: 'https://portaal-stadantwerpen.opendata.arcgis.com/' }
+  ] },
+  { cc: 'BE', name: 'Gent', names: ['Gent', 'Ghent', 'Gand'], links: [
+    { kind: 'data', label: 'Open Data Stad Gent', url: 'https://data.stad.gent/explore/' }
+  ] },
+  { cc: 'BG', name: 'Sofia', names: ['Sofia', 'Sofija', 'София'], links: [
+    { kind: 'map', label: 'Sofiaplan', url: 'https://sofiaplan.bg/' }
+  ] },
+  { cc: 'HR', name: 'Zagreb', names: ['Zagreb'], links: [
+    { kind: 'map', label: 'GeoPortal Zagreb', url: 'https://geoportal.zagreb.hr/' },
+    { kind: 'data', label: 'Portal otvorenih podataka', url: 'https://data.zagreb.hr/' }
+  ] },
+  { cc: 'CZ', name: 'Prag', names: ['Prag', 'Praha', 'Prague'], links: [
+    { kind: 'map', label: 'Geoportal Praha', url: 'https://geoportalpraha.cz/' },
+    { kind: 'data', label: 'Otevřená data Praha', url: 'https://lkod.cz/catalog/praha' }
+  ] },
+  { cc: 'CZ', name: 'Brünn', names: ['Brünn', 'Brno', 'Brunn'], links: [
+    { kind: 'map', label: 'Mapový portál Brno', url: 'https://gis.brno.cz/' },
+    { kind: 'data', label: 'data.Brno', url: 'https://data.brno.cz/' }
+  ] },
+  { cc: 'DK', name: 'Kopenhagen', names: ['Kopenhagen', 'København', 'Copenhagen'], links: [
+    { kind: 'map', label: 'KBHkort', url: 'https://kbhkort.kk.dk/' },
+    { kind: 'data', label: 'Københavns Kommune (opendata.dk)', url: 'https://www.opendata.dk/city-of-copenhagen' }
+  ] },
+  { cc: 'DK', name: 'Aarhus', names: ['Aarhus', 'Århus'], links: [
+    { kind: 'data', label: 'Aarhus Kommune (opendata.dk)', url: 'https://www.opendata.dk/city-of-aarhus' }
+  ] },
+  { cc: 'EE', name: 'Tallinn', names: ['Tallinn', 'Reval'], links: [
+    { kind: 'map', label: 'Tallinn Geoportal', url: 'https://www.tallinn.ee/en/tallinn-geoportal' }
+  ] },
+  { cc: 'FI', name: 'Helsinki', names: ['Helsinki', 'Helsingfors'], links: [
+    { kind: 'map', label: 'Karttapalvelu Helsinki', url: 'https://kartta.hel.fi/' },
+    { kind: '3d', label: '3D-Stadtmodell Helsinki', url: 'https://kartta.hel.fi/3d/' },
+    { kind: 'data', label: 'Helsinki Region Infoshare', url: 'https://hri.fi/fi/' }
+  ] },
+  { cc: 'FI', name: 'Espoo', names: ['Espoo', 'Esbo'], links: [
+    { kind: 'map', label: 'Espoon karttapalvelu', url: 'https://kartat.espoo.fi/ims' }
+  ] },
+  { cc: 'FI', name: 'Tampere', names: ['Tampere', 'Tammerfors'], links: [
+    { kind: 'data', label: 'Tampere Region Infoshare', url: 'https://data.tampere.fi/fi/' }
+  ] },
+  { cc: 'FR', name: 'Paris', names: ['Paris'], links: [
+    { kind: 'data', label: 'Paris Data', url: 'https://opendata.paris.fr/pages/home/' }
+  ] },
+  { cc: 'FR', name: 'Marseille', names: ['Marseille', 'Marseilles'], links: [
+    { kind: 'data', label: 'Open Data Métropole Aix-Marseille-Provence', url: 'https://data.ampmetropole.fr/pages/accueil/' }
+  ] },
+  { cc: 'FR', name: 'Lyon', names: ['Lyon'], links: [
+    { kind: 'data', label: 'data.grandlyon.com', url: 'https://data.grandlyon.com/portail/fr/' }
+  ] },
+  { cc: 'FR', name: 'Toulouse', names: ['Toulouse'], links: [
+    { kind: 'data', label: 'Toulouse Métropole Open Data', url: 'https://data.toulouse-metropole.fr/pages/accueil/' }
+  ] },
+  { cc: 'FR', name: 'Nizza', names: ['Nizza', 'Nice'], links: [
+    { kind: 'data', label: 'OpenData Nice Côte d’Azur', url: 'https://opendata.nicecotedazur.org/site' }
+  ] },
+  { cc: 'FR', name: 'Nantes', names: ['Nantes'], links: [
+    { kind: 'data', label: 'Open Data Nantes Métropole', url: 'https://data.nantesmetropole.fr/pages/home/' }
+  ] },
+  { cc: 'FR', name: 'Straßburg', names: ['Straßburg', 'Strasbourg', 'Strassburg'], links: [
+    { kind: 'data', label: 'data.strasbourg.eu', url: 'https://data.strasbourg.eu/pages/accueil/' }
+  ] },
+  { cc: 'FR', name: 'Bordeaux', names: ['Bordeaux'], links: [
+    { kind: 'data', label: 'Bordeaux Métropole Open Data', url: 'https://opendata.bordeaux-metropole.fr/pages/accueil/' }
+  ] },
+  { cc: 'FR', name: 'Lille', names: ['Lille'], links: [
+    { kind: 'data', label: 'dataMEL (Métropole Européenne de Lille)', url: 'https://data.lillemetropole.fr/accueil/' }
+  ] },
+  { cc: 'FR', name: 'Rennes', names: ['Rennes'], links: [
+    { kind: 'data', label: 'Open Data Rennes Métropole', url: 'https://data.rennesmetropole.fr/explore/' }
+  ] },
+  { cc: 'FR', name: 'Montpellier', names: ['Montpellier'], links: [
+    { kind: 'data', label: 'Montpellier Méditerranée Métropole', url: 'https://data.montpellier3m.fr/' }
+  ] },
+  { cc: 'DE', name: 'Berlin', names: ['Berlin'], links: [
+    { kind: 'map', label: 'Geoportal Berlin', url: 'https://gdi.berlin.de/viewer/main/' },
+    { kind: '3d', label: '3D-Downloadportal Berlin', url: 'https://www.businesslocationcenter.de/berlin3d-downloadportal/' },
+    { kind: 'data', label: 'Geoinformation (Senatsverwaltung)', url: 'https://www.berlin.de/sen/stadt/stadtdaten/geoinformation/' }
+  ] },
+  { cc: 'DE', name: 'Hamburg', names: ['Hamburg'], links: [
+    { kind: 'map', label: 'Geoportal Hamburg', url: 'https://geoportal-hamburg.de/' },
+    { kind: 'data', label: 'Transparenzportal Hamburg', url: 'https://transparenz.hamburg.de/' }
+  ] },
+  { cc: 'DE', name: 'München', names: ['München', 'Munich', 'Muenchen'], links: [
+    { kind: 'map', label: 'GeoPortal München', url: 'https://stadt.muenchen.de/infos/geoportal-muenchen.html' },
+    { kind: 'data', label: 'Open Data Portal München', url: 'https://opendata.muenchen.de/' }
+  ] },
+  { cc: 'DE', name: 'Köln', names: ['Köln', 'Cologne', 'Koeln'], links: [
+    { kind: 'map', label: 'Geoportal Köln', url: 'https://geoportal.stadt-koeln.de/' }
+  ] },
+  { cc: 'DE', name: 'Frankfurt am Main', names: ['Frankfurt am Main', 'Frankfurt'], links: [
+    { kind: 'map', label: 'Geoportal Frankfurt', url: 'https://geoportal.frankfurt.de/karte/' },
+    { kind: 'data', label: 'Offene Daten Frankfurt', url: 'https://offenedaten.frankfurt.de/' }
+  ] },
+  { cc: 'DE', name: 'Stuttgart', names: ['Stuttgart'], links: [
+    { kind: 'map', label: 'Geoportal Stuttgart', url: 'https://www.stuttgart.de/leben/bauen/geoportal/' },
+    { kind: 'data', label: 'OpenData@Stuttgart', url: 'https://opendata.stuttgart.de/' }
+  ] },
+  { cc: 'DE', name: 'Düsseldorf', names: ['Düsseldorf', 'Duesseldorf', 'Dusseldorf'], links: [
+    { kind: 'map', label: 'Geoportal Düsseldorf', url: 'https://www.duesseldorf.de/geoportal/' }
+  ] },
+  { cc: 'DE', name: 'Leipzig', names: ['Leipzig'], links: [
+    { kind: 'map', label: 'Stadtplan Leipzig', url: 'https://www.leipzig.de/stadtplan' },
+    { kind: 'data', label: 'Open Data Leipzig', url: 'https://opendata.leipzig.de/' }
+  ] },
+  { cc: 'DE', name: 'Dortmund', names: ['Dortmund'], links: [
+    { kind: 'map', label: 'Geoportal Dortmund', url: 'https://www.dortmund.de/allgemeines/geoportal-stadtplan/' },
+    { kind: 'data', label: 'Open Data Dortmund', url: 'https://open-data.dortmund.de/pages/start/' }
+  ] },
+  { cc: 'DE', name: 'Essen', names: ['Essen'], links: [
+    { kind: 'map', label: 'Geoportal Essen', url: 'https://geoportal.essen.de/' }
+  ] },
+  { cc: 'DE', name: 'Bremen', names: ['Bremen'], links: [
+    { kind: 'map', label: 'GeoPortal Bremen', url: 'https://geoportal.bremen.de/geoportal/' }
+  ] },
+  { cc: 'DE', name: 'Dresden', names: ['Dresden'], links: [
+    { kind: 'map', label: 'Themenstadtplan Dresden', url: 'https://stadtplan.dresden.de/' },
+    { kind: 'data', label: 'Open Data Dresden', url: 'https://opendata.dresden.de/' }
+  ] },
+  { cc: 'DE', name: 'Hannover', names: ['Hannover', 'Hanover'], links: [
+    { kind: 'data', label: 'Open GeoData Hannover', url: 'https://www.hannover.de/Leben-in-der-Region-Hannover/Verwaltungen-Kommunen/Die-Verwaltung-der-Landeshauptstadt-Hannover/Dezernate-und-Fachbereiche-der-LHH/Stadtentwicklung-und-Bauen/Fachbereich-Planen-und-Stadtentwicklung/Geoinformation/Open-GeoData' }
+  ] },
+  { cc: 'DE', name: 'Nürnberg', names: ['Nürnberg', 'Nuremberg', 'Nuernberg'], links: [
+    { kind: 'map', label: 'GeoPortal Nürnberg', url: 'https://www.nuernberg.de/internet/geoinformation_bodenordnung/geoportal_landingpage.html' }
+  ] },
+  { cc: 'GR', name: 'Athen', names: ['Athen', 'Athens', 'Athína', 'Αθήνα'], links: [
+    { kind: 'map', label: 'Athens Maps', url: 'https://maps.cityofathens.gr/' }
+  ] },
+  { cc: 'IE', name: 'Dublin', names: ['Dublin', 'Baile Átha Cliath'], links: [
+    { kind: 'data', label: 'Dublin’s Open Data Portal', url: 'https://data.smartdublin.ie/' }
+  ] },
+  { cc: 'IT', name: 'Rom', names: ['Rom', 'Roma', 'Rome'], links: [
+    { kind: 'map', label: 'Geoportale di Roma Capitale', url: 'https://geoportale.comune.roma.it/' }
+  ] },
+  { cc: 'IT', name: 'Mailand', names: ['Mailand', 'Milano', 'Milan'], links: [
+    { kind: 'map', label: 'Geoportale Comune di Milano', url: 'https://gisportal.comune.milano.it/' },
+    { kind: 'data', label: 'Portale del Dato Milano', url: 'https://dati.comune.milano.it/web/portale-del-dato' }
+  ] },
+  { cc: 'IT', name: 'Turin', names: ['Turin', 'Torino'], links: [
+    { kind: 'map', label: 'Geoportale Città di Torino', url: 'http://geoportale.comune.torino.it/' }
+  ] },
+  { cc: 'IT', name: 'Neapel', names: ['Neapel', 'Napoli', 'Naples'], links: [
+    { kind: 'map', label: 'Visore urbanistico Napoli', url: 'https://servizionline.comune.napoli.it/web/napoli/visore-urbanistico' }
+  ] },
+  { cc: 'IT', name: 'Genua', names: ['Genua', 'Genova', 'Genoa'], links: [
+    { kind: 'map', label: 'Cartografia Comune di Genova', url: 'https://www.comune.genova.it/tutti-gli-argomenti/cartografia' }
+  ] },
+  { cc: 'IT', name: 'Bologna', names: ['Bologna'], links: [
+    { kind: 'data', label: 'Open Data Comune di Bologna', url: 'https://opendata.comune.bologna.it/pages/home/' }
+  ] },
+  { cc: 'IT', name: 'Florenz', names: ['Florenz', 'Firenze', 'Florence'], links: [
+    { kind: 'data', label: 'Open Data Comune di Firenze', url: 'https://opendata.comune.fi.it/' }
+  ] },
+  { cc: 'IT', name: 'Palermo', names: ['Palermo'], links: [
+    { kind: 'data', label: 'Portale Open Data Palermo', url: 'https://opendata.comune.palermo.it/' }
+  ] },
+  { cc: 'LV', name: 'Riga', names: ['Riga', 'Rīga'], links: [
+    { kind: 'map', label: 'GEO RĪGA', url: 'https://georiga.eu/' }
+  ] },
+  { cc: 'LT', name: 'Vilnius', names: ['Vilnius', 'Wilna'], links: [
+    { kind: 'map', label: 'Interaktive Karten Vilnius', url: 'https://maps.vilnius.lt/en' }
+  ] },
+  { cc: 'LT', name: 'Kaunas', names: ['Kaunas', 'Kowno'], links: [
+    { kind: 'map', label: 'Kauno žemėlapiai', url: 'https://zemelapiai.kaunas.lt/' }
+  ] },
+  { cc: 'NL', name: 'Amsterdam', names: ['Amsterdam'], links: [
+    { kind: 'map', label: 'Maps Amsterdam', url: 'https://maps.amsterdam.nl/' },
+    { kind: 'data', label: 'Data Amsterdam', url: 'https://data.amsterdam.nl/' }
+  ] },
+  { cc: 'NL', name: 'Rotterdam', names: ['Rotterdam'], links: [
+    { kind: 'map', label: 'Rotterdam op de kaart', url: 'https://kaartlaag.rotterdam.nl/' },
+    { kind: '3d', label: '3D Rotterdam', url: 'https://www.3drotterdam.nl/' },
+    { kind: 'data', label: 'Rotterdam Open Data', url: 'https://data.rotterdam.nl/pages/home/' }
+  ] },
+  { cc: 'NL', name: 'Den Haag', names: ['Den Haag', 'The Hague', 's Gravenhage', 'Haag'], links: [
+    { kind: 'data', label: 'Den Haag en open data', url: 'https://www.denhaag.nl/opendata' }
+  ] },
+  { cc: 'NL', name: 'Utrecht', names: ['Utrecht'], links: [
+    { kind: 'data', label: 'Open Utrecht', url: 'https://open.utrecht.nl/' }
+  ] },
+  { cc: 'PL', name: 'Warschau', names: ['Warschau', 'Warszawa', 'Warsaw'], links: [
+    { kind: 'map', label: 'Serwis Mapowy Warszawa', url: 'https://mapa.um.warszawa.pl/' }
+  ] },
+  { cc: 'PL', name: 'Krakau', names: ['Krakau', 'Kraków', 'Krakow', 'Cracow'], links: [
+    { kind: 'map', label: 'MSIP Kraków', url: 'https://msip.um.krakow.pl/' }
+  ] },
+  { cc: 'PL', name: 'Łódź', names: ['Łódź', 'Lodz', 'Lodsch'], links: [
+    { kind: 'map', label: 'InterSIT Łódź', url: 'https://nowa.mapa.lodz.pl/' }
+  ] },
+  { cc: 'PL', name: 'Breslau', names: ['Breslau', 'Wrocław', 'Wroclaw'], links: [
+    { kind: 'map', label: 'SIP Wrocław', url: 'https://geoportal.wroclaw.pl/' }
+  ] },
+  { cc: 'PL', name: 'Posen', names: ['Posen', 'Poznań', 'Poznan'], links: [
+    { kind: 'map', label: 'Geoportal Poznań', url: 'https://www.poznan.pl/mim/info/geoportal/' }
+  ] },
+  { cc: 'PT', name: 'Lissabon', names: ['Lissabon', 'Lisboa', 'Lisbon'], links: [
+    { kind: 'data', label: 'Geodados da Câmara Municipal de Lisboa', url: 'https://geodados-cml.hub.arcgis.com/' }
+  ] },
+  { cc: 'PT', name: 'Porto', names: ['Porto', 'Oporto'], links: [
+    { kind: 'data', label: 'Portal de Dados Abertos Porto', url: 'https://dadosabertos.cm-porto.pt/' }
+  ] },
+  { cc: 'SK', name: 'Bratislava', names: ['Bratislava', 'Pressburg'], links: [
+    { kind: 'data', label: 'OpenData Bratislava', url: 'https://data.bratislava.sk/' }
+  ] },
+  { cc: 'SI', name: 'Ljubljana', names: ['Ljubljana', 'Laibach'], links: [
+    { kind: 'data', label: 'Odprti podatki Mestne občine Ljubljana', url: 'https://mol-ljubljana.hub.arcgis.com/' }
+  ] },
+  { cc: 'ES', name: 'Madrid', names: ['Madrid'], links: [
+    { kind: 'map', label: 'Geoportal Ayuntamiento de Madrid', url: 'https://geoportal.madrid.es/IDEAM_WBGEOPORTAL/index.iam' },
+    { kind: 'data', label: 'Portal de datos abiertos Madrid', url: 'https://datos.madrid.es/' }
+  ] },
+  { cc: 'ES', name: 'Barcelona', names: ['Barcelona'], links: [
+    { kind: 'map', label: 'CartoBCN', url: 'https://w20.bcn.cat/cartobcn/' },
+    { kind: 'data', label: 'Open Data BCN', url: 'https://opendata-ajuntament.barcelona.cat/' }
+  ] },
+  { cc: 'ES', name: 'Valencia', names: ['Valencia', 'València'], links: [
+    { kind: 'map', label: 'GeoportalHome Valencia', url: 'https://geoportal.valencia.es/apps/GeoportalHome/es/inicio/' }
+  ] },
+  { cc: 'ES', name: 'Saragossa', names: ['Saragossa', 'Zaragoza'], links: [
+    { kind: 'map', label: 'IDEZar Zaragoza', url: 'https://www.zaragoza.es/sede/portal/espacio-de-datos/conoce-idezar' }
+  ] },
+  { cc: 'ES', name: 'Málaga', names: ['Málaga', 'Malaga'], links: [
+    { kind: 'data', label: 'Datos abiertos Málaga', url: 'https://datosabiertos.malaga.eu/' }
+  ] },
+  { cc: 'SE', name: 'Stockholm', names: ['Stockholm'], links: [
+    { kind: 'data', label: 'Dataportalen Stockholm', url: 'https://dataportalen.stockholm.se/dataportalen/srv/swe/catalog.search' }
+  ] },
+  { cc: 'SE', name: 'Göteborg', names: ['Göteborg', 'Gothenburg', 'Goteborg'], links: [
+    { kind: 'data', label: 'Göteborgs Stad öppna data', url: 'https://data.goteborg.se/' }
+  ] }
+];
+
 /* Datenquellen zu einem Ort ({country: 'DE'|'AT'|..., state, city}); liefert
    {country, region, dem: [...], bldg: [...], bldgNote} oder null, wenn nichts hinterlegt ist */
 function geoSourcesFor(place) {
@@ -837,6 +1102,18 @@ function geoSourcesFor(place) {
   }
   const eu = GEO_EU[cc];
   if (eu) return { country: cc, region: eu.name, dem: eu.dem.slice(), demNote: eu.demNote || null, bldg: eu.bldg.slice(), bldgNote: eu.bldgNote || null };
+  return null;
+}
+
+/* Stadtgeoportale zu einem Ort: Eintrag aus GEO_CITIES, wenn Land und Stadtname passen, sonst null */
+function cityPortalsFor(place) {
+  if (!place || !place.city) return null;
+  const cc = String(place.country || '').toUpperCase(), c = addrNorm(place.city);
+  if (!c) return null;
+  for (let i = 0; i < GEO_CITIES.length; i++) {
+    const e = GEO_CITIES[i];
+    if (e.cc === cc && e.names.some(function (n) { return addrNorm(n) === c; })) return e;
+  }
   return null;
 }
 
@@ -5903,7 +6180,7 @@ if (typeof module !== 'undefined' && module.exports) {
     XYZ_MAX_POINTS: XYZ_MAX_POINTS,
     readTiffTile: readTiffTile,
     readTiffTiles: readTiffTiles,
-    GEO_ENTRIES: GEO_ENTRIES, GEO_EU: GEO_EU,
+    GEO_ENTRIES: GEO_ENTRIES, GEO_EU: GEO_EU, GEO_CITIES: GEO_CITIES, cityPortalsFor: cityPortalsFor,
     geoSourcesFor: geoSourcesFor,
     parsePhoton: parsePhoton,
     normalizeState: normalizeState,

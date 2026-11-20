@@ -38,7 +38,7 @@ locked.
 1. **Find the data.** At the start the page shows a **map**. After you click **Load map** (only then are
    tiles loaded from OpenStreetMap and your IP address transmitted) you can pan it (drag with any mouse button,
    including the pressed middle button) and zoom it smoothly (mouse wheel, **+**/**−**). A click sets a **pin**; next to it a **window with the links to the state's
-   geoportals** opens (terrain and building model), with the place and UTM values (close with **×** or **Esc**). For **Austria** the window also gives (collapsed under “For advanced users”) a ready-made **`gdal_translate` command** that cuts the
+   geoportals** opens (terrain and building model) and, if the city is in the table, the **city geoportals** (map, open data, sometimes a 3D city model), with the place and UTM values (close with **×** or **Esc**). For **Austria** the window also gives (collapsed under “For advanced users”) a ready-made **`gdal_translate` command** that cuts the
    area around the pin (1000 × 1000 m) out of a very large raster file (for example BEV 1 m, over 1 GB);
    **Copy** puts it on the clipboard. The links then appear
    only there; below the address bar they appear when you type something there. The map
@@ -46,7 +46,7 @@ locked.
    construction site?”) and pick a suggestion. Below it you get the links to the terrain model
    (DGM) and building model (LoD2) pages of your German state; for Austria, the pages of the federal
    government and the state, **for all other EU countries** the pages of the national mapping agency (where an open
-   terrain model is known; otherwise a note says so). The search finds places in the whole EU. The application downloads nothing here: you open the pages and
+   terrain model is known; otherwise a note says so). **In capitals and large cities of the EU** (for example Vienna, Berlin, Munich, Paris, Prague, Madrid) a group **City geoportals** with the city's map and open-data pages is added. The search finds places in the whole EU. The application downloads nothing here: you open the pages and
    download the files yourself. The same table is in the [README](README.en.md#where-to-get-the-data).
    - **Nothing suitable found?** Structures such as valley bridges are often named differently or
      missing in OpenStreetMap. If the search finds nothing that fits your input, the bar asks again with

@@ -2488,6 +2488,41 @@ test('Standortsuche: Datenquellen der übrigen EU-Länder - alle 25 Länder, Lin
   assert.strictEqual(app.GEO_EU.HR.dem[0].note, 'servicesOnly', 'Kroatien: nur ein Webdienst');
 });
 
+test('Stadtgeoportale: eigene Tabelle GEO_CITIES - Links stehen in beiden README-Tabellen, Abgleich über Stadtname und Land', function () {
+  const fs = require('fs'), path = require('path');
+  const readmes = ['../README.md', '../README.en.md'].map(function (f) { return fs.readFileSync(path.join(__dirname, f), 'utf8'); });
+  const seen = {};
+  let links = 0;
+  app.GEO_CITIES.forEach(function (c) {
+    assert.ok(/^[A-Z]{2}$/.test(c.cc) && c.name && c.names.length && c.links.length, c.name);
+    assert.ok(c.names.indexOf(c.name) >= 0, c.name + ': der Anzeigename steht auch bei den Schreibweisen');
+    assert.ok(c.cc === 'DE' || c.cc === 'AT' || app.GEO_EU[c.cc], c.name + ': Land der Suche');
+    c.links.forEach(function (l) {
+      links++;
+      assert.ok(/^https?:\/\//.test(l.url), c.name + ': ' + l.url);
+      assert.ok(['map', 'data', '3d'].indexOf(l.kind) >= 0 && l.label, c.name + ': Art und Bezeichnung');
+      assert.ok(!seen[l.url], 'doppelter Link ' + l.url);
+      seen[l.url] = true;
+      readmes.forEach(function (r, i) { assert.ok(r.indexOf(l.url) >= 0, c.name + ': ' + l.url + ' fehlt in README' + (i ? '.en' : '')); });
+    });
+  });
+  assert.ok(app.GEO_CITIES.length >= 70 && links >= 100, app.GEO_CITIES.length + ' Städte, ' + links + ' Links');
+  // Wien mit dem Link aus der Anfrage; Schreibweisen von Photon (deutsch, englisch, Landessprache, ohne Umlaute)
+  const wien = app.cityPortalsFor({ country: 'AT', state: 'Wien', city: 'Wien' });
+  assert.ok(wien && wien.links.some(function (l) { return l.url === 'https://www.wien.gv.at/ma41datenviewer/public/start.aspx'; }));
+  [['CZ', 'Prag'], ['CZ', 'Praha'], ['PL', 'Warschau'], ['PL', 'Kraków'], ['IT', 'Mailand'], ['IT', 'Milano'], ['DE', 'Muenchen'], ['DE', 'München'],
+   ['DK', 'København'], ['PT', 'Lissabon'], ['GR', 'Athen'], ['BE', 'Brüssel'], ['BE', 'Bruxelles'], ['NL', 'Den Haag'], ['FR', 'Paris']].forEach(function (x) {
+    assert.ok(app.cityPortalsFor({ country: x[0], city: x[1] }), x.join(' '));
+  });
+  assert.strictEqual(app.cityPortalsFor({ country: 'AT', city: 'Hallein', state: 'Salzburg' }), null, 'das Land Salzburg ist nicht die Stadt');
+  assert.strictEqual(app.cityPortalsFor({ country: 'BE', city: 'Essen' }), null, 'gleicher Name, anderes Land');
+  assert.strictEqual(app.cityPortalsFor({ country: 'CH', city: 'Zürich' }), null);
+  assert.strictEqual(app.cityPortalsFor({ country: 'AT', city: '' }), null);
+  assert.strictEqual(app.cityPortalsFor(null), null);
+  // geoSourcesFor bleibt unverändert: die Stadt ist eine eigene Tabelle
+  assert.strictEqual(app.geoSourcesFor({ country: 'AT', state: 'Wien', city: 'Wien' }).country, 'AT');
+});
+
 test('Standortsuche: Photon-Vorschläge aus der ganzen EU, Länder außerhalb fallen weg', function () {
   const mk = function (name, cc, city) { return { geometry: { coordinates: [5, 50] }, properties: { name: name, city: city, countrycode: cc } }; };
   const r = app.parsePhoton({ features: [mk('Dam', 'NL', 'Amsterdam'), mk('Louvre', 'fr', 'Paris'), mk('Prado', 'ES', 'Madrid'),

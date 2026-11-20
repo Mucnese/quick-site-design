@@ -252,6 +252,96 @@ nennt einen Download-Dienst für Orthofotos und ein Höhenmodell, ohne dass ich 
 Katasteramt nennt Höhenmodelle, die Weitergabe scheint eingeschränkt.) Ein amtliches 3D-Gebäudemodell wurde außer in Luxemburg,
 den Niederlanden und (teilweise) Frankreich nirgends gefunden. Hinweise und Korrekturen sind willkommen.
 
+### Stadtgeoportale
+
+Viele Hauptstädte und Großstädte betreiben ein eigenes Geoportal oder Open-Data-Portal, oft mit feineren Daten als das Land
+(Stadtkarte, Katasterauszug, Luftbilder, teils ein 3D-Stadtmodell). Die Adresssuche und der Pin auf der Startkarte nennen sie
+zusätzlich zu den Seiten des Landes, sobald die gefundene Stadt in dieser Tabelle steht (Abgleich über den Stadtnamen und das Land).
+Die Tabelle steht eigenständig in `GEO_CITIES` (`src/app.js`). Zusammengestellt im November 2026; **jeder Link wurde aufgerufen**.
+Geprüft ist nur, dass die Seite erreichbar ist und ein Portal der Stadt zeigt, nicht, welche Datenformate sie bietet. Drei Seiten
+(Tallinn, Vilnius, Den Haag) antworten automatischen Anfragen nur mit einer Bot-Sperre; dort belegt eine Suche die Adresse. Städte, für die
+sich kein belegbarer Link fand (zum Beispiel Budapest, Bukarest, Sevilla, Danzig, Malmö), stehen nicht darin, statt einen zu raten.
+Die Liste ist nicht vollständig; Hinweise und Ergänzungen sind willkommen.
+
+| Stadt | Land | Karte / Geoportal | 3D-Stadtmodell | Offene Daten / Downloads |
+|---|---|---|---|---|
+| Brüssel | Belgien | [Geoportal der Stadt Brüssel](https://www.brussels.be/geoportal) | — | [UrbIS (Region Brüssel-Hauptstadt)](https://be.brussels/en/about-region/urbis-data), [Datastore Brussels](https://datastore.brussels/), [opendata.brussels.be](https://opendata.brussels.be/pages/home/) |
+| Antwerpen | Belgien | — | — | [Stad Antwerpen](https://portaal-stadantwerpen.opendata.arcgis.com/) |
+| Gent | Belgien | — | — | [Open Data Stad Gent](https://data.stad.gent/explore/) |
+| Sofia | Bulgarien | [Sofiaplan](https://sofiaplan.bg/) | — | — |
+| Berlin | Deutschland | [Geoportal Berlin](https://gdi.berlin.de/viewer/main/) | [3D-Downloadportal Berlin](https://www.businesslocationcenter.de/berlin3d-downloadportal/) | [Geoinformation (Senatsverwaltung)](https://www.berlin.de/sen/stadt/stadtdaten/geoinformation/) |
+| Hamburg | Deutschland | [Geoportal Hamburg](https://geoportal-hamburg.de/) | — | [Transparenzportal Hamburg](https://transparenz.hamburg.de/) |
+| München | Deutschland | [GeoPortal München](https://stadt.muenchen.de/infos/geoportal-muenchen.html) | — | [Open Data Portal München](https://opendata.muenchen.de/) |
+| Köln | Deutschland | [Geoportal Köln](https://geoportal.stadt-koeln.de/) | — | — |
+| Frankfurt am Main | Deutschland | [Geoportal Frankfurt](https://geoportal.frankfurt.de/karte/) | — | [Offene Daten Frankfurt](https://offenedaten.frankfurt.de/) |
+| Stuttgart | Deutschland | [Geoportal Stuttgart](https://www.stuttgart.de/leben/bauen/geoportal/) | — | [OpenData@Stuttgart](https://opendata.stuttgart.de/) |
+| Düsseldorf | Deutschland | [Geoportal Düsseldorf](https://www.duesseldorf.de/geoportal/) | — | — |
+| Leipzig | Deutschland | [Stadtplan Leipzig](https://www.leipzig.de/stadtplan) | — | [Open Data Leipzig](https://opendata.leipzig.de/) |
+| Dortmund | Deutschland | [Geoportal Dortmund](https://www.dortmund.de/allgemeines/geoportal-stadtplan/) | — | [Open Data Dortmund](https://open-data.dortmund.de/pages/start/) |
+| Essen | Deutschland | [Geoportal Essen](https://geoportal.essen.de/) | — | — |
+| Bremen | Deutschland | [GeoPortal Bremen](https://geoportal.bremen.de/geoportal/) | — | — |
+| Dresden | Deutschland | [Themenstadtplan Dresden](https://stadtplan.dresden.de/) | — | [Open Data Dresden](https://opendata.dresden.de/) |
+| Hannover | Deutschland | — | — | [Open GeoData Hannover](https://www.hannover.de/Leben-in-der-Region-Hannover/Verwaltungen-Kommunen/Die-Verwaltung-der-Landeshauptstadt-Hannover/Dezernate-und-Fachbereiche-der-LHH/Stadtentwicklung-und-Bauen/Fachbereich-Planen-und-Stadtentwicklung/Geoinformation/Open-GeoData) |
+| Nürnberg | Deutschland | [GeoPortal Nürnberg](https://www.nuernberg.de/internet/geoinformation_bodenordnung/geoportal_landingpage.html) | — | — |
+| Kopenhagen | Dänemark | [KBHkort](https://kbhkort.kk.dk/) | — | [Københavns Kommune (opendata.dk)](https://www.opendata.dk/city-of-copenhagen) |
+| Aarhus | Dänemark | — | — | [Aarhus Kommune (opendata.dk)](https://www.opendata.dk/city-of-aarhus) |
+| Tallinn | Estland | [Tallinn Geoportal](https://www.tallinn.ee/en/tallinn-geoportal) | — | — |
+| Helsinki | Finnland | [Karttapalvelu Helsinki](https://kartta.hel.fi/) | [3D-Stadtmodell Helsinki](https://kartta.hel.fi/3d/) | [Helsinki Region Infoshare](https://hri.fi/fi/) |
+| Espoo | Finnland | [Espoon karttapalvelu](https://kartat.espoo.fi/ims) | — | — |
+| Tampere | Finnland | — | — | [Tampere Region Infoshare](https://data.tampere.fi/fi/) |
+| Paris | Frankreich | — | — | [Paris Data](https://opendata.paris.fr/pages/home/) |
+| Marseille | Frankreich | — | — | [Open Data Métropole Aix-Marseille-Provence](https://data.ampmetropole.fr/pages/accueil/) |
+| Lyon | Frankreich | — | — | [data.grandlyon.com](https://data.grandlyon.com/portail/fr/) |
+| Toulouse | Frankreich | — | — | [Toulouse Métropole Open Data](https://data.toulouse-metropole.fr/pages/accueil/) |
+| Nizza | Frankreich | — | — | [OpenData Nice Côte d’Azur](https://opendata.nicecotedazur.org/site) |
+| Nantes | Frankreich | — | — | [Open Data Nantes Métropole](https://data.nantesmetropole.fr/pages/home/) |
+| Straßburg | Frankreich | — | — | [data.strasbourg.eu](https://data.strasbourg.eu/pages/accueil/) |
+| Bordeaux | Frankreich | — | — | [Bordeaux Métropole Open Data](https://opendata.bordeaux-metropole.fr/pages/accueil/) |
+| Lille | Frankreich | — | — | [dataMEL (Métropole Européenne de Lille)](https://data.lillemetropole.fr/accueil/) |
+| Rennes | Frankreich | — | — | [Open Data Rennes Métropole](https://data.rennesmetropole.fr/explore/) |
+| Montpellier | Frankreich | — | — | [Montpellier Méditerranée Métropole](https://data.montpellier3m.fr/) |
+| Athen | Griechenland | [Athens Maps](https://maps.cityofathens.gr/) | — | — |
+| Dublin | Irland | — | — | [Dublin’s Open Data Portal](https://data.smartdublin.ie/) |
+| Rom | Italien | [Geoportale di Roma Capitale](https://geoportale.comune.roma.it/) | — | — |
+| Mailand | Italien | [Geoportale Comune di Milano](https://gisportal.comune.milano.it/) | — | [Portale del Dato Milano](https://dati.comune.milano.it/web/portale-del-dato) |
+| Turin | Italien | [Geoportale Città di Torino](http://geoportale.comune.torino.it/) | — | — |
+| Neapel | Italien | [Visore urbanistico Napoli](https://servizionline.comune.napoli.it/web/napoli/visore-urbanistico) | — | — |
+| Genua | Italien | [Cartografia Comune di Genova](https://www.comune.genova.it/tutti-gli-argomenti/cartografia) | — | — |
+| Bologna | Italien | — | — | [Open Data Comune di Bologna](https://opendata.comune.bologna.it/pages/home/) |
+| Florenz | Italien | — | — | [Open Data Comune di Firenze](https://opendata.comune.fi.it/) |
+| Palermo | Italien | — | — | [Portale Open Data Palermo](https://opendata.comune.palermo.it/) |
+| Zagreb | Kroatien | [GeoPortal Zagreb](https://geoportal.zagreb.hr/) | — | [Portal otvorenih podataka](https://data.zagreb.hr/) |
+| Riga | Lettland | [GEO RĪGA](https://georiga.eu/) | — | — |
+| Vilnius | Litauen | [Interaktive Karten Vilnius](https://maps.vilnius.lt/en) | — | — |
+| Kaunas | Litauen | [Kauno žemėlapiai](https://zemelapiai.kaunas.lt/) | — | — |
+| Amsterdam | Niederlande | [Maps Amsterdam](https://maps.amsterdam.nl/) | — | [Data Amsterdam](https://data.amsterdam.nl/) |
+| Rotterdam | Niederlande | [Rotterdam op de kaart](https://kaartlaag.rotterdam.nl/) | [3D Rotterdam](https://www.3drotterdam.nl/) | [Rotterdam Open Data](https://data.rotterdam.nl/pages/home/) |
+| Den Haag | Niederlande | — | — | [Den Haag en open data](https://www.denhaag.nl/opendata) |
+| Utrecht | Niederlande | — | — | [Open Utrecht](https://open.utrecht.nl/) |
+| Warschau | Polen | [Serwis Mapowy Warszawa](https://mapa.um.warszawa.pl/) | — | — |
+| Krakau | Polen | [MSIP Kraków](https://msip.um.krakow.pl/) | — | — |
+| Łódź | Polen | [InterSIT Łódź](https://nowa.mapa.lodz.pl/) | — | — |
+| Breslau | Polen | [SIP Wrocław](https://geoportal.wroclaw.pl/) | — | — |
+| Posen | Polen | [Geoportal Poznań](https://www.poznan.pl/mim/info/geoportal/) | — | — |
+| Lissabon | Portugal | — | — | [Geodados da Câmara Municipal de Lisboa](https://geodados-cml.hub.arcgis.com/) |
+| Porto | Portugal | — | — | [Portal de Dados Abertos Porto](https://dadosabertos.cm-porto.pt/) |
+| Stockholm | Schweden | — | — | [Dataportalen Stockholm](https://dataportalen.stockholm.se/dataportalen/srv/swe/catalog.search) |
+| Göteborg | Schweden | — | — | [Göteborgs Stad öppna data](https://data.goteborg.se/) |
+| Bratislava | Slowakei | — | — | [OpenData Bratislava](https://data.bratislava.sk/) |
+| Ljubljana | Slowenien | — | — | [Odprti podatki Mestne občine Ljubljana](https://mol-ljubljana.hub.arcgis.com/) |
+| Madrid | Spanien | [Geoportal Ayuntamiento de Madrid](https://geoportal.madrid.es/IDEAM_WBGEOPORTAL/index.iam) | — | [Portal de datos abiertos Madrid](https://datos.madrid.es/) |
+| Barcelona | Spanien | [CartoBCN](https://w20.bcn.cat/cartobcn/) | — | [Open Data BCN](https://opendata-ajuntament.barcelona.cat/) |
+| Valencia | Spanien | [GeoportalHome Valencia](https://geoportal.valencia.es/apps/GeoportalHome/es/inicio/) | — | — |
+| Saragossa | Spanien | [IDEZar Zaragoza](https://www.zaragoza.es/sede/portal/espacio-de-datos/conoce-idezar) | — | — |
+| Málaga | Spanien | — | — | [Datos abiertos Málaga](https://datosabiertos.malaga.eu/) |
+| Prag | Tschechien | [Geoportal Praha](https://geoportalpraha.cz/) | — | [Otevřená data Praha](https://lkod.cz/catalog/praha) |
+| Brünn | Tschechien | [Mapový portál Brno](https://gis.brno.cz/) | — | [data.Brno](https://data.brno.cz/) |
+| Wien | Österreich | [Geodatenviewer der Stadtvermessung Wien](https://www.wien.gv.at/ma41datenviewer/public/start.aspx) | — | [Geodaten der MA 41](https://www.wien.gv.at/stadtplanung/ma41-geodaten), [Open Government Data Wien](https://www.data.gv.at/auftritte/stadt-wien) |
+| Graz | Österreich | — | — | [Open Government Data Graz](https://www.data.gv.at/auftritte/stadt-graz) |
+| Linz | Österreich | [WebGIS Linz](https://www.linz.at/stadtentwicklung/webgis.php) | — | [Open Government Data Linz](https://www.data.gv.at/auftritte/stadt-linz) |
+| Salzburg | Österreich | [Stadtplan Salzburg](https://maps.stadt-salzburg.at/) | [3D-Stadtmodell Salzburg](https://maps.stadt-salzburg.at/3d/) | — |
+| Innsbruck | Österreich | [geoHub Innsbruck](https://geohub-1-magibk.hub.arcgis.com/) | — | — |
+
 ---
 
 ## Aufbau des Repositorys

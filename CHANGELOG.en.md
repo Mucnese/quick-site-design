@@ -8,6 +8,11 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-20
 
+### New
+- **City geoportals:** For 76 capitals and large cities of the EU (in 22 countries) the application now also lists the city's geoportals and open-data portals
+  in addition to the state's pages, for example the geodata viewer of the city survey for Vienna. Own table `GEO_CITIES`, also as a table in the README; the links appear below the
+  address bar and in the window at the pin of the start map. Every link was opened; cities without a verifiable link (for example Budapest, Bucharest, Seville) are missing.
+
 ### Changed
 - **Mouse wheel zooms linearly:** every wheel step changes the distance by the same length (a sixtieth of the terrain edge, at least 5 m) instead of the same
   percentage; close to the terrain the step no longer becomes tiny.
