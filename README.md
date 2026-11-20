@@ -165,7 +165,7 @@ oder tippt den EPSG-Code ein. ESRI-ASCII-Raster (`.asc`) werden nicht gelesen, d
 muss man mit GDAL in GeoTIFF umwandeln.
 
 **Dateigröße.** Kleine GeoTIFF-Dateien liest das Tool ganz in den Speicher. **Dateien über 300 MB liest es nicht ganz, sondern
-nur den Ausschnitt um den gewählten Ort** (Pin, Rechteck oder Adresse auf der Startkarte): `geotiff.js` holt dann nur den Kopf und die
+nur den Ausschnitt um den gewählten Ort** (Pin oder Adresse auf der Startkarte): `geotiff.js` holt dann nur den Kopf und die
 Blöcke, die das Fenster berühren. Beim BEV-Höhenraster (COG in EPSG:3035, 50 × 50 km, 7,9 GB) sind das für 1 × 1 km rund 5 MB und
 etwa eine halbe Sekunde; die Werte stimmen mit GDAL überein. Gibt es keinen Ort, liegt der Ort nicht in der Datei oder ist der
 Ausschnitt größer als 100 Mio. Pixel, kommt eine Meldung. Andere Grenzen vor dem Einlesen: Dateien bis 300 MB höchstens 1 GB je Datei, Kacheln

@@ -26,17 +26,14 @@ const STRINGS = {
     smTitle: 'Lade OpenStreetMap',
     smConsent: 'Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen. Erst nach Ihrem Klick.',
     smBack: 'Zurück zum Gelände', smLoad: 'Karte laden', smLoadAt: 'Karte am Ort laden', smConsentPlace: 'Ort: {p}',
-    smSelect: 'Bereich wählen', smSelectOn: 'Bereich wählen: Rechteck aufziehen · Esc beendet',
     smZoomIn: 'Vergrößern', smZoomOut: 'Verkleinern',
     smAttrib: '-Mitwirkende',
-    smArea: 'Bereich ≈ {w} × {h} m', smPoint: 'Punkt', smClear: 'Auswahl löschen',
-    smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
-    smHint: 'Die Links zu Gelände und Gebäuden des Landes stehen im Fenster am Bereich. Danach die Dateien unter „Daten“ laden.',
+    smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
     smPopHint: 'Dateien herunterladen und links unter „Daten“ laden.',
     smBigHint: 'Sehr große Datei (z. B. BEV, mehrere GB)? Einfach unter „Daten“ wählen: Die Anwendung liest nur den Ausschnitt um den Pin.',
     smCutToggle: 'Lieber selbst zuschneiden? Für Fortgeschrittene: GDAL',
     smCutTitle: 'GDAL ist ein kostenloses Kommandozeilenprogramm. Dieser Befehl schneidet den Ausschnitt aus der großen Datei:',
-    smCutAround: '{s} × {s} m um den Pin', smCutRect: 'Bereich wie das Rechteck',
+    smCutAround: '{s} × {s} m um den Pin',
     smCutCopy: 'Kopieren', smCutDone: 'Kopiert',
     osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
     osmNote: 'Aus. Beim Einschalten lädt Ihr Browser Kartenkacheln von tile.openstreetmap.org; dabei wird Ihre IP-Adresse übertragen.',
@@ -71,7 +68,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken oder mit „Bereich wählen“ ein Rechteck aufziehen.\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU).\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU).\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -96,7 +93,7 @@ const STRINGS = {
     geoNote_berlin: 'Berlin liegt vermutlich in den Brandenburg-Daten (nicht geprüft).',
     geoNote_catalog: 'Katalogeintrag, nicht selbst geprüft.',
     geoNote_saarland: 'Seite ohne Download, Lizenz unklar.',
-    geoNote_epsg3035: 'Sehr große Kacheln (EPSG:3035): Die Anwendung liest daraus nur einen Ausschnitt um den gewählten Ort. Zuerst Pin oder Rechteck setzen, dann die Datei wählen.',
+    geoNote_epsg3035: 'Sehr große Kacheln (EPSG:3035): Die Anwendung liest daraus nur einen Ausschnitt um den gewählten Ort. Zuerst einen Pin setzen, dann die Datei wählen.',
     geoNote_asc: 'Gemeindeweise als TIF und ASCII.',
     geoNote_unverified: 'Nicht geprüft.',
     geoNote_servicesOnly: 'Kein Download gefunden, nur Dienste.',
@@ -205,17 +202,14 @@ const STRINGS = {
     smTitle: 'Load OpenStreetMap',
     smConsent: 'The map loads tiles from tile.openstreetmap.org. Your IP address is transmitted. Only after your click.',
     smBack: 'Back to the terrain', smLoad: 'Load map', smLoadAt: 'Load map at the place', smConsentPlace: 'Place: {p}',
-    smSelect: 'Select area', smSelectOn: 'Select area: drag a rectangle · Esc ends',
     smZoomIn: 'Zoom in', smZoomOut: 'Zoom out',
     smAttrib: ' contributors',
-    smArea: 'Area ≈ {w} × {h} m', smPoint: 'Point', smClear: 'Clear selection',
-    smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
-    smHint: 'The links to the state’s terrain and buildings are in the window at the area. Then load the files under “Data”.',
+    smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
     smPopHint: 'Download the files and load them under “Data” on the left.',
     smBigHint: 'Very large file (e.g. BEV, several GB)? Just choose it under “Data”: the application reads only the area around the pin.',
     smCutToggle: 'Prefer to cut it yourself? For advanced users: GDAL',
     smCutTitle: 'GDAL is a free command-line program. This command cuts the area out of the large file:',
-    smCutAround: '{s} × {s} m around the pin', smCutRect: 'Area like the rectangle',
+    smCutAround: '{s} × {s} m around the pin',
     smCutCopy: 'Copy', smCutDone: 'Copied',
     osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
     osmNote: 'Off. Turning it on makes your browser load map tiles from tile.openstreetmap.org; your IP address is transmitted.',
@@ -250,7 +244,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place or use “Select area” to drag a rectangle.\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU).\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU).\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -275,7 +269,7 @@ const STRINGS = {
     geoNote_berlin: 'Berlin is probably part of the Brandenburg data (not checked).',
     geoNote_catalog: 'Catalogue entry, not checked myself.',
     geoNote_saarland: 'Page without a download, licence unclear.',
-    geoNote_epsg3035: 'Very large tiles (EPSG:3035): the application reads only an area around the chosen place. Set a pin or rectangle first, then choose the file.',
+    geoNote_epsg3035: 'Very large tiles (EPSG:3035): the application reads only an area around the chosen place. Set a pin first, then choose the file.',
     geoNote_asc: 'Per municipality as TIF and ASCII.',
     geoNote_unverified: 'Not checked.',
     geoNote_servicesOnly: 'No download found, services only.',
@@ -2058,15 +2052,14 @@ function demStatusText(t) {
 }
 
 /* ---------- Startkarte ----------
-   Solange kein Gelände geladen ist, zeigt die Seite eine OSM-Karte: Ort suchen oder anklicken, Bereich als Rechteck
-   aufziehen. Das Fenster nennt Größe und UTM-Werte; die Links zu Gelände- und Gebäudedaten des Landes stehen in der
-   Adressleiste (der Klick wählt den Ort wie eine Adresse). Die Kacheln laden erst nach dem Klick "Karte laden".
-   Bedienung: Ziehen mit der linken, mittleren oder rechten Taste verschiebt (links im Auswahlmodus: Rechteck), das
-   Mausrad zoomt stufenlos. Beim Zoomen bleiben die Kacheln der alten Stufe stehen (skaliert), bis die neuen geladen
+   Solange kein Gelände geladen ist, zeigt die Seite eine OSM-Karte: Ort suchen oder anklicken (Pin). Das Fenster am Pin
+   nennt die Links zu Gelände- und Gebäudedaten des Landes (der Klick wählt den Ort wie eine Adresse). Die Kacheln laden
+   erst nach dem Klick "Karte laden".
+   Bedienung: Ziehen mit der linken, mittleren oder rechten Taste verschiebt die Karte, das Mausrad zoomt stufenlos. Beim Zoomen bleiben die Kacheln der alten Stufe stehen (skaliert), bis die neuen geladen
    sind - sonst blitzt die leere Fläche auf. */
 let smConsent = false, smVisible = false;
 let smView = { lon: 10.5, lat: 50.6, z: 6 };
-let smSelectMode = false, smRect = null, smPoint = null, smDrag = null;
+let smPoint = null, smDrag = null;
 let smForced = false;                              // Karte wieder geöffnet, obwohl ein Gelände geladen ist (Ort außerhalb gewählt)
 let smAnim = null, smAnimBusy = false, smRenderBusy = false;
 let smPopOpen = false, smPopKey = '', smCutOpen = false;              // Fenster am Pin mit den Links
@@ -2131,15 +2124,12 @@ function smRender() {
   const backOn = smVisible && smForced && !!TERRAIN;
   tools.style.display = smVisible && (smConsent || backOn) ? 'flex' : 'none';
   smEl('sm-back').style.display = backOn ? 'block' : 'none';
-  smEl('sm-select').style.display = smConsent ? 'block' : 'none';
   smEl('sm-zoom').style.display = smConsent ? 'flex' : 'none';
   attrib.style.display = smVisible && smConsent ? 'block' : 'none';
   const box = smEl('sm-tiles');
   if (!smVisible || !smConsent) {
     Object.keys(smImgs).forEach(function (k) { smDropImg(k); });
-    smEl('sm-rect').style.display = 'none';
     smEl('sm-marker').style.display = 'none';
-    smEl('sm-info').style.display = 'none';
     smEl('sm-pop').style.display = 'none';
     return;
   }
@@ -2198,13 +2188,6 @@ function smRender() {
     // Rundung der Größe nach oben: kein feiner Spalt zwischen den Kacheln
     im.style.transform = 'translate(' + left.toFixed(2) + 'px,' + top.toFixed(2) + 'px) scale(' + sc.toFixed(5) + ')';
   });
-  const rc = smEl('sm-rect');
-  if (smRect) {
-    const a = smToScreen(smRect.a.lon, smRect.a.lat), b = smToScreen(smRect.b.lon, smRect.b.lat);
-    rc.style.display = 'block';
-    rc.style.left = Math.min(a.x, b.x) + 'px'; rc.style.top = Math.min(a.y, b.y) + 'px';
-    rc.style.width = Math.abs(a.x - b.x) + 'px'; rc.style.height = Math.abs(a.y - b.y) + 'px';
-  } else rc.style.display = 'none';
   const mk = smEl('sm-marker');
   if (smPoint) {
     const p = smToScreen(smPoint.lon, smPoint.lat);
@@ -2238,9 +2221,7 @@ function smFlyTo(lat, lon, z) {
   smView = { lon: lon, lat: lat, z: z };
   smClampView();
   smPoint = { lon: lon, lat: lat };
-  smRect = null;
   smPopOpen = true;
-  smInfo();
   smRender();
 }
 
@@ -2289,20 +2270,16 @@ function smFinishZoom() {
 }
 
 /* Fenster am Pin: Ort, Koordinaten und die Links zu Gelände- und Gebäudedaten des Landes (dasselbe wie in der Adressleiste).
-   Es hängt am Pin (oder an der Nordkante eines aufgezogenen Rechtecks) und folgt ihm beim Verschieben und Zoomen. */
+   Es hängt am Pin und folgt ihm beim Verschieben und Zoomen. */
 function smAnchor() {
-  if (smRect) {
-    const i = smRectInfo(smRect.a, smRect.b);
-    return { lon: i.clon, lat: i.lat1, rect: true };
-  }
-  return smPoint ? { lon: smPoint.lon, lat: smPoint.lat, rect: false } : null;
+  return smPoint ? { lon: smPoint.lon, lat: smPoint.lat } : null;
 }
 
 /* Österreich: Die BEV-Raster sind riesig (Datei über 1 GB geht nicht in den Browser). Das Fenster nennt den fertigen Befehl zum
-   Zuschneiden des Ausschnitts um den Pin oder des Rechtecks, mit Knopf zum Kopieren. */
+   Zuschneiden des Ausschnitts um den Pin, mit Knopf zum Kopieren. */
 function smAddCutBlock(body, a) {
   if (String(addrPlace.country || '').toUpperCase() !== 'AT' || addrPlace.pending) return;
-  const win = smCutWindow(a, smRect, SM_CUT_SIZE);
+  const win = smCutWindow(a, SM_CUT_SIZE);
   const cmd = gdalCutCommand(win);
   const box = document.createElement('div');
   box.className = 'sm-cut';
@@ -2325,7 +2302,7 @@ function smAddCutBlock(body, a) {
   box.appendChild(inner);
   const t = document.createElement('div');
   t.className = 'sm-line sm-dim';
-  t.textContent = T('smCutTitle') + ' ' + (win.around ? T('smCutAround').replace(/\{s\}/g, String(SM_CUT_SIZE)) : T('smCutRect'));
+  t.textContent = T('smCutTitle') + ' ' + T('smCutAround').replace(/\{s\}/g, String(SM_CUT_SIZE));
   inner.appendChild(t);
   const code = document.createElement('code');
   code.className = 'sm-code';
@@ -2349,8 +2326,7 @@ function smRenderPop() {
   if (!smVisible || !smConsent || !smPopOpen || !a || !addrPlace) { pop.style.display = 'none'; smPopKey = ''; return; }
   const s = smSize(), p = smToScreen(a.lon, a.lat);
   if (p.x < -20 || p.y < -20 || p.x > s.w + 20 || p.y > s.h + 20) { pop.style.display = 'none'; return; }
-  const key = [addrPlace.main, addrPlace.sub, addrPlace.pending, addrPlace.failed, addrPlace.country, addrPlace.state, a.lon.toFixed(6), a.lat.toFixed(6),
-               smRect ? smRect.a.lon.toFixed(6) + smRect.a.lat.toFixed(6) + smRect.b.lon.toFixed(6) + smRect.b.lat.toFixed(6) : ''].join('|');
+  const key = [addrPlace.main, addrPlace.sub, addrPlace.pending, addrPlace.failed, addrPlace.country, addrPlace.state, a.lon.toFixed(6), a.lat.toFixed(6)].join('|');
   const body = smEl('sm-pop-body');
   if (key !== smPopKey) {                               // nur neu aufbauen, wenn sich Ort oder Daten ändern (nicht bei jedem Verschieben)
     smPopKey = key;
@@ -2375,8 +2351,8 @@ function smRenderPop() {
   const sc = smEl('sm-pop-scroll');
   sc.style.maxHeight = Math.max(120, bottomLimit - 10 - 34) + 'px';       // zu hoch (mehrere Quellen): im Fenster scrollen
   const w = pop.offsetWidth || 300, h = Math.min(pop.offsetHeight || 170, bottomLimit - 10);
-  const gap = a.rect ? 8 : 36;                          // der Pin ist 27 px hoch
-  const belowGap = a.rect ? 8 : 14;
+  const gap = 36;                                       // der Pin ist 27 px hoch
+  const belowGap = 14;
   const minLeft = s.w > 900 ? 350 : 14;                 // nicht unter das linke Fenster schieben
   const above = p.y - gap - h > 10;
   const below = !above && p.y + belowGap + h < bottomLimit;
@@ -2396,51 +2372,10 @@ function smRenderPop() {
   smEl('sm-pop-arrow').style.left = Math.round(Math.max(14, Math.min(w - 26, p.x - left - 6))) + 'px';
 }
 
-/* Ausschnitt für große Rasterdateien: das Rechteck, sonst ein Quadrat von SM_CUT_SIZE m um den Pin (auch eine gewählte Adresse setzt den Pin) */
+/* Ausschnitt für große Rasterdateien: ein Quadrat von SM_CUT_SIZE m um den Pin (auch eine gewählte Adresse setzt den Pin) */
 function currentSiteWindow() {
-  if (smRect) {
-    const i = smRectInfo(smRect.a, smRect.b);
-    return { w: i.lon0, e: i.lon1, s: i.lat0, n: i.lat1 };
-  }
   if (smPoint) return { lon: smPoint.lon, lat: smPoint.lat, size: SM_CUT_SIZE };
   return null;
-}
-
-function smInfo() {
-  const box = smEl('sm-info');
-  box.innerHTML = '';
-  const rect = smRect, pt = smPoint;
-  if (!smVisible || !smConsent || !rect) { box.style.display = 'none'; return; }      // ein Punkt zeigt seine Angaben im Fenster am Pin
-  const line = function (text, cls) {
-    const d = document.createElement('div');
-    d.className = 'sm-line' + (cls ? ' ' + cls : '');
-    d.textContent = text;
-    box.appendChild(d);
-  };
-  const r = Math.round;
-  if (rect) {
-    const i = smRectInfo(rect.a, rect.b);
-    line(T('smArea').replace('{w}', r(i.widthM)).replace('{h}', r(i.heightM)));
-    if (i.utm) line(T('smUtm').replace('{c}', i.utm.epsg).replace('{e0}', r(i.utm.e0)).replace('{e1}', r(i.utm.e1))
-      .replace('{n0}', r(i.utm.n0)).replace('{n1}', r(i.utm.n1)), 'sm-dim');
-  } else {
-    line(T('smPoint') + ' ' + pt.lat.toFixed(5) + ', ' + pt.lon.toFixed(5));
-    const zone = Math.floor((pt.lon + 180) / 6) + 1, def = crsGeoDefinition(25800 + zone);
-    if (def) {
-      const q = transverseMercatorForward(pt.lat, pt.lon, def);
-      line(T('smUtmPoint').replace('{c}', 25800 + zone).replace('{e}', r(q.e)).replace('{n}', r(q.n)), 'sm-dim');
-    }
-  }
-  line(T('smHint'), 'sm-dim');
-  box.style.display = 'block';
-}
-
-function smSetSelectMode(on) {
-  smSelectMode = !!on;
-  smEl('sm-tiles').className = smSelectMode ? 'select' : '';
-  const b = smEl('sm-select');
-  if (b.classList) b.classList.toggle('on', smSelectMode);
-  b.textContent = T(smSelectMode ? 'smSelectOn' : 'smSelect');
 }
 
 const SM_BUTTON_MASK = { 0: 1, 1: 4, 2: 2 };      // button -> Bit in event.buttons
@@ -2451,8 +2386,8 @@ function smPointerDown(e) {
   smAnim = null;                                     // eine laufende Zoomfahrt endet, wenn gezogen wird
   const start = smFromClient(e.clientX, e.clientY);
   smDrag = { x: e.clientX, y: e.clientY, view: { lon: smView.lon, lat: smView.lat, z: smView.z }, start: start,
-             moved: false, rect: smSelectMode && btn === 0, btn: btn };
-  smEl('sm-tiles').className = smDrag.rect ? 'select' : 'drag';
+             moved: false, btn: btn };
+  smEl('sm-tiles').className = 'drag';
   window.addEventListener('pointermove', smPointerMove);
   window.addEventListener('pointerup', smPointerUp);
   window.addEventListener('pointercancel', smPointerUp);
@@ -2465,10 +2400,6 @@ function smPointerMove(e) {
   if (e.buttons !== undefined && !(e.buttons & SM_BUTTON_MASK[d.btn])) { smPointerUp(e); return; }
   const dx = e.clientX - d.x, dy = e.clientY - d.y;
   if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
-  if (d.rect) {
-    if (d.moved) { smRect = { a: d.start, b: smFromClient(e.clientX, e.clientY) }; smSchedule(); }
-    return;
-  }
   const c = smWorldPx(d.view.lon, d.view.lat, d.view.z), q = smLonLat(c.x - dx, c.y - dy, d.view.z);
   smView = { lon: q.lon, lat: q.lat, z: d.view.z };
   smClampView();
@@ -2482,29 +2413,11 @@ function smPointerUp(e) {
   window.removeEventListener('pointermove', smPointerMove);
   window.removeEventListener('pointerup', smPointerUp);
   window.removeEventListener('pointercancel', smPointerUp);
-  smEl('sm-tiles').className = smSelectMode ? 'select' : '';
-  if (d.rect) {
-    if (d.moved && smRect) {
-      const a = smToScreen(smRect.a.lon, smRect.a.lat), b = smToScreen(smRect.b.lon, smRect.b.lat);
-      if (Math.abs(a.x - b.x) < 12 || Math.abs(a.y - b.y) < 12) smRect = null;
-    } else smRect = null;
-    if (smRect) {
-      smPoint = null;
-      smPopOpen = true;
-      smSetSelectMode(false);                          // danach verschiebt Ziehen wieder die Karte
-      const i = smRectInfo(smRect.a, smRect.b);
-      chooseAddrItem({ coord: true, main: i.clat.toFixed(5) + ', ' + i.clon.toFixed(5), sub: T('addrCoordSub'), lat: i.clat, lon: i.clon }, { noFly: true, fromMap: true });
-    }
-    smInfo();
-    smRender();
-    return;
-  }
+  smEl('sm-tiles').className = '';
   if (d.btn === 0 && !d.moved) {                       // Klick ohne Ziehen: Ort wählen
     smPoint = { lon: d.start.lon, lat: d.start.lat };
-    smRect = null;
     smPopOpen = true;
     chooseAddrItem({ coord: true, main: d.start.lat.toFixed(5) + ', ' + d.start.lon.toFixed(5), sub: T('addrCoordSub'), lat: d.start.lat, lon: d.start.lon }, { noFly: true, fromMap: true });
-    smInfo();
   }
   smRender();
 }
@@ -2518,8 +2431,7 @@ function smWheel(e) {
 }
 
 function initStartMap() {
-  smEl('sm-load').addEventListener('click', function () { smConsent = true; smRender(); smInfo(); });
-  smEl('sm-select').addEventListener('click', function () { smSetSelectMode(!smSelectMode); });
+  smEl('sm-load').addEventListener('click', function () { smConsent = true; smRender(); });
   smEl('sm-pop-close').addEventListener('click', function () { smPopOpen = false; smRenderPop(); });
   smEl('sm-back').addEventListener('click', function () { smForced = false; showStartMap(); });
   smEl('sm-in').addEventListener('click', function () { smZoomBy(1); });
@@ -2530,7 +2442,6 @@ function initStartMap() {
   box.addEventListener('contextmenu', function (e) { if (e.preventDefault) e.preventDefault(); });   // rechte Taste zieht
   box.addEventListener('mousedown', function (e) { if (e.button === 1 && e.preventDefault) e.preventDefault(); });
   window.addEventListener('resize', function () { if (smVisible) smRender(); });
-  smSetSelectMode(false);
 }
 
 /* ---------- Standortsuche (Adressleiste) ----------
@@ -3045,7 +2956,7 @@ async function handleDemFiles(files, isDemo) {
   pendingDemFiles = null;
   setFileStatus('dem', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Kacheln', 'busy');
   try {
-    // Sehr große GeoTIFF-Dateien werden nicht ganz gelesen, sondern nur der Ausschnitt um den gewählten Ort (Pin, Rechteck oder Adresse)
+    // Sehr große GeoTIFF-Dateien werden nicht ganz gelesen, sondern nur der Ausschnitt um den gewählten Ort (Pin oder Adresse)
     const isBig = function (f) { return !isXyzName(f.name) && f.size > TIFF_BLOB_BYTES; };
     const win = list.some(isBig) ? currentSiteWindow() : null;
     // Größen prüfen, bevor die erste Datei in den Speicher gelesen wird (die großen entscheidet der Fensterleser nach dem Kopf)
@@ -3686,12 +3597,6 @@ function isTypingTarget(event) {
 }
 
 function onKeyDown(event) {
-  // Esc beendet zuerst den Auswahlmodus der Startkarte (Rechteck aufziehen), eine laufende Geste wird dabei verworfen
-  if (event.key === 'Escape' && smSelectMode && smVisible) {
-    smSetSelectMode(false);
-    if (smDrag) { smDrag.rect = false; smRect = null; smInfo(); smRender(); }
-    return;
-  }
   if (event.key === 'Escape' && smPopOpen && smVisible) { smPopOpen = false; smRenderPop(); return; }
   if (event.key === 'Escape' && smForced && smVisible && !isTypingTarget(event)) { smForced = false; showStartMap(); return; }
   if (event.key !== 'Escape' && isTypingTarget(event)) return;

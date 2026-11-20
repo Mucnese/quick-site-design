@@ -184,11 +184,9 @@
   /* ---------- Startkarte (vor dem Laden des Geländes) ---------- */
   #startmap { position: fixed; inset: 0; z-index: 2; background: #e6e3dd; overflow: hidden; }
   #sm-tiles { position: absolute; inset: 0; z-index: 0; isolation: isolate; overflow: hidden; cursor: default; touch-action: none; user-select: none; }
-  #sm-tiles.select { cursor: crosshair; }
   #sm-tiles.drag { cursor: grabbing; }
   #sm-tiles img { position: absolute; left: 0; top: 0; width: 256px; height: 256px; max-width: none; pointer-events: none; user-select: none;
     transform-origin: 0 0; transition: opacity .18s ease-out; will-change: transform; }
-  #sm-rect { position: absolute; z-index: 1; display: none; pointer-events: none; border: 2px solid var(--accent); background: rgba(80, 160, 255, 0.14); }
   /* Pin: Spitze liegt auf dem Punkt */
   #sm-marker { position: absolute; z-index: 2; display: none; width: 0; height: 0; pointer-events: none; }
   #sm-marker::before { content: ''; position: absolute; left: -11px; top: -27px; width: 22px; height: 22px; box-sizing: border-box;
@@ -220,12 +218,8 @@
   #sm-consent .sm-text { font-size: 12.5px; line-height: 1.5; color: var(--text-dim); margin-bottom: 10px; }
   #sm-tools { position: absolute; z-index: 4; right: 14px; top: 14px; display: none; flex-direction: column; align-items: flex-end; gap: 6px; }
   #sm-tools .btn-block { width: auto; margin: 0; padding: 6px 12px; }
-  #sm-tools .btn-block.on { border-color: var(--accent); color: var(--accent); }
   #sm-zoom { display: flex; flex-direction: column; gap: 4px; }
   #sm-zoom .btn-block { width: 34px; padding: 4px 0; font-size: 16px; line-height: 1.1; text-align: center; }
-  #sm-info { position: absolute; z-index: 3; right: 14px; bottom: 166px; display: none; max-width: min(420px, calc(100vw - 28px)); padding: 9px 12px; font-size: 12.5px; line-height: 1.5; }
-  #sm-info .sm-line { font-variant-numeric: tabular-nums; }
-  #sm-info .sm-dim { color: var(--text-dim); }
   #sm-attrib { position: absolute; z-index: 3; right: 14px; bottom: 140px; display: none; font-size: 11px; padding: 1px 6px; border-radius: 3px;
     background: rgba(255,255,255,.75); color: #333; }
   #sm-attrib a { color: #1a4f8a; }
@@ -674,7 +668,6 @@
 
 <div id="startmap" style="display:none">
   <div id="sm-tiles"></div>
-  <div id="sm-rect"></div>
   <div id="sm-marker"></div>
   <div id="sm-consent" class="panel">
     <div class="sm-title" data-i18n="smTitle">Lade OpenStreetMap</div>
@@ -684,7 +677,6 @@
   </div>
   <div id="sm-tools">
     <button class="btn-block" id="sm-back" data-i18n="smBack" style="display:none">Zurück zum Gelände</button>
-    <button class="btn-block" id="sm-select" data-i18n="smSelect">Bereich wählen</button>
     <div id="sm-zoom">
       <button class="btn-block" id="sm-in" aria-label="+">+</button>
       <button class="btn-block" id="sm-out" aria-label="−">−</button>
@@ -695,7 +687,6 @@
     <div id="sm-pop-scroll"><div id="sm-pop-body"></div></div>
     <div id="sm-pop-arrow"></div>
   </div>
-  <div id="sm-info" class="panel"></div>
   <div id="sm-attrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a><span data-i18n="smAttrib">-Mitwirkende</span></div>
 </div>
 

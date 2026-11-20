@@ -241,8 +241,8 @@ Fahrzeugvorlage und Umrisse; die Schleppkurven selbst stecken in Autodesk-Proxyo
 Fahrzeuge: nur `SEMI_TRUCK` ändern und die Kontrollradien erneut prüfen, nicht Werte raten.
 
 **Große GeoTIFF.** Dateien über `TIFF_BLOB_BYTES` (300 MB) gehen nicht über `arrayBuffer()`, sondern als Blob in `readTiffTileWindow`
-(`GeoTIFF.fromBlob`: liest nur Kopf und die Blöcke des Fensters). Das Fenster kommt aus der Startkarte (`currentSiteWindow` in `ui.js`: Rechteck
-`{w,e,s,n}` in Länge/Breite oder Quadrat `{lon,lat,size}` um den Pin, in Metern im Bezugssystem der Datei). Ohne Fenster nur, wenn das Raster
+(`GeoTIFF.fromBlob`: liest nur Kopf und die Blöcke des Fensters). Das Fenster kommt aus der Startkarte (`currentSiteWindow` in `ui.js`: Quadrat
+`{lon,lat,size}` um den Pin, in Metern im Bezugssystem der Datei; `readTiffTileWindow` versteht auch ein Rechteck `{w,e,s,n}` in Länge/Breite). Ohne Fenster nur, wenn das Raster
 unter `TIFF_MAX_PIXELS` bleibt. Ein Fenster außerhalb der Datei gibt `null` (Meldung nur, wenn es in keiner liegt). Geprüft an der echten
 BEV-Kachel (ALS_DTM_CRS3035RES50000mN2800000E4750000.tif: BigTIFF, COG, 512er Blöcke, LZW mit Gleitkomma-Prädiktor, 7,9 GB): Fenster 1 km in
 0,5 s, 5,5 MB gelesen, Werte gleich GDAL. In Node geht das nur mit einem eigenen Blob-Ersatz: `fs.openAsBlob` meldet über 4 GB die Größe modulo
@@ -265,9 +265,9 @@ Tschechien/Slowakei). Parameter stammen aus PROJ (`gdalsrsinfo -o proj4`, `proji
 Unbekannt sind Ungarn (EOV), Rumänien (Stereo 70), Bulgarien, Zypern; dort schaltet sich die Karte ab.
 
 **Startkarte.** Solange `TERRAIN` null ist (`updateTerrainInfo` -> `showStartMap`), liegt `#startmap` über dem Canvas: eigene
-Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList`, `smRectInfo` in `app.js`, Darstellung und Maus in
+Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList` in `app.js`, Darstellung und Maus in
 `ui.js`, Abschnitt Startkarte). Kacheln (`OSM_TILE_URL`) werden erst nach dem Klick auf `#sm-load` angefragt (Datenschutz:
-IP-Adresse an OSM); nie beim Start. Klick oder Rechteck rufen `chooseAddrItem` auf (Ort wie eine eingegebene Koordinate,
+IP-Adresse an OSM); nie beim Start. Der Klick ruft `chooseAddrItem` auf (Ort wie eine eingegebene Koordinate,
 Links des Landes über `geoSourcesFor`), `noFly` hält die Karte still. Der Klick setzt einen Pin (`#sm-marker`) und öffnet
 `#sm-pop` mit den Links (`renderPlaceInto`, `smRenderPop`; folgt dem Pin, Esc und × schließen). Die Karte steht auch über einem geladenen Gelände, wenn ein Ort außerhalb gewählt wird (`smForced`, `placeInsideTerrain`; Knopf `#sm-back`, Esc); ein
 neues Gelände (`updateTerrainInfo`) setzt `smForced` zurück. Vor dem Klick "Karte laden" nennt `#sm-consent-place` den gewählten Ort (Knopf `smLoadAt`).

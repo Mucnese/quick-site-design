@@ -39,10 +39,9 @@ locked.
    tiles loaded from OpenStreetMap and your IP address transmitted) you can pan it (drag with any mouse button,
    including the pressed middle button) and zoom it smoothly (mouse wheel, **+**/**−**). A click sets a **pin**; next to it a **window with the links to the state's
    geoportals** opens (terrain and building model), with the place and UTM values (close with **×** or **Esc**). For **Austria** the window also gives (collapsed under “For advanced users”) a ready-made **`gdal_translate` command** that cuts the
-   area around the pin (1000 × 1000 m) or the rectangle out of a very large raster file (for example BEV 1 m, over 1 GB);
+   area around the pin (1000 × 1000 m) out of a very large raster file (for example BEV 1 m, over 1 GB);
    **Copy** puts it on the clipboard. The links then appear
-   only there; below the address bar they appear when you type something there. **Select area** (click it again or press **Esc** to end the mode) and a dragged rectangle give the size and UTM values of the
-   area; the window then hangs on its north edge. The map
+   only there; below the address bar they appear when you type something there. The map
    disappears as soon as a terrain is loaded. If you chose a place in the address bar before the map is loaded, the box names it and **Load map at the place** takes you straight there. **If a terrain is already loaded** (for example the demo) and you choose a place **outside** it, the map opens there again; **Back to the terrain** (or **Esc**) returns you to the 3D view, the terrain stays. Alternatively: type an address or place in the address bar at the top left (“Where is your
    construction site?”) and pick a suggestion. Below it you get the links to the terrain model
    (DGM) and building model (LoD2) pages of your German state; for Austria, the pages of the federal
@@ -77,7 +76,7 @@ ESRI ASCII grids (`.asc`) and decimal commas in XYZ files are not read. Convert 
 first, for example with GDAL.
 
 **Very large GeoTIFF (for example BEV, 7.9 GB).** Files over 300 MB are **not read completely, only the area around the chosen place**.
-First set a pin on the start map, drag a rectangle or choose an address, then choose the file under “Data”. With the BEV raster this takes
+First set a pin on the start map or choose an address, then choose the file under “Data”. With the BEV raster this takes
 about half a second; the data window says “extract”. Without a chosen place, with a place outside the file or an area over
 100 million pixels a message appears.
 

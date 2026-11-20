@@ -6,6 +6,12 @@ because there are no fixed version numbers. German version: [CHANGELOG.md](CHANG
 
 Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy**.
 
+## 2026-11-20
+
+### Removed
+- **Select area** on the start map (dragging a rectangle with size and UTM display) is gone. The map keeps pin and address; for very large raster files
+  the 1000 m window around the pin still applies.
+
 ## 2026-11-19
 
 ### Legal and privacy
@@ -13,7 +19,6 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
-- **Ending area selection:** The selection mode of the start map ends with Esc or another click; the button says so (“… · Esc ends”). Esc while dragging discards the rectangle.
 - **Choosing another place:** If you choose a place in the address bar before the map is loaded, the box names it (“Load map at the place”) and one click takes you there.
   If a terrain is already loaded (for example the demo) and the place lies outside it, the map opens there again; “Back to the terrain” or Esc returns.
 - **National coordinate systems of the EU:** The map, the conversion and the IFC export now know the systems of Sweden, Finland, Poland, Slovenia, Luxembourg, Portugal,

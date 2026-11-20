@@ -7,6 +7,12 @@ Alle nennenswerten Änderungen an Quick-Site-Design, neueste zuerst. Das Format 
 
 Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und Datenschutz**.
 
+## 2026-11-20
+
+### Entfernt
+- **Bereich wählen** auf der Startkarte (Rechteck aufziehen mit Größen- und UTM-Anzeige) ist weg. Die Karte bleibt bei Pin und Adresse; für sehr große Rasterdateien
+  gilt weiter das 1000-m-Fenster um den Pin.
+
 ## 2026-11-19
 
 ### Rechtliches und Datenschutz
@@ -14,7 +20,6 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
 
 ### Neu
-- **Bereich wählen beenden:** Der Auswahlmodus der Startkarte endet mit Esc oder erneutem Klick; der Knopf nennt das („… · Esc beendet“). Esc mitten im Aufziehen verwirft das Rechteck.
 - **Anderen Ort wählen:** Wer in der Adressleiste einen Ort wählt, bevor die Karte geladen ist, sieht ihn im Kasten („Karte am Ort laden“) und kommt mit einem Klick dorthin.
   Ist schon ein Gelände geladen (zum Beispiel die Demo) und der Ort liegt außerhalb, öffnet sich die Karte dort wieder; „Zurück zum Gelände“ oder Esc führt zurück.
 - **Nationale Bezugssysteme der EU:** Karte, Umrechnung und IFC-Export kennen jetzt die Systeme von Schweden, Finnland, Polen, Slowenien, Luxemburg, Portugal,

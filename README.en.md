@@ -165,7 +165,7 @@ window or type the EPSG code. ESRI ASCII grids (`.asc`) are not read; convert th
 GeoTIFF with GDAL.
 
 **File size.** Small GeoTIFF files are read completely into memory. **Files over 300 MB are not read completely, only the
-area around the chosen place** (pin, rectangle or address on the start map): `geotiff.js` then fetches only the header and the
+area around the chosen place** (pin or address on the start map): `geotiff.js` then fetches only the header and the
 blocks the window touches. For the BEV height raster (COG in EPSG:3035, 50 × 50 km, 7.9 GB) that is about 5 MB for 1 × 1 km and
 roughly half a second; the values match GDAL. If there is no place, the place is not in the file or the area is larger than
 100 million pixels, a message appears. Other limits before reading: files up to 300 MB at most 1 GB each, tiles over

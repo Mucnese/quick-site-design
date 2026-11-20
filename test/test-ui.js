@@ -628,11 +628,10 @@ await test('Startkarte: stufenloses Zoomen - der Punkt unter dem Mauszeiger blei
   assert.strictEqual(vm.runInContext('smView.z', s), 3, 'nicht unter die kleinste Stufe');
 });
 
-await test('Startkarte: Mittel- und rechte Taste verschieben die Karte, auch im Auswahlmodus; die linke zieht dort das Rechteck', function () {
+await test('Startkarte: Mittel- und rechte Taste verschieben die Karte wie die linke', function () {
   const s = startMapScope();
   s.document.getElementById('sm-load')._listeners.click[0]();
   s.smFlyTo(48.7, 11.5, 14);
-  s.document.getElementById('sm-select')._listeners.click[0]();
   const box = s.document.getElementById('sm-tiles');
   [[1, 4], [2, 2]].forEach(function (b) {
     const lon0 = vm.runInContext('smView.lon', s);
@@ -640,40 +639,13 @@ await test('Startkarte: Mittel- und rechte Taste verschieben die Karte, auch im 
     s.smPointerMove({ clientX: 360, clientY: 230, buttons: b[1] });
     s.smPointerUp({ clientX: 360, clientY: 230 });
     assert.ok(vm.runInContext('smView.lon', s) < lon0, 'Taste ' + b[0] + ' verschiebt');
-    assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'none', 'kein Rechteck mit Taste ' + b[0]);
-    assert.strictEqual(vm.runInContext('smSelectMode', s), true, 'Auswahlmodus bleibt');
   });
-  const lon1 = vm.runInContext('smView.lon', s);
   box._listeners.pointerdown[0]({ button: 2, clientX: 300, clientY: 200, preventDefault: function () {} });
   s.smPointerMove({ clientX: 330, clientY: 200, buttons: 0 });          // Taste längst oben: Geste endet
   assert.strictEqual(vm.runInContext('smDrag', s), null);
-  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
-  s.smPointerMove({ clientX: 420, clientY: 320, buttons: 1 });
-  s.smPointerUp({ clientX: 420, clientY: 320 });
-  assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'block', 'linke Taste: Rechteck');
 });
 
-await test('Startkarte: Rechteck aufziehen nennt Größe und UTM-Werte und übernimmt die Mitte als Ort (Links des Landes)', async function () {
-  const s = startMapScope();
-  s.document.getElementById('sm-load')._listeners.click[0]();
-  s.smFlyTo(48.7, 11.5, 14);
-  s.document.getElementById('sm-select')._listeners.click[0]();
-  assert.strictEqual(s.document.getElementById('sm-select').textContent, s.T('smSelectOn'));
-  const box = s.document.getElementById('sm-tiles');
-  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
-  s.smPointerMove({ clientX: 500, clientY: 330, buttons: 1 });
-  s.smPointerUp({ clientX: 500, clientY: 330 });
-  assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'block');
-  const info = s.document.getElementById('sm-info').textContent;
-  assert.ok(/Bereich ≈ \d+ × \d+ m/.test(info), info);
-  assert.ok(/EPSG:25832 · Rechts \d+–\d+ · Hoch \d+–\d+/.test(info), info);
-  assert.strictEqual(s.document.getElementById('sm-select').textContent, s.T('smSelect'), 'Auswahlmodus endet nach einem Rechteck');
-  const place = vm.runInContext('addrPlace', s);
-  assert.ok(place && place.coord && isFinite(place.lat) && isFinite(place.lon), 'Ort für die Links gesetzt');
-  assert.ok(Math.abs(place.lat - 48.7) < 0.1 && Math.abs(place.lon - 11.5) < 0.1);
-});
-
-await test('Startkarte: ein Klick ohne Ziehen setzt einen Punkt, Ziehen verschiebt die Karte, zu kleines Rechteck zählt nicht', function () {
+await test('Startkarte: ein Klick ohne Ziehen setzt einen Punkt, Ziehen verschiebt die Karte', function () {
   const s = startMapScope();
   s.document.getElementById('sm-load')._listeners.click[0]();
   s.smFlyTo(48.7, 11.5, 14);
@@ -688,12 +660,6 @@ await test('Startkarte: ein Klick ohne Ziehen setzt einen Punkt, Ziehen verschie
   assert.strictEqual(s.document.getElementById('sm-marker').style.display, 'block', 'Pin gesetzt');
   assert.strictEqual(s.document.getElementById('sm-pop').style.display, 'block', 'Fenster am Pin');
   assert.ok(/^\d+\.\d+, \d+\.\d+/.test(s.document.getElementById('sm-pop-body').textContent), s.document.getElementById('sm-pop-body').textContent);
-  assert.strictEqual(s.document.getElementById('sm-info').style.display, 'none', 'ein Punkt braucht das untere Infofenster nicht');
-  s.document.getElementById('sm-select')._listeners.click[0]();
-  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
-  s.smPointerMove({ clientX: 305, clientY: 204, buttons: 1 });
-  s.smPointerUp({ clientX: 305, clientY: 204 });
-  assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'none');
 });
 
 await test('Startkarte: Pin setzen öffnet ein Fenster mit den Links zu den Geoportalen, es folgt dem Pin, schließt mit × und Esc', async function () {
@@ -734,20 +700,11 @@ await test('Startkarte: Orte in der EU zeigen die Links ihres Landes, Länder oh
   assert.ok(body.textContent.indexOf('cnig.es') >= 0 && body.textContent.indexOf(s.T('geoFmtTif')) >= 0, body.textContent);
 });
 
-await test('Startkarte: Ort ohne Daten (nicht in der EU) nennt das im Fenster, Rechteck hängt das Fenster an die Nordkante', async function () {
+await test('Startkarte: Ort ohne Daten (nicht in der EU) nennt das im Fenster', async function () {
   const s = startMapScope();
   s.document.getElementById('sm-load')._listeners.click[0]();
   await s.chooseAddrItem({ main: 'Zürich', sub: 'Schweiz', lat: 47.3769, lon: 8.5417, country: 'CH', state: 'Zürich' }, {});
   assert.ok(s.document.getElementById('sm-pop-body').textContent.indexOf(s.T('addrOnlyDeAt')) >= 0);
-  s.smFlyTo(48.7, 11.5, 14);
-  s.document.getElementById('sm-select')._listeners.click[0]();
-  const box = s.document.getElementById('sm-tiles');
-  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 250, preventDefault: function () {} });
-  s.smPointerMove({ clientX: 520, clientY: 400, buttons: 1 });
-  s.smPointerUp({ clientX: 520, clientY: 400 });
-  assert.strictEqual(s.document.getElementById('sm-marker').style.display, 'none', 'bei einem Rechteck kein Pin');
-  assert.strictEqual(s.document.getElementById('sm-pop').style.display, 'block', 'Fenster am Rechteck');
-  assert.strictEqual(s.document.getElementById('sm-info').style.display, 'block', 'und die Größe unten');
 });
 
 await test('Gebäude als CityJSON laden: Dateiauswahl nennt .json/.jsonl, Status zählt die Flächen, Fehler nennt die Datei', async function () {
@@ -765,37 +722,6 @@ await test('Gebäude als CityJSON laden: Dateiauswahl nennt .json/.jsonl, Status
   assert.ok(s.document.getElementById('status').textContent.indexOf(s.T('gmlUnreadable')) === 0, s.document.getElementById('status').textContent);
 });
 
-await test('Startkarte: der Auswahlmodus "Bereich wählen" lässt sich mit dem Knopf und mit Esc beenden, ein Rechteck entsteht danach nicht mehr', function () {
-  const s = startMapScope();
-  const g = function (id) { return s.document.getElementById(id); };
-  g('sm-load')._listeners.click[0]();
-  s.smFlyTo(48.7, 11.5, 14);
-  g('sm-select')._listeners.click[0]();
-  assert.strictEqual(vm.runInContext('smSelectMode', s), true);
-  assert.ok(g('sm-select').textContent.indexOf('Esc') > 0, 'der Text sagt, wie man ihn beendet: ' + g('sm-select').textContent);
-  g('sm-select')._listeners.click[0]();                                // zweiter Klick: aus
-  assert.strictEqual(vm.runInContext('smSelectMode', s), false);
-  assert.strictEqual(g('sm-select').textContent, s.T('smSelect'));
-  g('sm-select')._listeners.click[0]();
-  s.onKeyDown({ key: 'Escape', target: {} });                          // Esc: aus
-  assert.strictEqual(vm.runInContext('smSelectMode', s), false);
-  assert.strictEqual(g('sm-select').textContent, s.T('smSelect'));
-  const box = g('sm-tiles');
-  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
-  s.smPointerMove({ clientX: 500, clientY: 330, buttons: 1 });
-  s.smPointerUp({ clientX: 500, clientY: 330 });
-  assert.strictEqual(g('sm-rect').style.display, 'none', 'ohne Modus zieht die linke Taste nur die Karte');
-  // Esc mitten im Aufziehen: kein Rechteck, Modus aus
-  g('sm-select')._listeners.click[0]();
-  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
-  s.smPointerMove({ clientX: 500, clientY: 330, buttons: 1 });
-  s.onKeyDown({ key: 'Escape', target: {} });
-  s.smPointerUp({ clientX: 500, clientY: 330 });
-  assert.strictEqual(vm.runInContext('smSelectMode', s), false);
-  assert.strictEqual(g('sm-rect').style.display, 'none', 'abgebrochen');
-  assert.strictEqual(vm.runInContext('smRect', s), null);
-});
-
 await test('Startkarte: ein Pin zeigt die Links nur im Fenster am Pin; die Adressleiste zeigt sie erst, wenn dort etwas eingegeben wird', async function () {
   const s = startMapScope();
   s.document.getElementById('sm-load')._listeners.click[0]();
@@ -808,13 +734,6 @@ await test('Startkarte: ein Pin zeigt die Links nur im Fenster am Pin; die Adres
   assert.strictEqual(s.document.getElementById('addr-result').style.display, 'none', 'nicht noch einmal unter der Adresseingabe');
   assert.strictEqual(s.document.getElementById('addr-input').value, '', 'das Eingabefeld bleibt leer');
   assert.ok(vm.runInContext('addrPlace', s).fromMap);
-  // Rechteck: ebenso
-  s.document.getElementById('sm-select')._listeners.click[0]();
-  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 250, preventDefault: function () {} });
-  s.smPointerMove({ clientX: 520, clientY: 400, buttons: 1 });
-  s.smPointerUp({ clientX: 520, clientY: 400 });
-  assert.strictEqual(s.document.getElementById('addr-result').style.display, 'none');
-  assert.strictEqual(s.document.getElementById('addr-input').value, '');
   // Etwas in der Adressleiste gewählt: dort erscheinen die Links
   await s.chooseAddrItem({ main: 'Marienplatz', sub: 'München', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
   assert.strictEqual(s.document.getElementById('addr-result').style.display, 'block');
@@ -913,10 +832,10 @@ await test('Startkarte bei geladenem Gelände (z. B. Demo): ein Ort außerhalb �
   assert.ok(g('sm-consent-place').textContent.indexOf('Rathausplatz') >= 0, g('sm-consent-place').textContent);
   assert.strictEqual(g('sm-back').style.display, 'block', 'Zurück zum Gelände ist erreichbar, auch vor "Karte laden"');
   assert.strictEqual(g('sm-tools').style.display, 'flex');
-  assert.strictEqual(g('sm-select').style.display, 'none', 'ohne Einwilligung nur der Zurück-Knopf');
+  assert.strictEqual(g('sm-zoom').style.display, 'none', 'ohne Einwilligung nur der Zurück-Knopf');
   g('sm-load')._listeners.click[0]();
   assert.ok(g('sm-tiles').children.length > 0, 'Kacheln nach dem Klick');
-  assert.strictEqual(g('sm-select').style.display, 'block');
+  assert.strictEqual(g('sm-zoom').style.display, 'flex');
   assert.strictEqual(g('sm-pop').style.display, 'block', 'Pin und Links der neuen Stadt');
   // Zurück
   g('sm-back')._listeners.click[0]();
@@ -1576,7 +1495,7 @@ await test('GeoTIFF riesig (BEV 7,9 GB): ohne Ort klare Meldung, das bestehende 
   assert.strictEqual(vm.runInContext('TERRAIN', s), null);
 });
 
-await test('GeoTIFF riesig (BEV 7,9 GB): mit Pin wird nur der Ausschnitt gelesen und als Gelände gebaut, Rechteck wählt den Bereich', async function () {
+await test('GeoTIFF riesig (BEV 7,9 GB): mit Pin wird nur der Ausschnitt gelesen und als Gelände gebaut', async function () {
   const s = newScope();
   s.initUI();
   const st = {};
@@ -1593,13 +1512,6 @@ await test('GeoTIFF riesig (BEV 7,9 GB): mit Pin wird nur der Ausschnitt gelesen
   const status = s.document.getElementById('dem-status').textContent;
   assert.ok(status.indexOf('ALS_DTM_CRS3035.tif') >= 0 && status.indexOf(s.T('demWindow')) > 0 && s.document.getElementById('dem-status').className.indexOf('ok') > 0, status);
   assert.strictEqual(s.document.getElementById('startmap').style.display, 'none', 'die Startkarte verschwindet');
-  // Rechteck statt Pin: Fenster entsprechend größer
-  vm.runInContext('smRect = { a: { lon: 16.36, lat: 48.20 }, b: { lon: 16.39, lat: 48.22 } }', s);
-  const st2 = {};
-  s.GeoTIFF = fakeBevGeoTIFF(st2);
-  await s.handleDemFiles([bigBevFile('ALS_DTM_CRS3035.tif')]);
-  const w2 = st2.windows[0];
-  assert.ok(w2[2] - w2[0] > 2000 && w2[3] - w2[1] > 2000, 'Rechteck ca. 2,2 x 2,2 km: ' + (w2[2] - w2[0]) + ' x ' + (w2[3] - w2[1]));
 });
 
 await test('GeoTIFF riesig: liegt der Pin nicht in der Datei, nennt die Meldung das; kleine Dateien laden wie bisher ganz', async function () {

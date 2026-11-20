@@ -42,10 +42,9 @@ gesperrt.
    **+**/**−**). Ein Klick setzt einen **Pin**; daneben öffnet sich ein
    **Fenster mit den Links zu den Geoportalen** des Landes (Gelände- und Gebäudemodell), mit Ort und UTM-Werten
    (schließen mit **×** oder **Esc**). Für **Österreich** nennt das Fenster zusätzlich (zugeklappt unter „Für Fortgeschrittene“) einen fertigen **`gdal_translate`-Befehl**, der aus einer sehr großen
-   Rasterdatei (zum Beispiel BEV 1 m, über 1 GB) den Ausschnitt um den Pin (1000 × 1000 m) oder das Rechteck schneidet; **Kopieren**
+   Rasterdatei (zum Beispiel BEV 1 m, über 1 GB) den Ausschnitt um den Pin (1000 × 1000 m) schneidet; **Kopieren**
    legt ihn in die Zwischenablage. Die Links stehen dann nur dort; unter der Adressleiste
-   erscheinen sie, wenn du dort etwas eintippst. **Bereich wählen**
-   (erneut anklicken oder **Esc** beendet den Modus) und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs; das Fenster hängt dann an der Nordkante. Die Karte verschwindet, sobald ein Gelände geladen ist. Hast du in der Adressleiste einen Ort gewählt, bevor die Karte geladen ist, nennt der Kasten ihn, und **Karte am Ort laden** führt direkt dorthin. **Ist schon ein Gelände geladen** (zum Beispiel die Demo) und du wählst einen Ort **außerhalb**, öffnet sich die Karte dort wieder; **Zurück zum Gelände** (oder **Esc**) bringt dich zur 3D-Ansicht zurück, das Gelände bleibt.
+   erscheinen sie, wenn du dort etwas eintippst. Die Karte verschwindet, sobald ein Gelände geladen ist. Hast du in der Adressleiste einen Ort gewählt, bevor die Karte geladen ist, nennt der Kasten ihn, und **Karte am Ort laden** führt direkt dorthin. **Ist schon ein Gelände geladen** (zum Beispiel die Demo) und du wählst einen Ort **außerhalb**, öffnet sich die Karte dort wieder; **Zurück zum Gelände** (oder **Esc**) bringt dich zur 3D-Ansicht zurück, das Gelände bleibt.
    Alternativ: Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine
    Adresse oder einen Ort ein und wähle einen Vorschlag. Darunter erscheinen die Links zur
    Seite des Geländemodells (DGM) und des Gebäudemodells (LoD2) deines Bundeslandes, bei
@@ -81,7 +80,7 @@ Nicht gelesen werden ESRI-ASCII-Raster (`.asc`) und Dezimalkommas in XYZ-Dateien
 vorher in GeoTIFF um, zum Beispiel mit GDAL.
 
 **Sehr große GeoTIFF (zum Beispiel BEV, 7,9 GB).** Dateien über 300 MB liest das Tool **nicht ganz, sondern nur den Ausschnitt um
-den gewählten Ort**. Setze zuerst auf der Startkarte einen Pin, ziehe ein Rechteck auf oder wähle eine Adresse, dann wähle die Datei
+den gewählten Ort**. Setze zuerst auf der Startkarte einen Pin oder wähle eine Adresse, dann wähle die Datei
 unter „Daten“. Beim BEV-Raster dauert das etwa eine halbe Sekunde; im Datenfenster steht „Ausschnitt“. Ohne gewählten Ort, bei
 einem Ort außerhalb der Datei oder einem Ausschnitt über 100 Millionen Pixel erscheint eine Meldung.
 

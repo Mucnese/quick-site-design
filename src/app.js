@@ -1418,39 +1418,15 @@ function smTileList(view, w, h, cap, level) {
   return out;
 }
 
-/* Maße des Rechtecks zwischen zwei Ecken (Breite/Länge): ungefähre Seitenlängen in m, Mitte und, wo es ein
-   UTM-Bezugssystem gibt (ETRS89, Zonen 28 bis 38), die Rechts-/Hochwerte der Ecken */
-function smRectInfo(a, b) {
-  const lon0 = Math.min(a.lon, b.lon), lon1 = Math.max(a.lon, b.lon);
-  const lat0 = Math.min(a.lat, b.lat), lat1 = Math.max(a.lat, b.lat);
-  const clat = (lat0 + lat1) / 2, clon = (lon0 + lon1) / 2;
-  const k = 2 * Math.PI * 6378137 * Math.cos(clat * Math.PI / 180) / 360;
-  const info = {
-    lon0: lon0, lon1: lon1, lat0: lat0, lat1: lat1, clat: clat, clon: clon,
-    widthM: (lon1 - lon0) * k, heightM: (lat1 - lat0) * 111132, utm: null
-  };
-  const zone = Math.floor((clon + 180) / 6) + 1, epsg = 25800 + zone;
-  const def = crsGeoDefinition(epsg);
-  if (def) {
-    const p = transverseMercatorForward(lat0, lon0, def), q = transverseMercatorForward(lat1, lon1, def);
-    info.utm = { epsg: epsg, e0: Math.min(p.e, q.e), e1: Math.max(p.e, q.e), n0: Math.min(p.n, q.n), n1: Math.max(p.n, q.n) };
-  }
-  return info;
-}
-
-/* Ausschnitt einer großen Rasterdatei: Fenster um einen Punkt (Seitenlänge `size` m) oder das aufgezogene Rechteck, in
+/* Ausschnitt einer großen Rasterdatei: Fenster um einen Punkt (Seitenlänge `size` m), in
    Länge/Breite. Daraus der gdal_translate-Befehl; -projwin_srs EPSG:4326 macht ihn unabhängig vom Bezugssystem der Datei
    (BEV-Raster liegen in EPSG:3035). */
 const SM_CUT_SIZE = 1000;
 
-function smCutWindow(anchor, rect, size) {
-  if (rect) {
-    const i = smRectInfo(rect.a, rect.b);
-    return { w: i.lon0, e: i.lon1, s: i.lat0, n: i.lat1, around: false };
-  }
+function smCutWindow(anchor, size) {
   const half = (size || SM_CUT_SIZE) / 2;
   const dLat = half / 111132, dLon = half / (111320 * Math.cos(anchor.lat * Math.PI / 180));
-  return { w: anchor.lon - dLon, e: anchor.lon + dLon, s: anchor.lat - dLat, n: anchor.lat + dLat, around: true };
+  return { w: anchor.lon - dLon, e: anchor.lon + dLon, s: anchor.lat - dLat, n: anchor.lat + dLat };
 }
 
 function gdalCutCommand(win) {
@@ -5801,7 +5777,7 @@ if (typeof module !== 'undefined' && module.exports) {
     initSharedResources: initSharedResources,
     getScene: function () { return scene; },
     smCutWindow: smCutWindow, gdalCutCommand: gdalCutCommand, SM_CUT_SIZE: SM_CUT_SIZE,
-    smWorldPx: smWorldPx, smLonLat: smLonLat, smMetersPerPx: smMetersPerPx, smTileList: smTileList, smRectInfo: smRectInfo,
+    smWorldPx: smWorldPx, smLonLat: smLonLat, smMetersPerPx: smMetersPerPx, smTileList: smTileList,
     focusOnPoint: focusOnPoint,
     settleCameraFlight: settleCameraFlight,
     setRoadSectionSlope: setRoadSectionSlope, setRoadUniformSlope: setRoadUniformSlope, setRoadSectionLength: setRoadSectionLength,
