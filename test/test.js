@@ -1977,6 +1977,67 @@ test('EPSG:3035 (ETRS89-LAEA): Abbildung und Umkehrung stimmen mit GDAL überein
   assert.strictEqual(app.crsTransformIsApprox(3035, 25833), false);
 });
 
+test('Nationale Bezugssysteme der EU: Abbildung und Umkehrung stimmen mit GDAL/PROJ überein (Schweden, Finnland, Polen, Slowenien, Luxemburg, Portugal, Lettland, Litauen, Griechenland, Kroatien, Irland, Frankreich, Belgien, Estland, Niederlande, Tschechien, Slowakei)', function () {
+  // EPSG -> [Länge, Breite, Rechtswert, Hochwert]; Referenz: gdaltransform -s_srs EPSG:4326 -t_srs EPSG:<code> (PROJ 9, Datumswechsel wie dort)
+  const ref = {
+    2100: [[23.7275, 37.9838, 475920.2652, 4203764.6992], [22.9444, 40.6401, 410590.3142, 4499055.4033], [25.1442, 35.3387, 603831.1353, 3910916.1182]],
+    2154: [[2.3522, 48.8566, 652469.0227, 6862035.2594], [5.3698, 43.2965, 892390.2216, 6247035.2568], [-1.5536, 47.2184, 355577.8016, 6689723.1029]],
+    2157: [[-6.2603, 53.3498, 715826.5066, 734697.5926], [-8.4756, 51.8985, 567268.8964, 571923.1316], [-9.0568, 53.2707, 529507.7638, 725006.0540]],
+    2169: [[6.1296, 49.6116, 77215.8747, 75219.8411], [6.2, 49.5, 82309.2426, 62807.3838], [5.9, 49.85, 60716.5474, 101769.3733]],
+    2176: [[14.9, 52.0, 5493132.7281, 5762904.4948], [15.5, 51.2, 5534944.9431, 5674017.6685]],
+    2177: [[18.5, 52.0, 6534336.2589, 5763017.8337], [17.9, 51.5, 6493056.4838, 5707277.4998]],
+    2178: [[21.2, 52.1, 7513703.9140, 5774044.6192], [20.6, 51.0, 7471923.1382, 5651726.6779]],
+    2179: [[24.0, 51.0, 8500000.0000, 5651650.5118], [23.5, 52.5, 8466047.6090, 5818649.0696]],
+    2180: [[21.0122, 52.2297, 637382.2044, 486757.2095], [19.945, 50.0647, 567613.6193, 244587.5312], [18.6466, 54.352, 477037.5994, 720936.5209]],
+    3006: [[18.0686, 59.3293, 674571.8664, 6580743.0083], [11.9746, 57.7089, 319758.0201, 6400326.0362], [20.263, 67.8558, 721164.2067, 7536204.3843]],
+    3059: [[24.1052, 56.9496, 506399.3118, 311780.5749], [21.0111, 56.5047, 316058.0202, 266256.1146], [26.5, 56.5, 653881.4797, 264530.7147]],
+    3067: [[24.9384, 60.1699, 385611.3167, 6672118.3802], [25.4651, 65.0121, 427657.5477, 7210681.4674], [27.6783, 62.8924, 534483.5530, 6973782.5289]],
+    3301: [[24.7536, 59.437, 542763.3691, 6589036.2754], [26.729, 58.3776, 659618.5075, 6474038.4781], [24.5, 58.4, 529234.0729, 6473394.8671]],
+    3346: [[25.2797, 54.6872, 582510.3673, 6061948.6830], [21.1443, 55.7033, 320525.3716, 6177989.8194], [23.9, 54.9, 493585.9653, 6084885.4119]],
+    3763: [[-9.1393, 38.7223, -87503.4389, -104538.8924], [-8.6291, 41.1579, -41630.6734, 165532.2638], [-7.9304, 37.0194, 18038.8330, -294012.1157]],
+    3765: [[15.9819, 45.815, 459736.7617, 5075146.2567], [16.4402, 43.5081, 495164.7048, 4818688.4396], [18.0, 45.6, 617017.4202, 5052216.3204]],
+    3794: [[14.5058, 46.0569, 461760.7387, 102018.9719], [15.6467, 46.5547, 549587.5483, 157431.9761], [13.7295, 45.5485, 400795.5339, 46183.7279]],
+    3812: [[4.3517, 50.8503, 648798.7360, 671100.4141], [3.7174, 51.0543, 604328.1290, 693988.5177], [5.5797, 50.6326, 735668.4989, 647593.7348]],
+    5514: [[14.4378, 50.0755, -741817.7721, -1044492.5575], [16.6068, 49.1951, -598248.7411, -1160744.6826], [18.2625, 49.8209, -472181.9196, -1103062.8342], [17.1077, 48.1486, -573686.6593, -1280322.0922], [18.0764, 48.8912, -494644.0095, -1204886.9583], [21.2611, 48.7164, -262580.6597, -1240038.5800], [19.1, 48.7, -421430.7705, -1232205.9465], [15.5, 49.4, -675595.7720, -1128870.0291]],
+    28992: [[4.9041, 52.3676, 122096.8093, 486744.8610], [5.1214, 52.0907, 136783.7257, 455860.1394], [6.5665, 53.2194, 233769.7049, 582065.4167]],
+    31370: [[4.3517, 50.8503, 148799.1702, 171100.1548], [3.7174, 51.0543, 104330.9348, 193993.7401], [5.5797, 50.6326, 235666.8360, 147582.9338]]
+  };
+  let n = 0;
+  Object.keys(ref).forEach(function (c) {
+    const d = app.crsGeoDefinition(+c);
+    assert.ok(d, 'EPSG:' + c + ' fehlt');
+    ref[c].forEach(function (r) {
+      const f = app.lonLatToCrs(d, r[1], r[0]);
+      assert.ok(Math.hypot(f.e - r[2], f.n - r[3]) < 0.05, 'EPSG:' + c + ' vorwärts ' + r[0] + '/' + r[1] + ': ' + (f.e - r[2]).toFixed(3) + ' / ' + (f.n - r[3]).toFixed(3));
+      const g = app.crsToLonLat(+c, r[2], r[3]);
+      const dm = Math.hypot((g.lon - r[0]) * 111320 * Math.cos(r[1] * Math.PI / 180), (g.lat - r[1]) * 110540);
+      assert.ok(dm < 0.05, 'EPSG:' + c + ' rückwärts ' + r[0] + '/' + r[1] + ': ' + dm.toFixed(3) + ' m');
+      n++;
+    });
+    assert.ok(app.crsLabel(+c).indexOf('·') > 0, 'Name für ' + c);
+  });
+  assert.ok(n >= 55, 'Anzahl Referenzpunkte ' + n);
+  // S-JTSK: Rechts- und Hochwert sind wie bei GDAL negativ; Prag (Tschechien) und Bratislava (Slowakei) nutzen verschiedene Datumsparameter
+  assert.ok(app.crsToLonLat(5514, -741817.772, -1044492.557).lon > 14.43);
+  assert.notStrictEqual(app.crsGeoDefinition(5514).helmert(50.08, 14.44), app.crsGeoDefinition(5514).helmert(48.15, 17.11));
+  // Umrechnung zwischen zwei nationalen Systemen über Breite/Länge: Amsterdam RD -> Lambert-93 -> zurück
+  const rd = app.lonLatToCrs(app.crsGeoDefinition(28992), 52.3676, 4.9041);
+  const l93 = app.crsTransformer(28992, 2154)(rd.e, rd.n), back = app.crsTransformer(2154, 28992)(l93.e, l93.n);
+  assert.ok(Math.hypot(back.e - rd.e, back.n - rd.n) < 0.01, 'Rückweg RD -> L93 -> RD');
+  assert.ok(app.crsTransformIsApprox(28992, 2154) && !app.crsTransformIsApprox(2154, 25832) && app.crsTransformIsApprox(2154, 5514));
+});
+
+test('Karte: ein Gelände in einem nationalen System (RD New der Niederlande, Lambert-93, SWEREF 99 TM) bekommt einen Kachelplan an der richtigen Stelle', function () {
+  // [EPSG, Mitte Rechts, Mitte Hoch, erwartete Länge, Breite]: Amsterdam, Paris, Stockholm
+  [[28992, 121000, 487000, 4.8939, 52.3731], [2154, 652470, 6862035, 2.3522, 48.8566], [3006, 674000, 6580000, 18.0686, 59.3293]].forEach(function (c) {
+    const t = { w: 1000, d: 1000, originE: c[1], originN: c[2], epsg: c[0] };
+    const plan = app.osmMapPlan(t);
+    assert.ok(plan && plan.nx >= 1 && plan.ny >= 1, 'EPSG:' + c[0] + ': Kachelplan');
+    const g = app.crsToLonLat(c[0], c[1], c[2]);
+    assert.ok(Math.abs(g.lon - c[3]) < 0.02 && Math.abs(g.lat - c[4]) < 0.02, 'EPSG:' + c[0] + ' liegt bei ' + g.lon.toFixed(3) + '/' + g.lat.toFixed(3));
+  });
+});
+
 test('Karte: Kachelplan für ein 1000-m-Gelände in EPSG:25832 - höchstens 36 Kacheln, Abbildung trifft die Mitte', function () {
   const t = { w: 1000, d: 1000, originE: 713500, originN: 5420500, epsg: 25832 };
   const plan = app.osmMapPlan(t);

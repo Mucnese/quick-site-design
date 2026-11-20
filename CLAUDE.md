@@ -259,7 +259,10 @@ auch `demNote`. Regeln: nur Links, die bei der Prüfung antworteten; `fmt: 'tif'
 `'unclear'` mit Hinweis; Länder ohne bekanntes offenes DGM tragen `demNote: 'euNoOpenDem'` statt eines geratenen Links. Quelle der
 Liste und der Lizenzen: Landesvermessungen und maps3d.io/dataset (Stand November 2026). Ein Test hält `GEO_EU` und beide README-Tabellen
 gleich. Photon sucht in der EU (`PHOTON_BBOX`, `isSearchCountry`), eingetippte Koordinaten gelten für die EU. Viele Länder liefern in einem
-eigenen Bezugssystem; `crsGeoDefinition` kennt nur UTM, Gauß-Krüger, MGI und Web-Mercator (Karte und IFC-Umrechnung dann nicht möglich).
+eigenen Bezugssystem; `crsGeoDefinition` kennt UTM, Gauß-Krüger, MGI, LAEA (3035), Web-Mercator und die nationalen Systeme in `EU_NATIONAL_CRS`
+(Gauß-Krüger mit Breitenursprung `lat0`, Lambert-Kegel `lcc`, schiefe Stereographie `sterea`, Krovak `krovak`; Datumswechsel `helmert`, bei S-JTSK eine Funktion nach Lage:
+Tschechien/Slowakei). Parameter stammen aus PROJ (`gdalsrsinfo -o proj4`, `projinfo`), der Test "Nationale Bezugssysteme der EU" vergleicht 59 Punkte mit `gdaltransform`.
+Unbekannt sind Ungarn (EOV), Rumänien (Stereo 70), Bulgarien, Zypern; dort schaltet sich die Karte ab.
 
 **Startkarte.** Solange `TERRAIN` null ist (`updateTerrainInfo` -> `showStartMap`), liegt `#startmap` über dem Canvas: eigene
 Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList`, `smRectInfo` in `app.js`, Darstellung und Maus in

@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-8stcXg6wb0GgfxA0LYCgqQSvlwtaeE4i32mI4hY3tLI=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-h0pZDE39W8ACU1pDsv9f5Tzt1Iq9FmEOcy+ugiJ8y+k=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -1514,6 +1514,11 @@ const EPSG_NAMES = {
   31466: 'DHDN / GK 2', 31467: 'DHDN / GK 3', 31468: 'DHDN / GK 4', 31469: 'DHDN / GK 5',
   31254: 'MGI / Austria GK West', 31255: 'MGI / Austria GK Central', 31256: 'MGI / Austria GK East',
   3035: 'ETRS89-extended / LAEA Europe',
+  3006: 'SWEREF99 TM', 3067: 'ETRS-TM35FIN', 2180: 'ETRF2000-PL / CS92', 2176: 'ETRF2000-PL / CS2000 Zone 5', 2177: 'ETRF2000-PL / CS2000 Zone 6',
+  2178: 'ETRF2000-PL / CS2000 Zone 7', 2179: 'ETRF2000-PL / CS2000 Zone 8', 3794: 'Slovenia 1996 / Slovene National Grid', 2169: 'Luxembourg 1930 / Gauss',
+  3763: 'ETRS89 / Portugal TM06', 3059: 'LKS92 / Latvia TM', 3346: 'LKS94 / Lithuania TM', 2100: 'GGRS87 / Greek Grid', 3765: 'HTRS96 / Croatia TM',
+  2157: 'IRENET95 / Irish Transverse Mercator', 2154: 'RGF93 v1 / Lambert-93', 3812: 'ETRS89 / Belgian Lambert 2008', 3301: 'Estonian Coordinate System of 1997',
+  31370: 'Belgian Lambert 72', 28992: 'Amersfoort / RD New', 7415: 'Amersfoort / RD New + NAP height', 5514: 'S-JTSK / Krovak East North',
   4326: 'WGS 84', 4258: 'ETRS89', 3857: 'Web Mercator'
 };
 
@@ -1890,11 +1895,54 @@ async function photonSearch(query, signal) {
 const GEO_ELL = {
   grs80: { a: 6378137, f: 1 / 298.257222101 },
   wgs84: { a: 6378137, f: 1 / 298.257223563 },
-  bessel: { a: 6377397.155, f: 1 / 299.1528128 }
+  bessel: { a: 6377397.155, f: 1 / 299.1528128 },
+  intl: { a: 6378388, f: 1 / 297 }                       // Internationales Ellipsoid 1924 (Hayford): Luxemburg, Belgien
 };
 // dx, dy, dz in m; rx, ry, rz in Bogensekunden; Maßstab in ppm (Position-Vector-Konvention)
 const HELMERT_DHDN = [598.1, 73.7, 418.2, 0.202, 0.045, -2.455, 6.7];
 const HELMERT_MGI = [577.326, 90.129, 463.919, 5.137, 1.474, 5.297, 2.4232];
+// Nationale Systeme der EU (Parameter wie in PROJ/EPSG; wo PROJ ein Netz nutzt, ist das Ergebnis hier auf etwa 1 m genau)
+const HELMERT_LUREF = [-189.6806, 18.3463, -42.7695, -0.33746, -3.09264, 2.53861, 0.4598];       // Luxemburg 1930 -> ETRS89
+const HELMERT_RD = [565.4171, 50.3319, 465.5524, -0.398957388243134, 0.343987817378283, -1.87740163998045, 4.0725];   // Amersfoort -> ETRS89
+const HELMERT_GGRS87 = [-199.87, 74.79, 246.62, 0, 0, 0, 0];
+const HELMERT_BD72 = [-106.8686, 52.2978, -103.7239, 0.3366, -0.457, 1.8422, -1.2747];            // Belgien 1972 -> ETRS89
+// S-JTSK -> WGS 84: Tschechien (PROJ "S-JTSK to WGS 84 (5)", Drehungen in Positionsvektor-Schreibweise) und Slowakei ("(4)"), je etwa 1 m genau
+const HELMERT_SJTSK_CZ = [572.213, 85.334, 461.94, 4.9732, 1.529, 5.2484, 3.5378];
+const HELMERT_SJTSK_SK = [485, 169.5, 483.8, 7.786, 4.398, 4.103, 0];
+function helmertSjtsk(lat, lon) {
+  // Grenzlinie Slowakei/Tschechien grob von (16,95 E; 48,7 N) nach (18,85 E; 49,55 N); südlich davon gilt der slowakische Satz
+  return (lon > 18.87 || lat < 48.7 + 0.4474 * (lon - 16.95)) && lon > 16.84 ? HELMERT_SJTSK_SK : HELMERT_SJTSK_CZ;
+}
+/* helmert einer Definition ist eine Parameterliste oder eine Funktion (Breite, Länge) -> Liste (je nach Lage verschieden) */
+function helmertOf(d, lat, lon) { return typeof d.helmert === 'function' ? d.helmert(lat, lon) : d.helmert; }
+
+/* Nationale Bezugssysteme der EU (Stand der Prüfung: Parameter aus PROJ/EPSG, Ergebnis gegen GDAL verglichen).
+   tm: Gauß-Krüger/UTM mit Breitenursprung lat0; lcc: Lambert-Kegel (2 Standardparallelen); sterea: schiefe stereographische
+   Abbildung (Niederlande); krovak: Krovak (Tschechien, Slowakei). helmert: Datumswechsel auf ETRS89/WGS 84 (genau auf etwa 1 m). */
+const EU_NATIONAL_CRS = {
+  3006: { ell: GEO_ELL.grs80, lon0: 15, k0: 0.9996, fe: 500000, fn: 0 },                     // SWEREF 99 TM (Schweden)
+  3067: { ell: GEO_ELL.grs80, lon0: 27, k0: 0.9996, fe: 500000, fn: 0 },                     // ETRS-TM35FIN (Finnland)
+  2180: { ell: GEO_ELL.grs80, lon0: 19, k0: 0.9993, fe: 500000, fn: -5300000 },              // PL-1992 (Polen)
+  2176: { ell: GEO_ELL.grs80, lon0: 15, k0: 0.999923, fe: 5500000, fn: 0 },                  // PL-2000 Zone 5 bis 8
+  2177: { ell: GEO_ELL.grs80, lon0: 18, k0: 0.999923, fe: 6500000, fn: 0 },
+  2178: { ell: GEO_ELL.grs80, lon0: 21, k0: 0.999923, fe: 7500000, fn: 0 },
+  2179: { ell: GEO_ELL.grs80, lon0: 24, k0: 0.999923, fe: 8500000, fn: 0 },
+  3794: { ell: GEO_ELL.grs80, lon0: 15, k0: 0.9999, fe: 500000, fn: -5000000 },              // D96/TM (Slowenien)
+  2169: { ell: GEO_ELL.intl, lat0: 49 + 50 / 60, lon0: 6 + 10 / 60, k0: 1, fe: 80000, fn: 100000, helmert: HELMERT_LUREF },   // LUREF (Luxemburg)
+  3763: { ell: GEO_ELL.grs80, lat0: 39.668258333333333, lon0: -8.133108333333333, k0: 1, fe: 0, fn: 0 },   // PT-TM06 (Portugal)
+  3059: { ell: GEO_ELL.grs80, lon0: 24, k0: 0.9996, fe: 500000, fn: -6000000 },              // LKS-92 (Lettland)
+  3346: { ell: GEO_ELL.grs80, lon0: 24, k0: 0.9998, fe: 500000, fn: 0 },                     // LKS94 (Litauen)
+  2100: { ell: GEO_ELL.grs80, lon0: 24, k0: 0.9996, fe: 500000, fn: 0, helmert: HELMERT_GGRS87 },     // GGRS87 (Griechenland)
+  3765: { ell: GEO_ELL.grs80, lon0: 16.5, k0: 0.9999, fe: 500000, fn: 0 },                   // HTRS96/TM (Kroatien)
+  2157: { ell: GEO_ELL.grs80, lat0: 53.5, lon0: -8, k0: 0.99982, fe: 600000, fn: 750000 },   // ITM (Irland)
+  2154: { lcc: true, ell: GEO_ELL.grs80, lat1: 49, lat2: 44, lat0: 46.5, lon0: 3, fe: 700000, fn: 6600000 },                          // Lambert-93 (Frankreich)
+  3812: { lcc: true, ell: GEO_ELL.grs80, lat1: 49 + 50 / 60, lat2: 51 + 10 / 60, lat0: 50.797815, lon0: 4.359215833333333, fe: 649328, fn: 665262 },   // Lambert 2008 (Belgien)
+  3301: { lcc: true, ell: GEO_ELL.grs80, lat1: 59 + 20 / 60, lat2: 58, lat0: 57.517553930555556, lon0: 24, fe: 500000, fn: 6375000 },  // L-EST97 (Estland)
+  31370: { lcc: true, ell: GEO_ELL.intl, lat1: 51.1666672333333, lat2: 49.8333339, lat0: 90, lon0: 4.36748666666667, fe: 150000.013, fn: 5400088.438, helmert: HELMERT_BD72 },   // Lambert 72 (Belgien)
+  28992: { sterea: true, ell: GEO_ELL.bessel, lat0: 52.1561605555556, lon0: 5.38763888888889, k0: 0.9999079, fe: 155000, fn: 463000, helmert: HELMERT_RD },   // RD New (Niederlande)
+  7415: { sterea: true, ell: GEO_ELL.bessel, lat0: 52.1561605555556, lon0: 5.38763888888889, k0: 0.9999079, fe: 155000, fn: 463000, helmert: HELMERT_RD },    // RD + NAP (3DBAG)
+  5514: { krovak: true, ell: GEO_ELL.bessel, helmert: helmertSjtsk }                         // S-JTSK Krovak (Tschechien, Slowakei)
+};
 
 /* Beschreibt, wie ein EPSG-Code in Längen-/Breitengrad umgerechnet wird, oder null */
 function crsGeoDefinition(epsg) {
@@ -1909,9 +1957,18 @@ function crsGeoDefinition(epsg) {
   if (epsg >= 31254 && epsg <= 31256) {
     return { ell: GEO_ELL.bessel, lon0: [10 + 1 / 3, 13 + 1 / 3, 16 + 1 / 3][epsg - 31254], k0: 1, fe: 0, fn: -5000000, helmert: HELMERT_MGI };
   }
+  const nat = EU_NATIONAL_CRS[epsg];
+  if (nat) return nat;
   if (epsg === 3035) return { laea: true, ell: GEO_ELL.grs80, lat0: 52, lon0: 10, fe: 4321000, fn: 3210000 };   // BEV-Höhenraster, EU-weite Karten
   if (epsg === 3857) return { merc: true };
   return null;
+}
+
+/* Nordwert-Abzug für einen Breitenursprung lat0 (Gauß-Krüger/UTM haben ihn bei 0). Bei lat0 = 0 oder fehlend: 0. */
+function tmLat0Offset(d) {
+  if (!d.lat0) return 0;
+  if (d._n0 === undefined) d._n0 = transverseMercatorForward(d.lat0, d.lon0, { ell: d.ell, lon0: d.lon0, k0: d.k0, fe: 0, fn: 0 }).n;
+  return d._n0;
 }
 
 /* Umkehrung der Transversalen Mercator-Abbildung (Krüger-Reihe), Ergebnis in Grad */
@@ -1923,7 +1980,7 @@ function transverseMercatorInverse(e, n, d) {
                 17 * n3 / 480 - 37 * n4 / 840, 4397 * n4 / 161280];
   const delta = [2 * nn - 2 * n2 / 3 - 2 * n3 + 116 * n4 / 45, 7 * n2 / 3 - 8 * n3 / 5 - 227 * n4 / 45,
                  56 * n3 / 15 - 136 * n4 / 35, 4279 * n4 / 630];
-  const xi0 = (n - d.fn) / (d.k0 * A), eta0 = (e - d.fe) / (d.k0 * A);
+  const xi0 = (n - d.fn + tmLat0Offset(d)) / (d.k0 * A), eta0 = (e - d.fe) / (d.k0 * A);
   let xi = xi0, eta = eta0;
   for (let j = 1; j <= 4; j++) {
     xi -= beta[j - 1] * Math.sin(2 * j * xi0) * Math.cosh(2 * j * eta0);
@@ -1974,7 +2031,7 @@ function transverseMercatorForward(lat, lon, d) {
     xi += alpha[j - 1] * Math.sin(2 * j * xi0) * Math.cosh(2 * j * eta0);
     eta += alpha[j - 1] * Math.cos(2 * j * xi0) * Math.sinh(2 * j * eta0);
   }
-  return { e: d.fe + d.k0 * A * eta, n: d.fn + d.k0 * A * xi };
+  return { e: d.fe + d.k0 * A * eta, n: d.fn + d.k0 * A * xi - tmLat0Offset(d) };
 }
 
 /* Umkehrung von helmertToWgs84: WGS 84 -> Datum der Ellipsoids ell (Höhe 0). Die Drehungen sind
@@ -2038,12 +2095,138 @@ function laeaInverse(e, n, d) {
   return { lat: phi * 180 / Math.PI, lon: lam * 180 / Math.PI };
 }
 
+/* Lambert-Kegelprojektion mit zwei Standardparallelen (ellipsoidisch), Snyder Gl. 14-15 bis 15-11. Mit lat0 = 90 (Belgien, Lambert 72) liegt
+   die Kegelspitze am Pol. */
+function lccConstants(d) {
+  if (d._k) return d._k;
+  const a = d.ell.a, f = d.ell.f, e2 = f * (2 - f), e = Math.sqrt(e2), rad = Math.PI / 180;
+  const m = function (phi) { return Math.cos(phi) / Math.sqrt(1 - e2 * Math.sin(phi) * Math.sin(phi)); };
+  const t = function (phi) { return Math.tan(Math.PI / 4 - phi / 2) / Math.pow((1 - e * Math.sin(phi)) / (1 + e * Math.sin(phi)), e / 2); };
+  const p1 = d.lat1 * rad, p2 = d.lat2 * rad, p0 = d.lat0 * rad;
+  const n = (Math.log(m(p1)) - Math.log(m(p2))) / (Math.log(t(p1)) - Math.log(t(p2)));
+  const F = m(p1) / (n * Math.pow(t(p1), n));
+  d._k = { a: a, e: e, n: n, F: F, rho0: a * F * Math.pow(t(p0), n), lam0: d.lon0 * rad };
+  return d._k;
+}
+
+function lccForward(lat, lon, d) {
+  const k = lccConstants(d), phi = lat * Math.PI / 180, s = Math.sin(phi);
+  const t = Math.tan(Math.PI / 4 - phi / 2) / Math.pow((1 - k.e * s) / (1 + k.e * s), k.e / 2);
+  const rho = k.a * k.F * Math.pow(t, k.n), th = k.n * (lon * Math.PI / 180 - k.lam0);
+  return { e: d.fe + rho * Math.sin(th), n: d.fn + k.rho0 - rho * Math.cos(th) };
+}
+
+function lccInverse(e, n, d) {
+  const k = lccConstants(d), x = e - d.fe, y = k.rho0 - (n - d.fn);
+  const sg = k.n > 0 ? 1 : -1;
+  const rho = sg * Math.sqrt(x * x + y * y), th = Math.atan2(sg * x, sg * y);
+  const t = Math.pow(rho / (k.a * k.F), 1 / k.n);
+  let phi = Math.PI / 2 - 2 * Math.atan(t);
+  for (let i = 0; i < 8; i++) {
+    const s = Math.sin(phi);
+    phi = Math.PI / 2 - 2 * Math.atan(t * Math.pow((1 - k.e * s) / (1 + k.e * s), k.e / 2));
+  }
+  return { lat: phi * 180 / Math.PI, lon: (th / k.n + k.lam0) * 180 / Math.PI };
+}
+
+/* Schiefe stereographische Abbildung (doppelt, EPSG 9809; RD New, Niederlande) */
+function stereaConstants(d) {
+  if (d._k) return d._k;
+  const a = d.ell.a, f = d.ell.f, e2 = f * (2 - f), e = Math.sqrt(e2), p0 = d.lat0 * Math.PI / 180, s0 = Math.sin(p0);
+  const rho0 = a * (1 - e2) / Math.pow(1 - e2 * s0 * s0, 1.5), nu0 = a / Math.sqrt(1 - e2 * s0 * s0);
+  const R = Math.sqrt(rho0 * nu0), n = Math.sqrt(1 + e2 * Math.pow(Math.cos(p0), 4) / (1 - e2));
+  const S1 = (1 + s0) / (1 - s0), S2 = (1 - e * s0) / (1 + e * s0), w1 = Math.pow(S1 * Math.pow(S2, e), n);
+  const sinChi00 = (w1 - 1) / (w1 + 1);
+  const c = (n + s0) * (1 - sinChi00) / ((n - s0) * (1 + sinChi00));
+  const w2 = c * w1, chi0 = Math.asin((w2 - 1) / (w2 + 1));
+  d._k = { e: e, R: R, n: n, c: c, chi0: chi0, lam0: d.lon0 * Math.PI / 180 };
+  return d._k;
+}
+
+function stereaForward(lat, lon, d) {
+  const k = stereaConstants(d), phi = lat * Math.PI / 180, s = Math.sin(phi);
+  const w = k.c * Math.pow(((1 + s) / (1 - s)) * Math.pow((1 - k.e * s) / (1 + k.e * s), k.e), k.n);
+  const chi = Math.asin((w - 1) / (w + 1));
+  const L = k.n * (lon * Math.PI / 180 - k.lam0) + k.lam0, dl = L - k.lam0;
+  const B = 1 + Math.sin(chi) * Math.sin(k.chi0) + Math.cos(chi) * Math.cos(k.chi0) * Math.cos(dl);
+  return {
+    e: d.fe + 2 * k.R * d.k0 * Math.cos(chi) * Math.sin(dl) / B,
+    n: d.fn + 2 * k.R * d.k0 * (Math.sin(chi) * Math.cos(k.chi0) - Math.cos(chi) * Math.sin(k.chi0) * Math.cos(dl)) / B
+  };
+}
+
+function stereaInverse(e, n, d) {
+  const k = stereaConstants(d), x = e - d.fe, y = n - d.fn;
+  const g = 2 * k.R * d.k0 * Math.tan(Math.PI / 4 - k.chi0 / 2), h = 4 * k.R * d.k0 * Math.tan(k.chi0) + g;
+  const i = Math.atan(x / (h + y)), j = Math.atan(x / (g - y)) - i;
+  const chi = k.chi0 + 2 * Math.atan((y - x * Math.tan(j / 2)) / (2 * k.R * d.k0));
+  const L = j + 2 * i + k.lam0, lam = (L - k.lam0) / k.n + k.lam0;
+  const psi = 0.5 * Math.log((1 + Math.sin(chi)) / (k.c * (1 - Math.sin(chi)))) / k.n;
+  let phi = chi;
+  for (let it = 0; it < 8; it++) {
+    const s = Math.sin(phi);
+    phi = 2 * Math.atan(Math.exp(psi) * Math.pow((1 + k.e * s) / (1 - k.e * s), k.e / 2)) - Math.PI / 2;
+  }
+  return { lat: phi * 180 / Math.PI, lon: lam * 180 / Math.PI };
+}
+
+/* Krovak (EPSG 9819), S-JTSK in Tschechien und der Slowakei. Wie PROJ/GDAL: Rechtswert = -Westwert, Hochwert = -Südwert (beide negativ). */
+function krovakConstants(d) {
+  if (d._k) return d._k;
+  const a = d.ell.a, f = d.ell.f, e2 = f * (2 - f), e = Math.sqrt(e2), rad = Math.PI / 180;
+  const phiC = 49.5 * rad, lam0 = (24 + 50 / 60) * rad, alphaC = 30.2881397527778 * rad, phiP = 78.5 * rad, kP = 0.9999;
+  const sC = Math.sin(phiC);
+  const A = a * Math.sqrt(1 - e2) / (1 - e2 * sC * sC), B = Math.sqrt(1 + e2 * Math.pow(Math.cos(phiC), 4) / (1 - e2));
+  const g0 = Math.asin(sC / B);
+  const t0 = Math.tan(Math.PI / 4 + g0 / 2) * Math.pow((1 + e * sC) / (1 - e * sC), e * B / 2) / Math.pow(Math.tan(Math.PI / 4 + phiC / 2), B);
+  d._k = { e: e, A: A, B: B, t0: t0, lam0: lam0, ca: Math.cos(alphaC), sa: Math.sin(alphaC), phiP: phiP, n: Math.sin(phiP), r0: kP * A / Math.tan(phiP) };
+  return d._k;
+}
+
+function krovakForward(lat, lon, d) {
+  const k = krovakConstants(d), phi = lat * Math.PI / 180, s = Math.sin(phi);
+  const U = 2 * (Math.atan(k.t0 * Math.pow(Math.tan(phi / 2 + Math.PI / 4), k.B) / Math.pow((1 + k.e * s) / (1 - k.e * s), k.e * k.B / 2)) - Math.PI / 4);
+  const V = k.B * (k.lam0 - lon * Math.PI / 180);
+  const S = Math.asin(k.ca * Math.sin(U) + k.sa * Math.cos(U) * Math.cos(V));
+  const D = Math.asin(Math.cos(U) * Math.sin(V) / Math.cos(S));
+  const th = k.n * D, r = k.r0 * Math.pow(Math.tan(Math.PI / 4 + k.phiP / 2), k.n) / Math.pow(Math.tan(S / 2 + Math.PI / 4), k.n);
+  return { e: -(r * Math.sin(th)), n: -(r * Math.cos(th)) };
+}
+
+function krovakInverse(e, n, d) {
+  const k = krovakConstants(d), XP = -n, YP = -e;
+  const r = Math.sqrt(XP * XP + YP * YP), th = Math.atan2(YP, XP), D = th / k.n;
+  const S = 2 * (Math.atan(Math.pow(k.r0 / r, 1 / k.n) * Math.tan(Math.PI / 4 + k.phiP / 2)) - Math.PI / 4);
+  const U = Math.asin(k.ca * Math.sin(S) - k.sa * Math.cos(S) * Math.cos(D));
+  const V = Math.asin(Math.cos(S) * Math.sin(D) / Math.cos(U));
+  let phi = U;
+  for (let i = 0; i < 8; i++) {
+    const s = Math.sin(phi);
+    phi = 2 * (Math.atan(Math.pow(k.t0, -1 / k.B) * Math.pow(Math.tan(U / 2 + Math.PI / 4), 1 / k.B) * Math.pow((1 + k.e * s) / (1 - k.e * s), k.e / 2)) - Math.PI / 4);
+  }
+  return { lat: phi * 180 / Math.PI, lon: (k.lam0 - V / k.B) * 180 / Math.PI };
+}
+
 /* Abbildung einer Definition aus crsGeoDefinition: Rechts-/Hochwert <-> Breite/Länge */
-function projInverse(d, e, n) { return d.laea ? laeaInverse(e, n, d) : transverseMercatorInverse(e, n, d); }
-function projForward(d, lat, lon) { return d.laea ? laeaForward(lat, lon, d) : transverseMercatorForward(lat, lon, d); }
+function projInverse(d, e, n) {
+  if (d.laea) return laeaInverse(e, n, d);
+  if (d.lcc) return lccInverse(e, n, d);
+  if (d.sterea) return stereaInverse(e, n, d);
+  if (d.krovak) return krovakInverse(e, n, d);
+  return transverseMercatorInverse(e, n, d);
+}
+function projForward(d, lat, lon) {
+  if (d.laea) return laeaForward(lat, lon, d);
+  if (d.lcc) return lccForward(lat, lon, d);
+  if (d.sterea) return stereaForward(lat, lon, d);
+  if (d.krovak) return krovakForward(lat, lon, d);
+  return transverseMercatorForward(lat, lon, d);
+}
 
 /* Zielsysteme für die Umrechnung der Koordinaten im IFC-Export (Reihenfolge wie in der Auswahl) */
-const IFC_TARGET_CRS = [25832, 25833, 25831, 4647, 5650, 31466, 31467, 31468, 31469, 31254, 31255, 31256];
+const IFC_TARGET_CRS = [25832, 25833, 25831, 4647, 5650, 31466, 31467, 31468, 31469, 31254, 31255, 31256,
+  // nationale Systeme der EU (Reihenfolge nach der Ländertabelle in der README)
+  28992, 3812, 31370, 3301, 3067, 2154, 2100, 3765, 2157, 3059, 3346, 2169, 2180, 3763, 3006, 3794, 5514];
 
 /* Rechnet Rechts-/Hochwerte von einem Bezugssystem in ein anderes um: Funktion (e, n) -> {e, n},
    oder null, wenn eines der beiden Systeme nicht bekannt ist. Der Weg führt über Breite/Länge
@@ -2055,8 +2238,8 @@ function crsTransformer(fromEpsg, toEpsg) {
   if (fromEpsg === toEpsg) return function (e, n) { return { e: e, n: n }; };
   return function (e, n) {
     let g = projInverse(from, e, n);
-    if (from.helmert) g = helmertToWgs84(g.lat, g.lon, from.ell, from.helmert);
-    if (to.helmert) g = helmertFromWgs84(g.lat, g.lon, to.ell, to.helmert);
+    if (from.helmert) g = helmertToWgs84(g.lat, g.lon, from.ell, helmertOf(from, g.lat, g.lon));
+    if (to.helmert) g = helmertFromWgs84(g.lat, g.lon, to.ell, helmertOf(to, g.lat, g.lon));
     return projForward(to, g.lat, g.lon);
   };
 }
@@ -2076,7 +2259,7 @@ function crsToLonLat(epsg, e, n) {
     return { lon: e / R * 180 / Math.PI, lat: (2 * Math.atan(Math.exp(n / R)) - Math.PI / 2) * 180 / Math.PI };
   }
   const g = projInverse(d, e, n);
-  return d.helmert ? helmertToWgs84(g.lat, g.lon, d.ell, d.helmert) : g;
+  return d.helmert ? helmertToWgs84(g.lat, g.lon, d.ell, helmertOf(d, g.lat, g.lon)) : g;
 }
 
 /* ---------- Startkarte (Web-Mercator, Kacheln 256 px) ----------
@@ -2447,7 +2630,7 @@ const TIFF_BLOB_BYTES = 300e6;
 /* Breite/Länge (WGS 84 / ETRS89) -> Rechts-/Hochwert im System einer Definition aus crsGeoDefinition */
 function lonLatToCrs(def, lat, lon) {
   let g = { lat: lat, lon: lon };
-  if (def.helmert) g = helmertFromWgs84(lat, lon, def.ell, def.helmert);
+  if (def.helmert) g = helmertFromWgs84(lat, lon, def.ell, helmertOf(def, lat, lon));
   return projForward(def, g.lat, g.lon);
 }
 

@@ -14,6 +14,10 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
 
 ### Neu
+- **Nationale Bezugssysteme der EU:** Karte, Umrechnung und IFC-Export kennen jetzt die Systeme von Schweden, Finnland, Polen, Slowenien, Luxemburg, Portugal,
+  Lettland, Litauen, Griechenland, Kroatien, Irland, Frankreich, Belgien, Estland, den Niederlanden, Tschechien und der Slowakei (an GDAL/PROJ auf wenige Millimeter
+  geprüft). Neu sind dafür der Breitenursprung bei Gauß-Krüger, die Lambert-Kegelprojektion, die schiefe stereographische Abbildung (RD New) und Krovak (S-JTSK). Die IFC-Zielliste
+  enthält sie.
 - **Große GeoTIFF direkt lesen:** Dateien über 300 MB (zum Beispiel das BEV-Höhenraster, 7,9 GB) werden nicht ganz gelesen, sondern nur der Ausschnitt
   um den gewählten Ort (Pin, Rechteck oder Adresse auf der Startkarte). Beim BEV-Raster rund 5 MB und eine halbe Sekunde für 1 × 1 km; die Werte
   stimmen mit GDAL überein. Kein Zuschneiden mit GDAL mehr nötig.

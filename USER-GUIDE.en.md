@@ -264,8 +264,9 @@ transmitted (see [privacy](datenschutz.html)). At the bottom left the attributio
 “© OpenStreetMap contributors” appears.
 
 - The map needs a coordinate system the application can convert to latitude and longitude: UTM
-  (ETRS89 and WGS 84), Gauss-Krüger (DHDN), Gauss-Krüger Austria (MGI, EPSG:31254 to 31256) and the European
-  ETRS89-LAEA (EPSG:3035, BEV). For other systems the map switches itself off with a message.
+  (ETRS89 and WGS 84), Gauss-Krüger (DHDN), Gauss-Krüger Austria (MGI, EPSG:31254 to 31256), the European
+  ETRS89-LAEA (EPSG:3035, BEV) and the national systems of many EU countries (list in the [README](README.en.md#where-to-get-the-data)).
+  For other systems, for example Hungary (EOV), the map switches itself off with a message.
 - For Bessel systems (DHDN, MGI) the map is accurate to about 1 to 2 m.
 - Depending on the terrain size the map loads up to 144 tiles at once. The smaller the terrain, the finer the zoom level and the smaller the labels look.
 - After a new terrain the map reloads on its own.
@@ -307,7 +308,8 @@ excavation lies below the terrain surface.
    northing and height above sea level are written directly into the model, visible in any
    program) or **local** (small numbers from the north-west corner, the position is in the
    georeference `IfcMapConversion`). Under **CRS of the file** the position can be converted to
-   **another coordinate system** (UTM 31N to 33N, Gauss-Krüger 2 to 5, Gauss-Krüger Austria). Every
+   **another coordinate system** (UTM 31N to 33N, Gauss-Krüger 2 to 5, Gauss-Krüger Austria and the national EU systems, for example
+   RD New of the Netherlands, Lambert-93 of France, SWEREF 99 TM of Sweden, PL-1992 of Poland). Every
    point is then converted individually and written as absolute coordinates; heights stay unchanged.
    For the Bessel systems (DHDN, MGI, marked ≈) the position is accurate to about 1 to 2 m only,
    because no conversion grid is included. The file also names the coordinate system (EPSG code, datum,

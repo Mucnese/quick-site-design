@@ -217,8 +217,10 @@ Länder der EU. Grundlage sind die Seiten der Landesvermessungen und die Übersi
 erreichbar ist und was sie nennt:** Wo die Seite selbst GeoTIFF nennt, steht „GeoTIFF“; sonst „nicht eindeutig“ (vor dem
 Laden prüfen). Lizenz und Auflösung stammen aus den Angaben der Anbieter laut maps3d.io. Länder ohne bekanntes offenes
 Geländemodell stehen unten ohne Link, statt einen zu raten. Viele Länder liefern in einem eigenen Bezugssystem
-(zum Beispiel EPSG:28992 in den Niederlanden); die Karte und die Umrechnung beim IFC-Export kennen davon nur UTM,
-Gauß-Krüger und Web-Mercator.
+(zum Beispiel EPSG:28992 in den Niederlanden). Die Anwendung kennt UTM, Gauß-Krüger, MGI, ETRS89-LAEA und die nationalen Systeme von Schweden (EPSG:3006), Finnland (3067), Polen (2180, 2176 bis 2179), Slowenien (3794), Luxemburg (2169), Portugal (3763), Lettland (3059), Litauen (3346), Griechenland (2100), Kroatien (3765), Irland (2157), Frankreich (2154), Belgien (3812, 31370), Estland (3301), den Niederlanden (28992, 7415), Tschechien und der Slowakei (5514) (an GDAL/PROJ auf wenige
+Millimeter geprüft; bei Systemen mit Datumswechsel, nämlich Luxemburg, Niederlande, Belgien (31370), Griechenland, Tschechien und Slowakei, gilt die
+Lage auf etwa 1 m). Für diese Systeme funktionieren die Karte und die Umrechnung beim IFC-Export. Nicht bekannt sind zum Beispiel Ungarn (EOV),
+Rumänien (Stereo 70), Bulgarien und Zypern; dort schaltet sich die Karte mit einer Meldung ab.
 
 | Land | Geländemodell | Format | Gebäudemodell | Lizenz (Geländemodell) |
 |---|---|---|---|---|

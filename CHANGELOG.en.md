@@ -13,6 +13,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   program header carries the SPDX identifier `GPL-3.0-or-later`.
 
 ### Added
+- **National coordinate systems of the EU:** The map, the conversion and the IFC export now know the systems of Sweden, Finland, Poland, Slovenia, Luxembourg, Portugal,
+  Latvia, Lithuania, Greece, Croatia, Ireland, France, Belgium, Estonia, the Netherlands, Czechia and Slovakia (checked against GDAL/PROJ to a few millimetres). New for this are the
+  latitude origin for Gauss-Krüger, the Lambert conic projection, the oblique stereographic projection (RD New) and Krovak (S-JTSK). The IFC target list includes them.
 - **Reading large GeoTIFFs directly:** Files over 300 MB (for example the BEV height raster, 7.9 GB) are not read completely, only the area around
   the chosen place (pin, rectangle or address on the start map). For the BEV raster about 5 MB and half a second for 1 × 1 km; the values match
   GDAL. Cutting with GDAL is no longer necessary.

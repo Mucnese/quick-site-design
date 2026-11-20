@@ -220,8 +220,10 @@ EU countries. The basis are the pages of the national mapping agencies and the o
 states were checked:** where the page itself names GeoTIFF it says “GeoTIFF”; otherwise “not clear” (check before
 loading). Licence and resolution come from the providers' statements as listed by maps3d.io. Countries without a known open
 terrain model are listed below without a link instead of guessing one. Many countries deliver in their own coordinate
-system (for example EPSG:28992 in the Netherlands); the map and the conversion in the IFC export know only UTM,
-Gauss-Krüger and Web Mercator.
+system (for example EPSG:28992 in the Netherlands). The application knows UTM, Gauss-Krüger, MGI, ETRS89-LAEA and the national systems of Sweden (EPSG:3006), Finland (3067), Poland (2180, 2176 to 2179), Slovenia (3794), Luxembourg (2169), Portugal (3763), Latvia (3059), Lithuania (3346), Greece (2100), Croatia (3765), Ireland (2157), France (2154), Belgium (3812, 31370), Estonia (3301), the Netherlands (28992, 7415), Czechia and Slovakia (5514) (checked against GDAL/PROJ to a few
+millimetres; for systems with a datum shift, namely Luxembourg, the Netherlands, Belgium (31370), Greece, Czechia and Slovakia, the position is accurate to
+about 1 m). The map and the conversion in the IFC export work for these systems. Not known are for example Hungary (EOV), Romania (Stereo 70),
+Bulgaria and Cyprus; there the map switches itself off with a message.
 
 | Country | Terrain model | Format | Building model | Licence (terrain) |
 |---|---|---|---|---|

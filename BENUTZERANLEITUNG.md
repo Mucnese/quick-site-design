@@ -269,8 +269,9 @@ Gelände. Er ist **standardmäßig aus**. Beim Einschalten lädt dein Browser Ka
 „© OpenStreetMap-Mitwirkende“.
 
 - Die Karte braucht ein Bezugssystem, das die Anwendung in Längen- und Breitengrad umrechnen kann:
-  UTM (ETRS89 und WGS 84), Gauß-Krüger (DHDN), Gauß-Krüger Österreich (MGI, EPSG:31254 bis 31256) und das europäische
-  ETRS89-LAEA (EPSG:3035, BEV). Bei anderen Systemen schaltet sich die Karte mit einer Meldung ab.
+  UTM (ETRS89 und WGS 84), Gauß-Krüger (DHDN), Gauß-Krüger Österreich (MGI, EPSG:31254 bis 31256), das europäische
+  ETRS89-LAEA (EPSG:3035, BEV) und die nationalen Systeme vieler EU-Länder (Liste in der [README](README.md#datenquellen)).
+  Bei anderen Systemen, zum Beispiel Ungarn (EOV), schaltet sich die Karte mit einer Meldung ab.
 - Bei Bessel-Systemen (DHDN, MGI) liegt die Karte auf etwa 1 bis 2 m genau.
 - Die Karte lädt je nach Größe des Geländes bis zu 144 Kacheln auf einmal. Je kleiner das Gelände, desto feiner die Stufe und desto kleiner wirkt die Beschriftung.
 - Nach einem neuen Gelände lädt sich die Karte von selbst neu.
@@ -313,7 +314,8 @@ unter der Geländefläche.
    Rechtswert, Hochwert und Höhe ü. NHN stehen direkt im Modell, sichtbar in jedem Programm)
    oder **lokal** (kleine Zahlen ab der Nordwestecke, die Lage steckt in der Georeferenz
    `IfcMapConversion`). Unter **Bezugssystem der Datei** lässt sich die Lage in ein **anderes
-   Koordinatensystem** umrechnen (UTM 31N bis 33N, Gauß-Krüger 2 bis 5, Gauß-Krüger Österreich). Alle
+   Koordinatensystem** umrechnen (UTM 31N bis 33N, Gauß-Krüger 2 bis 5, Gauß-Krüger Österreich und die nationalen Systeme der EU, zum Beispiel
+   RD New der Niederlande, Lambert-93 Frankreichs, SWEREF 99 TM Schwedens, PL-1992 Polens). Alle
    Punkte werden dann einzeln umgerechnet und absolut geschrieben; die Höhen bleiben unverändert. Bei den
    Bessel-Systemen (DHDN, MGI, mit ≈ markiert) stimmt die Lage nur auf etwa 1 bis 2 m, weil
    kein Umrechnungsgitter beiliegt. Die Datei nennt außerdem das Bezugssystem (EPSG-Code, Datum, Zone) und
