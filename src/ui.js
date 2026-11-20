@@ -26,7 +26,7 @@ const STRINGS = {
     smTitle: 'Lade OpenStreetMap',
     smConsent: 'Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen. Erst nach Ihrem Klick.',
     smBack: 'Zurück zum Gelände', smLoad: 'Karte laden', smLoadAt: 'Karte am Ort laden', smConsentPlace: 'Ort: {p}',
-    smSelect: 'Bereich wählen', smSelectOn: 'Bereich wählen: Rechteck aufziehen',
+    smSelect: 'Bereich wählen', smSelectOn: 'Bereich wählen: Rechteck aufziehen · Esc beendet',
     smZoomIn: 'Vergrößern', smZoomOut: 'Verkleinern',
     smAttrib: '-Mitwirkende',
     smArea: 'Bereich ≈ {w} × {h} m', smPoint: 'Punkt', smClear: 'Auswahl löschen',
@@ -205,7 +205,7 @@ const STRINGS = {
     smTitle: 'Load OpenStreetMap',
     smConsent: 'The map loads tiles from tile.openstreetmap.org. Your IP address is transmitted. Only after your click.',
     smBack: 'Back to the terrain', smLoad: 'Load map', smLoadAt: 'Load map at the place', smConsentPlace: 'Place: {p}',
-    smSelect: 'Select area', smSelectOn: 'Select area: drag a rectangle',
+    smSelect: 'Select area', smSelectOn: 'Select area: drag a rectangle · Esc ends',
     smZoomIn: 'Zoom in', smZoomOut: 'Zoom out',
     smAttrib: ' contributors',
     smArea: 'Area ≈ {w} × {h} m', smPoint: 'Point', smClear: 'Clear selection',
@@ -3686,6 +3686,12 @@ function isTypingTarget(event) {
 }
 
 function onKeyDown(event) {
+  // Esc beendet zuerst den Auswahlmodus der Startkarte (Rechteck aufziehen), eine laufende Geste wird dabei verworfen
+  if (event.key === 'Escape' && smSelectMode && smVisible) {
+    smSetSelectMode(false);
+    if (smDrag) { smDrag.rect = false; smRect = null; smInfo(); smRender(); }
+    return;
+  }
   if (event.key === 'Escape' && smPopOpen && smVisible) { smPopOpen = false; smRenderPop(); return; }
   if (event.key === 'Escape' && smForced && smVisible && !isTypingTarget(event)) { smForced = false; showStartMap(); return; }
   if (event.key !== 'Escape' && isTypingTarget(event)) return;

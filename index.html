@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-LADjC+ty/oMaPpPBJeZXELqa+hrE/ICvTXtObPCOkiE=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-1x4YMkYjGKdG/nq4MvbQCB7y//m/xbf4DKN7W/bG9Q8=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -6718,7 +6718,7 @@ const STRINGS = {
     smTitle: 'Lade OpenStreetMap',
     smConsent: 'Die Karte lädt Kacheln von tile.openstreetmap.org. Dabei wird Ihre IP-Adresse übertragen. Erst nach Ihrem Klick.',
     smBack: 'Zurück zum Gelände', smLoad: 'Karte laden', smLoadAt: 'Karte am Ort laden', smConsentPlace: 'Ort: {p}',
-    smSelect: 'Bereich wählen', smSelectOn: 'Bereich wählen: Rechteck aufziehen',
+    smSelect: 'Bereich wählen', smSelectOn: 'Bereich wählen: Rechteck aufziehen · Esc beendet',
     smZoomIn: 'Vergrößern', smZoomOut: 'Verkleinern',
     smAttrib: '-Mitwirkende',
     smArea: 'Bereich ≈ {w} × {h} m', smPoint: 'Punkt', smClear: 'Auswahl löschen',
@@ -6897,7 +6897,7 @@ const STRINGS = {
     smTitle: 'Load OpenStreetMap',
     smConsent: 'The map loads tiles from tile.openstreetmap.org. Your IP address is transmitted. Only after your click.',
     smBack: 'Back to the terrain', smLoad: 'Load map', smLoadAt: 'Load map at the place', smConsentPlace: 'Place: {p}',
-    smSelect: 'Select area', smSelectOn: 'Select area: drag a rectangle',
+    smSelect: 'Select area', smSelectOn: 'Select area: drag a rectangle · Esc ends',
     smZoomIn: 'Zoom in', smZoomOut: 'Zoom out',
     smAttrib: ' contributors',
     smArea: 'Area ≈ {w} × {h} m', smPoint: 'Point', smClear: 'Clear selection',
@@ -10378,6 +10378,12 @@ function isTypingTarget(event) {
 }
 
 function onKeyDown(event) {
+  // Esc beendet zuerst den Auswahlmodus der Startkarte (Rechteck aufziehen), eine laufende Geste wird dabei verworfen
+  if (event.key === 'Escape' && smSelectMode && smVisible) {
+    smSetSelectMode(false);
+    if (smDrag) { smDrag.rect = false; smRect = null; smInfo(); smRender(); }
+    return;
+  }
   if (event.key === 'Escape' && smPopOpen && smVisible) { smPopOpen = false; smRenderPop(); return; }
   if (event.key === 'Escape' && smForced && smVisible && !isTypingTarget(event)) { smForced = false; showStartMap(); return; }
   if (event.key !== 'Escape' && isTypingTarget(event)) return;

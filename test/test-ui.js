@@ -765,6 +765,37 @@ await test('Gebäude als CityJSON laden: Dateiauswahl nennt .json/.jsonl, Status
   assert.ok(s.document.getElementById('status').textContent.indexOf(s.T('gmlUnreadable')) === 0, s.document.getElementById('status').textContent);
 });
 
+await test('Startkarte: der Auswahlmodus "Bereich wählen" lässt sich mit dem Knopf und mit Esc beenden, ein Rechteck entsteht danach nicht mehr', function () {
+  const s = startMapScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  g('sm-load')._listeners.click[0]();
+  s.smFlyTo(48.7, 11.5, 14);
+  g('sm-select')._listeners.click[0]();
+  assert.strictEqual(vm.runInContext('smSelectMode', s), true);
+  assert.ok(g('sm-select').textContent.indexOf('Esc') > 0, 'der Text sagt, wie man ihn beendet: ' + g('sm-select').textContent);
+  g('sm-select')._listeners.click[0]();                                // zweiter Klick: aus
+  assert.strictEqual(vm.runInContext('smSelectMode', s), false);
+  assert.strictEqual(g('sm-select').textContent, s.T('smSelect'));
+  g('sm-select')._listeners.click[0]();
+  s.onKeyDown({ key: 'Escape', target: {} });                          // Esc: aus
+  assert.strictEqual(vm.runInContext('smSelectMode', s), false);
+  assert.strictEqual(g('sm-select').textContent, s.T('smSelect'));
+  const box = g('sm-tiles');
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 500, clientY: 330, buttons: 1 });
+  s.smPointerUp({ clientX: 500, clientY: 330 });
+  assert.strictEqual(g('sm-rect').style.display, 'none', 'ohne Modus zieht die linke Taste nur die Karte');
+  // Esc mitten im Aufziehen: kein Rechteck, Modus aus
+  g('sm-select')._listeners.click[0]();
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 500, clientY: 330, buttons: 1 });
+  s.onKeyDown({ key: 'Escape', target: {} });
+  s.smPointerUp({ clientX: 500, clientY: 330 });
+  assert.strictEqual(vm.runInContext('smSelectMode', s), false);
+  assert.strictEqual(g('sm-rect').style.display, 'none', 'abgebrochen');
+  assert.strictEqual(vm.runInContext('smRect', s), null);
+});
+
 await test('Startkarte: ein Pin zeigt die Links nur im Fenster am Pin; die Adressleiste zeigt sie erst, wenn dort etwas eingegeben wird', async function () {
   const s = startMapScope();
   s.document.getElementById('sm-load')._listeners.click[0]();

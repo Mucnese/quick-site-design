@@ -14,6 +14,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Programmkopf nennt die SPDX-Kennung `GPL-3.0-or-later`.
 
 ### Neu
+- **Bereich wählen beenden:** Der Auswahlmodus der Startkarte endet mit Esc oder erneutem Klick; der Knopf nennt das („… · Esc beendet“). Esc mitten im Aufziehen verwirft das Rechteck.
 - **Anderen Ort wählen:** Wer in der Adressleiste einen Ort wählt, bevor die Karte geladen ist, sieht ihn im Kasten („Karte am Ort laden“) und kommt mit einem Klick dorthin.
   Ist schon ein Gelände geladen (zum Beispiel die Demo) und der Ort liegt außerhalb, öffnet sich die Karte dort wieder; „Zurück zum Gelände“ oder Esc führt zurück.
 - **Nationale Bezugssysteme der EU:** Karte, Umrechnung und IFC-Export kennen jetzt die Systeme von Schweden, Finnland, Polen, Slowenien, Luxemburg, Portugal,
