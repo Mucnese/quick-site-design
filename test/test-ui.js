@@ -597,7 +597,7 @@ await test('Achslinie: beim Herauszoomen verschwinden alle Felder einer Straße 
   s.addObject('road', 0, 0, p);
   const els = s.document.getElementById('axis-labels').children;
   const shown = function () { return els.filter(function (e) { return e.style.display === 'block'; }).length; };
-  s.__bridge.camera.position.set(42, 15, 10);                          // dicht am kurzen Abschnitt
+  s.__bridge.camera.position.set(42, 10, 5);                          // dicht am kurzen Abschnitt
   s.updateAxisLabels();
   assert.strictEqual(shown(), 4, 'nah: alle vier Felder');
   s.__bridge.camera.position.set(0, 150, 100);                          // der lange Abschnitt wäre noch groß genug

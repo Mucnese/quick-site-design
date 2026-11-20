@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pez/xBkxsgz5XLlWAjsnFmC1nqlZ/7smLpoQmcq/3J4=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-oEp50aFnu+HRcRb6fFOg9l+okhOUZ+HdBtaNdKoYFI8=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -7646,7 +7646,7 @@ function updateSegLabels() {
    seine Länge in m; beide sind Eingabefelder. Eine Neigung gilt nur für ihren Abschnitt; die Länge verschiebt den
    Endpunkt des Abschnitts (die folgenden Punkte rücken mit). Pro Bild an die Bildschirmstelle gesetzt. */
 let axisEls = [];
-const AXIS_MIN_PX = 160;       // ist der kürzeste Abschnitt einer Straße auf dem Bildschirm kürzer, blendet die Straße alle Felder aus (zu eng)
+const AXIS_MIN_PX = 260;       // ist der kürzeste Abschnitt einer Straße auf dem Bildschirm kürzer, blendet die Straße alle Felder aus (zu eng)
 
 function axisSlopeText(v) { return String(Math.round(v * 100) / 100); }
 function axisLenText(v) { return v.toFixed(2); }
