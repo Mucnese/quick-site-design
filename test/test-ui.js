@@ -772,7 +772,13 @@ await test('Startkarte: für Österreich nennt das Fenster einen Befehl zum Zusc
   await s.chooseAddrItem({ main: 'Salzburg', sub: 'Österreich', lat: 47.8095, lon: 13.055, country: 'AT', state: 'Salzburg' }, {});
   const body = s.document.getElementById('sm-pop-body');
   const txt = body.textContent;
+  assert.ok(txt.indexOf(s.T('smCutToggle')) >= 0, 'Schalter für Fortgeschrittene');
   assert.ok(txt.indexOf(s.T('smCutTitle')) >= 0 && txt.indexOf('1000 × 1000 m um den Pin') >= 0, txt);
+  const findCls = function (n, c) { let r = null; (function walk(e) { if (e.className && String(e.className).indexOf(c) >= 0) r = e; (e.children || []).forEach(walk); })(n); return r; };
+  const inner = findCls(body, 'sm-cut-body'), tog = findCls(body, 'sm-cut-toggle');
+  assert.strictEqual(inner.style.display, 'none', 'zunächst zugeklappt');
+  tog._listeners.click[0]();
+  assert.strictEqual(inner.style.display, 'block', 'aufgeklappt');
   const cmd = /gdal_translate [^\n]*ausschnitt\.tif/.exec(txt);
   assert.ok(cmd && cmd[0].indexOf('-projwin 13.0') >= 0 || cmd && /-projwin 1[23]\.\d+ 47\.\d+ 1[34]\.\d+ 47\.\d+/.test(cmd[0]), cmd && cmd[0]);
   let copied = null;
@@ -784,7 +790,7 @@ await test('Startkarte: für Österreich nennt das Fenster einen Befehl zum Zusc
   assert.ok(copied && /^gdal_translate -projwin_srs EPSG:4326/.test(copied), String(copied));
   assert.strictEqual(btn.textContent, s.T('smCutDone'));
   await s.chooseAddrItem({ main: 'München', sub: 'Bayern', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
-  assert.ok(body.textContent.indexOf(s.T('smCutTitle')) < 0, 'nur Österreich: ' + body.textContent.slice(0, 200));
+  assert.ok(body.textContent.indexOf(s.T('smCutToggle')) < 0, 'nur Österreich: ' + body.textContent.slice(0, 200));
 });
 
 await test('Startkarte: sobald ein Gelände geladen ist, verschwindet sie; ohne Gelände kommt sie zurück', async function () {

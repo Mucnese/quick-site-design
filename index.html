@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-xfzU4k1FmG137aeKHz6rAzNx6wvS0p/lJdM2he0a/V0=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-uvBfj8AnvvasnbOr7REurRVC9qq22lFqKT+txJRWW58=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -206,6 +206,8 @@
   #sm-pop .addr-place { padding-right: 18px; }
   #sm-pop .sm-line { font-variant-numeric: tabular-nums; }
   #sm-pop .sm-cut { margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--border); }
+  #sm-pop .sm-cut-toggle { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: var(--text-dim); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+  #sm-pop .sm-cut-toggle:hover { color: var(--accent); }
   #sm-pop .sm-code { display: block; margin: 5px 0 6px; padding: 5px 7px; font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace; background: var(--field);
     border: 1px solid var(--border); border-radius: 3px; word-break: break-all; user-select: all; }
   #sm-pop .sm-copy { width: auto; margin: 0; padding: 3px 12px; }
@@ -6225,7 +6227,8 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
     smHint: 'Die Links zu Gelände und Gebäuden des Landes stehen im Fenster am Bereich. Danach die Dateien unter „Daten“ laden.',
     smPopHint: 'Dateien herunterladen und links unter „Daten“ laden.',
-    smCutTitle: 'Datei zu groß? Ausschnitt mit GDAL zuschneiden:',
+    smCutToggle: 'Datei zu groß? Für Fortgeschrittene: zuschneiden mit GDAL',
+    smCutTitle: 'GDAL ist ein kostenloses Kommandozeilenprogramm. Dieser Befehl schneidet den Ausschnitt aus der großen Datei:',
     smCutAround: '{s} × {s} m um den Pin', smCutRect: 'Bereich wie das Rechteck',
     smCutCopy: 'Kopieren', smCutDone: 'Kopiert',
     osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
@@ -6394,7 +6397,8 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
     smHint: 'The links to the state’s terrain and buildings are in the window at the area. Then load the files under “Data”.',
     smPopHint: 'Download the files and load them under “Data” on the left.',
-    smCutTitle: 'File too large? Cut out an area with GDAL:',
+    smCutToggle: 'File too large? For advanced users: cut it with GDAL',
+    smCutTitle: 'GDAL is a free command-line program. This command cuts the area out of the large file:',
     smCutAround: '{s} × {s} m around the pin', smCutRect: 'Area like the rectangle',
     smCutCopy: 'Copy', smCutDone: 'Copied',
     osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
@@ -8236,7 +8240,7 @@ let smConsent = false, smVisible = false;
 let smView = { lon: 10.5, lat: 50.6, z: 6 };
 let smSelectMode = false, smRect = null, smPoint = null, smDrag = null;
 let smAnim = null, smAnimBusy = false, smRenderBusy = false;
-let smPopOpen = false, smPopKey = '';              // Fenster am Pin mit den Links
+let smPopOpen = false, smPopKey = '', smCutOpen = false;              // Fenster am Pin mit den Links
 let smSettleAt = 0, smSettleTimer = null;       // seit wann alle Kacheln der Ansicht geladen sind
 const SM_FADE_MS = 180;                          // Dauer des Einblendens (CSS .18s)
 const smImgs = {};
@@ -8449,14 +8453,27 @@ function smAddCutBlock(body, a) {
   const cmd = gdalCutCommand(win);
   const box = document.createElement('div');
   box.className = 'sm-cut';
+  const toggle = document.createElement('button');                  // zugeklappt: das ist etwas für Fortgeschrittene
+  toggle.className = 'sm-cut-toggle';
+  toggle.textContent = (smCutOpen ? '▾ ' : '▸ ') + T('smCutToggle');
+  box.appendChild(toggle);
+  const inner = document.createElement('div');
+  inner.className = 'sm-cut-body';
+  inner.style.display = smCutOpen ? 'block' : 'none';
+  toggle.addEventListener('click', function () {
+    smCutOpen = !smCutOpen;
+    inner.style.display = smCutOpen ? 'block' : 'none';
+    toggle.textContent = (smCutOpen ? '▾ ' : '▸ ') + T('smCutToggle');
+  });
+  box.appendChild(inner);
   const t = document.createElement('div');
   t.className = 'sm-line sm-dim';
   t.textContent = T('smCutTitle') + ' ' + (win.around ? T('smCutAround').replace(/\{s\}/g, String(SM_CUT_SIZE)) : T('smCutRect'));
-  box.appendChild(t);
+  inner.appendChild(t);
   const code = document.createElement('code');
   code.className = 'sm-code';
   code.textContent = cmd;
-  box.appendChild(code);
+  inner.appendChild(code);
   const btn = document.createElement('button');
   btn.className = 'btn-block sm-copy';
   btn.textContent = T('smCutCopy');
@@ -8465,7 +8482,7 @@ function smAddCutBlock(body, a) {
     if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cmd).then(done, function () {});
     else done();
   });
-  box.appendChild(btn);
+  inner.appendChild(btn);
   body.appendChild(box);
 }
 

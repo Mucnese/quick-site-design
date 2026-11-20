@@ -38,7 +38,7 @@ locked.
 1. **Find the data.** At the start the page shows a **map**. After you click **Load map** (only then are
    tiles loaded from OpenStreetMap and your IP address transmitted) you can pan it (drag with any mouse button,
    including the pressed middle button) and zoom it smoothly (mouse wheel, **+**/**−**). A click sets a **pin**; next to it a **window with the links to the state's
-   geoportals** opens (terrain and building model), with the place and UTM values (close with **×** or **Esc**). For **Austria** the window also gives a ready-made **`gdal_translate` command** that cuts the
+   geoportals** opens (terrain and building model), with the place and UTM values (close with **×** or **Esc**). For **Austria** the window also gives (collapsed under “For advanced users”) a ready-made **`gdal_translate` command** that cuts the
    area around the pin (1000 × 1000 m) or the rectangle out of a very large raster file (for example BEV 1 m, over 1 GB);
    **Copy** puts it on the clipboard. The links then appear
    only there; below the address bar they appear when you type something there. **Select area** and a dragged rectangle give the size and UTM values of the

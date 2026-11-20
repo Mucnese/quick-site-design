@@ -33,7 +33,8 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
     smHint: 'Die Links zu Gelände und Gebäuden des Landes stehen im Fenster am Bereich. Danach die Dateien unter „Daten“ laden.',
     smPopHint: 'Dateien herunterladen und links unter „Daten“ laden.',
-    smCutTitle: 'Datei zu groß? Ausschnitt mit GDAL zuschneiden:',
+    smCutToggle: 'Datei zu groß? Für Fortgeschrittene: zuschneiden mit GDAL',
+    smCutTitle: 'GDAL ist ein kostenloses Kommandozeilenprogramm. Dieser Befehl schneidet den Ausschnitt aus der großen Datei:',
     smCutAround: '{s} × {s} m um den Pin', smCutRect: 'Bereich wie das Rechteck',
     smCutCopy: 'Kopieren', smCutDone: 'Kopiert',
     osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
@@ -202,7 +203,8 @@ const STRINGS = {
     smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
     smHint: 'The links to the state’s terrain and buildings are in the window at the area. Then load the files under “Data”.',
     smPopHint: 'Download the files and load them under “Data” on the left.',
-    smCutTitle: 'File too large? Cut out an area with GDAL:',
+    smCutToggle: 'File too large? For advanced users: cut it with GDAL',
+    smCutTitle: 'GDAL is a free command-line program. This command cuts the area out of the large file:',
     smCutAround: '{s} × {s} m around the pin', smCutRect: 'Area like the rectangle',
     smCutCopy: 'Copy', smCutDone: 'Copied',
     osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
@@ -2044,7 +2046,7 @@ let smConsent = false, smVisible = false;
 let smView = { lon: 10.5, lat: 50.6, z: 6 };
 let smSelectMode = false, smRect = null, smPoint = null, smDrag = null;
 let smAnim = null, smAnimBusy = false, smRenderBusy = false;
-let smPopOpen = false, smPopKey = '';              // Fenster am Pin mit den Links
+let smPopOpen = false, smPopKey = '', smCutOpen = false;              // Fenster am Pin mit den Links
 let smSettleAt = 0, smSettleTimer = null;       // seit wann alle Kacheln der Ansicht geladen sind
 const SM_FADE_MS = 180;                          // Dauer des Einblendens (CSS .18s)
 const smImgs = {};
@@ -2257,14 +2259,27 @@ function smAddCutBlock(body, a) {
   const cmd = gdalCutCommand(win);
   const box = document.createElement('div');
   box.className = 'sm-cut';
+  const toggle = document.createElement('button');                  // zugeklappt: das ist etwas für Fortgeschrittene
+  toggle.className = 'sm-cut-toggle';
+  toggle.textContent = (smCutOpen ? '▾ ' : '▸ ') + T('smCutToggle');
+  box.appendChild(toggle);
+  const inner = document.createElement('div');
+  inner.className = 'sm-cut-body';
+  inner.style.display = smCutOpen ? 'block' : 'none';
+  toggle.addEventListener('click', function () {
+    smCutOpen = !smCutOpen;
+    inner.style.display = smCutOpen ? 'block' : 'none';
+    toggle.textContent = (smCutOpen ? '▾ ' : '▸ ') + T('smCutToggle');
+  });
+  box.appendChild(inner);
   const t = document.createElement('div');
   t.className = 'sm-line sm-dim';
   t.textContent = T('smCutTitle') + ' ' + (win.around ? T('smCutAround').replace(/\{s\}/g, String(SM_CUT_SIZE)) : T('smCutRect'));
-  box.appendChild(t);
+  inner.appendChild(t);
   const code = document.createElement('code');
   code.className = 'sm-code';
   code.textContent = cmd;
-  box.appendChild(code);
+  inner.appendChild(code);
   const btn = document.createElement('button');
   btn.className = 'btn-block sm-copy';
   btn.textContent = T('smCutCopy');
@@ -2273,7 +2288,7 @@ function smAddCutBlock(body, a) {
     if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cmd).then(done, function () {});
     else done();
   });
-  box.appendChild(btn);
+  inner.appendChild(btn);
   body.appendChild(box);
 }
 
