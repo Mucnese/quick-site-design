@@ -37,8 +37,10 @@ locked.
 
 1. **Find the data.** At the start the page shows a **map**. After you click **Load map** (only then are
    tiles loaded from OpenStreetMap and your IP address transmitted) you can pan it (drag with any mouse button,
-   including the pressed middle button) and zoom it smoothly (mouse wheel, **+**/**−**). A click picks a place; **Select area** and a dragged rectangle give the size and UTM
-   values of the area. The links to the state's geodata appear on the left below the address bar. The map
+   including the pressed middle button) and zoom it smoothly (mouse wheel, **+**/**−**). A click sets a **pin**; next to it a **window with the links to the state's
+   geoportals** opens (terrain and building model), with the place and UTM values (close with **×** or **Esc**). The same
+   links are on the left below the address bar. **Select area** and a dragged rectangle give the size and UTM values of the
+   area; the window then hangs on its north edge. The map
    disappears as soon as a terrain is loaded. Alternatively: type an address or place in the address bar at the top left (“Where is your
    construction site?”) and pick a suggestion. Below it you get the links to the terrain model
    (DGM) and building model (LoD2) pages of your German state; for Austria, the pages of the federal

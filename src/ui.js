@@ -32,6 +32,7 @@ const STRINGS = {
     smArea: 'Bereich ≈ {w} × {h} m', smPoint: 'Punkt', smClear: 'Auswahl löschen',
     smUtm: 'EPSG:{c} · Rechts {e0}–{e1} · Hoch {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Rechts {e} · Hoch {n}',
     smHint: 'Gelände und Gebäude des Landes: Links links unter der Adresse. Danach die Dateien unter „Daten“ laden.',
+    smPopHint: 'Dateien herunterladen und links unter „Daten“ laden.',
     osmMap: 'Karte · OpenStreetMap', osmShow: 'anzeigen', osmBtn: 'Karte',
     osmNote: 'Aus. Beim Einschalten lädt Ihr Browser Kartenkacheln von tile.openstreetmap.org; dabei wird Ihre IP-Adresse übertragen.',
     osmLoading: 'Lade Kacheln …', osmLoaded: 'Karte geladen ({n} Kacheln).',
@@ -197,6 +198,7 @@ const STRINGS = {
     smArea: 'Area ≈ {w} × {h} m', smPoint: 'Point', smClear: 'Clear selection',
     smUtm: 'EPSG:{c} · Easting {e0}–{e1} · Northing {n0}–{n1}', smUtmPoint: 'EPSG:{c} · Easting {e} · Northing {n}',
     smHint: 'Terrain and buildings of the state: links on the left below the address. Then load the files under “Data”.',
+    smPopHint: 'Download the files and load them under “Data” on the left.',
     osmMap: 'Map · OpenStreetMap', osmShow: 'show', osmBtn: 'Map',
     osmNote: 'Off. Turning it on makes your browser load map tiles from tile.openstreetmap.org; your IP address is transmitted.',
     osmLoading: 'Loading tiles …', osmLoaded: 'Map loaded ({n} tiles).',
@@ -2036,6 +2038,7 @@ let smConsent = false, smVisible = false;
 let smView = { lon: 10.5, lat: 50.6, z: 6 };
 let smSelectMode = false, smRect = null, smPoint = null, smDrag = null;
 let smAnim = null, smAnimBusy = false, smRenderBusy = false;
+let smPopOpen = false, smPopKey = '';              // Fenster am Pin mit den Links
 let smSettleAt = 0, smSettleTimer = null;       // seit wann alle Kacheln der Ansicht geladen sind
 const SM_FADE_MS = 180;                          // Dauer des Einblendens (CSS .18s)
 const smImgs = {};
@@ -2095,6 +2098,7 @@ function smRender() {
     smEl('sm-rect').style.display = 'none';
     smEl('sm-marker').style.display = 'none';
     smEl('sm-info').style.display = 'none';
+    smEl('sm-pop').style.display = 'none';
     return;
   }
   const s = smSize(), list = smTileList(smView, s.w, s.h, 120), cur = {};
@@ -2164,6 +2168,7 @@ function smRender() {
     const p = smToScreen(smPoint.lon, smPoint.lat);
     mk.style.display = 'block'; mk.style.left = p.x + 'px'; mk.style.top = p.y + 'px';
   } else mk.style.display = 'none';
+  smRenderPop();
 }
 
 function showStartMap(on) {
@@ -2179,6 +2184,7 @@ function smFlyTo(lat, lon, z) {
   smClampView();
   smPoint = { lon: lon, lat: lat };
   smRect = null;
+  smPopOpen = true;
   smInfo();
   smRender();
 }
@@ -2227,11 +2233,58 @@ function smFinishZoom() {
   while (smAnim && guard++ < 200) smAnimStep();
 }
 
+/* Fenster am Pin: Ort, Koordinaten und die Links zu Gelände- und Gebäudedaten des Landes (dasselbe wie in der Adressleiste).
+   Es hängt am Pin (oder an der Nordkante eines aufgezogenen Rechtecks) und folgt ihm beim Verschieben und Zoomen. */
+function smAnchor() {
+  if (smRect) {
+    const i = smRectInfo(smRect.a, smRect.b);
+    return { lon: i.clon, lat: i.lat1, rect: true };
+  }
+  return smPoint ? { lon: smPoint.lon, lat: smPoint.lat, rect: false } : null;
+}
+
+function smRenderPop() {
+  const pop = smEl('sm-pop');
+  const a = smAnchor();
+  if (!smVisible || !smConsent || !smPopOpen || !a || !addrPlace) { pop.style.display = 'none'; smPopKey = ''; return; }
+  const s = smSize(), p = smToScreen(a.lon, a.lat);
+  if (p.x < -20 || p.y < -20 || p.x > s.w + 20 || p.y > s.h + 20) { pop.style.display = 'none'; return; }
+  const key = [addrPlace.main, addrPlace.sub, addrPlace.pending, addrPlace.failed, addrPlace.country, addrPlace.state, a.lon.toFixed(6), a.lat.toFixed(6)].join('|');
+  const body = smEl('sm-pop-body');
+  if (key !== smPopKey) {                               // nur neu aufbauen, wenn sich Ort oder Daten ändern (nicht bei jedem Verschieben)
+    smPopKey = key;
+    renderPlaceInto(body, addrPlace);
+    const zone = Math.floor((a.lon + 180) / 6) + 1, def = crsGeoDefinition(25800 + zone);
+    if (def) {
+      const q = transverseMercatorForward(a.lat, a.lon, def);
+      const d = document.createElement('div');
+      d.className = 'sm-line sm-dim';
+      d.textContent = T('smUtmPoint').replace('{c}', 25800 + zone).replace('{e}', Math.round(q.e)).replace('{n}', Math.round(q.n));
+      d.style.marginTop = '6px';
+      body.appendChild(d);
+    }
+    const hint = document.createElement('div');
+    hint.className = 'sm-line sm-dim';
+    hint.textContent = T('smPopHint');
+    body.appendChild(hint);
+  }
+  pop.style.display = 'block';
+  const w = pop.offsetWidth || 300, h = pop.offsetHeight || 170;
+  const gap = a.rect ? 8 : 36;                          // der Pin ist 27 px hoch
+  const above = p.y - gap - h > 10;
+  const minLeft = s.w > 900 ? 350 : 14;                 // nicht unter das linke Fenster schieben
+  const left = Math.max(minLeft, Math.min(s.w - w - 14, p.x - w / 2));
+  pop.style.left = Math.round(left) + 'px';
+  pop.style.top = Math.round(above ? p.y - gap - h : p.y + (a.rect ? 8 : 14)) + 'px';
+  pop.className = 'panel ' + (above ? 'above' : 'below');
+  smEl('sm-pop-arrow').style.left = Math.round(Math.max(14, Math.min(w - 26, p.x - left - 6))) + 'px';
+}
+
 function smInfo() {
   const box = smEl('sm-info');
   box.innerHTML = '';
   const rect = smRect, pt = smPoint;
-  if (!smVisible || !smConsent || (!rect && !pt)) { box.style.display = 'none'; return; }
+  if (!smVisible || !smConsent || !rect) { box.style.display = 'none'; return; }      // ein Punkt zeigt seine Angaben im Fenster am Pin
   const line = function (text, cls) {
     const d = document.createElement('div');
     d.className = 'sm-line' + (cls ? ' ' + cls : '');
@@ -2311,6 +2364,7 @@ function smPointerUp(e) {
     } else smRect = null;
     if (smRect) {
       smPoint = null;
+      smPopOpen = true;
       smSetSelectMode(false);                          // danach verschiebt Ziehen wieder die Karte
       const i = smRectInfo(smRect.a, smRect.b);
       chooseAddrItem({ coord: true, main: i.clat.toFixed(5) + ', ' + i.clon.toFixed(5), sub: T('addrCoordSub'), lat: i.clat, lon: i.clon }, { noFly: true });
@@ -2322,6 +2376,7 @@ function smPointerUp(e) {
   if (d.btn === 0 && !d.moved) {                       // Klick ohne Ziehen: Ort wählen
     smPoint = { lon: d.start.lon, lat: d.start.lat };
     smRect = null;
+    smPopOpen = true;
     chooseAddrItem({ coord: true, main: d.start.lat.toFixed(5) + ', ' + d.start.lon.toFixed(5), sub: T('addrCoordSub'), lat: d.start.lat, lon: d.start.lon }, { noFly: true });
     smInfo();
   }
@@ -2339,6 +2394,7 @@ function smWheel(e) {
 function initStartMap() {
   smEl('sm-load').addEventListener('click', function () { smConsent = true; smRender(); smInfo(); });
   smEl('sm-select').addEventListener('click', function () { smSetSelectMode(!smSelectMode); });
+  smEl('sm-pop-close').addEventListener('click', function () { smPopOpen = false; smRenderPop(); });
   smEl('sm-in').addEventListener('click', function () { smZoomBy(1); });
   smEl('sm-out').addEventListener('click', function () { smZoomBy(-1); });
   const box = smEl('sm-tiles');
@@ -2523,20 +2579,26 @@ function addrRow(src, kind) {
 function renderAddrResult() {
   const box = document.getElementById('addr-result');
   if (!box) return;
+  renderPlaceInto(box, addrPlace);
+  smRenderPop();                       // das Fenster am Pin zeigt dieselben Links
+}
+
+/* Ort und Links zu Gelände- und Gebäudedaten in ein Feld schreiben (Adressleiste und Fenster am Pin) */
+function renderPlaceInto(box, place) {
   box.innerHTML = '';
-  if (!addrPlace) { box.style.display = 'none'; return; }
+  if (!place) { box.style.display = 'none'; return; }
   box.style.display = 'block';
   const title = document.createElement('div');
   title.className = 'addr-place';
-  title.textContent = addrPlace.main;
+  title.textContent = place.main;
   box.appendChild(title);
-  if (addrPlace.coord) {
+  if (place.coord) {
     const at = document.createElement('div');
     at.className = 'addr-note';
-    at.textContent = addrPlace.pending ? T('addrSearching') : (addrPlace.sub || '');
+    at.textContent = place.pending ? T('addrSearching') : (place.sub || '');
     box.appendChild(at);
-    if (addrPlace.pending) return;
-    if (addrPlace.failed) {
+    if (place.pending) return;
+    if (place.failed) {
       const f = document.createElement('div');
       f.className = 'addr-note';
       f.textContent = T('addrCoordFail');
@@ -2544,7 +2606,7 @@ function renderAddrResult() {
       return;
     }
   }
-  const src = geoSourcesFor(addrPlace);
+  const src = geoSourcesFor(place);
   if (!src) {
     const n = document.createElement('div');
     n.className = 'addr-note';
@@ -3478,6 +3540,7 @@ function isTypingTarget(event) {
 }
 
 function onKeyDown(event) {
+  if (event.key === 'Escape' && smPopOpen && smVisible) { smPopOpen = false; smRenderPop(); return; }
   if (event.key !== 'Escape' && isTypingTarget(event)) return;
   if ((event.key === ' ' || event.code === 'Space' || event.key === 'Enter') && rulerActive) {
     if (event.preventDefault) event.preventDefault();

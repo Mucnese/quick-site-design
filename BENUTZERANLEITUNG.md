@@ -39,9 +39,10 @@ gesperrt.
 1. **Daten finden.** Beim Start zeigt die Seite eine **Karte**. Nach dem Klick auf **Karte laden**
    (erst dann werden Kacheln von OpenStreetMap geladen und deine IP-Adresse übertragen) kannst du sie
    verschieben (Ziehen mit einer beliebigen Maustaste, auch mit gedrückter Mitteltaste) und stufenlos zoomen (Mausrad,
-   **+**/**−**). Ein Klick wählt einen Ort; **Bereich wählen**
-   und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs. Die Links zu den Geodaten des
-   Landes erscheinen links unter der Adressleiste. Die Karte verschwindet, sobald ein Gelände geladen ist.
+   **+**/**−**). Ein Klick setzt einen **Pin**; daneben öffnet sich ein
+   **Fenster mit den Links zu den Geoportalen** des Landes (Gelände- und Gebäudemodell), mit Ort und UTM-Werten
+   (schließen mit **×** oder **Esc**). Dieselben Links stehen links unter der Adressleiste. **Bereich wählen**
+   und ein aufgezogenes Rechteck nennen Größe und UTM-Werte des Bereichs; das Fenster hängt dann an der Nordkante. Die Karte verschwindet, sobald ein Gelände geladen ist.
    Alternativ: Gib oben links in der Adressleiste („Wo ist deine Baustelle?“) eine
    Adresse oder einen Ort ein und wähle einen Vorschlag. Darunter erscheinen die Links zur
    Seite des Geländemodells (DGM) und des Gebäudemodells (LoD2) deines Bundeslandes, bei

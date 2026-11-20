@@ -244,7 +244,9 @@ Fahrzeuge: nur `SEMI_TRUCK` ändern und die Kontrollradien erneut prüfen, nicht
 Web-Mercator-Karte ohne Bibliothek (`smWorldPx`, `smLonLat`, `smTileList`, `smRectInfo` in `app.js`, Darstellung und Maus in
 `ui.js`, Abschnitt Startkarte). Kacheln (`OSM_TILE_URL`) werden erst nach dem Klick auf `#sm-load` angefragt (Datenschutz:
 IP-Adresse an OSM); nie beim Start. Klick oder Rechteck rufen `chooseAddrItem` auf (Ort wie eine eingegebene Koordinate,
-Links des Landes über `geoSourcesFor`), `noFly` hält die Karte still. Kein localStorage: die Einwilligung gilt nur bis zum
+Links des Landes über `geoSourcesFor`), `noFly` hält die Karte still. Der Klick setzt einen Pin (`#sm-marker`) und öffnet
+`#sm-pop` mit denselben Links wie die Adressleiste (`renderPlaceInto`, `smRenderPop`; folgt dem Pin, Esc und × schließen).
+Achtung Stapelreihenfolge: `#sm-tiles` ist ein eigener Stapelkontext (`isolation`), sonst liegen die Kacheln (z-index = Stufe) über Pin und Fenster. Kein localStorage: die Einwilligung gilt nur bis zum
 Neuladen. Zoomen: stufenlos (`smZoomBy`, `smAnimStep`); Kacheln der nächsten ganzen Stufe werden skaliert, zwei grobe Unterlagen (3 und
 6 Stufen darunter) füllen Lücken, alte Kacheln bleiben, bis die neuen geladen UND eingeblendet sind (sonst blitzt der Hintergrund). Mit `?demo=1` erscheint sie nicht. Die Karte lädt kein Gelände; das tut weiterhin der Nutzer mit den Dateien.
 

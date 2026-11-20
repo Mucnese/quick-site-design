@@ -679,12 +679,55 @@ await test('Startkarte: ein Klick ohne Ziehen setzt einen Punkt, Ziehen verschie
   assert.ok(vm.runInContext('smView.lon', s) < lon0, 'Karte nach rechts gezogen: Mitte wandert nach Westen');
   box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
   s.smPointerUp({ clientX: 300, clientY: 200 });
-  assert.ok(/Punkt \d+\.\d+, \d+\.\d+/.test(s.document.getElementById('sm-info').textContent), s.document.getElementById('sm-info').textContent);
+  assert.strictEqual(s.document.getElementById('sm-marker').style.display, 'block', 'Pin gesetzt');
+  assert.strictEqual(s.document.getElementById('sm-pop').style.display, 'block', 'Fenster am Pin');
+  assert.ok(/^\d+\.\d+, \d+\.\d+/.test(s.document.getElementById('sm-pop-body').textContent), s.document.getElementById('sm-pop-body').textContent);
+  assert.strictEqual(s.document.getElementById('sm-info').style.display, 'none', 'ein Punkt braucht das untere Infofenster nicht');
   s.document.getElementById('sm-select')._listeners.click[0]();
   box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 200, preventDefault: function () {} });
   s.smPointerMove({ clientX: 305, clientY: 204, buttons: 1 });
   s.smPointerUp({ clientX: 305, clientY: 204 });
   assert.strictEqual(s.document.getElementById('sm-rect').style.display, 'none');
+});
+
+await test('Startkarte: Pin setzen öffnet ein Fenster mit den Links zu den Geoportalen, es folgt dem Pin, schließt mit × und Esc', async function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  await s.chooseAddrItem({ main: 'Marienplatz', sub: 'München', lat: 48.1374, lon: 11.5755, country: 'DE', state: 'Bayern' }, {});
+  const pop = s.document.getElementById('sm-pop');
+  assert.strictEqual(pop.style.display, 'block');
+  const txt = s.document.getElementById('sm-pop-body').textContent;
+  assert.ok(txt.indexOf('Marienplatz') >= 0, txt);
+  assert.ok(txt.indexOf(s.T('addrDem')) >= 0 && txt.indexOf(s.T('addrBldg')) >= 0, 'beide Gruppen von Links');
+  assert.ok(txt.indexOf('geodaten.bayern.de') >= 0, 'Link des Landes: ' + txt);
+  assert.ok(/EPSG:25832 · Rechts 691\d{3} · Hoch 5334\d{3}/.test(txt), txt);
+  assert.ok(/^panel (above|below)$/.test(pop.className), pop.className);
+  const left0 = pop.style.left;
+  s.smZoomBy(0.4, 100, 100); s.smFinishZoom();                         // Zoomen um einen anderen Punkt: der Pin wandert, das Fenster mit
+  assert.ok(pop.style.display === 'block');
+  s.document.getElementById('sm-pop-close')._listeners.click[0]();
+  assert.strictEqual(pop.style.display, 'none', '× schließt');
+  assert.strictEqual(s.document.getElementById('sm-marker').style.display, 'block', 'der Pin bleibt');
+  await s.chooseAddrItem({ main: 'Odeonsplatz', sub: 'München', lat: 48.1425, lon: 11.5775, country: 'DE', state: 'Bayern' }, {});
+  assert.strictEqual(pop.style.display, 'block', 'neuer Ort öffnet es wieder');
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(pop.style.display, 'none', 'Esc schließt');
+});
+
+await test('Startkarte: Ort ohne Daten (nicht Deutschland oder Österreich) nennt das im Fenster, Rechteck hängt das Fenster an die Nordkante', async function () {
+  const s = startMapScope();
+  s.document.getElementById('sm-load')._listeners.click[0]();
+  await s.chooseAddrItem({ main: 'Paris', sub: 'Frankreich', lat: 48.8566, lon: 2.3522, country: 'FR', state: '' }, {});
+  assert.ok(s.document.getElementById('sm-pop-body').textContent.indexOf(s.T('addrOnlyDeAt')) >= 0);
+  s.smFlyTo(48.7, 11.5, 14);
+  s.document.getElementById('sm-select')._listeners.click[0]();
+  const box = s.document.getElementById('sm-tiles');
+  box._listeners.pointerdown[0]({ button: 0, clientX: 300, clientY: 250, preventDefault: function () {} });
+  s.smPointerMove({ clientX: 520, clientY: 400, buttons: 1 });
+  s.smPointerUp({ clientX: 520, clientY: 400 });
+  assert.strictEqual(s.document.getElementById('sm-marker').style.display, 'none', 'bei einem Rechteck kein Pin');
+  assert.strictEqual(s.document.getElementById('sm-pop').style.display, 'block', 'Fenster am Rechteck');
+  assert.strictEqual(s.document.getElementById('sm-info').style.display, 'block', 'und die Größe unten');
 });
 
 await test('Startkarte: sobald ein Gelände geladen ist, verschwindet sie; ohne Gelände kommt sie zurück', async function () {
