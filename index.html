@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-go8+u1YLDiUgUL2az12cq67PcRKKZAKJat6Hz56OZ1c=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-GaYka2By8uQgJc6M7Eg6MsaHQWWvIL2YwsR0qUyN+L8=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -1613,6 +1613,10 @@ const GEO_AT_STATES = {
   'Oberösterreich': { dem: { url: 'https://www.data.gv.at/katalog/dataset/68cfe491-7cdf-4781-a1f1-603cd0738abd', fmt: 'tif' } },
   'Burgenland': { dem: { url: 'https://geodaten.bgld.gv.at/de/downloads/hoehenmodelle-orthofotos.html', fmt: 'unclear', note: 'unverified' } }
 };
+/* Bund: DLM Bauwerke des BEV, österreichweit als Blockmodell LoD1 (Polygone mit Höhen), GeoPackage, CC BY 4.0 (Metadaten bei data.bev.gv.at, Stichtag 23.03.2026) */
+const GEO_AT_FEDERAL_BLDG = [
+  { url: 'https://data.bev.gv.at/geonetwork/srv/ger/catalog.search#/metadata/b7f4843a-83d1-419a-bc87-bc2aaa83976d', label: 'BEV DLM Bauwerke · LoD1', note: 'atGpkg' }
+];
 const GEO_AT_LINZ_BLDG = { url: 'https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e' };
 
 /* Europäische Union ohne Deutschland und Österreich: je Land die Seiten für Geländemodell (dem) und Gebäudemodell (bldg).
@@ -1988,7 +1992,8 @@ function geoSourcesFor(place) {
     const bldg = [];
     if (e.bldg) bldg.push(Object.assign({ label: place.state }, e.bldg));
     if (place.city === 'Linz') bldg.push(Object.assign({ label: 'Linz' }, GEO_AT_LINZ_BLDG));
-    return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: bldg.length ? null : 'noAtBldg' };
+    GEO_AT_FEDERAL_BLDG.forEach(function (f) { bldg.push(f); });
+    return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: null };
   }
   const eu = GEO_EU[cc];
   if (eu) {
@@ -7050,7 +7055,7 @@ const STRINGS = {
     addrCoordFail: 'Ort oder Bundesland konnte nicht ermittelt werden.', addrAt: 'Lage',
     addrSearching: 'Suche …', addrNone: 'Keine Treffer.', addrError: 'Die Suche ist gerade nicht erreichbar.',
     addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Länder der EU).',
-    addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD2)',
+    addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD1/LoD2)',
     addrCity: 'Stadtgeoportale · {c}', cityKind_map: 'Karte / Geoportal', cityKind_data: 'Offene Daten / Downloads', cityKind_3d: '3D-Stadtmodell',
     geoFmtTif: 'GeoTIFF, direkt ladbar', geoFmtXyz: 'XYZ-Text, direkt ladbar (Bezugssystem wählen)', geoFmtUnclear: 'Format unklar',
     geoNote_dgm025: 'Das DGM1 gibt es hier nur als XYZ-Text, GeoTIFF nur beim DGM025 (0,25 m).',
@@ -7061,7 +7066,7 @@ const STRINGS = {
     geoNote_asc: 'Gemeindeweise als TIF und ASCII.',
     geoNote_unverified: 'Nicht geprüft.',
     geoNote_servicesOnly: 'Kein Download gefunden, nur Dienste.',
-    geoNote_noAtBldg: 'Es gibt kein landesweites 3D-Gebäudemodell.',
+    geoNote_atGpkg: 'Ganz Österreich, aber nur als Blockmodell (LoD1) im GeoPackage-Format. Nicht direkt ladbar: Die Anwendung liest CityGML und CityJSON. CC BY 4.0.',
     geoNote_euNoOpenDem: 'Kein offenes Geländemodell geprüft. Das nationale Geoportal oder das INSPIRE-Geoportal der EU nennen Angebote.',
     geoNote_noEuBldg: 'Kein amtliches 3D-Gebäudemodell geprüft.',
     geoNote_euCheckFormat: 'Das Format steht auf der Seite nicht eindeutig; vor dem Laden prüfen (GeoTIFF wird direkt geladen).',
@@ -7227,7 +7232,7 @@ const STRINGS = {
     addrCoordFail: 'The place or state could not be determined.', addrAt: 'Position',
     addrSearching: 'Searching …', addrNone: 'No results.', addrError: 'The search is not reachable right now.',
     addrOnlyDeAt: 'No data sources are listed for this place (EU countries only).',
-    addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD2)',
+    addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD1/LoD2)',
     addrCity: 'City geoportals · {c}', cityKind_map: 'Map / geoportal', cityKind_data: 'Open data / downloads', cityKind_3d: '3D city model',
     geoFmtTif: 'GeoTIFF, loads directly', geoFmtXyz: 'XYZ text, loads directly (choose the coordinate system)', geoFmtUnclear: 'Format unclear',
     geoNote_dgm025: 'The DGM1 is only offered as XYZ text here, GeoTIFF only for the DGM025 (0.25 m).',
@@ -7238,7 +7243,7 @@ const STRINGS = {
     geoNote_asc: 'Per municipality as TIF and ASCII.',
     geoNote_unverified: 'Not checked.',
     geoNote_servicesOnly: 'No download found, services only.',
-    geoNote_noAtBldg: 'There is no nationwide 3D building model.',
+    geoNote_atGpkg: 'All of Austria, but only as a block model (LoD1) in GeoPackage format. Cannot be loaded directly: the application reads CityGML and CityJSON. CC BY 4.0.',
     geoNote_euNoOpenDem: 'No open terrain model checked. The national geoportal or the EU INSPIRE geoportal list offers.',
     geoNote_noEuBldg: 'No official 3D building model checked.',
     geoNote_euCheckFormat: 'The page does not state the format clearly; check before loading (GeoTIFF loads directly).',

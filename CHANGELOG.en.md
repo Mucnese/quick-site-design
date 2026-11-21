@@ -8,6 +8,10 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-21
 
+### New
+- **Austria: federal building model.** Every place in Austria now lists the BEV model “DLM Bauwerke” (all of Austria, block model LoD1 with heights, GeoPackage, CC BY 4.0).
+  A note says it cannot be loaded directly (the application reads CityGML and CityJSON). The statement “no nationwide building model” is gone.
+
 ### Fixed
 - **Italy:** The link to the South Tyrol elevation model appeared for all of Italy. Now only for places in the province of Bolzano (matched by the county Photon returns);
   Trentino (same region) and the rest of Italy do not show it.

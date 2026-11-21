@@ -726,6 +726,10 @@ const GEO_AT_STATES = {
   'Oberösterreich': { dem: { url: 'https://www.data.gv.at/katalog/dataset/68cfe491-7cdf-4781-a1f1-603cd0738abd', fmt: 'tif' } },
   'Burgenland': { dem: { url: 'https://geodaten.bgld.gv.at/de/downloads/hoehenmodelle-orthofotos.html', fmt: 'unclear', note: 'unverified' } }
 };
+/* Bund: DLM Bauwerke des BEV, österreichweit als Blockmodell LoD1 (Polygone mit Höhen), GeoPackage, CC BY 4.0 (Metadaten bei data.bev.gv.at, Stichtag 23.03.2026) */
+const GEO_AT_FEDERAL_BLDG = [
+  { url: 'https://data.bev.gv.at/geonetwork/srv/ger/catalog.search#/metadata/b7f4843a-83d1-419a-bc87-bc2aaa83976d', label: 'BEV DLM Bauwerke · LoD1', note: 'atGpkg' }
+];
 const GEO_AT_LINZ_BLDG = { url: 'https://www.data.gv.at/katalog/dataset/5f4440ca-90b7-4875-a0e4-bce7f8abb13e' };
 
 /* Europäische Union ohne Deutschland und Österreich: je Land die Seiten für Geländemodell (dem) und Gebäudemodell (bldg).
@@ -1101,7 +1105,8 @@ function geoSourcesFor(place) {
     const bldg = [];
     if (e.bldg) bldg.push(Object.assign({ label: place.state }, e.bldg));
     if (place.city === 'Linz') bldg.push(Object.assign({ label: 'Linz' }, GEO_AT_LINZ_BLDG));
-    return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: bldg.length ? null : 'noAtBldg' };
+    GEO_AT_FEDERAL_BLDG.forEach(function (f) { bldg.push(f); });
+    return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: null };
   }
   const eu = GEO_EU[cc];
   if (eu) {

@@ -189,14 +189,16 @@ genaue Wortlaut steht in den Metadaten des jeweiligen Landes.
 
 ### Österreich
 
-Die Daten kommen vom Bund und von einzelnen Ländern und Städten; ein
-landesweites 3D-Gebäudemodell gibt es nicht. Verzeichnet sind nur Angebote, die
+Die Daten kommen vom Bund und von einzelnen Ländern und Städten. Ein
+landesweites Gebäudemodell gibt es nur als Blockmodell (LoD1, GeoPackage) beim BEV; ein 3D-Modell in LoD2 gibt es nur in
+einzelnen Städten. Verzeichnet sind nur Angebote, die
 im November 2026 geprüft wurden. Steiermark, Niederösterreich, Kärnten und
 Vorarlberg sind nicht geprüft.
 
 | Stelle | Geländemodell | Format | Gebäudemodell (LoD2) | Lizenz |
 |---|---|---|---|---|
 | Bund (BEV) | [ALS-Höhenraster 1 m](https://www.bev.gv.at/Services/Produkte/Digitales-Gelaendehoehenmodell/ALS-Hoehenraster.html), Download auf data.bev.gv.at | GeoTIFF (COG), ⚠ EPSG:3035 | — | CC BY 4.0 |
+| Bund (BEV, Gebäude) | — | — | [DLM Bauwerke · LoD1](https://data.bev.gv.at/geonetwork/srv/ger/catalog.search#/metadata/b7f4843a-83d1-419a-bc87-bc2aaa83976d), GeoPackage, Blockmodell mit Höhen; nicht direkt ladbar (die Anwendung liest CityGML und CityJSON) | CC BY 4.0 |
 | Bund (10 m) | [DGM Österreich 10 m](https://www.data.gv.at/katalog/dataset/d88a1246-9684-480b-a480-ff63286b35b7) | GeoTIFF | — | CC BY 4.0 |
 | Wien | [Geländemodell Raster 1 m](https://www.data.gv.at/katalog/dataset/1eda4b16-05e3-43c3-b5b0-ef8276df0701) | GeoTIFF und ASCII | [Dachmodell LoD2.1](https://www.data.gv.at/katalog/dataset/86d88cae-ad97-4476-bae5-73488a12776d) | CC BY 4.0 |
 | Tirol | [DGM Tirol](https://www.data.gv.at/katalog/dataset/0454f5f3-1d8c-464e-847d-541901eb021a) | GeoTIFF (0,5 m, 5 m, 10 m), XYZ-Grid (1 m) | — | CC BY 4.0 |

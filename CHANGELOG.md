@@ -9,6 +9,10 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-21
 
+### Neu
+- **Österreich: Gebäudemodell des Bundes.** Jeder Ort in Österreich nennt jetzt das BEV-Modell „DLM Bauwerke“ (ganz Österreich, Blockmodell LoD1 mit Höhen, GeoPackage, CC BY 4.0).
+  Ein Hinweis sagt, dass es nicht direkt ladbar ist (die Anwendung liest CityGML und CityJSON). Der Satz „kein landesweites Gebäudemodell“ entfällt.
+
 ### Behoben
 - **Italien:** Der Link zum Südtiroler Höhenmodell erschien für ganz Italien. Jetzt nur noch für Orte in der Provinz Bozen (Abgleich über den Landkreis, den Photon liefert);
   das Trentino (gleiche Region) und der Rest Italiens zeigen ihn nicht.

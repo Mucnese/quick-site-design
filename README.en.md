@@ -190,13 +190,15 @@ wording is in the metadata of the respective state.
 ### Austria
 
 The data comes from the federal government and from individual states and
-cities; there is no nationwide 3D building model. Only offers checked in
+cities. A nationwide building model exists only as a block model (LoD1, GeoPackage) at the BEV; a 3D model in LoD2 exists only in
+individual cities. Only offers checked in
 November 2026 are listed. Styria, Lower Austria, Carinthia and Vorarlberg were
 not checked.
 
 | Authority | Terrain model | Format | Building model (LoD2) | Licence |
 |---|---|---|---|---|
 | Federal (BEV) | [ALS height raster 1 m](https://www.bev.gv.at/Services/Produkte/Digitales-Gelaendehoehenmodell/ALS-Hoehenraster.html), download on data.bev.gv.at | GeoTIFF (COG), ⚠ EPSG:3035 | — | CC BY 4.0 |
+| Federal (BEV, buildings) | — | — | [DLM Bauwerke · LoD1](https://data.bev.gv.at/geonetwork/srv/ger/catalog.search#/metadata/b7f4843a-83d1-419a-bc87-bc2aaa83976d), GeoPackage, block model with heights; cannot be loaded directly (the application reads CityGML and CityJSON) | CC BY 4.0 |
 | Federal (10 m) | [DGM Austria 10 m](https://www.data.gv.at/katalog/dataset/d88a1246-9684-480b-a480-ff63286b35b7) | GeoTIFF | — | CC BY 4.0 |
 | Vienna | [Terrain model raster 1 m](https://www.data.gv.at/katalog/dataset/1eda4b16-05e3-43c3-b5b0-ef8276df0701) | GeoTIFF and ASCII | [Roof model LoD2.1](https://www.data.gv.at/katalog/dataset/86d88cae-ad97-4476-bae5-73488a12776d) | CC BY 4.0 |
 | Tyrol | [DGM Tirol](https://www.data.gv.at/katalog/dataset/0454f5f3-1d8c-464e-847d-541901eb021a) | GeoTIFF (0.5 m, 5 m, 10 m), XYZ grid (1 m) | — | CC BY 4.0 |
