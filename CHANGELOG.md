@@ -12,6 +12,8 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 ### Behoben
 - **Italien:** Der Link zum Südtiroler Höhenmodell erschien für ganz Italien. Jetzt nur noch für Orte in der Provinz Bozen (Abgleich über den Landkreis, den Photon liefert);
   das Trentino (gleiche Region) und der Rest Italiens zeigen ihn nicht.
+- **Belgien:** Die Höhenmodelle von Flandern und Wallonien erschienen für ganz Belgien. Jetzt zeigt jeder Ort nur das seiner Region (Abgleich über die Provinz);
+  Brüssel bekommt keines der beiden, sondern den Hinweis, dass kein offenes Geländemodell geprüft wurde.
 
 ## 2026-11-20
 

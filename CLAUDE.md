@@ -258,7 +258,8 @@ Löcher werden ignoriert. Formen: CityJSON 1.x/2.0 (`transform` aus Maßstab und
 `CityJSONFeature`), Merkmalsliste (`features`, `metadata.transform`). Geprüft an einem echten 3DBAG-Merkmal (api.3dbag.nl, EPSG:7415).
 
 **Teilgebiete eines Landes.** Ein Link in `GEO_EU` kann `only: { county: [...] }` tragen (Italien: Südtirol); `placeMatchesOnly` vergleicht mit dem Landkreis, den Photon liefert
-(`place.county`, über `parsePhoton` und `photonReverse`). Ohne Landkreis wird der Link nicht gezeigt.
+(`place.county`, über `parsePhoton` und `photonReverse`). Ohne Landkreis wird der Link nicht gezeigt. `only: { state: [...] }` gleicht die Provinz genau ab (Belgien:
+Flandern und Wallonien; Photon liefert dort die Provinz als `state`). Passt bei einem Land mit nur regionalen Links keiner, steht der Hinweis `euNoOpenDem` (Brüssel).
 
 **Stadtgeoportale.** `GEO_CITIES` (`app.js`, Liste von `{cc, name, names, links:[{kind: 'map'|'data'|'3d', label, url}]}`) ist eine eigene Tabelle neben den Ländern;
 `cityPortalsFor(place)` gleicht Land und Stadtname (`place.city` von Photon, ohne Akzente über `addrNorm`) mit `names` ab, `renderPlaceInto` hängt die Gruppe `addrCity` an

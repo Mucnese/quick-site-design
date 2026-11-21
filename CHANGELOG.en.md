@@ -11,6 +11,8 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 ### Fixed
 - **Italy:** The link to the South Tyrol elevation model appeared for all of Italy. Now only for places in the province of Bolzano (matched by the county Photon returns);
   Trentino (same region) and the rest of Italy do not show it.
+- **Belgium:** The elevation models of Flanders and Wallonia appeared for all of Belgium. Now each place shows only the one of its region (matched by province);
+  Brussels gets neither, but the note that no open terrain model was checked.
 
 ## 2026-11-20
 

@@ -2536,6 +2536,20 @@ test('Italien: der Südtiroler Link erscheint nur für Orte in der Provinz Bozen
   assert.strictEqual(app.parsePhoton({ features: [{ geometry: { coordinates: [11.35, 46.5] }, properties: { name: 'Bozen', countrycode: 'IT', county: 'Bozen', state: 'Trentino-Südtirol' } }] })[0].county, 'Bozen');
 });
 
+test('Belgien: Flandern und Wallonien nur für Orte der jeweiligen Provinzen, Brüssel bekommt keinen der beiden Links', function () {
+  const urls = function (state) { return app.geoSourcesFor({ country: 'BE', state: state, city: 'X' }).dem.map(function (x) { return x.label.split(' ')[0]; }).join(); };
+  ['Antwerpen', 'Ostflandern', 'Westflandern', 'Flämisch-Brabant', 'Limburg'].forEach(function (st) { assert.strictEqual(urls(st), 'Flandern', st); });
+  ['Hennegau', 'Lüttich', 'Namur', 'Luxemburg', 'Wallonisch-Brabant'].forEach(function (st) { assert.strictEqual(urls(st), 'Wallonien', st); });
+  assert.strictEqual(urls('Liège'), 'Wallonien', 'Schreibweise der Landessprache');
+  const bru = app.geoSourcesFor({ country: 'BE', state: 'Brüssel-Hauptstadt', city: 'Brüssel' });
+  assert.deepStrictEqual(bru.dem, [], 'Brüssel: weder Flandern noch Wallonien');
+  assert.strictEqual(bru.demNote, 'euNoOpenDem', 'stattdessen der Hinweis');
+  assert.strictEqual(app.geoSourcesFor({ country: 'BE' }).dem.length, 0, 'ohne Provinz kein Link');
+  // Länder ohne Teilgebiete bleiben unverändert, Italien mit Link kein Hinweis
+  assert.strictEqual(app.geoSourcesFor({ country: 'IT', state: 'Lombardei', county: 'Mailand' }).demNote, null);
+  assert.strictEqual(app.geoSourcesFor({ country: 'NL', state: 'Utrecht' }).dem.length, app.GEO_EU.NL.dem.length, 'Niederlande: alle Links');
+});
+
 test('Standortsuche: Photon-Vorschläge aus der ganzen EU, Länder außerhalb fallen weg', function () {
   const mk = function (name, cc, city) { return { geometry: { coordinates: [5, 50] }, properties: { name: name, city: city, countrycode: cc } }; };
   const r = app.parsePhoton({ features: [mk('Dam', 'NL', 'Amsterdam'), mk('Louvre', 'fr', 'Paris'), mk('Prado', 'ES', 'Madrid'),

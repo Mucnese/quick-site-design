@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-lyb2iMFVnoFgjDq6HcKF3DxfgVJMusk6P8UV3fIwQNY=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-go8+u1YLDiUgUL2az12cq67PcRKKZAKJat6Hz56OZ1c=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -1623,8 +1623,10 @@ const GEO_AT_LINZ_BLDG = { url: 'https://www.data.gv.at/katalog/dataset/5f4440ca
 const GEO_EU = {
   BE: { name: 'Belgien',
     dem: [
-      { label: 'Flandern · 1 m', url: 'https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m', fmt: 'tif' },
-      { label: 'Wallonien · 0,5 m', url: 'https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html', fmt: 'tif' }
+      { label: 'Flandern · 1 m', url: 'https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m', fmt: 'tif',
+        only: { state: ['Flandern', 'Flanders', 'Vlaanderen', 'Antwerpen', 'Antwerp', 'Limburg', 'Ostflandern', 'East Flanders', 'Oost-Vlaanderen', 'Westflandern', 'West Flanders', 'West-Vlaanderen', 'Flämisch-Brabant', 'Flemish Brabant', 'Vlaams-Brabant'] } },
+      { label: 'Wallonien · 0,5 m', url: 'https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html', fmt: 'tif',
+        only: { state: ['Wallonien', 'Wallonia', 'Wallonie', 'Hennegau', 'Hainaut', 'Lüttich', 'Liège', 'Luik', 'Luxemburg', 'Luxembourg', 'Namur', 'Namen', 'Wallonisch-Brabant', 'Walloon Brabant', 'Brabant wallon'] } }
     ], bldg: [], bldgNote: 'noEuBldg' },
   BG: { name: 'Bulgarien', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
   HR: { name: 'Kroatien',
@@ -1989,18 +1991,32 @@ function geoSourcesFor(place) {
     return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: bldg.length ? null : 'noAtBldg' };
   }
   const eu = GEO_EU[cc];
-  if (eu) return { country: cc, region: eu.name, dem: eu.dem.filter(function (x) { return placeMatchesOnly(x.only, place); }), demNote: eu.demNote || null,
-                   bldg: eu.bldg.filter(function (x) { return placeMatchesOnly(x.only, place); }), bldgNote: eu.bldgNote || null };
+  if (eu) {
+    const dem = eu.dem.filter(function (x) { return placeMatchesOnly(x.only, place); });
+    // Gelten alle Links nur für Teile des Landes und keiner passt (zum Beispiel Brüssel in Belgien): Hinweis statt einer falschen Region
+    const demNote = eu.demNote || (eu.dem.length && !dem.length ? 'euNoOpenDem' : null);
+    return { country: cc, region: eu.name, dem: dem, demNote: demNote,
+             bldg: eu.bldg.filter(function (x) { return placeMatchesOnly(x.only, place); }), bldgNote: eu.bldgNote || null };
+  }
   return null;
 }
 
-/* Gilt ein Link nur für einen Teil des Landes (`only: { county: [...] }`, zum Beispiel Südtirol in Italien), muss der Ort dazu passen.
-   Photon nennt den Landkreis (county, bei Südtirol "Bozen"); fehlt er, wird der Link nicht gezeigt, statt ihn überall zu zeigen. */
+/* Gilt ein Link nur für einen Teil des Landes, muss der Ort dazu passen. Photon nennt Landkreis (county, bei Südtirol "Bozen") und
+   Bundesland bzw. Provinz (state, in Belgien die Provinz, zum Beispiel "Lüttich"). Fehlt die Angabe, wird der Link nicht gezeigt, statt ihn
+   überall zu zeigen.
+     only: { county: [...] }  der Landkreis enthält einen der Namen (Südtirol in Italien)
+     only: { state: [...] }   das Bundesland bzw. die Provinz ist genau einer der Namen (Flandern und Wallonien in Belgien) */
 function placeMatchesOnly(only, place) {
   if (!only) return true;
-  const county = addrNorm(place && place.county);
-  if (!county) return false;
-  return (only.county || []).some(function (n) { return county.indexOf(addrNorm(n)) >= 0; });
+  if (only.county) {
+    const county = addrNorm(place && place.county);
+    return !!county && only.county.some(function (n) { return county.indexOf(addrNorm(n)) >= 0; });
+  }
+  if (only.state) {
+    const state = addrNorm(place && place.state);
+    return !!state && only.state.some(function (n) { return state === addrNorm(n); });
+  }
+  return true;
 }
 
 /* Stadtgeoportale zu einem Ort: Eintrag aus GEO_CITIES, wenn Land und Stadtname passen, sonst null */
