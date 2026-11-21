@@ -257,6 +257,15 @@ der höchsten LoD (3DBAG liefert 0, 1.2, 1.3, 2.2 übereinander), LoD unter 1 (G
 Löcher werden ignoriert. Formen: CityJSON 1.x/2.0 (`transform` aus Maßstab und Verschiebung), CityJSONSeq (Kopfzeile mit `transform`, je Zeile ein
 `CityJSONFeature`), Merkmalsliste (`features`, `metadata.transform`). Geprüft an einem echten 3DBAG-Merkmal (api.3dbag.nl, EPSG:7415).
 
+**2D-Gebäude (GPKG, SHP, GeoJSON).** Abschnitt „Gebäude aus 2D-Daten“ in `app.js`: eigene Leser `parseGeoJsonFootprints`, `parseShp`/`parseDbf`/`fpPrjEpsg`
+(`parseShapefileSet`) und ein minimaler SQLite-Leser (`sqliteOpen`, nur Lesen, UTF-8, Tabellen-B-Bäume, Überlaufseiten; `readGpkgFootprints`: Geometrie aus GP-Kopf plus WKB,
+R-Baum-Fenster über `rtree_<tabelle>_<spalte>_node`, 128-KB-Blöcke über `Blob.slice`, sonst Gesamtlesen). Datensatz `{epsg, feats: [{polys: [{outer, holes}], props}], fields}`.
+`footprintRings(set, opts)` baut daraus Ringe im CityGML-Format (Wände je Kante, Dach per Ear-Clipping `triangulatePolygon`, Löcher über Brücken `fpBridgeHoles`); Gelände aus
+Modell (tiefster Punkt) / Attribut / fest, Höhe aus Attribut (über Grund oder absolut, Faktor) / fest, Ersatzhöhe, Umrechnung ins Geländesystem über `crsTransformer`. UI in `ui.js`
+(`handleFootprintFiles`, `renderFpPanel`, `applyFootprints`, `lastFootprints`, Feld `#fp-panel`); nach einem Geländewechsel werden die Grundrisse neu aufgesetzt. Das Fenster zum Lesen
+ist das Gelände samt 20 % Rand (`fpWindowFor`). Testdateien in `test/fixtures/` (mit ogr2ogr erzeugt). Geprüft an `DLM_8000_BAUWERK_20260323.gpkg` (BEV, 2,5 GB, EPSG:31255, Tabelle
+`BWK_8100_BAUWERK_F`: `HOEHE_BODEN_*` absolut, `HOEHE_OBJEKT_*` über Grund).
+
 **Gebäudemodelle (LoD).** In `GEO_EU` tragen Estland, Polen, Finnland und Flandern (`only.state`) einen `bldg`-Eintrag; Notizen `plLod2`, `bldgShp` (nicht ladbar), Österreich: `GEO_AT_FEDERAL_BLDG`
 (`atGpkg`). `bldgNote` (`noEuBldg`) erscheint nur, wenn nach dem Filtern kein Link bleibt. Stadtmodelle (3D) stehen in `GEO_CITIES` (`kind: '3d'`). Nicht geladen werden GeoPackage,
 Shapefile und KML; die Anwendung liest CityGML und CityJSON.

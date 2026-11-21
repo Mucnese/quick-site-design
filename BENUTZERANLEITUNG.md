@@ -64,8 +64,11 @@ gesperrt.
      wählst, fragt sie Photon nach Ort und Bundesland und zeigt dann die Links.
 2. **Gelände laden.** Im Fenster **Daten** auf „Dateien auswählen“ klicken und die
    Geländedatei wählen. Mehrere Kacheln lassen sich zusammen auswählen, sie werden verschmolzen.
-3. **Gebäude laden (optional).** Ebenfalls im Fenster **Daten**, Zeile „Gebäude · CityGML / CityJSON“.
-   Gebäude außerhalb des Geländes werden verworfen.
+3. **Gebäude laden (optional).** Ebenfalls im Fenster **Daten**, Zeile „Gebäude · CityGML / CityJSON / 2D“.
+   Gebäude außerhalb des Geländes werden verworfen. **2D-Dateien** (GeoPackage, Shapefile, GeoJSON) tragen nur Grundrisse: Nach dem Laden erscheinen Auswahlfelder.
+   Bei **Geländehöhe** wählst du „aus dem Geländemodell“, ein **Attribut** (zum Beispiel `HOEHE_BODEN_MIN`) oder einen festen Wert. Bei **Gebäudehöhe** wählst du das
+   Attribut (zum Beispiel `HOEHE_OBJEKT_MAX`) oder einen festen Wert; dazu sagst du, ob der Wert die **Höhe über Grund** oder die **absolute Höhe** ist, und kannst mit einem
+   **Faktor** rechnen (3 bei einer Geschosszahl). Fehlt einem Gebäude die Höhe, gilt die **Ersatzhöhe**. Jede Änderung baut die Gebäude sofort neu.
 
 ### Welche Dateien gehen?
 
@@ -74,6 +77,9 @@ gesperrt.
 | Gelände | **GeoTIFF** (`.tif`, `.tiff`) | Bezugssystem steht in der Datei |
 | Gelände | **XYZ-Text** (`.xyz`, `.txt`, `.csv`) | Rechtswert, Hochwert, Höhe auf einem regelmäßigen Raster. Das Bezugssystem fehlt in der Datei: vorher im Fenster **Daten** unter „Bezugssystem für XYZ-Dateien“ wählen oder einen EPSG-Code eintippen. Ändert man die Wahl später, liest die Anwendung die Datei mit dem neuen System neu und das Gelände wandert dorthin |
 | Gebäude | **CityGML** (`.gml`, `.xml`) | LoD2, die Achsenreihenfolge wird erkannt |
+| Gebäude (2D) | **GeoPackage** (`.gpkg`) | Flächenebene mit Höhenattributen; auch über 2 GB (zum Beispiel das BEV-Modell „DLM Bauwerke“): gelesen wird nur der Ausschnitt um das Gelände. Gibt es mehrere Flächentabellen, wählst du die Tabelle. Das Bezugssystem steht in der Datei |
+| Gebäude (2D) | **Shapefile** (`.shp` zusammen mit `.dbf`, `.prj`, `.cpg`) | alle Dateien gleichzeitig wählen; ohne `.prj` gilt das Bezugssystem des Geländes, sonst wählst du es selbst |
+| Gebäude (2D) | **GeoJSON** (`.geojson`, `.json`) | ohne Angabe WGS84 (Länge/Breite), sonst das `crs`-Feld |
 | Gebäude | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | auch CityJSONSeq und Merkmalslisten (3DBAG); je Bauteil die höchste Detailstufe, Grundrisse und Gelände fallen weg. Das Bezugssystem muss zum Gelände passen (3DBAG: Rijksdriehoek, passend zum AHN) |
 
 Nicht gelesen werden ESRI-ASCII-Raster (`.asc`) und Dezimalkommas in XYZ-Dateien. Wandle sie

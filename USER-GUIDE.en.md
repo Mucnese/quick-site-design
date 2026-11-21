@@ -60,8 +60,11 @@ locked.
      when you choose it does it ask Photon for the place and state and then show the links.
 2. **Load the terrain.** In the **Data** window click “Choose files” and select the terrain file.
    Several tiles can be selected together and are merged.
-3. **Load buildings (optional).** Also in the **Data** window, row “Buildings · CityGML / CityJSON”.
-   Buildings outside the terrain are discarded.
+3. **Load buildings (optional).** Also in the **Data** window, row “Buildings · CityGML / CityJSON / 2D”.
+   Buildings outside the terrain are discarded. **2D files** (GeoPackage, shapefile, GeoJSON) carry footprints only: after loading, selection fields appear.
+   For **ground height** choose “from the terrain model”, an **attribute** (for example `HOEHE_BODEN_MIN`) or a fixed value. For **building height** choose the attribute
+   (for example `HOEHE_OBJEKT_MAX`) or a fixed value; also say whether the value is the **height above ground** or the **absolute height**, and optionally multiply with a
+   **factor** (3 for a number of storeys). A building without a height gets the **substitute height**. Every change rebuilds the buildings immediately.
 
 ### Which files work?
 
@@ -70,6 +73,9 @@ locked.
 | Terrain | **GeoTIFF** (`.tif`, `.tiff`) | the coordinate system is in the file |
 | Terrain | **XYZ text** (`.xyz`, `.txt`, `.csv`) | easting, northing, height on a regular grid. The file has no coordinate system: choose it beforehand in the **Data** window under “Coordinate system for XYZ files” or type an EPSG code. If you change the choice later, the application re-reads the file with the new system and the terrain moves there |
 | Buildings | **CityGML** (`.gml`, `.xml`) | LoD2, the axis order is detected |
+| Buildings (2D) | **GeoPackage** (`.gpkg`) | area layer with height attributes; also over 2 GB (for example the BEV model “DLM Bauwerke”): only the area around the terrain is read. With several area tables you choose the table. The coordinate system is in the file |
+| Buildings (2D) | **Shapefile** (`.shp` together with `.dbf`, `.prj`, `.cpg`) | choose all files at once; without `.prj` the coordinate system of the terrain is assumed, otherwise you choose it yourself |
+| Buildings (2D) | **GeoJSON** (`.geojson`, `.json`) | WGS84 (longitude/latitude) unless stated, otherwise the `crs` member |
 | Buildings | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | also CityJSONSeq and feature lists (3DBAG); the highest level of detail per part, footprints and terrain are dropped. The coordinate system must match the terrain (3DBAG: Rijksdriehoek, matching the AHN) |
 
 ESRI ASCII grids (`.asc`) and decimal commas in XYZ files are not read. Convert them to GeoTIFF

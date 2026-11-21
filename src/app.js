@@ -2674,6 +2674,691 @@ function clearBuildings() {
 }
 
 /* =========================================================
+   Gebäude aus 2D-Daten (GeoJSON, Shapefile, GeoPackage)
+   Grundrisse mit Attributen werden zu Quadern mit Flachdach (LoD1). Gelände- und Gebäudehöhe wählt der Nutzer
+   nach dem Laden aus den Attributen (oder gibt feste Werte an). Alles ohne Bibliothek: eigene Leser für
+   Shapefile/DBF, GeoJSON und einen minimalen SQLite-Leser (nur Lesen) für GeoPackage.
+   Datensatz: { name, epsg (Zahl oder null), feats: [{ polys: [{ outer: [[x, y], ...], holes: [[[x, y], ...]] }], props: {} }],
+   fields: [{ name, numeric }], table (nur GeoPackage) }
+   ========================================================= */
+
+/* Zahl aus einem Attributwert: Zahl, Text mit Punkt oder Komma ("12,5"), sonst NaN */
+function fpNum(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : NaN;
+  if (typeof v === 'string') {
+    const s = v.trim().replace(',', '.');
+    return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
+  }
+  return NaN;
+}
+
+/* Attributliste eines Datensatzes: Name und ob (fast) alle gefüllten Werte Zahlen sind */
+function fpFields(feats) {
+  const order = [], info = {};
+  const n = Math.min(feats.length, 3000);
+  for (let i = 0; i < n; i++) {
+    const p = feats[i].props || {};
+    Object.keys(p).forEach(function (k) {
+      if (!info[k]) { info[k] = { num: 0, other: 0 }; order.push(k); }
+      const v = p[k];
+      if (v === null || v === undefined || v === '') return;
+      if (isFinite(fpNum(v))) info[k].num++; else info[k].other++;
+    });
+  }
+  return order.map(function (k) { return { name: k, numeric: info[k].num > 0 && info[k].other <= info[k].num * 0.05 }; });
+}
+
+function fpRing(coords) {
+  const out = [];
+  for (let i = 0; i < coords.length; i++) out.push([+coords[i][0], +coords[i][1]]);
+  if (out.length > 1) {
+    const a = out[0], b = out[out.length - 1];
+    if (a[0] === b[0] && a[1] === b[1]) out.pop();
+  }
+  return out;
+}
+
+function fpGeometryPolys(g, out) {
+  if (!g) return;
+  if (g.type === 'Polygon') {
+    if (g.coordinates && g.coordinates.length) out.push({ outer: fpRing(g.coordinates[0]), holes: g.coordinates.slice(1).map(fpRing) });
+  } else if (g.type === 'MultiPolygon') {
+    (g.coordinates || []).forEach(function (c) { if (c && c.length) out.push({ outer: fpRing(c[0]), holes: c.slice(1).map(fpRing) }); });
+  } else if (g.type === 'GeometryCollection') {
+    (g.geometries || []).forEach(function (x) { fpGeometryPolys(x, out); });
+  }
+}
+
+/* EPSG-Code aus einem CRS-Namen: "urn:ogc:def:crs:EPSG::25832", "EPSG:25832", CRS84 */
+function fpEpsgFromName(name) {
+  const s = String(name || '');
+  if (/CRS84/i.test(s)) return 4326;
+  const m = s.match(/EPSG:{1,2}(?:[0-9.]*:)?(\d{4,6})/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/* Ist der Text ein GeoJSON (und kein CityJSON)? */
+function fpLooksLikeGeoJson(text) {
+  const head = String(text || '').slice(0, 2000);
+  if (/"type"\s*:\s*"CityJSON/i.test(head)) return false;
+  return /"type"\s*:\s*"(FeatureCollection|Feature|Polygon|MultiPolygon|GeometryCollection)"/.test(head);
+}
+
+function parseGeoJsonFootprints(text, name) {
+  let doc;
+  try { doc = JSON.parse(text); } catch (e) { throw new Error('fpBadJson'); }
+  const set = { name: name || 'GeoJSON', epsg: 4326, feats: [], fields: [] };
+  if (doc && doc.crs && doc.crs.properties) {
+    const c = fpEpsgFromName(doc.crs.properties.name);
+    if (c) set.epsg = c;
+  }
+  const feats = doc && doc.type === 'FeatureCollection' ? (doc.features || []) : (doc && doc.type === 'Feature' ? [doc] : (doc ? [{ geometry: doc, properties: {} }] : []));
+  feats.forEach(function (f) {
+    const polys = [];
+    fpGeometryPolys(f && f.geometry, polys);
+    if (polys.length) set.feats.push({ polys: polys, props: (f && f.properties) || {} });
+  });
+  if (!set.feats.length) throw new Error('fpNoPolygons');
+  set.fields = fpFields(set.feats);
+  return set;
+}
+
+/* ---------- Shapefile (.shp, .dbf, .prj, .cpg) ---------- */
+
+/* Flächeninhalt mit Vorzeichen (Shoelace, positiv = gegen den Uhrzeigersinn bei Nord oben) */
+function fpSignedArea(r) {
+  let s = 0;
+  for (let i = 0, n = r.length; i < n; i++) {
+    const a = r[i], b = r[(i + 1) % n];
+    s += a[0] * b[1] - b[0] * a[1];
+  }
+  return s / 2;
+}
+
+/* Liefert je Datensatz eine Liste von Polygonen (oder null bei leerer Form). Shapefile: Außenringe im Uhrzeigersinn, Löcher dagegen. */
+function parseShp(buf) {
+  const dv = new DataView(buf.buffer || buf, buf.byteOffset || 0, buf.byteLength);
+  if (buf.byteLength < 100 || dv.getInt32(0, false) !== 9994) throw new Error('fpBadShp');
+  const type = dv.getInt32(32, true);
+  if ([5, 15, 25, 31].indexOf(type) < 0) throw new Error('fpShpNotPolygon');
+  const shapes = [];
+  let pos = 100;
+  while (pos + 8 <= buf.byteLength) {
+    const len = dv.getInt32(pos + 4, false) * 2;
+    const start = pos + 8;
+    pos = start + len;
+    if (pos > buf.byteLength) break;
+    const st = dv.getInt32(start, true);
+    if (st === 0) { shapes.push(null); continue; }
+    if ([5, 15, 25].indexOf(st) < 0) { shapes.push(null); continue; }       // MultiPatch u. a. werden nicht gelesen
+    const nParts = dv.getInt32(start + 36, true), nPts = dv.getInt32(start + 40, true);
+    const partsAt = start + 44, ptsAt = partsAt + 4 * nParts;
+    const parts = [];
+    for (let k = 0; k < nParts; k++) parts.push(dv.getInt32(partsAt + 4 * k, true));
+    const rings = [];
+    for (let k = 0; k < nParts; k++) {
+      const a = parts[k], b = k + 1 < nParts ? parts[k + 1] : nPts;
+      const r = [];
+      for (let i = a; i < b; i++) r.push([dv.getFloat64(ptsAt + 16 * i, true), dv.getFloat64(ptsAt + 16 * i + 8, true)]);
+      if (r.length > 1) { const f = r[0], l = r[r.length - 1]; if (f[0] === l[0] && f[1] === l[1]) r.pop(); }
+      if (r.length >= 3) rings.push(r);
+    }
+    const polys = [];
+    rings.forEach(function (r) {
+      const cw = fpSignedArea(r) < 0;
+      if (cw || !polys.length) polys.push({ outer: r, holes: [] });
+      else polys[polys.length - 1].holes.push(r);
+    });
+    shapes.push(polys.length ? polys : null);
+  }
+  return shapes;
+}
+
+/* dBase-Tabelle: { fields: [{ name, type }], rows: [{ Feld: Wert }] }; encoding: Name nach TextDecoder (aus .cpg) oder null */
+function parseDbf(buf, encoding) {
+  const dv = new DataView(buf.buffer || buf, buf.byteOffset || 0, buf.byteLength);
+  const u8 = new Uint8Array(buf.buffer || buf, buf.byteOffset || 0, buf.byteLength);
+  if (buf.byteLength < 33) throw new Error('fpBadDbf');
+  const nRec = dv.getUint32(4, true), hLen = dv.getUint16(8, true), rLen = dv.getUint16(10, true);
+  const fields = [];
+  let p = 32;
+  while (p + 32 <= hLen && u8[p] !== 0x0d) {
+    let nm = '';
+    for (let i = 0; i < 11 && u8[p + i]; i++) nm += String.fromCharCode(u8[p + i]);
+    fields.push({ name: nm, type: String.fromCharCode(u8[p + 11]), len: u8[p + 16], start: 0 });
+    p += 32;
+  }
+  let off = 1;
+  fields.forEach(function (f) { f.start = off; off += f.len; });
+  let dec = null;
+  const mk = function (label, fatal) { try { return new TextDecoder(label, { fatal: !!fatal }); } catch (e) { return null; } };
+  if (encoding) dec = mk(encoding, false);
+  const rows = [];
+  for (let r = 0; r < nRec; r++) {
+    const base = hLen + r * rLen;
+    if (base + rLen > buf.byteLength) break;
+    const rec = u8.subarray(base, base + rLen);
+    const row = {};
+    fields.forEach(function (f) {
+      const raw = rec.subarray(f.start, f.start + f.len);
+      if (f.type === 'C') row[f.name] = raw;
+      else {
+        let s = '';
+        for (let i = 0; i < raw.length; i++) s += String.fromCharCode(raw[i]);
+        s = s.trim();
+        if (f.type === 'N' || f.type === 'F') row[f.name] = s === '' ? null : parseFloat(s);
+        else if (f.type === 'L') row[f.name] = /^[TtYy]$/.test(s) ? true : (/^[FfNn]$/.test(s) ? false : null);
+        else row[f.name] = s || null;
+      }
+    });
+    rows.push(rec[0] === 0x2a ? null : row);
+  }
+  // Texte: nach .cpg, sonst UTF-8 (streng), sonst Windows-1252
+  if (!dec) {
+    const strict = mk('utf-8', true);
+    let ok = !!strict;
+    if (strict) {
+      try {
+        rows.forEach(function (row) { if (!row) return; fields.forEach(function (f) { if (f.type === 'C') strict.decode(row[f.name]); }); });
+      } catch (e) { ok = false; }
+    }
+    dec = ok ? strict : (mk('windows-1252', false) || mk('iso-8859-1', false));
+  }
+  rows.forEach(function (row) {
+    if (!row) return;
+    fields.forEach(function (f) { if (f.type === 'C') row[f.name] = dec ? dec.decode(row[f.name]).replace(/[\0\s]+$/, '').replace(/^\s+/, '') : ''; });
+  });
+  return { fields: fields.map(function (f) { return { name: f.name, type: f.type }; }), rows: rows };
+}
+
+/* EPSG-Code aus einer .prj-Datei (WKT1 oder WKT2); sonst aus dem Namen gängiger Systeme; sonst null */
+function fpPrjEpsg(wkt) {
+  const s = String(wkt || '');
+  let m = s.match(/(?:AUTHORITY\s*\[\s*"EPSG"\s*,\s*"?(\d+)"?\s*\]\s*\]\s*$|ID\s*\[\s*"EPSG"\s*,\s*(\d+)\s*\]\s*\]\s*$)/);
+  if (m) return parseInt(m[1] || m[2], 10);
+  const name = (s.match(/^\s*(?:PROJCS|PROJCRS|GEOGCS|GEOGCRS|BASEGEOGCRS)\s*\[\s*"([^"]+)"/) || [])[1] || '';
+  const n = name.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+  if ((m = n.match(/^ETRS_?(?:89|1989)_(?:\w*_)?UTM_ZONE_(\d+)N/))) return 25800 + parseInt(m[1], 10);
+  if ((m = n.match(/^WGS_?(?:1984|84)_UTM_ZONE_(\d+)N/))) return 32600 + parseInt(m[1], 10);
+  if ((m = n.match(/^MGI_(?:AUSTRIA_)?GK_M(28|31|34)/))) return { 28: 31254, 31: 31255, 34: 31256 }[m[1]];
+  if ((m = n.match(/^DHDN_(?:3_DEGREE_)?GAUSS_KRUGER_ZONE_(\d)/))) return 31464 + parseInt(m[1], 10);
+  if (/^ETRS_?(89|1989)_(EXTENDED_)?LAEA/.test(n)) return 3035;
+  if (/^(WGS_1984|GCS_WGS_1984)$/.test(n)) return 4326;
+  if (/^(ETRS89|GCS_ETRS_1989)$/.test(n)) return 4258;
+  return null;
+}
+
+/* Shapefile-Satz aus den Rohdaten: shp (Pflicht), dbf, prj-Text, cpg-Text */
+function parseShapefileSet(shpBuf, dbfBuf, prjText, cpgText, name) {
+  const shapes = parseShp(shpBuf);
+  let table = null;
+  if (dbfBuf) {
+    const cp = String(cpgText || '').trim();
+    const enc = /^(utf-?8|65001)$/i.test(cp) ? 'utf-8' : (/^(1252|cp1252|windows-1252|ansi)$/i.test(cp) ? 'windows-1252' : (/^(latin1|iso-?8859-1|88591)$/i.test(cp) ? 'iso-8859-1' : (cp || null)));
+    table = parseDbf(dbfBuf, enc);
+  }
+  const set = { name: name || 'Shapefile', epsg: prjText ? fpPrjEpsg(prjText) : null, feats: [], fields: [] };
+  for (let i = 0; i < shapes.length; i++) {
+    if (!shapes[i]) continue;
+    const row = table ? table.rows[i] : {};
+    if (table && row === null) continue;                       // im DBF gelöscht
+    set.feats.push({ polys: shapes[i], props: row || {} });
+  }
+  if (!set.feats.length) throw new Error('fpNoPolygons');
+  set.fields = fpFields(set.feats);
+  return set;
+}
+
+/* ---------- GeoPackage: minimaler SQLite-Leser ---------- */
+
+/* readRange(offset, length) -> Promise<Uint8Array>; size: Dateigröße. Nur Lesen, nur UTF-8, nur Tabellen-B-Bäume. */
+async function sqliteOpen(readRange, size) {
+  const head = await readRange(0, Math.min(100, size));
+  const magic = 'SQLite format 3\u0000';
+  for (let i = 0; i < 16; i++) if (head[i] !== magic.charCodeAt(i)) throw new Error('sqliteBad');
+  const hdv = new DataView(head.buffer, head.byteOffset, head.byteLength);
+  let pageSize = hdv.getUint16(16, false);
+  if (pageSize === 1) pageSize = 65536;
+  const usable = pageSize - head[20];
+  if (hdv.getUint32(56, false) !== 1) throw new Error('sqliteEncoding');
+  const chunkPages = Math.max(1, Math.floor(131072 / pageSize));      // 128 KB: gut für Reihenlesen und für Einzelzugriffe über den R-Baum
+  const chunks = new Map();
+  const utf8 = new TextDecoder('utf-8');
+
+  async function page(n) {
+    if (!(n >= 1)) throw new Error('sqliteBad');
+    const ci = Math.floor((n - 1) / chunkPages);
+    let c = chunks.get(ci);
+    if (c) { chunks.delete(ci); chunks.set(ci, c); }
+    else {
+      const off = ci * chunkPages * pageSize;
+      if (off >= size) throw new Error('sqliteBad');
+      c = await readRange(off, Math.min(chunkPages * pageSize, size - off));
+      chunks.set(ci, c);
+      if (chunks.size > 256) chunks.delete(chunks.keys().next().value);
+    }
+    const o = ((n - 1) - ci * chunkPages) * pageSize;
+    return c.subarray(o, o + pageSize);
+  }
+  const u16 = function (p, o) { return (p[o] << 8) | p[o + 1]; };
+  const u32 = function (p, o) { return ((p[o] * 16777216) + (p[o + 1] << 16) + (p[o + 2] << 8) + p[o + 3]); };
+  function varint(p, o) {
+    let v = 0;
+    for (let i = 0; i < 8; i++) { const b = p[o + i]; v = v * 128 + (b & 0x7f); if (!(b & 0x80)) return [v, o + i + 1]; }
+    return [v * 256 + p[o + 8], o + 9];
+  }
+  async function payload(p, pos, total) {
+    const X = usable - 35;
+    if (total <= X) return p.subarray(pos, pos + total);
+    const M = Math.floor((usable - 12) * 32 / 255) - 23;
+    const K = M + ((total - M) % (usable - 4));
+    const local = K <= X ? K : M;
+    const out = new Uint8Array(total);
+    out.set(p.subarray(pos, pos + local), 0);
+    let got = local, ov = u32(p, pos + local);
+    while (got < total && ov) {
+      const op = await page(ov);
+      const take = Math.min(usable - 4, total - got);
+      out.set(op.subarray(4, 4 + take), got);
+      got += take;
+      ov = u32(op, 0);
+    }
+    return out;
+  }
+  /* Satz (Record) in eine Werteliste zerlegen */
+  function record(buf) {
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    const h = varint(buf, 0);
+    const hEnd = h[0];
+    let p = h[1];
+    const types = [];
+    while (p < hEnd) { const t = varint(buf, p); types.push(t[0]); p = t[1]; }
+    let d = hEnd;
+    const vals = [];
+    for (let i = 0; i < types.length; i++) {
+      const t = types[i];
+      let v = null;
+      if (t === 0) v = null;
+      else if (t === 1) { v = dv.getInt8(d); d += 1; }
+      else if (t === 2) { v = dv.getInt16(d, false); d += 2; }
+      else if (t === 3) { v = (buf[d] << 16) | (buf[d + 1] << 8) | buf[d + 2]; if (v & 0x800000) v -= 0x1000000; d += 3; }
+      else if (t === 4) { v = dv.getInt32(d, false); d += 4; }
+      else if (t === 5) { v = dv.getInt16(d, false) * 4294967296 + dv.getUint32(d + 2, false); d += 6; }
+      else if (t === 6) { v = Number(dv.getBigInt64(d, false)); d += 8; }
+      else if (t === 7) { v = dv.getFloat64(d, false); d += 8; }
+      else if (t === 8) v = 0;
+      else if (t === 9) v = 1;
+      else if (t >= 12 && t % 2 === 0) { const n = (t - 12) / 2; v = buf.subarray(d, d + n); d += n; }
+      else if (t >= 13) { const n = (t - 13) / 2; v = utf8.decode(buf.subarray(d, d + n)); d += n; }
+      vals.push(v);
+    }
+    return vals;
+  }
+  /* Alle Zeilen einer Tabelle in Reihenfolge; cb(rowid, payload) liefert false zum Abbrechen */
+  async function scan(root, cb) {
+    async function walk(n) {
+      const p = await page(n), hdr = n === 1 ? 100 : 0, type = p[hdr], cnt = u16(p, hdr + 3);
+      if (type === 0x0d) {
+        for (let i = 0; i < cnt; i++) {
+          const ptr = u16(p, hdr + 8 + 2 * i);
+          const a = varint(p, ptr), b = varint(p, a[1]);
+          if ((await cb(b[0], await payload(p, b[1], a[0]))) === false) return false;
+        }
+        return true;
+      }
+      if (type === 0x05) {
+        for (let i = 0; i < cnt; i++) { if ((await walk(u32(p, u16(p, hdr + 12 + 2 * i)))) === false) return false; }
+        return walk(u32(p, hdr + 8));
+      }
+      throw new Error('sqliteBad');
+    }
+    return walk(root);
+  }
+  /* Eine Zeile über ihre Rowid holen (null, wenn es sie nicht gibt) */
+  async function get(root, rowid) {
+    let n = root;
+    for (let guard = 0; guard < 40; guard++) {
+      const p = await page(n), hdr = n === 1 ? 100 : 0, type = p[hdr], cnt = u16(p, hdr + 3);
+      if (type === 0x05) {
+        let next = u32(p, hdr + 8);
+        for (let i = 0; i < cnt; i++) {
+          const ptr = u16(p, hdr + 12 + 2 * i);
+          if (rowid <= varint(p, ptr + 4)[0]) { next = u32(p, ptr); break; }
+        }
+        n = next;
+      } else if (type === 0x0d) {
+        let lo = 0, hi = cnt - 1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1, ptr = u16(p, hdr + 8 + 2 * mid);
+          const a = varint(p, ptr), b = varint(p, a[1]);
+          if (b[0] === rowid) return payload(p, b[1], a[0]);
+          if (b[0] < rowid) lo = mid + 1; else hi = mid - 1;
+        }
+        return null;
+      } else throw new Error('sqliteBad');
+    }
+    return null;
+  }
+  /* sqlite_master: name -> { type, root, sql } */
+  const master = {};
+  await scan(1, function (rowid, pl) {
+    const r = record(pl);
+    if (r[0] === 'table') master[r[1]] = { root: r[3], sql: r[4] || '' };
+  });
+  /* Spaltennamen aus CREATE TABLE; pk: Index der INTEGER-PRIMARY-KEY-Spalte (steht im Satz als NULL, der Wert ist die Rowid) */
+  function columns(name) {
+    const m = master[name];
+    if (!m) return null;
+    const sql = m.sql, a = sql.indexOf('('), b = sql.lastIndexOf(')');
+    if (a < 0 || b < a) return { names: [], pk: -1 };
+    const parts = [];
+    let depth = 0, cur = '', q = '';
+    for (let i = a + 1; i < b; i++) {
+      const ch = sql[i];
+      if (q) { cur += ch; if (ch === q) q = ''; continue; }
+      if (ch === '"' || ch === "'" || ch === '`') { q = ch; cur += ch; continue; }
+      if (ch === '[') { q = ']'; cur += ch; continue; }
+      if (ch === '(') depth++;
+      if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; } else cur += ch;
+    }
+    parts.push(cur);
+    const names = [];
+    let pk = -1;
+    parts.forEach(function (def) {
+      const d = def.trim();
+      if (/^(constraint|primary\s+key|unique|foreign\s+key|check)\b/i.test(d)) return;
+      const mm = d.match(/^(?:"((?:[^"]|"")+)"|`([^`]+)`|\[([^\]]+)\]|'([^']+)'|(\S+))/);
+      if (!mm) return;
+      names.push((mm[1] || mm[2] || mm[3] || mm[4] || mm[5]).replace(/""/g, '"'));
+      if (/^\S+\s+integer\b/i.test(d.replace(/^(?:"(?:[^"]|"")+"|`[^`]+`|\[[^\]]+\]|'[^']+')/, 'x')) && /\bprimary\s+key\b/i.test(d)) pk = names.length - 1;
+    });
+    return { names: names, pk: pk };
+  }
+  /* Zeilen als Objekte lesen: cb(rowObject, rowid) */
+  async function rows(name, cb) {
+    const m = master[name], cols = columns(name);
+    if (!m || !cols) return;
+    await scan(m.root, function (rowid, pl) {
+      const v = record(pl), o = {};
+      for (let i = 0; i < cols.names.length; i++) o[cols.names[i]] = (i === cols.pk && v[i] === null) ? rowid : (v[i] === undefined ? null : v[i]);
+      return cb(o, rowid);
+    });
+  }
+  return { master: master, columns: columns, rows: rows, scan: scan, get: get, record: record, page: page };
+}
+
+/* WKB (auch EWKB, mit Z/M) -> Polygone; Linien, Punkte usw. werden übersprungen */
+function fpWkb(buf, pos, out) {
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const le = buf[pos] === 1;
+  let type = dv.getUint32(pos + 1, le);
+  pos += 5;
+  let hasZ = false, hasM = false, t;
+  if (type > 0xffff) {
+    hasZ = !!(type & 0x80000000); hasM = !!(type & 0x40000000);
+    if (type & 0x20000000) pos += 4;
+    t = type & 0xff;
+  } else {
+    const k = Math.floor(type / 1000);
+    hasZ = k === 1 || k === 3; hasM = k === 2 || k === 3;
+    t = type % 1000;
+  }
+  const dim = 2 + (hasZ ? 1 : 0) + (hasM ? 1 : 0);
+  if (t === 3) {
+    const nr = dv.getUint32(pos, le); pos += 4;
+    const rings = [];
+    for (let r = 0; r < nr; r++) {
+      const np = dv.getUint32(pos, le); pos += 4;
+      const ring = [];
+      for (let i = 0; i < np; i++) { ring.push([dv.getFloat64(pos, le), dv.getFloat64(pos + 8, le)]); pos += 8 * dim; }
+      if (ring.length > 1) { const f = ring[0], l = ring[ring.length - 1]; if (f[0] === l[0] && f[1] === l[1]) ring.pop(); }
+      rings.push(ring);
+    }
+    if (rings.length && rings[0].length >= 3) out.push({ outer: rings[0], holes: rings.slice(1).filter(function (x) { return x.length >= 3; }) });
+    return pos;
+  }
+  if (t === 6 || t === 7) {
+    const n = dv.getUint32(pos, le); pos += 4;
+    for (let i = 0; i < n; i++) pos = fpWkb(buf, pos, out);
+    return pos;
+  }
+  return buf.length;                                   // andere Typen: Rest dieser Geometrie überspringen
+}
+
+/* GeoPackage-Geometrie (Blob mit GP-Kopf) -> { polys, env: [minx, maxx, miny, maxy] | null } */
+function fpGpkgGeometry(blob) {
+  if (!blob || blob.length < 8 || blob[0] !== 0x47 || blob[1] !== 0x50) return null;
+  const flags = blob[3];
+  const le = !!(flags & 1), envKind = (flags >> 1) & 7;
+  if (flags & 0x10) return null;                       // leere Geometrie
+  const dv = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
+  const envLen = [0, 32, 48, 48, 64][envKind] || 0;
+  const env = envKind ? [dv.getFloat64(8, le), dv.getFloat64(16, le), dv.getFloat64(24, le), dv.getFloat64(32, le)] : null;
+  const polys = [];
+  fpWkb(blob, 8 + envLen, polys);
+  return { polys: polys, env: env };
+}
+
+/* GeoPackage lesen. window: Funktion (epsg) -> [minx, miny, maxx, maxy] im Bezugssystem der Daten oder null (alles lesen) */
+async function readGpkgFootprints(readRange, size, name, window, tableName) {
+  const db = await sqliteOpen(readRange, size);
+  if (!db.master.gpkg_geometry_columns) throw new Error('gpkgNone');
+  const geoms = [];
+  await db.rows('gpkg_geometry_columns', function (r) { geoms.push(r); });
+  const ok = geoms.filter(function (g) { return /^(POLYGON|MULTIPOLYGON|GEOMETRY|SURFACE|MULTISURFACE|GEOMETRYCOLLECTION)$/i.test(String(g.geometry_type_name)); });
+  if (!ok.length) throw new Error('gpkgNone');
+  const pick = ok.filter(function (g) { return g.table_name === tableName; })[0] ||
+               ok.filter(function (g) { return /bau|build|geb|haus|bldg/i.test(g.table_name); })[0] || ok[0];
+  const table = pick.table_name, gcol = pick.column_name;
+  let epsg = null;
+  if (db.master.gpkg_spatial_ref_sys) {
+    await db.rows('gpkg_spatial_ref_sys', function (r) {
+      if (r.srs_id === pick.srs_id) {
+        if (String(r.organization).toUpperCase() === 'EPSG') epsg = r.organization_coordsys_id;
+        else if (r.srs_id > 0) epsg = r.srs_id;
+      }
+    });
+  }
+  const cols = db.columns(table);
+  const win = window ? window(epsg) : null;
+  const set = { name: name || table, epsg: epsg > 0 ? epsg : null, feats: [], fields: [], table: table, tables: ok.map(function (g) { return g.table_name; }) };
+  const gi = cols.names.indexOf(gcol);
+  const take = function (row) {
+    const g = fpGpkgGeometry(row[gcol]);
+    if (!g || !g.polys.length) return;
+    if (win && g.env && (g.env[1] < win[0] || g.env[0] > win[2] || g.env[3] < win[1] || g.env[2] > win[3])) return;
+    const props = {};
+    cols.names.forEach(function (c, i) { if (i !== gi && c !== pick.column_name) { const v = row[c]; if (!ArrayBuffer.isView(v)) props[c] = v; } });
+    set.feats.push({ polys: g.polys, props: props });
+  };
+  const rtree = 'rtree_' + table + '_' + gcol;
+  if (win && db.master[rtree + '_node']) {
+    // R-Baum: nur die Gebäude im Fenster holen (nötig bei riesigen Dateien)
+    const nodeRoot = db.master[rtree + '_node'].root, featRoot = db.master[table].root;
+    const ids = [];
+    const nodeRow = async function (no) { const pl = await db.get(nodeRoot, no); return pl ? db.record(pl)[1] : null; };
+    const root = await nodeRow(1);
+    if (root) {
+      const depth = (root[0] << 8) | root[1];
+      const visit = async function (data, level) {
+        const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        const cnt = (data[2] << 8) | data[3];
+        for (let i = 0; i < cnt; i++) {
+          const o = 4 + i * 24;
+          const id = dv.getUint32(o, false) * 4294967296 + dv.getUint32(o + 4, false);
+          const x0 = dv.getFloat32(o + 8, false), x1 = dv.getFloat32(o + 12, false), y0 = dv.getFloat32(o + 16, false), y1 = dv.getFloat32(o + 20, false);
+          if (x1 < win[0] || x0 > win[2] || y1 < win[1] || y0 > win[3]) continue;
+          if (level === 0) ids.push(id);
+          else { const child = await nodeRow(id); if (child) await visit(child, level - 1); }
+        }
+      };
+      await visit(root, depth);
+    }
+    for (let i = 0; i < ids.length; i++) {
+      const pl = await db.get(featRoot, ids[i]);
+      if (!pl) continue;
+      const v = db.record(pl), o = {};
+      for (let k = 0; k < cols.names.length; k++) o[cols.names[k]] = (k === cols.pk && v[k] === null) ? ids[i] : (v[k] === undefined ? null : v[k]);
+      take(o);
+    }
+  } else {
+    await db.rows(table, function (row) { take(row); });
+  }
+  if (!set.feats.length) throw new Error('fpNoPolygons');
+  set.fields = fpFields(set.feats);
+  return set;
+}
+
+/* ---------- Von den Grundrissen zu den Flächen (Quader mit Flachdach) ---------- */
+
+const FP_GEOGRAPHIC = { 4326: 1, 4258: 1, 4979: 1, 4937: 1, 4269: 1, 4617: 1 };
+
+/* Rechtecke-Test: Strecke a-b schneidet die Strecke c-d echt (ohne Endpunkte zu berühren) */
+function fpSegCross(a, b, c, d) {
+  const o = function (p, q, r) { return (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x); };
+  const d1 = o(a, b, c), d2 = o(a, b, d), d3 = o(c, d, a), d4 = o(c, d, b);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/* Löcher (Innenhöfe) über Brücken mit dem Außenring zu einem Ring verbinden (Punkte {x, z}); Außenring gegen den Uhrzeigersinn, Löcher im Uhrzeigersinn */
+function fpBridgeHoles(outer, holes) {
+  let ring = outer.slice();
+  const hs = holes.map(function (h) { return { pts: h, maxX: Math.max.apply(null, h.map(function (p) { return p.x; })) }; }).sort(function (a, b) { return b.maxX - a.maxX; });
+  for (let hi = 0; hi < hs.length; hi++) {
+    const h = hs[hi].pts, others = hs.filter(function (x, i) { return i > hi; });
+    const cand = [];
+    for (let i = 0; i < h.length; i++) for (let j = 0; j < ring.length; j++) {
+      const dx = h[i].x - ring[j].x, dz = h[i].z - ring[j].z;
+      cand.push({ i: i, j: j, d: dx * dx + dz * dz });
+    }
+    cand.sort(function (a, b) { return a.d - b.d; });
+    let best = null;
+    for (let c = 0; c < cand.length && !best; c++) {
+      const a = h[cand[c].i], b = ring[cand[c].j];
+      let bad = false;
+      const test = function (poly) {
+        for (let k = 0; k < poly.length && !bad; k++) {
+          const p = poly[k], q = poly[(k + 1) % poly.length];
+          if (fpSegCross(a, b, p, q)) bad = true;
+        }
+      };
+      test(ring); test(h); others.forEach(function (o) { if (!bad) test(o.pts); });
+      if (!bad) best = cand[c];
+    }
+    if (!best) continue;
+    const hr = [];
+    for (let k = 0; k < h.length; k++) hr.push(h[(best.i + k) % h.length]);
+    hr.push(h[best.i]);
+    ring = ring.slice(0, best.j + 1).concat(hr, [ring[best.j]], ring.slice(best.j + 1));
+  }
+  return ring;
+}
+
+/* Mittelwert der Gelände- bzw. Gebäudehöhen für die Auswahl: Median eines numerischen Attributs */
+function fpMedian(set, attr) {
+  const v = [];
+  const n = Math.min(set.feats.length, 3000);
+  for (let i = 0; i < n; i++) { const x = fpNum(set.feats[i].props[attr]); if (isFinite(x)) v.push(x); }
+  if (!v.length) return NaN;
+  v.sort(function (a, b) { return a - b; });
+  return v[v.length >> 1];
+}
+
+/* Fenster (Gelände samt Rand) im Bezugssystem der Daten: [minx, miny, maxx, maxy] oder null, wenn kein Gelände geladen ist */
+function fpWindowFor(epsg) {
+  const t = TERRAIN;
+  if (!t) return null;
+  const src = epsg || t.epsg;
+  const mx = t.w * 0.6, mz = t.d * 0.6;
+  const corners = [[-mx, -mz], [mx, -mz], [mx, mz], [-mx, mz]].map(function (c) { return [t.originE + c[0], t.originN + c[1]]; });
+  if (src === t.epsg) return [Math.min.apply(null, corners.map(function (c) { return c[0]; })), Math.min.apply(null, corners.map(function (c) { return c[1]; })),
+                              Math.max.apply(null, corners.map(function (c) { return c[0]; })), Math.max.apply(null, corners.map(function (c) { return c[1]; }))];
+  const out = [];
+  for (let i = 0; i < corners.length; i++) {
+    const g = crsToLonLat(t.epsg, corners[i][0], corners[i][1]);
+    if (!g) return null;
+    if (FP_GEOGRAPHIC[src]) out.push([g.lon, g.lat]);
+    else {
+      const d = crsGeoDefinition(src);
+      if (!d || d.merc) return null;
+      const p = lonLatToCrs(d, g.lat, g.lon);
+      out.push([p.e, p.n]);
+    }
+  }
+  return [Math.min.apply(null, out.map(function (c) { return c[0]; })), Math.min.apply(null, out.map(function (c) { return c[1]; })),
+          Math.max.apply(null, out.map(function (c) { return c[0]; })), Math.max.apply(null, out.map(function (c) { return c[1]; }))];
+}
+
+/* Aus einem Grundriss-Datensatz die Flächenringe bauen (Format wie bei CityGML: [x, y, z, ...] mit absoluten Höhen).
+   opts: { epsg: Bezugssystem der Daten oder null (dann aus der Datei, sonst das des Geländes),
+           ground: { src: 'terrain' | 'attr' | 'fixed', attr, fixed },
+           height: { src: 'attr' | 'fixed', attr, ref: 'rel' | 'abs', factor, fixed },
+           fallback: Ersatzhöhe in m, wenn ein Gebäude keine brauchbare Höhe hat } */
+function footprintRings(set, opts) {
+  const t = TERRAIN;
+  if (!t) throw new Error('Bitte zuerst ein Geländemodell laden.');
+  const src = (opts && opts.epsg) || set.epsg || t.epsg;
+  let conv;
+  if (src === t.epsg) conv = function (x, y) { return [x, y]; };
+  else if (FP_GEOGRAPHIC[src]) {
+    const td = crsGeoDefinition(t.epsg);
+    if (!td || td.merc) throw new Error('fpCrsUnknown');
+    conv = function (x, y) { const p = lonLatToCrs(td, y, x); return [p.e, p.n]; };
+  } else {
+    const tr = crsTransformer(src, t.epsg);
+    if (!tr) throw new Error('fpCrsUnknown');
+    conv = function (x, y) { const p = tr(x, y); return [p.e, p.n]; };
+  }
+  const gOpt = (opts && opts.ground) || { src: 'terrain' }, hOpt = (opts && opts.height) || { src: 'fixed', fixed: 10 };
+  const fallback = opts && isFinite(opts.fallback) && opts.fallback > 0 ? opts.fallback : 8;
+  const factor = hOpt.factor && isFinite(hOpt.factor) ? hOpt.factor : 1;
+  const mX = t.w / 2 * 1.15, mZ = t.d / 2 * 1.15;
+  const rings = [];
+  let used = 0, outside = 0, noHeight = 0;
+
+  set.feats.forEach(function (f) {
+    const hv = hOpt.src === 'attr' ? fpNum(f.props[hOpt.attr]) * factor : (isFinite(hOpt.fixed) ? hOpt.fixed : fallback);
+    const gv = gOpt.src === 'attr' ? fpNum(f.props[gOpt.attr]) : (gOpt.src === 'fixed' ? gOpt.fixed : NaN);
+    f.polys.forEach(function (poly) {
+      const toLocal = function (r) { return r.map(function (p) { const c = conv(p[0], p[1]); return { x: c[0] - t.originE, z: t.originN - c[1] }; }); };
+      let outer = toLocal(poly.outer);
+      if (outer.length < 3) return;
+      if (!outer.some(function (p) { return Math.abs(p.x) <= mX && Math.abs(p.z) <= mZ; })) { outside++; return; }
+      let holes = poly.holes.map(toLocal).filter(function (h) { return h.length >= 3; });
+      // Ausrichtung: z zeigt nach Süden (z = -Nord); die Ear-Clipping-Funktion verlangt eine feste Reihenfolge nur intern
+      const area = function (r) { let s = 0; for (let i = 0; i < r.length; i++) { const a = r[i], b = r[(i + 1) % r.length]; s += a.x * b.z - b.x * a.z; } return s / 2; };
+      if (area(outer) < 0) outer = outer.slice().reverse();
+      holes = holes.map(function (h) { return area(h) > 0 ? h.slice().reverse() : h; });
+      // Gelände: tiefster Punkt des Grundrisses, sonst Attribut oder fester Wert
+      let ground;
+      if (gOpt.src === 'terrain' || !isFinite(gv)) {
+        ground = Infinity;
+        outer.forEach(function (p) { const h = getAbsoluteHeightAt(p.x, p.z); if (h < ground) ground = h; });
+      } else ground = gv;
+      let top;
+      if (hOpt.src === 'attr' && hOpt.ref === 'abs') top = hv;
+      else top = ground + hv;
+      if (!isFinite(top) || !isFinite(hv) || top - ground < 0.5) { top = ground + fallback; noHeight++; }
+      const E = function (p, y) { return [p.x + t.originE, t.originN - p.z, y]; };
+      const wall = function (a, b) {
+        const A = E(a, ground), B = E(b, ground), C = E(b, top), D = E(a, top);
+        rings.push([A[0], A[1], A[2], B[0], B[1], B[2], C[0], C[1], C[2], D[0], D[1], D[2]]);
+      };
+      for (let i = 0; i < outer.length; i++) wall(outer[i], outer[(i + 1) % outer.length]);
+      holes.forEach(function (h) { for (let i = 0; i < h.length; i++) wall(h[i], h[(i + 1) % h.length]); });
+      const pts = holes.length ? fpBridgeHoles(outer, holes) : outer;
+      triangulatePolygon(pts).forEach(function (tri) {
+        const a = E(pts[tri[0]], top), b = E(pts[tri[1]], top), c = E(pts[tri[2]], top);
+        rings.push([a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]]);
+      });
+      used++;
+    });
+  });
+  return { rings: rings, used: used, outside: outside, noHeight: noHeight, epsg: src };
+}
+
+/* =========================================================
    Baustein: Containeranlage
    Container stehen mit der langen Seite nebeneinander.
    X-Achse = Containerlänge, Z-Achse = Containerbreite.
@@ -4177,7 +4862,9 @@ function triangulatePolygon(pts) {
       for (let k = 0; k < idx.length; k++) {
         const j = idx[k];
         if (j === a || j === b || j === c) continue;
-        if (inTri(pts[j], pts[a], pts[b], pts[c])) { blocked = true; break; }
+        const q = pts[j];
+        if ((q.x === pts[a].x && q.z === pts[a].z) || (q.x === pts[b].x && q.z === pts[b].z) || (q.x === pts[c].x && q.z === pts[c].z)) continue;   // doppelter Punkt (Brücke zu einem Loch)
+        if (inTri(q, pts[a], pts[b], pts[c])) { blocked = true; break; }
       }
       if (blocked) continue;
       emit(a, b, c);
@@ -6157,6 +6844,10 @@ if (typeof module !== 'undefined' && module.exports) {
     buildBuildingsMesh: buildBuildingsMesh,
     triNormal: triNormal,
     triangulateBuildingRings: triangulateBuildingRings,
+    // Gebäude aus 2D-Daten
+    fpNum: fpNum, fpFields: fpFields, fpLooksLikeGeoJson: fpLooksLikeGeoJson, parseGeoJsonFootprints: parseGeoJsonFootprints, parseShp: parseShp, parseDbf: parseDbf,
+    parseShapefileSet: parseShapefileSet, fpPrjEpsg: fpPrjEpsg, sqliteOpen: sqliteOpen, readGpkgFootprints: readGpkgFootprints, fpWkb: fpWkb,
+    footprintRings: footprintRings, fpWindowFor: fpWindowFor, fpMedian: fpMedian, fpBridgeHoles: fpBridgeHoles,
 
     // IFC-Export
     terrainGridInRect: terrainGridInRect,

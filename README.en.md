@@ -30,6 +30,9 @@ browser.
   problem.
 - CityGML LOD2 and **CityJSON** (also CityJSONSeq and the feature lists of the 3DBAG API), also as a batch. For CityJSON the
   highest level of detail of each part is used. Axis order is detected automatically, buildings outside the tile are discarded.
+- **2D building data with height attributes:** GeoPackage (also several GB, only the area around the terrain is read), shapefile (`.shp` with `.dbf`, `.prj`) and GeoJSON.
+  The footprints become blocks with a flat roof (LoD1, courtyards stay open). After loading you choose ground and building height from the attributes
+  (or give fixed values); the coordinate system comes from the file and can be changed. Checked with the BEV file “DLM Bauwerke” (2.5 GB).
 - Terrain resolution adapts to zoom automatically: nearby parts at full data
   resolution (up to 1400 grid points per axis), distant parts coarser (tiles of
   64 × 64 cells). There is no slider for it. Height lookups, objects and the IFC

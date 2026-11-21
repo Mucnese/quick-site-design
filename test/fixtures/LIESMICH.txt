@@ -1,0 +1,9 @@
+Testdateien für den Import von 2D-Gebäudedaten (test/test-ui.js). Alle mit GDAL (ogr2ogr) aus kleinen GeoJSON-Dateien erzeugt:
+
+buildings25832.geojson  4 Gebäude (Quader, L-Form, Block mit Innenhof, MultiPolygon ohne Höhe) bei Rechts 692000 / Hoch 5336000, EPSG:25832
+buildings25832.shp/.dbf/.prj/.cpg/.shx  dasselbe als Shapefile (ogr2ogr -f "ESRI Shapefile" -lco ENCODING=UTF-8)
+buildings25832.gpkg     dasselbe als GeoPackage (-lco SPATIAL_INDEX=YES)
+buildings4326.geojson / .gpkg  dasselbe in WGS84 (-t_srs EPSG:4326, GeoJSON mit -lco RFC7946=YES: rund 1 cm gerundet)
+many25832.gpkg          1600 Gebäude im 25-m-Raster (40 x 40): mehrere B-Baum-Ebenen und ein R-Baum mit Tiefe > 0
+
+Attribute: name, hoehe (Höhe über Grund, teils als Text mit Komma), gelaende (Gelände, absolut), geschosse.

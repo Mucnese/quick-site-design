@@ -276,6 +276,11 @@
   #ifc-target-note.warn { color: var(--danger); }
   .ifc-objects-row { display: flex; gap: 6px; align-items: flex-start; font-size: 0.86em; line-height: 1.35; margin-top: 8px; cursor: pointer; }
   .ifc-objects-row input { margin: 2px 0 0; }
+  #fp-panel { margin-top: 8px; display: none; }
+  #fp-panel .fp-row { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+  #fp-panel .fp-label { flex: 0 0 100%; font-size: 0.78em; color: var(--text-dim2); }
+  #fp-panel select, #fp-panel input { flex: 1 1 90px; min-width: 0; }
+  #fp-info { margin-top: 6px; font-size: 0.78em; color: var(--text-dim2); }
   #xyz-crs-row { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
   #xyz-crs-row .xyz-label { flex: 0 0 100%; font-size: 0.78em; color: var(--text-dim2); }
   #xyz-crs { flex: 1 1 120px; min-width: 0; }
@@ -723,8 +728,25 @@
       </div>
       <div class="file-row">
         <div class="file-head"><span data-i18n="buildingFile">Gebäude · CityGML / CityJSON</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>
-        <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,.json,.jsonl,text/xml,application/json">
+        <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,.json,.jsonl,.geojson,.gpkg,.shp,.dbf,.prj,.cpg,.shx,text/xml,application/json">
         <div class="file-status" id="gml-status">Keine Datei</div>
+        <div id="fp-panel">
+          <div class="fp-label" id="fp-title"></div>
+          <div class="fp-row" id="fp-table-row"><span class="fp-label" data-i18n="fpTable">Tabelle</span><select id="fp-table"></select></div>
+          <div class="fp-row"><span class="fp-label" data-i18n="fpGround">Geländehöhe (Unterkante)</span>
+            <select id="fp-ground-src"></select><select id="fp-ground-attr"></select><input type="number" id="fp-ground-fixed" step="0.1" value="0"></div>
+          <div class="fp-row"><span class="fp-label" data-i18n="fpHeight">Gebäudehöhe</span>
+            <select id="fp-h-src"></select><select id="fp-h-attr"></select><input type="number" id="fp-h-fixed" step="0.1" min="0.5" value="10"></div>
+          <div class="fp-row" id="fp-ref-row"><span class="fp-label" data-i18n="fpRef">Der Attributwert ist</span>
+            <select id="fp-h-ref"></select></div>
+          <div class="fp-row" id="fp-factor-row"><span class="fp-label" data-i18n="fpFactor">Faktor (zum Beispiel 3 bei Geschosszahl)</span>
+            <input type="number" id="fp-h-factor" step="0.1" min="0.01" value="1"></div>
+          <div class="fp-row"><span class="fp-label" data-i18n="fpFallback">Ersatzhöhe ohne Angabe (m)</span>
+            <input type="number" id="fp-fallback" step="0.5" min="1" value="8"></div>
+          <div class="fp-row"><span class="fp-label" data-i18n="fpCrs">Bezugssystem der Daten</span>
+            <select id="fp-crs"></select><input type="number" id="fp-epsg" min="1000" max="99999" step="1" placeholder="EPSG" style="display:none"></div>
+          <div id="fp-info"></div>
+        </div>
       </div>
       <div class="file-row" id="ifc-row">
         <div class="file-head"><span data-i18n="ifcFile">Bauwerk · IFC</span><span class="act" id="ifc-clear" data-i18n="remove">Entfernen</span></div>

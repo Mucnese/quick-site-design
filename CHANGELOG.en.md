@@ -9,6 +9,10 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 ## 2026-11-21
 
 ### New
+- **2D building data (GeoPackage, shapefile, GeoJSON):** Footprints with attributes can be loaded as buildings (blocks with a flat roof, courtyards stay open). After loading you choose ground and
+  building height from the attributes (above ground or absolute, with a factor) or give fixed values; coordinate system from the file, changeable. GeoPackage also over 2 GB: only the area around the
+  terrain is read (R-tree). Checked with the BEV file “DLM Bauwerke” (2.5 GB): Vienna, 1 km², 1058 buildings in under a second.
+- **Prague and other cities:** A city 3D model now appears with the building models, and the note “no building model checked” disappears then.
 - **Building models of more countries (search for “LoD”):** Estonia (LoD2, all of Estonia, CityGML), Poland (LoD1 all of Poland, LoD2 partly, CityGML 2.0), Finland (LoD2, CityGML,
   so far example areas) and Flanders (3D GRB, LoD1, shapefile/KML, only there) are listed, plus 3D city models for Helsinki, Prague, Bordeaux and Clermont-Ferrand. The group
   is now called “Building model (LoD1/LoD2)”; where the format cannot be loaded, a note says so. The search found none in the other countries.

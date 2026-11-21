@@ -10,6 +10,10 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 ## 2026-11-21
 
 ### Neu
+- **2D-Gebäudedaten (GeoPackage, Shapefile, GeoJSON):** Grundrisse mit Attributen lassen sich als Gebäude laden (Quader mit Flachdach, Innenhöfe bleiben frei). Nach dem Laden wählt man Gelände- und
+  Gebäudehöhe aus den Attributen (über Grund oder absolut, mit Faktor) oder gibt feste Werte an; Bezugssystem aus der Datei, änderbar. GeoPackage auch über 2 GB: gelesen wird nur der Ausschnitt um das
+  Gelände (R-Baum). Geprüft an der BEV-Datei „DLM Bauwerke“ (2,5 GB): Wien, 1 km², 1058 Gebäude in unter einer Sekunde.
+- **Prag und andere Städte:** Ein 3D-Stadtmodell der Stadt steht jetzt bei den Gebäudemodellen, und der Hinweis „kein Gebäudemodell geprüft“ entfällt dann.
 - **Gebäudemodelle weiterer Länder (Suche nach „LoD“):** Estland (LoD2, ganz Estland, CityGML), Polen (LoD1 ganz Polen, LoD2 teilweise, CityGML 2.0), Finnland (LoD2, CityGML,
   bisher Beispielgebiete) und Flandern (3D GRB, LoD1, Shapefile/KML, nur dort) sind eingetragen, dazu 3D-Stadtmodelle für Helsinki, Prag, Bordeaux und Clermont-Ferrand. Die Gruppe
   heißt jetzt „Gebäudemodell (LoD1/LoD2)“; wo das Format nicht ladbar ist, sagt ein Hinweis das. In den übrigen Ländern fand die Suche keines.

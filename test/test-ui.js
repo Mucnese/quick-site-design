@@ -123,6 +123,7 @@ function newScope() {
     Math: Math, JSON: JSON, Object: Object, Array: Array, Error: Error,
     isFinite: isFinite, isNaN: isNaN, parseFloat: parseFloat, parseInt: parseInt,
     Float32Array: Float32Array, Float64Array: Float64Array, Uint32Array: Uint32Array,
+    Uint8Array: Uint8Array, DataView: DataView, TextDecoder: TextDecoder, ArrayBuffer: ArrayBuffer, Map: Map,
     Date: Date, RegExp: RegExp, String: String, Number: Number, Boolean: Boolean,
     THREE: THREE,
     DOMParser: DOMParser,
@@ -728,6 +729,232 @@ await test('Stadtgeoportale: Pin und Adresse in Wien nennen zusätzlich die Link
   assert.strictEqual(g('addr-result').textContent.indexOf(s.T('addrCity').split('{c}')[0]), -1, 'keine Stadtgruppe');
   // Englisch
   assert.ok(s.__bridge.STRINGS.de.addrCity.indexOf('{c}') > 0 && s.__bridge.STRINGS.en.addrCity.indexOf('{c}') > 0);
+});
+
+/* ---------- Gebäude aus 2D-Daten (GeoJSON, Shapefile, GeoPackage) ---------- */
+
+const FX_DIR = path.join(__dirname, 'fixtures');
+function fxFile(name, rename) {
+  const buf = fs.readFileSync(path.join(FX_DIR, name));
+  const ab = function (b) { return b.buffer.slice(b.byteOffset, b.byteOffset + b.length); };
+  return {
+    name: rename || name, size: buf.length, reads: 0,
+    arrayBuffer: function () { return Promise.resolve(ab(buf)); },
+    text: function () { return Promise.resolve(buf.toString('utf8')); },
+    slice: function (a, e) { const part = buf.subarray(a, Math.min(e, buf.length)); return { arrayBuffer: function () { return Promise.resolve(ab(part)); }, text: function () { return Promise.resolve(part.toString('utf8')); } }; }
+  };
+}
+
+/* Gelände 200 x 200 m um (692050, 5336040), EPSG:25832: die Testgebäude liegen in x 10..100, y 10..70 */
+async function scopeWith2dTerrain() {
+  const s = await scopeWithTerrain();
+  vm.runInContext('TERRAIN.w = 200; TERRAIN.d = 200; TERRAIN.originE = 692050; TERRAIN.originN = 5336040;', s);
+  return s;
+}
+const fpOpts = function (g, h, extra) { return Object.assign({ ground: g, height: h, fallback: 8 }, extra || {}); };
+const zRange = function (rings) { let lo = Infinity, hi = -Infinity; rings.forEach(function (r) { for (let i = 2; i < r.length; i += 3) { if (r[i] < lo) lo = r[i]; if (r[i] > hi) hi = r[i]; } }); return [lo, hi]; };
+const triArea = function (r) { return Math.abs((r[3] - r[0]) * (r[7] - r[1]) - (r[6] - r[0]) * (r[4] - r[1])) / 2; };
+
+await test('2D-Gebäude: GeoJSON, Shapefile und GeoPackage liefern dieselben Gebäude, Attribute und Bezugssystem', async function () {
+  const s = newScope();
+  const gj = s.parseGeoJsonFootprints(fs.readFileSync(path.join(FX_DIR, 'buildings25832.geojson'), 'utf8'), 'a');
+  assert.strictEqual(gj.feats.length, 4);
+  assert.strictEqual(gj.epsg, 25832);
+  assert.strictEqual(gj.fields.map(function (f) { return f.name + ':' + f.numeric; }).join(), 'name:false,hoehe:true,gelaende:true,geschosse:true');
+  assert.strictEqual(gj.feats[2].polys[0].holes.length, 1, 'Innenhof');
+  assert.strictEqual(gj.feats[3].polys.length, 2, 'MultiPolygon');
+  assert.strictEqual(s.fpNum('8,5'), 8.5, 'Komma als Dezimalzeichen');
+  const buf = function (n) { return fs.readFileSync(path.join(FX_DIR, n)); };
+  const sh = s.parseShapefileSet(buf('buildings25832.shp'), buf('buildings25832.dbf'), buf('buildings25832.prj').toString(), 'UTF-8', 'b');
+  assert.strictEqual(sh.feats.length, 4);
+  assert.strictEqual(sh.epsg, 25832, 'aus der .prj-Datei');
+  assert.strictEqual(sh.feats[2].polys[0].holes.length, 1, 'Loch im Shapefile (Ring gegen den Uhrzeigersinn)');
+  assert.strictEqual(sh.feats[1].props.name, 'Haus L');
+  assert.strictEqual(s.fpNum(sh.feats[1].props.hoehe), 8.5);
+  const f = fxFile('buildings25832.gpkg');
+  const g = await s.readGpkgFootprints(function (o, l) { return f.slice(o, o + l).arrayBuffer().then(function (b) { return new Uint8Array(b); }); }, f.size, 'g', null);
+  assert.strictEqual(g.feats.length, 4);
+  assert.strictEqual(g.epsg, 25832);
+  assert.strictEqual(g.table, 'gebaeude');
+  assert.strictEqual(g.feats[0].props.name, 'Haus A');
+  assert.strictEqual(g.feats[2].polys[0].holes.length, 1);
+  assert.ok(Math.abs(g.feats[0].polys[0].outer[0][0] - 692010) < 1e-6);
+  assert.strictEqual([gj, sh, g].map(function (x) { return x.feats.map(function (y) { return y.polys.length; }).join(); }).join('|'), '1,1,1,2|1,1,1,2|1,1,1,2');
+});
+
+await test('2D-Gebäude: GeoPackage mit R-Baum liest nur das Fenster, große Tabelle mit mehreren B-Baum-Ebenen vollständig', async function () {
+  const s = newScope();
+  const f = fxFile('many25832.gpkg');
+  let reads = 0;
+  const rd = function (o, l) { reads++; return f.slice(o, o + l).arrayBuffer().then(function (b) { return new Uint8Array(b); }); };
+  const all = await s.readGpkgFootprints(rd, f.size, 'm', null);
+  assert.strictEqual(all.feats.length, 1600);
+  assert.strictEqual(all.feats[1599].props.name, 'Gebäude 1599');
+  const win = await s.readGpkgFootprints(rd, f.size, 'm', function (epsg) { assert.strictEqual(epsg, 25832); return [692000, 5336000, 692099, 5336099]; });
+  assert.strictEqual(win.feats.length, 16, 'Gitter 25 m: 4 x 4 Gebäude im Fenster 100 x 100 m');
+  assert.ok(win.feats.every(function (x) { const p = x.polys[0].outer[0]; return p[0] >= 692000 && p[0] <= 692099 && p[1] >= 5336000 && p[1] <= 5336099; }));
+  await assert.rejects(s.readGpkgFootprints(rd, f.size, 'm', function () { return [0, 0, 1, 1]; }), /fpNoPolygons/, 'Fenster ohne Gebäude');
+  await assert.rejects(s.readGpkgFootprints(function () { return Promise.resolve(new Uint8Array(200)); }, 200, 'x', null), /sqliteBad/, 'keine SQLite-Datei');
+});
+
+await test('2D-Gebäude: .prj erkennt das Bezugssystem (AUTHORITY, ESRI-Namen, MGI, LAEA), sonst null', function () {
+  const s = newScope();
+  assert.strictEqual(s.fpPrjEpsg('PROJCS["ETRS89 / UTM zone 32N",GEOGCS["ETRS89"],AUTHORITY["EPSG","25832"]]'), 25832);
+  assert.strictEqual(s.fpPrjEpsg('PROJCRS["x",ID["EPSG",25833]]'), 25833);
+  assert.strictEqual(s.fpPrjEpsg('PROJCS["ETRS_1989_UTM_Zone_33N",GEOGCS["GCS_ETRS_1989"]]'), 25833);
+  assert.strictEqual(s.fpPrjEpsg('PROJCS["MGI_Austria_GK_M34",GEOGCS["GCS_MGI"]]'), 31256);
+  assert.strictEqual(s.fpPrjEpsg('PROJCS["ETRS_1989_LAEA",GEOGCS["GCS_ETRS_1989"]]'), 3035);
+  assert.strictEqual(s.fpPrjEpsg('GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984"]]'), 4326);
+  assert.strictEqual(s.fpPrjEpsg('PROJCS["Irgendwas",GEOGCS["x"]]'), null);
+  assert.strictEqual(s.fpPrjEpsg(null), null);
+});
+
+await test('2D-Gebäude: Quader aus Gelände- und Gebäudehöhe der Attribute, Innenhof bleibt frei, Höhe als Text mit Komma', async function () {
+  const s = await scopeWith2dTerrain();
+  const gj = s.parseGeoJsonFootprints(fs.readFileSync(path.join(FX_DIR, 'buildings25832.geojson'), 'utf8'), 'a');
+  const r = s.footprintRings(gj, fpOpts({ src: 'attr', attr: 'gelaende' }, { src: 'attr', attr: 'hoehe', ref: 'rel', factor: 1 }));
+  assert.strictEqual(r.used, 5, '4 Gebäude, ein MultiPolygon mit 2 Teilen');
+  assert.strictEqual(r.noHeight, 2, 'die zwei Hütten ohne Höhe bekommen die Ersatzhöhe');
+  // Haus A: Boden 500, Höhe 12 über Grund
+  const hausA = s.footprintRings({ feats: [gj.feats[0]], epsg: 25832 }, fpOpts({ src: 'attr', attr: 'gelaende' }, { src: 'attr', attr: 'hoehe', ref: 'rel', factor: 1 }));
+  assert.deepStrictEqual(zRange(hausA.rings), [500, 512]);
+  assert.strictEqual(hausA.rings.length, 4 + 2, '4 Wände und 2 Dachdreiecke');
+  // Haus L: Höhe "8,5" über 501,5; konkaler Grundriss: Dachfläche = 20*10 + 10*15 = 350 m²
+  const haus = s.footprintRings({ feats: [gj.feats[1]], epsg: 25832 }, fpOpts({ src: 'attr', attr: 'gelaende' }, { src: 'attr', attr: 'hoehe', ref: 'rel', factor: 1 }));
+  assert.deepStrictEqual(zRange(haus.rings), [501.5, 510]);
+  const roof = haus.rings.filter(function (x) { return x.length === 9; });
+  assert.ok(Math.abs(roof.reduce(function (a, x) { return a + triArea(x); }, 0) - 350) < 1e-6, 'Dachfläche des L');
+  // Block mit Innenhof: Dach 30*30 - 10*10 = 800 m², Wände außen und innen
+  const blk = s.footprintRings({ feats: [gj.feats[2]], epsg: 25832 }, fpOpts({ src: 'attr', attr: 'gelaende' }, { src: 'attr', attr: 'hoehe', ref: 'rel', factor: 1 }));
+  const roofB = blk.rings.filter(function (x) { return x.length === 9; });
+  assert.ok(Math.abs(roofB.reduce(function (a, x) { return a + triArea(x); }, 0) - 800) < 1e-6, 'Innenhof ist ausgespart');
+  assert.strictEqual(blk.rings.filter(function (x) { return x.length === 12; }).length, 8, '4 Außen- und 4 Innenwände');
+  // Faktor (Geschosse x 3 m), feste Gelände- und Gebäudehöhe, absolute Höhe
+  assert.deepStrictEqual(zRange(s.footprintRings({ feats: [gj.feats[0]], epsg: 25832 }, fpOpts({ src: 'fixed', fixed: 100 }, { src: 'attr', attr: 'geschosse', ref: 'rel', factor: 3 })).rings), [100, 112]);
+  assert.deepStrictEqual(zRange(s.footprintRings({ feats: [gj.feats[0]], epsg: 25832 }, fpOpts({ src: 'fixed', fixed: 100 }, { src: 'fixed', fixed: 20 })).rings), [100, 120]);
+  assert.deepStrictEqual(zRange(s.footprintRings({ feats: [gj.feats[0]], epsg: 25832 }, fpOpts({ src: 'fixed', fixed: 400 }, { src: 'attr', attr: 'gelaende', ref: 'abs', factor: 1 })).rings), [400, 500], 'absolute Oberkante');
+  // Gelände aus dem Modell: tiefster Punkt des Grundrisses
+  const tr = s.footprintRings({ feats: [gj.feats[0]], epsg: 25832 }, fpOpts({ src: 'terrain' }, { src: 'fixed', fixed: 10 }));
+  assert.ok(Math.abs(zRange(tr.rings)[1] - zRange(tr.rings)[0] - 10) < 1e-9, 'Gebäude ist 10 m hoch');
+  assert.throws(function () { s.footprintRings(gj, fpOpts({ src: 'terrain' }, { src: 'fixed', fixed: 10 }, { epsg: 99999 })); }, /fpCrsUnknown/);
+});
+
+await test('2D-Gebäude: Daten in WGS84 (GeoJSON RFC 7946, GeoPackage) landen auf demselben Fleck wie in EPSG:25832', async function () {
+  const s = await scopeWith2dTerrain();
+  const a = s.parseGeoJsonFootprints(fs.readFileSync(path.join(FX_DIR, 'buildings25832.geojson'), 'utf8'), 'a');
+  const b = s.parseGeoJsonFootprints(fs.readFileSync(path.join(FX_DIR, 'buildings4326.geojson'), 'utf8'), 'b');
+  assert.strictEqual(b.epsg, 4326, 'ohne crs-Angabe gilt WGS84');
+  const f = fxFile('buildings4326.gpkg');
+  const g = await s.readGpkgFootprints(function (o, l) { return f.slice(o, o + l).arrayBuffer().then(function (x) { return new Uint8Array(x); }); }, f.size, 'g', null);
+  assert.strictEqual(g.epsg, 4326);
+  const o = fpOpts({ src: 'fixed', fixed: 0 }, { src: 'fixed', fixed: 10 });
+  const ra = s.footprintRings(a, o).rings, rb = s.footprintRings(b, o).rings, rg = s.footprintRings(g, o).rings;
+  assert.strictEqual(ra.length, rb.length);
+  assert.strictEqual(ra.length, rg.length);
+  const walls = function (r) { return r.filter(function (x) { return x.length === 12; }); };
+  const roofArea = function (r) { return r.filter(function (x) { return x.length === 9; }).reduce(function (a2, x) { return a2 + triArea(x); }, 0); };
+  walls(ra).forEach(function (ring, i) {
+    ring.forEach(function (v, k) { assert.ok(Math.abs(v - walls(rb)[i][k]) < 0.05, 'GeoJSON (7 Nachkommastellen, rund 1 cm) Wand ' + i + '/' + k); assert.ok(Math.abs(v - walls(rg)[i][k]) < 0.01, 'GeoPackage Wand ' + i + '/' + k); });
+  });
+  assert.ok(Math.abs(roofArea(ra) - roofArea(rb)) < 0.5 && Math.abs(roofArea(ra) - roofArea(rg)) < 0.05, 'gleiche Dachfläche: ' + roofArea(ra) + ' / ' + roofArea(rb) + ' / ' + roofArea(rg));
+  // Fenster in WGS84 für das GeoPackage: Gelände samt Rand in Länge/Breite
+  const w = s.fpWindowFor(4326);
+  assert.ok(w[0] < w[2] && w[1] < w[3] && w[0] > 7 && w[0] < 15 && w[1] > 47 && w[1] < 50, JSON.stringify(w));
+  const w2 = s.fpWindowFor(25832);
+  assert.ok(Math.abs(w2[0] - (692050 - 120)) < 1e-6 && Math.abs(w2[3] - (5336040 + 120)) < 1e-6, 'gleiches System: Gelände mit 20 % Rand');
+});
+
+await test('2D-Gebäude: Datei wählen -> Auswahlfelder erscheinen mit sinnvoller Voreinstellung, Änderungen bauen die Gebäude neu', async function () {
+  const s = await scopeWith2dTerrain();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  await s.handleGmlFiles([fxFile('buildings25832.geojson')]);
+  assert.strictEqual(g('fp-panel').style.display, 'block');
+  assert.ok(g('gml-status').textContent.indexOf('GeoJSON') > 0 && g('gml-status').className.indexOf('ok') > 0, g('gml-status').textContent);
+  assert.strictEqual(g('fp-h-src').value, 'attr');
+  assert.strictEqual(g('fp-h-attr').value, 'hoehe', 'Höhenfeld nach dem Namen erkannt');
+  assert.strictEqual(g('fp-ground-src').value, 'terrain', 'Gelände aus dem Modell, bis der Nutzer ein Attribut wählt');
+  assert.ok(g('fp-h-attr').children.length === 3 && g('fp-h-attr').children.every(function (o) { return o.value !== 'name'; }), 'nur Zahlenfelder zur Wahl: ' + g('fp-h-attr').children.map(function (o) { return o.value; }));
+  assert.ok(g('fp-crs').children[0].textContent.indexOf('EPSG:25832') >= 0, 'Bezugssystem aus der Datei');
+  assert.ok(g('fp-info').textContent.indexOf('5 Gebäude') === 0 && g('fp-info').textContent.indexOf('2 ohne') > 0, g('fp-info').textContent);
+  assert.ok(vm.runInContext('buildingsMesh', s), 'Gebäude gebaut');
+  const faces1 = vm.runInContext('buildingsMesh.userData.faces', s);
+  // Gelände aus dem Attribut, Gebäudehöhe fest
+  g('fp-ground-src').value = 'attr'; g('fp-ground-attr').value = 'gelaende';
+  g('fp-h-src').value = 'fixed'; g('fp-h-fixed').value = '25';
+  s.onFpChanged();
+  assert.strictEqual(g('fp-ground-attr').style.display, '', 'Attributfeld sichtbar');
+  assert.strictEqual(g('fp-h-attr').style.display, 'none');
+  assert.strictEqual(g('fp-ref-row').style.display, 'none', 'ohne Attribut keine Frage nach dem Bezug');
+  assert.ok(g('fp-info').textContent.indexOf('0 ohne') > 0, 'feste Höhe: alle haben eine Höhe: ' + g('fp-info').textContent);
+  const rings = vm.runInContext('lastGmlRings', s);
+  assert.ok(Math.abs(zRange(rings)[1] - 527) < 1e-9, 'höchstes Dach: 502 + 25: ' + zRange(rings));
+  assert.strictEqual(vm.runInContext('buildingsMesh.userData.faces', s), faces1, 'dieselben Flächen, andere Höhen');
+  // falsches Bezugssystem: Meldung statt leerer Szene
+  g('fp-crs').value = '3035';
+  s.onFpChanged();
+  assert.ok(g('gml-status').className.indexOf('err') > 0, g('gml-status').textContent);
+  assert.strictEqual(vm.runInContext('buildingsMesh', s), null);
+  g('fp-crs').value = '';
+  s.onFpChanged();
+  assert.ok(vm.runInContext('buildingsMesh', s), 'zurück auf das Bezugssystem der Datei: Gebäude wieder da');
+  // Entfernen
+  g('gml-clear')._listeners.click[0]();
+  assert.strictEqual(g('fp-panel').style.display, 'none');
+  assert.strictEqual(vm.runInContext('lastFootprints', s), null);
+});
+
+await test('2D-Gebäude: Shapefile mit .dbf/.prj und GeoPackage über den Datei-Dialog, .dbf ohne .shp und fehlendes Gelände geben Meldungen', async function () {
+  const s = await scopeWith2dTerrain();
+  const g = function (id) { return s.document.getElementById(id); };
+  await s.handleGmlFiles([fxFile('buildings25832.shp'), fxFile('buildings25832.dbf'), fxFile('buildings25832.prj'), fxFile('buildings25832.cpg'), fxFile('buildings25832.shx')]);
+  assert.ok(g('gml-status').textContent.indexOf('Shapefile') > 0 && g('gml-status').className.indexOf('ok') > 0, g('gml-status').textContent);
+  assert.strictEqual(g('fp-h-attr').value, 'hoehe');
+  assert.strictEqual(g('fp-table-row').style.display, 'none', 'nur ein Gebäudetyp: keine Tabellenwahl');
+  await s.handleGmlFiles([fxFile('buildings25832.gpkg')]);
+  assert.ok(g('gml-status').textContent.indexOf('GeoPackage') > 0, g('gml-status').textContent);
+  assert.strictEqual(g('fp-h-attr').value, 'hoehe');
+  assert.ok(g('fp-h-attr').children.some(function (o) { return o.value === 'fid'; }), 'fid ist ein Zahlenfeld');
+  await s.handleGmlFiles([fxFile('buildings25832.dbf')]);
+  assert.strictEqual(g('gml-status').textContent, s.T('fpNeedShp'));
+  // Große Tabelle: nur das Gelände (200 x 200 m) wird gelesen
+  await s.handleGmlFiles([fxFile('many25832.gpkg')]);
+  assert.ok(vm.runInContext('lastFootprints.set.feats.length', s) < 100, 'nur Gebäude im Gelände: ' + vm.runInContext('lastFootprints.set.feats.length', s));
+  assert.strictEqual(g('fp-h-attr').value, 'hoehe');
+  // ohne Gelände
+  const s2 = newScope();
+  await s2.handleGmlFiles([fxFile('buildings25832.geojson')]);
+  assert.strictEqual(s2.document.getElementById('gml-status').textContent, s2.T('fpNeedTerrain'));
+  // keine Flächen im Gelände
+  vm.runInContext('TERRAIN.originE = 100000; TERRAIN.originN = 100000;', s);
+  await s.handleGmlFiles([fxFile('buildings25832.geojson')]);
+  assert.ok(g('gml-status').className.indexOf('err') > 0, g('gml-status').textContent);
+  // CityJSON/CityGML danach: das 2D-Feld verschwindet
+  const s3 = await scopeWithTerrain();
+  await s3.handleGmlFiles([fxFile('buildings25832.geojson')]);
+  assert.strictEqual(vm.runInContext('!!lastFootprints', s3), true);
+  const tr = { scale: [0.001, 0.001, 0.001], translate: [692005, 5336005, 500] };
+  const P = [[0, 0, 0], [10000, 0, 0], [10000, 8000, 0], [0, 8000, 0], [0, 0, 5000], [10000, 0, 5000], [10000, 8000, 5000], [0, 8000, 5000]];
+  const doc = { type: 'CityJSON', version: '2.0', transform: tr, vertices: P, CityObjects: { h: { type: 'Building', geometry: [{ type: 'Solid', lod: '2.2',
+    boundaries: [[[[0, 3, 2, 1]], [[4, 5, 6, 7]], [[0, 1, 5, 4]], [[1, 2, 6, 5]], [[2, 3, 7, 6]], [[3, 0, 4, 7]]]] }] } } };
+  await s3.handleGmlFiles([{ name: 'haus.city.json', size: 100, text: function () { return Promise.resolve(JSON.stringify(doc)); } }]);
+  assert.strictEqual(vm.runInContext('lastFootprints', s3), null);
+  assert.strictEqual(s3.document.getElementById('fp-panel').style.display, 'none');
+});
+
+await test('Stadtmodell in der Stadt (Prag): das 3D-Modell steht bei den Gebäudemodellen, der Hinweis "kein Modell geprüft" entfällt', async function () {
+  const s = startMapScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  g('sm-load')._listeners.click[0]();
+  await s.chooseAddrItem({ main: 'Wenzelsplatz', sub: 'Prag', lat: 50.0813, lon: 14.4274, country: 'CZ', state: '', city: 'Prag' }, {});
+  const txt = g('sm-pop-body').textContent;
+  const iB = txt.indexOf(s.T('addrBldg')), iC = txt.indexOf(s.T('addrCity').replace('{c}', 'Prag'));
+  assert.ok(iB >= 0 && iC > iB, 'Gruppe Gebäudemodell vor den Stadtlinks');
+  assert.ok(txt.slice(iB, iC).indexOf('Prag · 3D-Modell') >= 0, txt.slice(iB, iC));
+  assert.strictEqual(txt.indexOf(s.T('geoNote_noEuBldg')), -1, 'kein Hinweis, weil die Stadt ein Modell hat');
+  assert.ok(txt.slice(iC).indexOf('3D-Modell') < 0, 'nicht doppelt in den Stadtlinks');
+  await s.chooseAddrItem({ main: 'Bratislava', sub: 'Slowakei', lat: 48.15, lon: 17.1, country: 'SK', state: '', city: 'Bratislava' }, {});
+  assert.ok(g('sm-pop-body').textContent.indexOf(s.T('geoNote_noEuBldg')) >= 0, 'ohne Stadtmodell bleibt der Hinweis');
 });
 
 await test('Gebäude als CityJSON laden: Dateiauswahl nennt .json/.jsonl, Status zählt die Flächen, Fehler nennt die Datei', async function () {

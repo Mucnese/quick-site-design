@@ -31,6 +31,9 @@ Browser.
   Überlappungen sind daher unkritisch.
 - CityGML LOD2 und **CityJSON** (auch CityJSONSeq und die Merkmalslisten der 3DBAG-Schnittstelle), ebenfalls als Stapel. Bei
   CityJSON gilt je Bauteil die höchste Detailstufe. Die Achsenreihenfolge wird erkannt, Gebäude außerhalb der Kachel verworfen.
+- **2D-Gebäudedaten mit Höhenattributen:** GeoPackage (auch mehrere GB, gelesen wird nur der Ausschnitt um das Gelände), Shapefile (`.shp` mit `.dbf`, `.prj`) und GeoJSON.
+  Die Grundrisse werden zu Quadern mit Flachdach (LoD1, Innenhöfe bleiben frei). Gelände- und Gebäudehöhe wählt man nach dem Laden aus den Attributen
+  (oder gibt feste Werte an); das Bezugssystem kommt aus der Datei und lässt sich ändern. Geprüft an der BEV-Datei „DLM Bauwerke“ (2,5 GB).
 - Die Geländeauflösung passt sich automatisch dem Zoom an: nahe Teile in voller
   Datenauflösung (bis 1400 Stützpunkte je Achse), ferne gröber (Kacheln zu
   64 × 64 Zellen). Es gibt keinen Regler dafür. Höhenabfragen, Objekte und

@@ -46,6 +46,19 @@ const STRINGS = {
     ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
     demWindow: 'Ausschnitt',
     gmlUnreadable: 'Gebäudedatei nicht lesbar:',
+    fpTitle: '2D-Gebäudedaten · {n} Gebäude · {f}', fpTable: 'Tabelle', fpGround: 'Geländehöhe (Unterkante)', fpGroundTerrain: 'aus dem Geländemodell',
+    fpGroundAttr: 'aus dem Attribut', fpGroundFixed: 'fester Wert (m ü. NN)', fpHeight: 'Gebäudehöhe', fpHeightAttr: 'aus dem Attribut', fpHeightFixed: 'fester Wert (m)',
+    fpRef: 'Der Attributwert ist', fpRefRel: 'die Höhe über Grund', fpRefAbs: 'die absolute Höhe (m ü. NN)', fpFactor: 'Faktor (zum Beispiel 3 bei Geschosszahl)',
+    fpFallback: 'Ersatzhöhe ohne Angabe (m)', fpCrs: 'Bezugssystem der Daten', fpCrsKnown: 'aus der Datei: EPSG:{c}', fpCrsUnknown0: 'nicht angegeben: wie das Gelände',
+    fpOther: 'anderer EPSG-Code', fpNoNumeric: '– kein Zahlenfeld –',
+    fpInfo: '{n} Gebäude im Gelände, {o} außerhalb, {h} ohne brauchbare Höhe (Ersatzhöhe)', fpStatus: '{n} Gebäude ({f}) · {u} im Gelände',
+    fpNeedTerrain: 'Bitte zuerst ein Geländemodell laden. Die Grundrisse werden auf das Gelände gesetzt.',
+    fpNeedShp: 'Zu den Zusatzdateien (.dbf, .prj) fehlt die .shp-Datei. Bitte .shp, .dbf und .prj zusammen wählen.',
+    fpBadJson: 'Die Datei ist kein gültiges GeoJSON.', fpNoPolygons: 'Keine Gebäudeflächen (Polygone) im Bereich des Geländes gefunden. Liegen die Daten dort?',
+    fpBadShp: 'Die .shp-Datei ist nicht lesbar.', fpShpNotPolygon: 'Das Shapefile enthält keine Flächen (Polygone).', fpBadDbf: 'Die .dbf-Tabelle ist nicht lesbar.',
+    fpCrsUnknown: 'Das Bezugssystem der Daten ist der Anwendung nicht bekannt. Bitte unten einen EPSG-Code wählen.',
+    sqliteBad: 'Die Datei ist keine lesbare GeoPackage-Datei (SQLite).', sqliteEncoding: 'Die GeoPackage-Datei ist nicht UTF-8-kodiert; das wird nicht gelesen.',
+    gpkgNone: 'Das GeoPackage enthält keine Flächenebene (Polygone).',
     gmlTooBig: 'Die Gebäudedateien sind zusammen {s} MB groß, mehr als {m} MB schafft der Browser nicht. Bitte kleinere Ausschnitte laden.',
     busyGml: 'Gebäudemodell wird verarbeitet … bei großen Dateien kann das einige Sekunden dauern.', busyGmlRender: 'Gebäudemodell wird gerendert …',
     busyIfc: 'IFC-Datei wird gelesen und gerendert … bei großen Dateien kann das einige Sekunden dauern.',
@@ -98,20 +111,20 @@ const STRINGS = {
     geoNote_asc: 'Gemeindeweise als TIF und ASCII.',
     geoNote_unverified: 'Nicht geprüft.',
     geoNote_servicesOnly: 'Kein Download gefunden, nur Dienste.',
-    geoNote_atGpkg: 'Ganz Österreich, aber nur als Blockmodell (LoD1) im GeoPackage-Format. Nicht direkt ladbar: Die Anwendung liest CityGML und CityJSON. CC BY 4.0.',
+    geoNote_atGpkg: 'Ganz Österreich als Blockmodell (LoD1), GeoPackage, rund 2,5 GB, CC BY 4.0. Unter „Daten“ laden: Die Anwendung liest nur den Ausschnitt um das Gelände. Gelände- und Gebäudehöhe wählen Sie danach aus den Attributen (zum Beispiel HOEHE_BODEN_MIN und HOEHE_OBJEKT_MAX).',
     geoNote_euNoOpenDem: 'Kein offenes Geländemodell geprüft. Das nationale Geoportal oder das INSPIRE-Geoportal der EU nennen Angebote.',
     geoNote_noEuBldg: 'Kein amtliches 3D-Gebäudemodell geprüft.',
     geoNote_plLod2: 'LoD1 für ganz Polen (CityGML 2.0, nach Landkreisen), LoD2 nur für einen Teil des Landes (Stand 2018).',
-    geoNote_bldgShp: 'Nur als Shapefile oder KML (LoD1-Blockmodell). Nicht direkt ladbar: Die Anwendung liest CityGML und CityJSON.',
+    geoNote_bldgShp: 'Als Shapefile oder KML (LoD1-Blockmodell). Ein Shapefile lässt sich als 2D-Datei laden (zusammen mit .dbf und .prj); ob es Höhenattribute enthält, wurde nicht geprüft.',
     geoNote_euCheckFormat: 'Das Format steht auf der Seite nicht eindeutig; vor dem Laden prüfen (GeoTIFF wird direkt geladen).',
     geoNote_euPartial: 'Nicht überall verfügbar.',
-    geoNote_euBldgNotCityGml: 'Als CityJSON (lässt sich laden), GeoPackage oder OBJ (nicht).',
+    geoNote_euBldgNotCityGml: 'Als CityJSON (lässt sich laden), GeoPackage (als 2D-Datei lesbar) oder OBJ (nicht).',
     geoNote_euUnreachable: 'Die Seite war bei der Prüfung nicht erreichbar.',
     xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
     xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
     xyzFar: 'Achtung: Im gewählten System {c} liegen die Koordinaten bei Breite {lat}, Länge {lon}, also außerhalb Europas.',
-    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML / CityJSON',
+    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON)',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', road: 'Baustraße',
@@ -225,6 +238,19 @@ const STRINGS = {
     ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
     demWindow: 'extract',
     gmlUnreadable: 'Building file not readable:',
+    fpTitle: '2D building data · {n} buildings · {f}', fpTable: 'Table', fpGround: 'Ground height (base)', fpGroundTerrain: 'from the terrain model',
+    fpGroundAttr: 'from the attribute', fpGroundFixed: 'fixed value (m a.s.l.)', fpHeight: 'Building height', fpHeightAttr: 'from the attribute', fpHeightFixed: 'fixed value (m)',
+    fpRef: 'The attribute value is', fpRefRel: 'the height above ground', fpRefAbs: 'the absolute height (m a.s.l.)', fpFactor: 'Factor (for example 3 for number of storeys)',
+    fpFallback: 'Substitute height when missing (m)', fpCrs: 'Coordinate system of the data', fpCrsKnown: 'from the file: EPSG:{c}', fpCrsUnknown0: 'not stated: same as the terrain',
+    fpOther: 'other EPSG code', fpNoNumeric: '– no numeric field –',
+    fpInfo: '{n} buildings in the terrain, {o} outside, {h} without a usable height (substitute height)', fpStatus: '{n} buildings ({f}) · {u} in the terrain',
+    fpNeedTerrain: 'Please load a terrain model first. The footprints are placed on the terrain.',
+    fpNeedShp: 'The .shp file is missing for the extra files (.dbf, .prj). Please choose .shp, .dbf and .prj together.',
+    fpBadJson: 'The file is not valid GeoJSON.', fpNoPolygons: 'No building areas (polygons) found within the terrain. Is the data located there?',
+    fpBadShp: 'The .shp file cannot be read.', fpShpNotPolygon: 'The shapefile contains no areas (polygons).', fpBadDbf: 'The .dbf table cannot be read.',
+    fpCrsUnknown: 'The coordinate system of the data is not known to the application. Please choose an EPSG code below.',
+    sqliteBad: 'The file is not a readable GeoPackage (SQLite) file.', sqliteEncoding: 'The GeoPackage file is not UTF-8 encoded; this is not read.',
+    gpkgNone: 'The GeoPackage contains no area layer (polygons).',
     gmlTooBig: 'The building files are {s} MB together; the browser cannot handle more than {m} MB. Please load smaller extracts.',
     busyGml: 'Building model is being processed … large files can take a few seconds.', busyGmlRender: 'Building model is being rendered …',
     busyIfc: 'IFC file is being read and rendered … large files can take a few seconds.',
@@ -277,20 +303,20 @@ const STRINGS = {
     geoNote_asc: 'Per municipality as TIF and ASCII.',
     geoNote_unverified: 'Not checked.',
     geoNote_servicesOnly: 'No download found, services only.',
-    geoNote_atGpkg: 'All of Austria, but only as a block model (LoD1) in GeoPackage format. Cannot be loaded directly: the application reads CityGML and CityJSON. CC BY 4.0.',
+    geoNote_atGpkg: 'All of Austria as a block model (LoD1), GeoPackage, about 2.5 GB, CC BY 4.0. Load it under “Data”: the application reads only the area around the terrain. Then choose ground and building height from the attributes (for example HOEHE_BODEN_MIN and HOEHE_OBJEKT_MAX).',
     geoNote_euNoOpenDem: 'No open terrain model checked. The national geoportal or the EU INSPIRE geoportal list offers.',
     geoNote_noEuBldg: 'No official 3D building model checked.',
     geoNote_plLod2: 'LoD1 for all of Poland (CityGML 2.0, by county), LoD2 only for part of the country (as of 2018).',
-    geoNote_bldgShp: 'Only as shapefile or KML (LoD1 block model). Cannot be loaded directly: the application reads CityGML and CityJSON.',
+    geoNote_bldgShp: 'As shapefile or KML (LoD1 block model). A shapefile can be loaded as a 2D file (together with .dbf and .prj); whether it contains height attributes was not checked.',
     geoNote_euCheckFormat: 'The page does not state the format clearly; check before loading (GeoTIFF loads directly).',
     geoNote_euPartial: 'Not available everywhere.',
-    geoNote_euBldgNotCityGml: 'As CityJSON (can be loaded), GeoPackage or OBJ (cannot).',
+    geoNote_euBldgNotCityGml: 'As CityJSON (can be loaded), GeoPackage (readable as a 2D file) or OBJ (cannot).',
     geoNote_euUnreachable: 'The page could not be reached when checked.',
     xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
     xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
     xyzFar: 'Warning: in the chosen system {c} the coordinates lie at latitude {lat}, longitude {lon}, outside Europe.',
-    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML / CityJSON',
+    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON)',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', road: 'Haul road',
@@ -694,6 +720,7 @@ function refreshTexts() {
   refreshAttribution();
   renderOsmUi();
   buildXyzCrsOptions();
+  renderFpPanel();
   renderAddrUi();
   if (ifcPick) showIfcHint(ifcPick.step);
   const id = getSelectedId();
@@ -2685,17 +2712,21 @@ function renderPlaceInto(box, place) {
   }
   grp('addrBldg');
   src.bldg.forEach(function (b) { box.appendChild(addrRow(b, 'bldg')); });
-  if (src.bldgNote) {
+  // 3D-Stadtmodelle der Stadt (GEO_CITIES, kind '3d') gehören zum Gebäudemodell; mit ihnen entfällt der Hinweis "kein Gebäudemodell geprüft"
+  const city = cityPortalsFor(place);
+  const city3d = city ? city.links.filter(function (l) { return l.kind === '3d'; }) : [];
+  city3d.forEach(function (l) { box.appendChild(addrRow(Object.assign({}, l, { label: place.city + ' · ' + l.label }), 'city')); });
+  if (src.bldgNote && !city3d.length) {
     const n = document.createElement('div');
     n.className = 'addr-note';
     n.textContent = T('geoNote_' + src.bldgNote);
     box.appendChild(n);
   }
   // Stadtgeoportale (eigene Tabelle GEO_CITIES): zusätzlich zu den Seiten des Landes
-  const city = cityPortalsFor(place);
-  if (city) {
+  const cityRest = city ? city.links.filter(function (l) { return l.kind !== '3d'; }) : [];
+  if (cityRest.length) {
     grp('', T('addrCity').replace('{c}', place.city));
-    city.links.forEach(function (l) { box.appendChild(addrRow(l, 'city')); });
+    cityRest.forEach(function (l) { box.appendChild(addrRow(l, 'city')); });
   }
 }
 
@@ -3013,7 +3044,9 @@ async function handleDemFiles(files, isDemo) {
     if (removed) msg += ' ' + removed + ' Objekt(e) außerhalb entfernt.';
     setStatus(msg);
 
-    if (lastGmlRings) {
+    if (lastFootprints) {
+      applyFootprints();                                        // Grundrisse neu auf das neue Gelände setzen
+    } else if (lastGmlRings) {
       try {
         setBuildings(buildBuildingsMesh(lastGmlRings));
         setFileStatus('gml', 'Neu eingepasst', 'ok');
@@ -3035,6 +3068,20 @@ const GML_MAX_BYTES = 300e6;
 async function handleGmlFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
+  const cls = await fpClassify(list);
+  const only2d = !cls.gpkg && !cls.shp && !cls.geojson;
+  if (!only2d) {
+    // 2D-Grundrisse mit Höhenattributen: GeoPackage, Shapefile oder GeoJSON (ein Datensatz auf einmal)
+    const big = !cls.gpkg && list.reduce(function (sum, f) { return sum + (f.size || 0); }, 0) > GML_MAX_BYTES;
+    if (big) { const m = T('gmlTooBig').replace('{s}', (list.reduce(function (a, f) { return a + (f.size || 0); }, 0) / 1e6).toFixed(0)).replace('{m}', String(GML_MAX_BYTES / 1e6)); setFileStatus('gml', m, 'err'); setStatus(m, true); return; }
+    await handleFootprintFiles(cls);
+    return;
+  }
+  if (!cls.rest.length) {                                    // nur .dbf/.prj/.cpg ohne .shp
+    if (Object.keys(cls.side).length) { const m = T('fpNeedShp'); setFileStatus('gml', m, 'err'); setStatus(m, true); return; }
+  }
+  lastFootprints = null;
+  renderFpPanel();
   const total = list.reduce(function (s, f) { return s + (f.size || 0); }, 0);
   if (total > GML_MAX_BYTES) {
     const msg = T('gmlTooBig').replace('{s}', (total / 1e6).toFixed(0)).replace('{m}', String(GML_MAX_BYTES / 1e6));
@@ -3077,6 +3124,191 @@ async function handleGmlFiles(files, isDemo) {
   } finally {
     hideBusy();
   }
+}
+
+/* ---------- Gebäude aus 2D-Daten (GeoJSON, Shapefile, GeoPackage) ----------
+   Nach dem Laden wählt der Nutzer Gelände- und Gebäudehöhe aus den Attributen (oder gibt feste Werte an); jede Änderung baut die Gebäude neu.
+   Die Grundrisse bleiben im Speicher (lastFootprints), damit sie auch nach einem Wechsel des Geländes neu auf dieses gesetzt werden. */
+let lastFootprints = null;       // { set, file (GeoPackage), kind, opts }
+const FP_CRS_CHOICES = XYZ_CRS_CHOICES.concat([3035, 4326]);
+
+function fpExt(name) { const m = /\.([^.]+)$/.exec(String(name || '')); return m ? m[1].toLowerCase() : ''; }
+function fpBase(name) { return String(name || '').replace(/\.[^.]*$/, '').toLowerCase(); }
+
+async function fpReadHead(file) {
+  try { return String(await (file.slice ? file.slice(0, 2000) : file).text()).slice(0, 2000); } catch (e) { return ''; }
+}
+
+/* Dateien nach Art ordnen: GeoPackage, Shapefile (mit .dbf/.prj/.cpg gleichen Namens), GeoJSON; der Rest ist CityGML/CityJSON */
+async function fpClassify(list) {
+  const c = { gpkg: null, shp: null, geojson: null, side: {}, rest: [] };
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i], e = fpExt(f.name);
+    if (e === 'gpkg') c.gpkg = c.gpkg || f;
+    else if (e === 'shp') c.shp = c.shp || f;
+    else if (e === 'geojson') c.geojson = c.geojson || f;
+    else if (e === 'json' && fpLooksLikeGeoJson(await fpReadHead(f))) c.geojson = c.geojson || f;
+    else if (e === 'dbf' || e === 'prj' || e === 'cpg' || e === 'shx') { (c.side[fpBase(f.name)] = c.side[fpBase(f.name)] || {})[e] = f; }
+    else c.rest.push(f);
+  }
+  return c;
+}
+
+function fpErrText(e) { const m = e && e.message ? e.message : String(e); return /^(fp|sqlite|gpkg)[A-Za-z0-9]+$/.test(m) ? T(m) : m; }
+
+function fpBytes(file) { return file.arrayBuffer().then(function (b) { return new Uint8Array(b); }); }
+
+function fpReadGpkg(file, table) {
+  const rd = function (o, l) { return file.slice(o, o + l).arrayBuffer().then(function (b) { return new Uint8Array(b); }); };
+  return readGpkgFootprints(rd, file.size, file.name, fpWindowFor, table);
+}
+
+/* Voreinstellung: Höhenfeld nach Namen finden (zum Beispiel BEV HOEHE_OBJEKT_MAX, 3DBAG, OSM height), Gelände aus dem Modell */
+function fpDefaultOptions(set) {
+  const num = set.fields.filter(function (f) { return f.numeric; }).map(function (f) { return f.name; });
+  const isGround = function (n) { return /boden|gel(ae|ä)nde|ground|terrain|dgm|sohle/i.test(n); };
+  const pick = function (list, tests) {
+    for (let i = 0; i < tests.length; i++) { const r = list.filter(function (n) { return tests[i].test(n); })[0]; if (r) return r; }
+    return null;
+  };
+  const hAttr = pick(num.filter(function (n) { return !isGround(n); }),
+    [/objekt.*max|max.*objekt/i, /^(bldg_?)?(measured)?height$|^h(oe|ö)he$|geb(ae|ä)udeh(oe|ö)he|bauh(oe|ö)he/i, /height|h(oe|ö)he|hgt/i, /traufe|first|dach/i]);
+  const gAttr = pick(num.filter(isGround), [/boden.*min|min.*boden/i, /boden|gel(ae|ä)nde|ground|terrain/i]);
+  const med = hAttr ? fpMedian(set, hAttr) : NaN;
+  const abs = hAttr && (/(^|[^a-z])(abs|nn)([^a-z]|$)|ue_?nn/i.test(hAttr) || med > 100);
+  return {
+    ground: { src: 'terrain', attr: gAttr || num[0] || '', fixed: 0 },
+    height: { src: hAttr ? 'attr' : 'fixed', attr: hAttr || num[0] || '', ref: abs ? 'abs' : 'rel', factor: 1, fixed: 10 },
+    fallback: 8, crs: ''
+  };
+}
+
+function fpFill(sel, items, value) {
+  sel.innerHTML = '';
+  items.forEach(function (it) { const o = document.createElement('option'); o.value = it[0]; o.textContent = it[1]; sel.appendChild(o); });
+  sel.value = value === undefined || value === null ? '' : String(value);
+}
+
+/* Auswahlfelder füllen und je nach Wahl ein- und ausblenden */
+function renderFpPanel() {
+  const fp = lastFootprints, panel = document.getElementById('fp-panel');
+  if (!panel) return;
+  if (!fp) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const set = fp.set, o = fp.opts, g = function (id) { return document.getElementById(id); };
+  const num = set.fields.filter(function (f) { return f.numeric; }).map(function (f) { return [f.name, f.name]; });
+  const attrs = num.length ? num : [['', T('fpNoNumeric')]];
+  g('fp-title').textContent = T('fpTitle').replace('{n}', String(set.feats.length)).replace('{f}', fp.kind);
+  const multi = set.tables && set.tables.length > 1;
+  g('fp-table-row').style.display = multi ? 'flex' : 'none';
+  if (multi) fpFill(g('fp-table'), set.tables.map(function (t) { return [t, t]; }), set.table);
+  fpFill(g('fp-ground-src'), [['terrain', T('fpGroundTerrain')], ['attr', T('fpGroundAttr')], ['fixed', T('fpGroundFixed')]], o.ground.src);
+  fpFill(g('fp-ground-attr'), attrs, o.ground.attr);
+  g('fp-ground-fixed').value = o.ground.fixed;
+  fpFill(g('fp-h-src'), [['attr', T('fpHeightAttr')], ['fixed', T('fpHeightFixed')]], o.height.src);
+  fpFill(g('fp-h-attr'), attrs, o.height.attr);
+  g('fp-h-fixed').value = o.height.fixed;
+  fpFill(g('fp-h-ref'), [['rel', T('fpRefRel')], ['abs', T('fpRefAbs')]], o.height.ref);
+  g('fp-h-factor').value = o.height.factor;
+  g('fp-fallback').value = o.fallback;
+  const auto = set.epsg ? T('fpCrsKnown').replace('{c}', String(set.epsg)) : T('fpCrsUnknown0');
+  fpFill(g('fp-crs'), [['', auto]].concat(FP_CRS_CHOICES.map(function (c) { return [String(c), crsLabel(c)]; })).concat([['other', T('fpOther')]]), o.crs === '' || o.crs === null ? '' : (FP_CRS_CHOICES.indexOf(+o.crs) >= 0 ? String(o.crs) : 'other'));
+  g('fp-epsg').style.display = g('fp-crs').value === 'other' ? '' : 'none';
+  g('fp-ground-attr').style.display = o.ground.src === 'attr' ? '' : 'none';
+  g('fp-ground-fixed').style.display = o.ground.src === 'fixed' ? '' : 'none';
+  g('fp-h-attr').style.display = o.height.src === 'attr' ? '' : 'none';
+  g('fp-h-fixed').style.display = o.height.src === 'fixed' ? '' : 'none';
+  g('fp-ref-row').style.display = o.height.src === 'attr' ? 'flex' : 'none';
+  g('fp-factor-row').style.display = o.height.src === 'attr' ? 'flex' : 'none';
+}
+
+/* Einstellungen aus den Feldern lesen (die Felder sind maßgeblich) */
+function readFpOptions() {
+  const g = function (id) { return document.getElementById(id); }, n = function (id, d) { const v = parseFloat(g(id).value); return isFinite(v) ? v : d; };
+  let crs = g('fp-crs').value;
+  crs = crs === '' ? '' : (crs === 'other' ? (parseInt(g('fp-epsg').value, 10) || '') : parseInt(crs, 10));
+  return {
+    ground: { src: g('fp-ground-src').value || 'terrain', attr: g('fp-ground-attr').value, fixed: n('fp-ground-fixed', 0) },
+    height: { src: g('fp-h-src').value || 'fixed', attr: g('fp-h-attr').value, ref: g('fp-h-ref').value || 'rel', factor: n('fp-h-factor', 1), fixed: n('fp-h-fixed', 10) },
+    fallback: n('fp-fallback', 8), crs: crs
+  };
+}
+
+/* Gebäude aus den Grundrissen und den gewählten Höhen neu bauen */
+function applyFootprints() {
+  const fp = lastFootprints;
+  if (!fp) return;
+  const info = document.getElementById('fp-info');
+  try {
+    const res = footprintRings(fp.set, { epsg: fp.opts.crs || null, ground: fp.opts.ground, height: fp.opts.height, fallback: fp.opts.fallback });
+    lastGmlRings = res.rings;
+    const mesh = buildBuildingsMesh(res.rings);
+    setBuildings(mesh);
+    info.textContent = T('fpInfo').replace('{n}', String(res.used)).replace('{o}', String(res.outside)).replace('{h}', String(res.noHeight));
+    setFileStatus('gml', T('fpStatus').replace('{n}', String(fp.set.feats.length)).replace('{f}', fp.kind).replace('{u}', String(res.used)), 'ok');
+  } catch (e) {
+    clearBuildings();
+    lastGmlRings = null;
+    info.textContent = fpErrText(e);
+    setFileStatus('gml', fpErrText(e), 'err');
+  }
+}
+
+function onFpChanged(ev) {
+  if (!lastFootprints) return;
+  lastFootprints.opts = readFpOptions();
+  renderFpPanel();
+  applyFootprints();
+}
+
+async function onFpTableChanged() {
+  const fp = lastFootprints;
+  if (!fp || !fp.file) return;
+  const t = document.getElementById('fp-table').value;
+  showBusy('busyGml');
+  await yieldToPaint();
+  try {
+    const set = await fpReadGpkg(fp.file, t);
+    lastFootprints = { set: set, file: fp.file, kind: fp.kind, opts: fpDefaultOptions(set) };
+    renderFpPanel();
+    applyFootprints();
+  } catch (e) {
+    setFileStatus('gml', fpErrText(e), 'err');
+  } finally { hideBusy(); }
+}
+
+/* Eine Gruppe 2D-Dateien laden; c kommt aus fpClassify */
+async function handleFootprintFiles(c) {
+  if (!TERRAIN) { const msg = T('fpNeedTerrain'); setFileStatus('gml', msg, 'err'); setStatus(msg, true); return; }
+  setFileStatus('gml', 'Lese ' + (c.gpkg || c.shp || c.geojson).name, 'busy');
+  showBusy('busyGml');
+  await yieldToPaint();
+  try {
+    let set, kind, file = null;
+    if (c.gpkg) { kind = 'GeoPackage'; file = c.gpkg; set = await fpReadGpkg(c.gpkg, null); }
+    else if (c.shp) {
+      kind = 'Shapefile';
+      const side = c.side[fpBase(c.shp.name)] || {};
+      const shp = await fpBytes(c.shp);
+      const dbf = side.dbf ? await fpBytes(side.dbf) : null;
+      const prj = side.prj ? await side.prj.text() : null;
+      const cpg = side.cpg ? await side.cpg.text() : null;
+      set = parseShapefileSet(shp, dbf, prj, cpg, c.shp.name);
+    } else { kind = 'GeoJSON'; set = parseGeoJsonFootprints(await c.geojson.text(), c.geojson.name); }
+    lastFootprints = { set: set, file: file, kind: kind, opts: fpDefaultOptions(set) };
+    demoAttribGml = false;
+    refreshAttribution();
+    renderFpPanel();
+    showBusy('busyGmlRender');
+    await yieldToPaint();
+    applyFootprints();
+    if (lastGmlRings) setStatus(T('msgBuildingsLoaded'));
+  } catch (e) {
+    lastFootprints = null;
+    renderFpPanel();
+    setFileStatus('gml', fpErrText(e), 'err');
+    setStatus(T('gmlUnreadable') + ' ' + fpErrText(e), true);
+  } finally { hideBusy(); }
 }
 
 /* =========================================================
@@ -3744,6 +3976,10 @@ function initUI() {
   document.getElementById('ifc-dz').addEventListener('input', function (e) {
     applyIfcDz((e && e.target ? e.target : this).value);
   });
+  ['fp-ground-src', 'fp-ground-attr', 'fp-ground-fixed', 'fp-h-src', 'fp-h-attr', 'fp-h-fixed', 'fp-h-ref', 'fp-h-factor', 'fp-fallback', 'fp-crs', 'fp-epsg'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', onFpChanged);
+  });
+  document.getElementById('fp-table').addEventListener('change', onFpTableChanged);
   const gmlInput = document.getElementById('gml-input');
   gmlInput.addEventListener('change', function () {
     if (gmlInput.files && gmlInput.files.length) handleGmlFiles(gmlInput.files);
@@ -3770,6 +4006,8 @@ function initUI() {
   document.getElementById('gml-clear').addEventListener('click', function () {
     clearBuildings();
     lastGmlRings = null;
+    lastFootprints = null;
+    renderFpPanel();
     demoAttribGml = false;
     refreshAttribution();
     setFileStatus('gml', T('noFile'));
@@ -3973,6 +4211,7 @@ if (typeof module !== 'undefined' && module.exports) {
       toolParams = {};
       formRefs = {};
       lastGmlRings = null;
+      lastFootprints = null;
       lastDemTiles = null;
       lastDemNames = [];
       gridLimit = MAX_GRID;
