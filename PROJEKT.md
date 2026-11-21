@@ -116,6 +116,9 @@ Kurzschluss macht daraus 9. Deshalb `fieldRank()`.
 app.js
   buildTerrain / gridTiles            Gelände aufbauen und rastern
   readTiffTiles / parseCityGML        Dateien einlesen
+  parseGeoJsonFootprints / parseShapefileSet / readGpkgFootprints
+                                      2D-Gebäude (GeoJSON, Shapefile, GeoPackage) mit Attributen
+  footprintRings                      Grundrisse + gewählte Höhen -> Flächen (Quader mit Flachdach)
   buildBuildingsMesh                  ein Mesh für alle Gebäude
   getHeightAt / worldToUTM            Höhe und Koordinaten
   containerLayout / buildContainer    Containeranlage samt Verbindungsbau
@@ -167,8 +170,9 @@ Abstützmaße und Fahrzeuglängen sind schematisch und dienen der Darstellung.
 
 ## Bekannte Grenzen
 
-- CityGML lässt sich erst nach dem Geländemodell laden
-- Löcher in Flächen (Innenhöfe) werden ignoriert, nur der äußere Ring zählt
+- Gebäude (CityGML, CityJSON, 2D) lassen sich erst nach dem Geländemodell laden
+- Löcher in CityGML-Flächen (Innenhöfe) werden ignoriert, nur der äußere Ring zählt; bei 2D-Grundrissen bleiben Innenhöfe frei
+- 2D-Gebäude sind reines LoD1 (Quader mit Flachdach); Shapefile und GeoJSON werden ganz gelesen (höchstens 300 MB), GeoPackage nur im Ausschnitt um das Gelände
 - Fächertriangulierung kann bei stark konkaven Dachflächen unsauber aussehen;
   Ear-Clipping wäre der nächste Schritt
 - Das Gelände wird auf höchstens `GRID_MAX` (1400) Stützpunkte je Achse gerastert;
