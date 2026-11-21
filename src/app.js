@@ -772,7 +772,8 @@ const GEO_EU = {
   IT: { name: 'Italien',
     dem: [
       { label: 'TINITALY · 10 m', url: 'https://tinitaly.pi.ingv.it/Download_Area1_1.html', fmt: 'unclear', note: 'euCheckFormat' },
-      { label: 'Südtirol · 2,5 m', url: 'https://natur-raum.provinz.bz.it/de/digitale-hohenmodelle', fmt: 'unclear', note: 'euCheckFormat' }
+      { label: 'Südtirol · 2,5 m', url: 'https://natur-raum.provinz.bz.it/de/digitale-hohenmodelle', fmt: 'unclear', note: 'euCheckFormat',
+        only: { county: ['Bozen', 'Bolzano', 'Südtirol', 'Alto Adige'] } }
     ], bldg: [], bldgNote: 'noEuBldg' },
   LV: { name: 'Lettland',
     dem: [{ label: 'LĢIA · 20 m', url: 'https://www.lgia.gov.lv/en/Digit%C4%81lais%20reljefa%20modelis', fmt: 'unclear', note: 'euCheckFormat' }],
@@ -1101,8 +1102,18 @@ function geoSourcesFor(place) {
     return { country: 'AT', region: place.state || 'Österreich', dem: dem, bldg: bldg, bldgNote: bldg.length ? null : 'noAtBldg' };
   }
   const eu = GEO_EU[cc];
-  if (eu) return { country: cc, region: eu.name, dem: eu.dem.slice(), demNote: eu.demNote || null, bldg: eu.bldg.slice(), bldgNote: eu.bldgNote || null };
+  if (eu) return { country: cc, region: eu.name, dem: eu.dem.filter(function (x) { return placeMatchesOnly(x.only, place); }), demNote: eu.demNote || null,
+                   bldg: eu.bldg.filter(function (x) { return placeMatchesOnly(x.only, place); }), bldgNote: eu.bldgNote || null };
   return null;
+}
+
+/* Gilt ein Link nur für einen Teil des Landes (`only: { county: [...] }`, zum Beispiel Südtirol in Italien), muss der Ort dazu passen.
+   Photon nennt den Landkreis (county, bei Südtirol "Bozen"); fehlt er, wird der Link nicht gezeigt, statt ihn überall zu zeigen. */
+function placeMatchesOnly(only, place) {
+  if (!only) return true;
+  const county = addrNorm(place && place.county);
+  if (!county) return false;
+  return (only.county || []).some(function (n) { return county.indexOf(addrNorm(n)) >= 0; });
 }
 
 /* Stadtgeoportale zu einem Ort: Eintrag aus GEO_CITIES, wenn Land und Stadtname passen, sonst null */
@@ -1154,7 +1165,7 @@ function parsePhoton(json) {
     const key = main + '|' + sub;
     if (out.some(function (o) { return o.key === key; })) return;
     out.push({ key: key, main: main, sub: sub, lon: g[0], lat: g[1],
-               country: cc, state: state, city: city0 });
+               country: cc, state: state, city: city0, county: p.county || '' });
   });
   return out.slice(0, 5);
 }
@@ -1252,7 +1263,7 @@ async function photonReverse(lat, lon, signal) {
   if (!f) return null;
   const p = f.properties || {};
   const cc = String(p.countrycode || '').toUpperCase(), city = p.city || p.town || p.village || p.district || '';
-  return { country: cc, state: normalizeState(p.state, p.city || p.town || p.village || '', cc), city: city, postcode: p.postcode || '' };
+  return { country: cc, state: normalizeState(p.state, p.city || p.town || p.village || '', cc), city: city, county: p.county || '', postcode: p.postcode || '' };
 }
 
 /* Fragt Photon nach Vorschlägen; signal: AbortSignal zum Abbrechen veralteter Anfragen */

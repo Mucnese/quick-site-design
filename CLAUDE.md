@@ -257,6 +257,9 @@ der höchsten LoD (3DBAG liefert 0, 1.2, 1.3, 2.2 übereinander), LoD unter 1 (G
 Löcher werden ignoriert. Formen: CityJSON 1.x/2.0 (`transform` aus Maßstab und Verschiebung), CityJSONSeq (Kopfzeile mit `transform`, je Zeile ein
 `CityJSONFeature`), Merkmalsliste (`features`, `metadata.transform`). Geprüft an einem echten 3DBAG-Merkmal (api.3dbag.nl, EPSG:7415).
 
+**Teilgebiete eines Landes.** Ein Link in `GEO_EU` kann `only: { county: [...] }` tragen (Italien: Südtirol); `placeMatchesOnly` vergleicht mit dem Landkreis, den Photon liefert
+(`place.county`, über `parsePhoton` und `photonReverse`). Ohne Landkreis wird der Link nicht gezeigt.
+
 **Stadtgeoportale.** `GEO_CITIES` (`app.js`, Liste von `{cc, name, names, links:[{kind: 'map'|'data'|'3d', label, url}]}`) ist eine eigene Tabelle neben den Ländern;
 `cityPortalsFor(place)` gleicht Land und Stadtname (`place.city` von Photon, ohne Akzente über `addrNorm`) mit `names` ab, `renderPlaceInto` hängt die Gruppe `addrCity` an
 (Adressleiste und Fenster am Pin). Regeln wie bei `GEO_EU`: nur Links, die bei der Prüfung antworteten, keine geratenen. Ein Test hält die Tabelle und beide README-Tabellen

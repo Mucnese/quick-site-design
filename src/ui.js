@@ -2568,13 +2568,13 @@ async function chooseAddrItem(it, opts) {
   renderAddrList(null);
   if (it.coord) {
     // Ort und Bundesland zu den Koordinaten nachfragen
-    const place = { coord: true, main: it.main, sub: '', lat: it.lat, lon: it.lon, country: '', state: '', city: '', pending: true, fromMap: fromMap };
+    const place = { coord: true, main: it.main, sub: '', lat: it.lat, lon: it.lon, country: '', state: '', city: '', county: '', pending: true, fromMap: fromMap };
     addrPlace = place;
     renderAddrResult();
     try {
       const r = await photonReverse(it.lat, it.lon);
       if (addrPlace !== place) return;
-      if (r) { place.country = r.country; place.state = r.state; place.city = r.city; place.sub = [r.postcode, r.city, r.state].filter(Boolean).join(' '); }
+      if (r) { place.country = r.country; place.state = r.state; place.city = r.city; place.county = r.county; place.sub = [r.postcode, r.city, r.state].filter(Boolean).join(' '); }
       else place.failed = true;
     } catch (e) {
       if (addrPlace !== place) return;

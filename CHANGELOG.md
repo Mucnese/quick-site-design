@@ -7,6 +7,12 @@ Alle nennenswerten Änderungen an Quick-Site-Design, neueste zuerst. Das Format 
 
 Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und Datenschutz**.
 
+## 2026-11-21
+
+### Behoben
+- **Italien:** Der Link zum Südtiroler Höhenmodell erschien für ganz Italien. Jetzt nur noch für Orte in der Provinz Bozen (Abgleich über den Landkreis, den Photon liefert);
+  das Trentino (gleiche Region) und der Rest Italiens zeigen ihn nicht.
+
 ## 2026-11-20
 
 ### Neu

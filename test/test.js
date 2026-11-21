@@ -2523,6 +2523,19 @@ test('Stadtgeoportale: eigene Tabelle GEO_CITIES - Links stehen in beiden README
   assert.strictEqual(app.geoSourcesFor({ country: 'AT', state: 'Wien', city: 'Wien' }).country, 'AT');
 });
 
+test('Italien: der Südtiroler Link erscheint nur für Orte in der Provinz Bozen (Landkreis von Photon), sonst nicht', function () {
+  const has = function (p) { return app.geoSourcesFor(p).dem.some(function (x) { return x.url.indexOf('natur-raum.provinz.bz.it') >= 0; }); };
+  assert.strictEqual(has({ country: 'IT', state: 'Trentino-Südtirol', city: 'Bozen', county: 'Bozen' }), true, 'Bozen');
+  assert.strictEqual(has({ country: 'IT', state: 'Trentino-Südtirol', city: 'Meran', county: 'Bolzano - Bozen' }), true, 'andere Schreibweise');
+  assert.strictEqual(has({ country: 'IT', state: 'Trentino-Südtirol', city: 'Trient', county: 'Trient' }), false, 'Trentino liegt in derselben Region, aber nicht in Südtirol');
+  assert.strictEqual(has({ country: 'IT', state: 'Lombardei', city: 'Mailand', county: 'Mailand' }), false);
+  assert.strictEqual(has({ country: 'IT', state: 'Venetien', city: 'Venedig' }), false, 'ohne Landkreis kein Südtiroler Link');
+  assert.strictEqual(has({ country: 'IT' }), false);
+  const mi = app.geoSourcesFor({ country: 'IT', state: 'Lombardei', city: 'Mailand', county: 'Mailand' });
+  assert.ok(mi.dem.length === 1 && mi.dem[0].url.indexOf('tinitaly') >= 0, 'TINITALY bleibt überall');
+  assert.strictEqual(app.parsePhoton({ features: [{ geometry: { coordinates: [11.35, 46.5] }, properties: { name: 'Bozen', countrycode: 'IT', county: 'Bozen', state: 'Trentino-Südtirol' } }] })[0].county, 'Bozen');
+});
+
 test('Standortsuche: Photon-Vorschläge aus der ganzen EU, Länder außerhalb fallen weg', function () {
   const mk = function (name, cc, city) { return { geometry: { coordinates: [5, 50] }, properties: { name: name, city: city, countrycode: cc } }; };
   const r = app.parsePhoton({ features: [mk('Dam', 'NL', 'Amsterdam'), mk('Louvre', 'fr', 'Paris'), mk('Prado', 'ES', 'Madrid'),

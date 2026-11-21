@@ -6,6 +6,12 @@ because there are no fixed version numbers. German version: [CHANGELOG.md](CHANG
 
 Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy**.
 
+## 2026-11-21
+
+### Fixed
+- **Italy:** The link to the South Tyrol elevation model appeared for all of Italy. Now only for places in the province of Bolzano (matched by the county Photon returns);
+  Trentino (same region) and the rest of Italy do not show it.
+
 ## 2026-11-20
 
 ### New
