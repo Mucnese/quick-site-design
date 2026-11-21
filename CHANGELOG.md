@@ -10,6 +10,9 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 ## 2026-11-21
 
 ### Neu
+- **Gebäudemodelle weiterer Länder (Suche nach „LoD“):** Estland (LoD2, ganz Estland, CityGML), Polen (LoD1 ganz Polen, LoD2 teilweise, CityGML 2.0), Finnland (LoD2, CityGML,
+  bisher Beispielgebiete) und Flandern (3D GRB, LoD1, Shapefile/KML, nur dort) sind eingetragen, dazu 3D-Stadtmodelle für Helsinki, Prag, Bordeaux und Clermont-Ferrand. Die Gruppe
+  heißt jetzt „Gebäudemodell (LoD1/LoD2)“; wo das Format nicht ladbar ist, sagt ein Hinweis das. In den übrigen Ländern fand die Suche keines.
 - **Österreich: Gebäudemodell des Bundes.** Jeder Ort in Österreich nennt jetzt das BEV-Modell „DLM Bauwerke“ (ganz Österreich, Blockmodell LoD1 mit Höhen, GeoPackage, CC BY 4.0).
   Ein Hinweis sagt, dass es nicht direkt ladbar ist (die Anwendung liest CityGML und CityJSON). Der Satz „kein landesweites Gebäudemodell“ entfällt.
 

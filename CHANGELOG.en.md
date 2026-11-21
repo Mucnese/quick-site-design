@@ -9,6 +9,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 ## 2026-11-21
 
 ### New
+- **Building models of more countries (search for “LoD”):** Estonia (LoD2, all of Estonia, CityGML), Poland (LoD1 all of Poland, LoD2 partly, CityGML 2.0), Finland (LoD2, CityGML,
+  so far example areas) and Flanders (3D GRB, LoD1, shapefile/KML, only there) are listed, plus 3D city models for Helsinki, Prague, Bordeaux and Clermont-Ferrand. The group
+  is now called “Building model (LoD1/LoD2)”; where the format cannot be loaded, a note says so. The search found none in the other countries.
 - **Austria: federal building model.** Every place in Austria now lists the BEV model “DLM Bauwerke” (all of Austria, block model LoD1 with heights, GeoPackage, CC BY 4.0).
   A note says it cannot be loaded directly (the application reads CityGML and CityJSON). The statement “no nationwide building model” is gone.
 

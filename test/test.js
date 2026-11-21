@@ -2487,6 +2487,7 @@ test('Standortsuche: Datenquellen der übrigen EU-Länder - alle 25 Länder, Lin
   // die Zusammenfassung im README nennt alle Länder ohne Link
   ['Bulgarien', 'Griechenland', 'Litauen', 'Ungarn'].forEach(function (n) { assert.ok(readmes[0].indexOf(n) >= 0, n); });
   ['BG', 'GR', 'LT', 'HU'].forEach(function (cc) { assert.deepStrictEqual(app.GEO_EU[cc].dem, [], cc + ': kein geratener Link'); });
+  ['EE', 'FI', 'PL', 'BE'].forEach(function (cc) { assert.ok(app.GEO_EU[cc].bldg.length, cc + ': Gebäudemodell (LoD)'); });
   assert.strictEqual(app.GEO_EU.IE.dem[0].fmt, 'tif');
   assert.strictEqual(app.GEO_EU.HR.dem[0].note, 'servicesOnly', 'Kroatien: nur ein Webdienst');
 });
@@ -2551,6 +2552,22 @@ test('Belgien: Flandern und Wallonien nur für Orte der jeweiligen Provinzen, Br
   // Länder ohne Teilgebiete bleiben unverändert, Italien mit Link kein Hinweis
   assert.strictEqual(app.geoSourcesFor({ country: 'IT', state: 'Lombardei', county: 'Mailand' }).demNote, null);
   assert.strictEqual(app.geoSourcesFor({ country: 'NL', state: 'Utrecht' }).dem.length, app.GEO_EU.NL.dem.length, 'Niederlande: alle Links');
+});
+
+test('Gebäudemodelle (Stichwort LoD): Estland, Polen, Finnland landesweit, Flandern nur dort; Länder ohne Modell behalten den Hinweis', function () {
+  const b = function (p) { return app.geoSourcesFor(p); };
+  assert.ok(b({ country: 'EE' }).bldg[0].label.indexOf('LoD2') > 0 && b({ country: 'EE' }).bldgNote === null);
+  assert.ok(b({ country: 'PL' }).bldg[0].url.indexOf('geoportal.gov.pl') >= 0 && b({ country: 'PL' }).bldg[0].note === 'plLod2');
+  assert.strictEqual(b({ country: 'FI' }).bldg[0].note, 'euPartial', 'Finnland: bisher nur Beispielgebiete');
+  assert.strictEqual(b({ country: 'BE', state: 'Ostflandern' }).bldg.length, 1, 'Flandern: 3D GRB');
+  assert.strictEqual(b({ country: 'BE', state: 'Ostflandern' }).bldgNote, null);
+  assert.strictEqual(b({ country: 'BE', state: 'Lüttich' }).bldg.length, 0, 'Wallonien: kein Modell');
+  assert.strictEqual(b({ country: 'BE', state: 'Lüttich' }).bldgNote, 'noEuBldg', 'dort bleibt der Hinweis');
+  assert.strictEqual(b({ country: 'SK' }).bldgNote, 'noEuBldg');
+  assert.ok(app.cityPortalsFor({ country: 'FR', city: 'Bordeaux' }).links.some(function (l) { return l.kind === '3d'; }), 'Bordeaux: 3D LoD2');
+  assert.ok(app.cityPortalsFor({ country: 'FR', city: 'Clermont-Ferrand' }), 'Clermont-Ferrand');
+  assert.ok(app.cityPortalsFor({ country: 'CZ', city: 'Prag' }).links.some(function (l) { return l.kind === '3d'; }), 'Prag: 3D-Modell');
+  assert.ok(app.cityPortalsFor({ country: 'FI', city: 'Helsinki' }).links.filter(function (l) { return l.kind === '3d'; }).length === 2, 'Helsinki: Ansicht und Daten');
 });
 
 test('Standortsuche: Photon-Vorschläge aus der ganzen EU, Länder außerhalb fallen weg', function () {

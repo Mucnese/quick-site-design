@@ -229,12 +229,12 @@ Bulgaria and Cyprus; there the map switches itself off with a message.
 
 | Country | Terrain model | Format | Building model | Licence (terrain) |
 |---|---|---|---|---|
-| Belgium | [Flanders · 1 m](https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m), [Wallonia · 0.5 m](https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html) | GeoTIFF | — | Flanders: model licence for free reuse; Wallonia: CC BY 4.0 |
+| Belgium | [Flanders · 1 m](https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m), [Wallonia · 0.5 m](https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html) | GeoTIFF | [3D GRB · LoD1](https://www.vlaanderen.be/digitaal-vlaanderen/onze-diensten-en-platformen/basiskaart-vlaanderen-grb/3d-grb) (Flanders only), shapefile/KML | Flanders: model licence for free reuse; Wallonia: CC BY 4.0 |
 | Cyprus | [Cyprus · 1 m](https://www.data.gov.cy/el/dataset/ypsometria-inspire) | not clear | — | CC BY 4.0 |
 | Czechia | [ČÚZK DMR 4G · 5 m](https://geoportal.cuzk.cz/) | not clear | — | CC BY 4.0 |
 | Denmark | [Højdemodel Terræn · 0.4 m](https://dataforsyningen.dk/data/930) | not clear | — | CC BY 4.0 |
-| Estonia | [Maa-amet · 1 m](https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html) | GeoTIFF (also ASCII, XYZ) | — | open data licence of the agency |
-| Finland | [Maanmittauslaitos · 2 m](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m) | GeoTIFF (also ASCII) | — | CC BY 4.0 |
+| Estonia | [Maa-amet · 1 m](https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html) | GeoTIFF (also ASCII, XYZ) | [Maa- ja Ruumiamet · LoD2, all of Estonia](https://geoportaal.maaruum.ee/eng/Download-3D-data-p837.html), CityGML, OBJ, GDB | open data licence of the agency |
+| Finland | [Maanmittauslaitos · 2 m](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m) | GeoTIFF (also ASCII) | [Buildings 3D · LoD2](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/buildings-3d), CityGML, CC BY 4.0 (so far example areas only) | CC BY 4.0 |
 | France | [MNT LiDAR HD · 0.5 m](https://www.data.gouv.fr/datasets/mnt-lidar-hd) (not everywhere), [RGE ALTI · 1 m](https://geoservices.ign.fr/rgealti) | GeoTIFF / not clear | [IGN LiDAR HD, 3D buildings](https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire) (LoD2, beta, not everywhere) | Licence Ouverte 2.0 |
 | Ireland | [GSI Open LiDAR · 0.13 to 2 m](https://data.gov.ie/en_GB/dataset/open-topographic-lidar-data) (not everywhere) | GeoTIFF | — | CC BY 4.0 |
 | Italy | [TINITALY · 10 m](https://tinitaly.pi.ingv.it/Download_Area1_1.html), [South Tyrol · 2.5 m](https://natur-raum.provinz.bz.it/de/digitale-hohenmodelle) (only for places in the province of Bolzano) | not clear | — | TINITALY: CC BY 4.0 |
@@ -243,7 +243,7 @@ Bulgaria and Cyprus; there the map switches itself off with a message.
 | Luxembourg | [LiDAR 2019 · 0.5 m](https://data.public.lu/fr/datasets/lidar-2019-modele-numerique-de-terrain-mnt/) | GeoTIFF, EPSG:2169 | [BD-L-BATI3D](https://data.public.lu/en/datasets/base-de-donnees-nationale-des-batiments-3d-2023/) (LoD2, CityGML) | CC0 |
 | Malta | [DTM 2018 · 1 m](https://portal.data.gov.mt/dataset/digital-terrain-model-2018) | not clear (download and WCS) | — | not stated |
 | Netherlands | [AHN · 0.5 m](https://www.ahn.nl/dataroom), [PDOK download DTM · 0.5 m](https://service.pdok.nl/rws/ahn/atom/dtm_05m.xml) | GeoTIFF (COG), EPSG:28992 | [3DBAG](https://3dbag.nl/en/download) (LoD2.2; **CityJSON can be loaded**, GeoPackage and OBJ cannot) | CC0 |
-| Poland | [GUGiK NMT · 1 m and 5 m](https://www.geoportal.gov.pl/) | not clear | — | Open Government Data |
+| Poland | [GUGiK NMT · 1 m and 5 m](https://www.geoportal.gov.pl/) | not clear | [GUGiK Modele 3D budynków](https://www.geoportal.gov.pl/en/data/other-data/3d-models-of-building/): LoD1 all of Poland (CityGML 2.0, by county), LoD2 only partly | Open Government Data |
 | Portugal | [DGT LiDAR, mainland · 0.5 m](https://cdd.dgterritorio.gov.pt/dgt-fe/catalogos/colecoes?filter=LiDAR+-+Modelos+Digitais+do+Relevo&language=en) | not clear | — | CC BY 4.0 |
 | Romania | [ANCPI LAKI II · 0.5 m (partly)](https://geoportal.ancpi.ro/portal/apps/webappviewer/index.html?id=3f34ee5af71c400396dda574f0d53274) | not clear, page unreachable when checked | — | OGL-ROU-1.0 |
 | Slovakia | [ÚGKK DMR 5.0 · 1 m](https://geoportal.gov.sk/gallery/datasets/detail/c310bf1e-68a0-43b9-9955-c7dad13a93aa) | not clear | — | CC BY 4.0 |
@@ -254,8 +254,10 @@ Bulgaria and Cyprus; there the map switches itself off with a message.
 For **Bulgaria, Greece, Hungary and Lithuania** no verifiable open terrain model was found, so no link is
 listed; the national geoportal or the EU INSPIRE geoportal help there. (Bulgaria: the ministry of agriculture names a download
 service for orthophotos and an elevation model, but I found no page that proves it. Greece: the cadastre names elevation models,
-distribution seems restricted.) An official 3D building model was found only in Luxembourg, the Netherlands and (partly)
-France. Notes and corrections are welcome.
+distribution seems restricted.) The search for the keyword “LoD” in November 2026 found an official 3D building model (LoD1 or LoD2) in Luxembourg, the Netherlands, Estonia,
+Poland, Finland (so far example areas), Flanders (LoD1) and Austria (LoD1 from the BEV); for cities more are in the table “City geoportals”.
+None was found in the other countries (Slovakia, Slovenia, Czechia, Denmark, Latvia, Lithuania, Portugal, Spain, Italy, Hungary, Croatia,
+Greece, Romania and Bulgaria: only two-dimensional building data or research projects). Notes and corrections are welcome.
 
 ### City geoportals
 
@@ -280,12 +282,12 @@ The list is not complete; notes and additions are welcome.
 | Ghent | Belgium | — | — | [Open Data Stad Gent](https://data.stad.gent/explore/) |
 | Sofia | Bulgaria | [Sofiaplan](https://sofiaplan.bg/) | — | — |
 | Zagreb | Croatia | [GeoPortal Zagreb](https://geoportal.zagreb.hr/) | — | [Portal otvorenih podataka](https://data.zagreb.hr/) |
-| Prague | Czechia | [Geoportal Praha](https://geoportalpraha.cz/) | — | [Otevřená data Praha](https://lkod.cz/catalog/praha) |
+| Prague | Czechia | [Geoportal Praha](https://geoportalpraha.cz/) | [3D-Modell der Gebäude und Brücken (IPR Praha)](https://geoportalpraha.cz/en/data-and-services/articles-and-projects/3d-model/3d-model-budovy-mosty) | [Otevřená data Praha](https://lkod.cz/catalog/praha) |
 | Brno | Czechia | [Mapový portál Brno](https://gis.brno.cz/) | — | [data.Brno](https://data.brno.cz/) |
 | Copenhagen | Denmark | [KBHkort](https://kbhkort.kk.dk/) | — | [Københavns Kommune (opendata.dk)](https://www.opendata.dk/city-of-copenhagen) |
 | Aarhus | Denmark | — | — | [Aarhus Kommune (opendata.dk)](https://www.opendata.dk/city-of-aarhus) |
 | Tallinn | Estonia | [Tallinn Geoportal](https://www.tallinn.ee/en/tallinn-geoportal) | — | — |
-| Helsinki | Finland | [Karttapalvelu Helsinki](https://kartta.hel.fi/) | [3D-Stadtmodell Helsinki](https://kartta.hel.fi/3d/) | [Helsinki Region Infoshare](https://hri.fi/fi/) |
+| Helsinki | Finland | [Karttapalvelu Helsinki](https://kartta.hel.fi/) | [3D-Stadtmodell Helsinki](https://kartta.hel.fi/3d/), [Helsingin 3D-kaupunkimallit (LoD2, CityGML)](https://avoindata.suomi.fi/data/en_GB/dataset/helsingin-3d-kaupunkimalli) | [Helsinki Region Infoshare](https://hri.fi/fi/) |
 | Espoo | Finland | [Espoon karttapalvelu](https://kartat.espoo.fi/ims) | — | — |
 | Tampere | Finland | — | — | [Tampere Region Infoshare](https://data.tampere.fi/fi/) |
 | Paris | France | — | — | [Paris Data](https://opendata.paris.fr/pages/home/) |
@@ -295,8 +297,9 @@ The list is not complete; notes and additions are welcome.
 | Nice | France | — | — | [OpenData Nice Côte d’Azur](https://opendata.nicecotedazur.org/site) |
 | Nantes | France | — | — | [Open Data Nantes Métropole](https://data.nantesmetropole.fr/pages/home/) |
 | Strasbourg | France | — | — | [data.strasbourg.eu](https://data.strasbourg.eu/pages/accueil/) |
-| Bordeaux | France | — | — | [Bordeaux Métropole Open Data](https://opendata.bordeaux-metropole.fr/pages/accueil/) |
+| Bordeaux | France | — | [Modélisation Agglo 3D (LoD2, CityGML)](https://www.data.gouv.fr/datasets/modelisation-agglo-3d-non-texturee-1) | [Bordeaux Métropole Open Data](https://opendata.bordeaux-metropole.fr/pages/accueil/) |
 | Lille | France | — | — | [dataMEL (Métropole Européenne de Lille)](https://data.lillemetropole.fr/accueil/) |
+| Clermont-Ferrand | France | — | [Maquette 3D des bâtiments (LoD2.2, CityGML)](https://www.data.gouv.fr/datasets/maquette-3d-batiments-clermont-ferrand-2024) | — |
 | Rennes | France | — | — | [Open Data Rennes Métropole](https://data.rennesmetropole.fr/explore/) |
 | Montpellier | France | — | — | [Montpellier Méditerranée Métropole](https://data.montpellier3m.fr/) |
 | Berlin | Germany | [Geoportal Berlin](https://gdi.berlin.de/viewer/main/) | [3D-Downloadportal Berlin](https://www.businesslocationcenter.de/berlin3d-downloadportal/) | [Geoinformation (Senatsverwaltung)](https://www.berlin.de/sen/stadt/stadtdaten/geoinformation/) |

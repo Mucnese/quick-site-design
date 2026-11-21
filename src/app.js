@@ -744,7 +744,10 @@ const GEO_EU = {
         only: { state: ['Flandern', 'Flanders', 'Vlaanderen', 'Antwerpen', 'Antwerp', 'Limburg', 'Ostflandern', 'East Flanders', 'Oost-Vlaanderen', 'Westflandern', 'West Flanders', 'West-Vlaanderen', 'Flämisch-Brabant', 'Flemish Brabant', 'Vlaams-Brabant'] } },
       { label: 'Wallonien · 0,5 m', url: 'https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html', fmt: 'tif',
         only: { state: ['Wallonien', 'Wallonia', 'Wallonie', 'Hennegau', 'Hainaut', 'Lüttich', 'Liège', 'Luik', 'Luxemburg', 'Luxembourg', 'Namur', 'Namen', 'Wallonisch-Brabant', 'Walloon Brabant', 'Brabant wallon'] } }
-    ], bldg: [], bldgNote: 'noEuBldg' },
+    ],
+    bldg: [{ label: '3D GRB · LoD1 (Flandern)', url: 'https://www.vlaanderen.be/digitaal-vlaanderen/onze-diensten-en-platformen/basiskaart-vlaanderen-grb/3d-grb', note: 'bldgShp',
+             only: { state: ['Flandern', 'Flanders', 'Vlaanderen', 'Antwerpen', 'Antwerp', 'Limburg', 'Ostflandern', 'East Flanders', 'Oost-Vlaanderen', 'Westflandern', 'West Flanders', 'West-Vlaanderen', 'Flämisch-Brabant', 'Flemish Brabant', 'Vlaams-Brabant'] } }],
+    bldgNote: 'noEuBldg' },
   BG: { name: 'Bulgarien', dem: [], demNote: 'euNoOpenDem', bldg: [], bldgNote: 'noEuBldg' },
   HR: { name: 'Kroatien',
     dem: [{ label: 'DGU Digitalni model reljefa (WMS)', url: 'https://data.gov.hr/ckan/en/dataset/digitalni-model-reljefa', fmt: 'unclear', note: 'servicesOnly' }],
@@ -760,10 +763,10 @@ const GEO_EU = {
     bldg: [], bldgNote: 'noEuBldg' },
   EE: { name: 'Estland',
     dem: [{ label: 'Maa-amet · 1 m', url: 'https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html', fmt: 'tif' }],
-    bldg: [], bldgNote: 'noEuBldg' },
+    bldg: [{ label: 'Maa- ja Ruumiamet · LoD2 (ganz Estland)', url: 'https://geoportaal.maaruum.ee/eng/Download-3D-data-p837.html' }] },
   FI: { name: 'Finnland',
     dem: [{ label: 'Maanmittauslaitos · 2 m', url: 'https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m', fmt: 'tif' }],
-    bldg: [], bldgNote: 'noEuBldg' },
+    bldg: [{ label: 'Maanmittauslaitos Buildings 3D · LoD2', url: 'https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/buildings-3d', note: 'euPartial' }] },
   FR: { name: 'Frankreich',
     dem: [
       { label: 'MNT LiDAR HD · 0,5 m', url: 'https://www.data.gouv.fr/datasets/mnt-lidar-hd', fmt: 'tif', note: 'euPartial' },
@@ -799,7 +802,7 @@ const GEO_EU = {
     bldg: [{ label: '3DBAG (LoD2.2)', url: 'https://3dbag.nl/en/download', note: 'euBldgNotCityGml' }] },
   PL: { name: 'Polen',
     dem: [{ label: 'GUGiK NMT · 1 m und 5 m', url: 'https://www.geoportal.gov.pl/', fmt: 'unclear', note: 'euCheckFormat' }],
-    bldg: [], bldgNote: 'noEuBldg' },
+    bldg: [{ label: 'GUGiK Modele 3D budynków · LoD1 (ganz Polen), LoD2', url: 'https://www.geoportal.gov.pl/en/data/other-data/3d-models-of-building/', note: 'plLod2' }] },
   PT: { name: 'Portugal',
     dem: [{ label: 'DGT LiDAR, Festland · 0,5 m', url: 'https://cdd.dgterritorio.gov.pt/dgt-fe/catalogos/colecoes?filter=LiDAR+-+Modelos+Digitais+do+Relevo&language=en', fmt: 'unclear', note: 'euCheckFormat' }],
     bldg: [], bldgNote: 'noEuBldg' },
@@ -869,6 +872,7 @@ const GEO_CITIES = [
   ] },
   { cc: 'CZ', name: 'Prag', names: ['Prag', 'Praha', 'Prague'], links: [
     { kind: 'map', label: 'Geoportal Praha', url: 'https://geoportalpraha.cz/' },
+    { kind: '3d', label: '3D-Modell der Gebäude und Brücken (IPR Praha)', url: 'https://geoportalpraha.cz/en/data-and-services/articles-and-projects/3d-model/3d-model-budovy-mosty' },
     { kind: 'data', label: 'Otevřená data Praha', url: 'https://lkod.cz/catalog/praha' }
   ] },
   { cc: 'CZ', name: 'Brünn', names: ['Brünn', 'Brno', 'Brunn'], links: [
@@ -888,7 +892,8 @@ const GEO_CITIES = [
   { cc: 'FI', name: 'Helsinki', names: ['Helsinki', 'Helsingfors'], links: [
     { kind: 'map', label: 'Karttapalvelu Helsinki', url: 'https://kartta.hel.fi/' },
     { kind: '3d', label: '3D-Stadtmodell Helsinki', url: 'https://kartta.hel.fi/3d/' },
-    { kind: 'data', label: 'Helsinki Region Infoshare', url: 'https://hri.fi/fi/' }
+    { kind: 'data', label: 'Helsinki Region Infoshare', url: 'https://hri.fi/fi/' },
+    { kind: '3d', label: 'Helsingin 3D-kaupunkimallit (LoD2, CityGML)', url: 'https://avoindata.suomi.fi/data/en_GB/dataset/helsingin-3d-kaupunkimalli' }
   ] },
   { cc: 'FI', name: 'Espoo', names: ['Espoo', 'Esbo'], links: [
     { kind: 'map', label: 'Espoon karttapalvelu', url: 'https://kartat.espoo.fi/ims' }
@@ -918,10 +923,14 @@ const GEO_CITIES = [
     { kind: 'data', label: 'data.strasbourg.eu', url: 'https://data.strasbourg.eu/pages/accueil/' }
   ] },
   { cc: 'FR', name: 'Bordeaux', names: ['Bordeaux'], links: [
-    { kind: 'data', label: 'Bordeaux Métropole Open Data', url: 'https://opendata.bordeaux-metropole.fr/pages/accueil/' }
+    { kind: 'data', label: 'Bordeaux Métropole Open Data', url: 'https://opendata.bordeaux-metropole.fr/pages/accueil/' },
+    { kind: '3d', label: 'Modélisation Agglo 3D (LoD2, CityGML)', url: 'https://www.data.gouv.fr/datasets/modelisation-agglo-3d-non-texturee-1' }
   ] },
   { cc: 'FR', name: 'Lille', names: ['Lille'], links: [
     { kind: 'data', label: 'dataMEL (Métropole Européenne de Lille)', url: 'https://data.lillemetropole.fr/accueil/' }
+  ] },
+  { cc: 'FR', name: 'Clermont-Ferrand', names: ['Clermont-Ferrand', 'Clermont Ferrand'], links: [
+    { kind: '3d', label: 'Maquette 3D des bâtiments (LoD2.2, CityGML)', url: 'https://www.data.gouv.fr/datasets/maquette-3d-batiments-clermont-ferrand-2024' }
   ] },
   { cc: 'FR', name: 'Rennes', names: ['Rennes'], links: [
     { kind: 'data', label: 'Open Data Rennes Métropole', url: 'https://data.rennesmetropole.fr/explore/' }
@@ -1112,9 +1121,10 @@ function geoSourcesFor(place) {
   if (eu) {
     const dem = eu.dem.filter(function (x) { return placeMatchesOnly(x.only, place); });
     // Gelten alle Links nur für Teile des Landes und keiner passt (zum Beispiel Brüssel in Belgien): Hinweis statt einer falschen Region
+    const bldg = eu.bldg.filter(function (x) { return placeMatchesOnly(x.only, place); });
     const demNote = eu.demNote || (eu.dem.length && !dem.length ? 'euNoOpenDem' : null);
     return { country: cc, region: eu.name, dem: dem, demNote: demNote,
-             bldg: eu.bldg.filter(function (x) { return placeMatchesOnly(x.only, place); }), bldgNote: eu.bldgNote || null };
+             bldg: bldg, bldgNote: bldg.length ? null : (eu.bldgNote || null) };
   }
   return null;
 }

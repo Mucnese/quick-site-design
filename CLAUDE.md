@@ -257,6 +257,10 @@ der höchsten LoD (3DBAG liefert 0, 1.2, 1.3, 2.2 übereinander), LoD unter 1 (G
 Löcher werden ignoriert. Formen: CityJSON 1.x/2.0 (`transform` aus Maßstab und Verschiebung), CityJSONSeq (Kopfzeile mit `transform`, je Zeile ein
 `CityJSONFeature`), Merkmalsliste (`features`, `metadata.transform`). Geprüft an einem echten 3DBAG-Merkmal (api.3dbag.nl, EPSG:7415).
 
+**Gebäudemodelle (LoD).** In `GEO_EU` tragen Estland, Polen, Finnland und Flandern (`only.state`) einen `bldg`-Eintrag; Notizen `plLod2`, `bldgShp` (nicht ladbar), Österreich: `GEO_AT_FEDERAL_BLDG`
+(`atGpkg`). `bldgNote` (`noEuBldg`) erscheint nur, wenn nach dem Filtern kein Link bleibt. Stadtmodelle (3D) stehen in `GEO_CITIES` (`kind: '3d'`). Nicht geladen werden GeoPackage,
+Shapefile und KML; die Anwendung liest CityGML und CityJSON.
+
 **Teilgebiete eines Landes.** Ein Link in `GEO_EU` kann `only: { county: [...] }` tragen (Italien: Südtirol); `placeMatchesOnly` vergleicht mit dem Landkreis, den Photon liefert
 (`place.county`, über `parsePhoton` und `photonReverse`). Ohne Landkreis wird der Link nicht gezeigt. `only: { state: [...] }` gleicht die Provinz genau ab (Belgien:
 Flandern und Wallonien; Photon liefert dort die Provinz als `state`). Passt bei einem Land mit nur regionalen Links keiner, steht der Hinweis `euNoOpenDem` (Brüssel).
