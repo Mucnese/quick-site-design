@@ -942,6 +942,22 @@ await test('2D-Gebäude: Shapefile mit .dbf/.prj und GeoPackage über den Datei-
   assert.strictEqual(s3.document.getElementById('fp-panel').style.display, 'none');
 });
 
+await test('Frankreich und Spanien: genaue Hinweise statt "nicht überall", Kanaren (REGCAN95) stimmen mit GDAL überein', async function () {
+  const s = newScope();
+  const fr = s.geoSourcesFor({ country: 'FR', state: 'Île-de-France', city: 'Paris' });
+  assert.strictEqual(fr.dem[0].note, 'frLidar');
+  assert.ok(fr.dem.some(function (x) { return x.url.indexOf('carte-du-lidar-hd') >= 0; }), 'Link zur Abdeckung nach Gemeinde');
+  assert.ok(s.__bridge.STRINGS.de.geoNote_frLidar.indexOf('78 %') >= 0 && s.__bridge.STRINGS.en.geoNote_frLidar.indexOf('78 %') >= 0);
+  const es = s.geoSourcesFor({ country: 'ES', state: 'Madrid', city: 'Madrid' });
+  assert.strictEqual(es.dem[0].note, 'esMdt');
+  assert.ok(es.dem.every(function (x) { return x.note !== 'euPartial'; }), 'Spanien: kein pauschales "nicht überall" mehr');
+  // REGCAN95 / UTM 28N = EPSG:4083 und UTM 27N = 4082; Referenz: gdaltransform (Las Palmas, Hierro)
+  const a = s.lonLatToCrs(s.crsGeoDefinition(4083), 28.1235, -15.4363), b = s.lonLatToCrs(s.crsGeoDefinition(4082), 28.7, -18.0);
+  assert.ok(Math.abs(a.e - 457150.659) < 0.001 && Math.abs(a.n - 3110960.125) < 0.001, a.e + ' / ' + a.n);
+  assert.ok(Math.abs(b.e - 793112.179) < 0.001 && Math.abs(b.n - 3178436.161) < 0.001, b.e + ' / ' + b.n);
+  assert.ok(s.crsLabel(4083).indexOf('REGCAN95') > 0);
+});
+
 await test('Stadtmodell in der Stadt (Prag): das 3D-Modell steht bei den Gebäudemodellen, der Hinweis "kein Modell geprüft" entfällt', async function () {
   const s = startMapScope();
   const g = function (id) { return s.document.getElementById(id); };

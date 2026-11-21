@@ -616,7 +616,7 @@ const GRID_CELL_CAP = 2500000;   // Obergrenze für die Originalauflösung    //
 
 /* Gängige Bezugssysteme für deutsche Geobasisdaten */
 const EPSG_NAMES = {
-  25831: 'ETRS89 / UTM 31N', 25832: 'ETRS89 / UTM 32N', 25833: 'ETRS89 / UTM 33N',
+  4082: 'REGCAN95 / UTM 27N', 4083: 'REGCAN95 / UTM 28N', 25831: 'ETRS89 / UTM 31N', 25832: 'ETRS89 / UTM 32N', 25833: 'ETRS89 / UTM 33N',
   5650: 'ETRS89 / UTM 33N (Zone)', 4647: 'ETRS89 / UTM 32N (Zone)',
   31466: 'DHDN / GK 2', 31467: 'DHDN / GK 3', 31468: 'DHDN / GK 4', 31469: 'DHDN / GK 5',
   31254: 'MGI / Austria GK West', 31255: 'MGI / Austria GK Central', 31256: 'MGI / Austria GK East',
@@ -769,7 +769,8 @@ const GEO_EU = {
     bldg: [{ label: 'Maanmittauslaitos Buildings 3D · LoD2', url: 'https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/buildings-3d', note: 'euPartial' }] },
   FR: { name: 'Frankreich',
     dem: [
-      { label: 'MNT LiDAR HD · 0,5 m', url: 'https://www.data.gouv.fr/datasets/mnt-lidar-hd', fmt: 'tif', note: 'euPartial' },
+      { label: 'MNT LiDAR HD · 0,5 m', url: 'https://www.data.gouv.fr/datasets/mnt-lidar-hd', fmt: 'tif', note: 'frLidar' },
+      { label: 'LiDAR HD: Abdeckung nach Gemeinde', url: 'https://www.data.gouv.fr/datasets/carte-du-lidar-hd-de-lign-par-commune-date-du-vol-et-couverture-en-france' },
       { label: 'RGE ALTI · 1 m', url: 'https://geoservices.ign.fr/rgealti', fmt: 'unclear', note: 'euCheckFormat' }
     ],
     bldg: [{ label: 'IGN LiDAR HD, Gebäude 3D (LoD2, Beta)', url: 'https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire', note: 'euPartial' }] },
@@ -817,7 +818,7 @@ const GEO_EU = {
     bldg: [], bldgNote: 'noEuBldg' },
   ES: { name: 'Spanien',
     dem: [
-      { label: 'CNIG MDT02 · 2 m', url: 'https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt02-segunda-cobertura', fmt: 'tif', note: 'euPartial' },
+      { label: 'CNIG MDT02 · 2 m', url: 'https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt02-segunda-cobertura', fmt: 'tif', note: 'esMdt' },
       { label: 'CNIG MDT05 · 5 m', url: 'https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt05-primera-cobertura', fmt: 'tif' }
     ], bldg: [], bldgNote: 'noEuBldg' },
   SE: { name: 'Schweden',
@@ -1372,6 +1373,8 @@ const EU_NATIONAL_CRS = {
 
 /* Beschreibt, wie ein EPSG-Code in Längen-/Breitengrad umgerechnet wird, oder null */
 function crsGeoDefinition(epsg) {
+  if (epsg === 4083) epsg = 25828;                                      // REGCAN95 / UTM 28N (Kanaren): wie ETRS89 / UTM 28N
+  if (epsg === 4082) return { ell: GEO_ELL.grs80, lon0: -21, k0: 0.9996, fe: 500000, fn: 0 };   // REGCAN95 / UTM 27N (West-Hierro)
   if (epsg >= 25828 && epsg <= 25838) return { ell: GEO_ELL.grs80, lon0: (epsg - 25800) * 6 - 183, k0: 0.9996, fe: 500000, fn: 0 };
   if (epsg >= 32601 && epsg <= 32660) return { ell: GEO_ELL.wgs84, lon0: (epsg - 32600) * 6 - 183, k0: 0.9996, fe: 500000, fn: 0 };
   if (epsg === 4647) return { ell: GEO_ELL.grs80, lon0: 9, k0: 0.9996, fe: 32500000, fn: 0 };

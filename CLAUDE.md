@@ -266,6 +266,8 @@ Modell (tiefster Punkt) / Attribut / fest, Höhe aus Attribut (über Grund oder 
 ist das Gelände samt 20 % Rand (`fpWindowFor`). Testdateien in `test/fixtures/` (mit ogr2ogr erzeugt). Geprüft an `DLM_8000_BAUWERK_20260323.gpkg` (BEV, 2,5 GB, EPSG:31255, Tabelle
 `BWK_8100_BAUWERK_F`: `HOEHE_BODEN_*` absolut, `HOEHE_OBJEKT_*` über Grund).
 
+**Frankreich/Spanien.** `frLidar` (78 % der Fläche, Stand 6.9.2026, plus Link „Abdeckung nach Gemeinde") und `esMdt` ersetzen das pauschale `euPartial`; REGCAN95 (EPSG:4082/4083, Kanaren) steht in `crsGeoDefinition` (4083 = ETRS89 UTM 28N, 4082 = UTM 27N).
+
 **Gebäudemodelle (LoD).** In `GEO_EU` tragen Estland, Polen, Finnland und Flandern (`only.state`) einen `bldg`-Eintrag; Notizen `plLod2`, `bldgShp` (nicht ladbar), Österreich: `GEO_AT_FEDERAL_BLDG`
 (`atGpkg`). `bldgNote` (`noEuBldg`) erscheint nur, wenn nach dem Filtern kein Link bleibt. Stadtmodelle (3D) stehen in `GEO_CITIES` (`kind: '3d'`). Nicht geladen werden GeoPackage,
 Shapefile und KML; die Anwendung liest CityGML und CityJSON.

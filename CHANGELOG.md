@@ -9,6 +9,11 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-21
 
+### Geändert
+- **Frankreich und Spanien:** Der Hinweis „nicht überall“ ist jetzt genau. Frankreich: MNT LiDAR HD ist Stand 6. September 2026 zu rund 78 % der Fläche veröffentlicht, Guyane gehört nicht zum Programm; ein neuer Link
+  zeigt die Abdeckung nach Gemeinde. Spanien: MDT02 (2. Abdeckung) gibt es für ganz Spanien in Blättern; Ceuta, Melilla und Alborán stammen aus Luftbildern. Die **Kanaren** (REGCAN95, EPSG:4082 und 4083)
+  werden jetzt erkannt (Karte, Umrechnung; gegen GDAL auf unter 1 mm geprüft). Datenschutzerklärung: die Angabe zum Rechteck auf der Startkarte entfernt.
+
 ### Neu
 - **2D-Gebäudedaten (GeoPackage, Shapefile, GeoJSON):** Grundrisse mit Attributen lassen sich als Gebäude laden (Quader mit Flachdach, Innenhöfe bleiben frei). Nach dem Laden wählt man Gelände- und
   Gebäudehöhe aus den Attributen (über Grund oder absolut, mit Faktor) oder gibt feste Werte an; Bezugssystem aus der Datei, änderbar. GeoPackage auch über 2 GB: gelesen wird nur der Ausschnitt um das

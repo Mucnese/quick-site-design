@@ -8,6 +8,11 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-21
 
+### Changed
+- **France and Spain:** The note “not everywhere” is now precise. France: MNT LiDAR HD is published for about 78 % of the area as of 6 September 2026, French Guiana is not in the programme; a new link
+  shows the coverage by municipality. Spain: MDT02 (2nd coverage) exists for all of Spain in sheets; Ceuta, Melilla and Alborán come from aerial photos. The **Canary Islands** (REGCAN95, EPSG:4082 and 4083)
+  are now recognised (map, conversion; checked against GDAL to under 1 mm). Privacy policy: the statement about the rectangle on the start map was removed.
+
 ### New
 - **2D building data (GeoPackage, shapefile, GeoJSON):** Footprints with attributes can be loaded as buildings (blocks with a flat roof, courtyards stay open). After loading you choose ground and
   building height from the attributes (above ground or absolute, with a factor) or give fixed values; coordinate system from the file, changeable. GeoPackage also over 2 GB: only the area around the
