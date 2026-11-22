@@ -10,12 +10,17 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 ## 2026-11-22
 
 ### Neu
+- **Reset:** Ein Knopf unter „Leeren“ setzt alles zurück (Gelände, Gebäude, Bauwerk, Bausteine; die Seite lädt neu, ohne ?demo=1). Eine Rückfrage kommt vorher, Abbrechen ist vorgewählt, Esc bricht ab.
+  „Leeren“ fragt jetzt ebenfalls zurück (mit der Zahl der Bausteine) und meldet „keine Bausteine“, wenn es nichts zu löschen gibt.
 - **Punktwolken (LAS und LAZ) als Geländemodell:** Aus den Geländepunkten (Klasse 2, dazu Wasser) wird ein Höhenraster gemittelt, kleine Lücken werden gefüllt, Vegetation, Gebäude und Rauschen fallen weg
   (ohne Klassifizierung gilt der tiefste Punkt je Zelle). Bezugssystem aus der Datei (GeoKey oder WKT), sonst Wahl wie bei XYZ. Wolken über 3 km brauchen einen Pin (nur der Ausschnitt wird gerastert).
   Neue Bibliothek `laz-perf` (Apache-2.0, nur für LAZ, wird erst dabei geladen). Geprüft im Browser mit 4,2 Mio. Punkten (25 MB LAZ): unter 2 Sekunden. LAS 1.2 und LAZ 1.2 und 1.4 sind getestet.
 
 - **INSPIRE-Gebäude (GML, 2D):** Der ČÚZK-Export „Gebäude“ (RÚIAN, `bu-ext2d`) wird erkannt und als Grundrisse geladen, nicht mehr fälschlich als CityGML gelesen (die Polygone haben nur zwei Koordinaten je Punkt,
   bei EPSG:4258 in der Reihenfolge Breite, Länge). Geschosszahl und Höhe werden übernommen, wo sie befüllt sind; geprüft an einer Datei mit 1163 Grundrissen (14 MB, ohne Höhen): 1,3 Sekunden.
+
+### Behoben
+- **Flimmern am Rand des schwarzen Blocks:** Gelände und Sockel kämpften aus der Ferne (ab etwa 1,5 km) um dieselben Pixel, weil der Sockel nur 0,2 m unter dem tiefsten Gelände lag. Der Sockel liegt nach Kachelgröße tiefer und wird in der Tiefe nach hinten geschoben.
 
 ### Geändert
 - **Tschechien:** Das DMR 5G im ETRS89 (LAZ-Kacheln 2 × 2 km, kostenlos, CC BY 4.0, Koordinaten laut Seite UTM 33N) ist eingetragen; es lässt sich direkt laden. Bei LAS/LAZ zählt Klasse 8 (Modell-Schlüsselpunkte, wie in NRW) als Gelände,

@@ -73,6 +73,9 @@ Sitzung. Die Datenschutzerklärung sagt das ausdrücklich zu.
 **Mausrad (3D-Ansicht).** `onCanvasWheel` setzt `controls.zoomSpeed` je Ereignis so (`linearZoomSpeed`), dass der Abstand um eine feste Strecke wächst oder schrumpft
 (`wheelStepMeters`: Geländekante / 60, mindestens 5 m); `lib/OrbitControls.js` bleibt unverändert. Der Listener hängt am `window` (Capture), damit er vor OrbitControls läuft.
 
+**Reset und Bestätigung.** `askConfirm(textKey, vars, yesKey, action)` öffnet `#confirm-wrap` (Abbrechen vorbelegt; Esc, Klick daneben schließen; bei offenem Dialog ruhen die Tastenkürzel). `#clear-all` fragt vor `clearAllObjects`, `#reset-all` vor
+`resetEverything` (lädt die Seite ohne Zusätze neu: sicherster Weg, damit kein Zustand hängen bleibt). Sockel (`plinthMesh`): `polygonOffset` und Abstand nach Kachelgröße gegen Flimmern aus der Ferne.
+
 **Punktwolken (LAS/LAZ).** Abschnitt „Punktwolken“ in `app.js`: `lasHeader` (Kopf, Bezugssystem aus GeoKey 3072 oder WKT-VLR 2111/2112, bei LAS 1.4 auch aus den EVLRs), `lasPeekEpsg` (nur Kopf lesen,
 damit `handleDemFiles` vorher weiß, ob die Wahl des Bezugssystems fehlt), `lasForEachPoint` (LAS direkt, LAZ über `laz-perf`: `getLazPerf` lädt `lib/laz-perf.js` erst beim ersten LAZ, ein Punkt je `getPoint`),
 `readLasTile` rastert Klassen 2 und 9, ersatzweise 8 (Modell-Schlüsselpunkte, NRW) (Mittel je Zelle, `LAS_MAX_CELLS`), sonst den tiefsten Punkt; die Rasterweite folgt dem Geländeanteil der ersten 100000 Punkte; Lücken über `lasFillGaps`. Rasterweite aus der Punktdichte (0,5 bis 10 m). Wolken über `LAS_WINDOW_EXTENT` (3 km)

@@ -9,12 +9,17 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 ## 2026-11-22
 
 ### New
+- **Reset:** A button below “Clear” resets everything (terrain, buildings, structure, blocks; the page reloads, without ?demo=1). It asks first, Cancel is preselected, Esc cancels.
+  “Clear” now asks as well (with the number of blocks) and says “no blocks” when there is nothing to delete.
 - **Point clouds (LAS and LAZ) as terrain model:** The ground points (class 2, plus water) are averaged into a height grid, small gaps are filled, vegetation, buildings and noise are dropped
   (without classification the lowest point per cell is used). Coordinate system from the file (GeoKey or WKT), otherwise a choice as for XYZ. Clouds over 3 km need a pin (only the area is gridded).
   New library `laz-perf` (Apache-2.0, LAZ only, loaded only then). Checked in the browser with 4.2 million points (25 MB LAZ): under 2 seconds. LAS 1.2 and LAZ 1.2 and 1.4 are tested.
 
 - **INSPIRE buildings (GML, 2D):** The ČÚZK “buildings” export (RÚIAN, `bu-ext2d`) is recognised and loaded as footprints, no longer wrongly read as CityGML (the polygons have only two coordinates per point,
   with EPSG:4258 in the order latitude, longitude). Number of floors and height are taken over where populated; checked with a file of 1163 footprints (14 MB, no heights): 1.3 seconds.
+
+### Fixed
+- **Flicker at the edge of the black block:** From a distance (from about 1.5 km) terrain and plinth fought over the same pixels because the plinth lay only 0.2 m below the lowest terrain. The plinth now lies deeper depending on the tile size and is pushed back in depth.
 
 ### Changed
 - **Czechia:** The DMR 5G in ETRS89 (LAZ tiles of 2 × 2 km, free of charge, CC BY 4.0, coordinates according to the page UTM 33N) is listed; it loads directly. For LAS/LAZ class 8 (model key points, as in NRW) counts as ground
