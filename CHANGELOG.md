@@ -14,6 +14,9 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   (ohne Klassifizierung gilt der tiefste Punkt je Zelle). Bezugssystem aus der Datei (GeoKey oder WKT), sonst Wahl wie bei XYZ. Wolken über 3 km brauchen einen Pin (nur der Ausschnitt wird gerastert).
   Neue Bibliothek `laz-perf` (Apache-2.0, nur für LAZ, wird erst dabei geladen). Geprüft im Browser mit 4,2 Mio. Punkten (25 MB LAZ): unter 2 Sekunden. LAS 1.2 und LAZ 1.2 und 1.4 sind getestet.
 
+- **INSPIRE-Gebäude (GML, 2D):** Der ČÚZK-Export „Gebäude“ (RÚIAN, `bu-ext2d`) wird erkannt und als Grundrisse geladen, nicht mehr fälschlich als CityGML gelesen (die Polygone haben nur zwei Koordinaten je Punkt,
+  bei EPSG:4258 in der Reihenfolge Breite, Länge). Geschosszahl und Höhe werden übernommen, wo sie befüllt sind; geprüft an einer Datei mit 1163 Grundrissen (14 MB, ohne Höhen): 1,3 Sekunden.
+
 ### Geändert
 - **Tschechien:** Das DMR 5G im ETRS89 (LAZ-Kacheln 2 × 2 km, kostenlos, CC BY 4.0, Koordinaten laut Seite UTM 33N) ist eingetragen; es lässt sich direkt laden. Bei LAS/LAZ zählt Klasse 8 (Modell-Schlüsselpunkte, wie in NRW) als Gelände,
   wenn es keine Klasse 2 gibt; die Rasterweite folgt dem Geländeanteil einer Stichprobe (geprüft an einer NRW-Datei: 0,3 Mio. Punkte auf 4 km², Raster 5 m).

@@ -76,6 +76,7 @@ locked.
 | Buildings | **CityGML** (`.gml`, `.xml`) | LoD2, the axis order is detected |
 | Buildings (2D) | **GeoPackage** (`.gpkg`) | area layer with height attributes; also over 2 GB (for example the BEV model “DLM Bauwerke”): only the area around the terrain is read. With several area tables you choose the table. The coordinate system is in the file |
 | Buildings (2D) | **Shapefile** (`.shp` together with `.dbf`, `.prj`, `.cpg`) | choose all files at once; without `.prj` the coordinate system of the terrain is assumed, otherwise you choose it yourself |
+| Buildings (2D) | **INSPIRE GML** (`.xml`, `.gml`, buildings 2D) | for example the “INSPIRE buildings” export of the Czech ČÚZK (RÚIAN): footprints in latitude/longitude (EPSG:4258), number of floors and height only where populated (mostly not in this file: then choose a fixed height). It is recognised and not read as CityGML |
 | Buildings (2D) | **GeoJSON** (`.geojson`, `.json`) | WGS84 (longitude/latitude) unless stated, otherwise the `crs` member |
 | Buildings | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | also CityJSONSeq and feature lists (3DBAG); the highest level of detail per part, footprints and terrain are dropped. The coordinate system must match the terrain (3DBAG: Rijksdriehoek, matching the AHN) |
 

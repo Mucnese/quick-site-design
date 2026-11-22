@@ -81,7 +81,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -131,7 +131,7 @@ const STRINGS = {
     lasInfo: 'Punktwolke {n} Punkte, Geländepunkte auf {c} m gerastert', lasInfoRaw: 'Punktwolke {n} Punkte (nicht klassifiziert), tiefster Punkt je {c}-m-Zelle',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
     xyzFar: 'Achtung: Im gewählten System {c} liegen die Koordinaten bei Breite {lat}, Länge {lon}, also außerhalb Europas.',
-    terrainFile: 'Gelände · GeoTIFF / XYZ / LAS / LAZ', buildingFile: 'Gebäude · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON)',
+    terrainFile: 'Gelände · GeoTIFF / XYZ / LAS / LAZ', buildingFile: 'Gebäude · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON, INSPIRE)',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', road: 'Baustraße',
@@ -280,7 +280,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -330,7 +330,7 @@ const STRINGS = {
     lasInfo: 'point cloud {n} points, ground points gridded at {c} m', lasInfoRaw: 'point cloud {n} points (unclassified), lowest point per {c} m cell',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
     xyzFar: 'Warning: in the chosen system {c} the coordinates lie at latitude {lat}, longitude {lon}, outside Europe.',
-    terrainFile: 'Terrain · GeoTIFF / XYZ / LAS / LAZ', buildingFile: 'Buildings · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON)',
+    terrainFile: 'Terrain · GeoTIFF / XYZ / LAS / LAZ', buildingFile: 'Buildings · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON, INSPIRE)',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', road: 'Haul road',
@@ -3098,7 +3098,7 @@ async function handleGmlFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
   const cls = await fpClassify(list);
-  const only2d = !cls.gpkg && !cls.shp && !cls.geojson;
+  const only2d = !cls.gpkg && !cls.shp && !cls.geojson && !cls.inspire;
   if (!only2d) {
     // 2D-Grundrisse mit Höhenattributen: GeoPackage, Shapefile oder GeoJSON (ein Datensatz auf einmal)
     const big = !cls.gpkg && list.reduce(function (sum, f) { return sum + (f.size || 0); }, 0) > GML_MAX_BYTES;
@@ -3165,18 +3165,20 @@ function fpExt(name) { const m = /\.([^.]+)$/.exec(String(name || '')); return m
 function fpBase(name) { return String(name || '').replace(/\.[^.]*$/, '').toLowerCase(); }
 
 async function fpReadHead(file) {
-  try { return String(await (file.slice ? file.slice(0, 2000) : file).text()).slice(0, 2000); } catch (e) { return ''; }
+  if (!file.slice) return '';                                   // ohne slice() nicht die ganze Datei lesen, nur um den Typ zu raten
+  try { return String(await file.slice(0, 6000).text()).slice(0, 6000); } catch (e) { return ''; }
 }
 
 /* Dateien nach Art ordnen: GeoPackage, Shapefile (mit .dbf/.prj/.cpg gleichen Namens), GeoJSON; der Rest ist CityGML/CityJSON */
 async function fpClassify(list) {
-  const c = { gpkg: null, shp: null, geojson: null, side: {}, rest: [] };
+  const c = { gpkg: null, shp: null, geojson: null, inspire: null, side: {}, rest: [] };
   for (let i = 0; i < list.length; i++) {
     const f = list[i], e = fpExt(f.name);
     if (e === 'gpkg') c.gpkg = c.gpkg || f;
     else if (e === 'shp') c.shp = c.shp || f;
     else if (e === 'geojson') c.geojson = c.geojson || f;
     else if (e === 'json' && fpLooksLikeGeoJson(await fpReadHead(f))) c.geojson = c.geojson || f;
+    else if ((e === 'xml' || e === 'gml') && fpLooksLikeInspireGml(await fpReadHead(f))) c.inspire = c.inspire || f;
     else if (e === 'dbf' || e === 'prj' || e === 'cpg' || e === 'shx') { (c.side[fpBase(f.name)] = c.side[fpBase(f.name)] || {})[e] = f; }
     else c.rest.push(f);
   }
@@ -3203,11 +3205,12 @@ function fpDefaultOptions(set) {
   const hAttr = pick(num.filter(function (n) { return !isGround(n); }),
     [/objekt.*max|max.*objekt/i, /^(bldg_?)?(measured)?height$|^h(oe|ö)he$|geb(ae|ä)udeh(oe|ö)he|bauh(oe|ö)he/i, /height|h(oe|ö)he|hgt/i, /traufe|first|dach/i]);
   const gAttr = pick(num.filter(isGround), [/boden.*min|min.*boden/i, /boden|gel(ae|ä)nde|ground|terrain/i]);
+  const floors = !hAttr ? pick(num, [/geschoss|floor|storey|stock|etage/i]) : null;
   const med = hAttr ? fpMedian(set, hAttr) : NaN;
   const abs = hAttr && (/(^|[^a-z])(abs|nn)([^a-z]|$)|ue_?nn/i.test(hAttr) || med > 100);
   return {
     ground: { src: 'terrain', attr: gAttr || num[0] || '', fixed: 0 },
-    height: { src: hAttr ? 'attr' : 'fixed', attr: hAttr || num[0] || '', ref: abs ? 'abs' : 'rel', factor: 1, fixed: 10 },
+    height: { src: hAttr || floors ? 'attr' : 'fixed', attr: hAttr || floors || num[0] || '', ref: abs ? 'abs' : 'rel', factor: hAttr ? 1 : (floors ? 3 : 1), fixed: 10 },
     fallback: 8, crs: ''
   };
 }
@@ -3309,7 +3312,7 @@ async function onFpTableChanged() {
 /* Eine Gruppe 2D-Dateien laden; c kommt aus fpClassify */
 async function handleFootprintFiles(c) {
   if (!TERRAIN) { const msg = T('fpNeedTerrain'); setFileStatus('gml', msg, 'err'); setStatus(msg, true); return; }
-  setFileStatus('gml', 'Lese ' + (c.gpkg || c.shp || c.geojson).name, 'busy');
+  setFileStatus('gml', 'Lese ' + (c.gpkg || c.shp || c.geojson || c.inspire).name, 'busy');
   showBusy('busyGml');
   await yieldToPaint();
   try {
@@ -3323,7 +3326,8 @@ async function handleFootprintFiles(c) {
       const prj = side.prj ? await side.prj.text() : null;
       const cpg = side.cpg ? await side.cpg.text() : null;
       set = parseShapefileSet(shp, dbf, prj, cpg, c.shp.name);
-    } else { kind = 'GeoJSON'; set = parseGeoJsonFootprints(await c.geojson.text(), c.geojson.name); }
+    } else if (c.inspire) { kind = 'INSPIRE-GML'; set = parseInspireBuildings(await c.inspire.text(), c.inspire.name); }
+    else { kind = 'GeoJSON'; set = parseGeoJsonFootprints(await c.geojson.text(), c.geojson.name); }
     lastFootprints = { set: set, file: file, kind: kind, opts: fpDefaultOptions(set) };
     demoAttribGml = false;
     refreshAttribution();

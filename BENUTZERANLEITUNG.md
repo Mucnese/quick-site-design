@@ -66,7 +66,7 @@ gesperrt.
    Geländedatei wählen. Mehrere Kacheln lassen sich zusammen auswählen, sie werden verschmolzen.
 3. **Gebäude laden (optional).** Ebenfalls im Fenster **Daten**, Zeile „Gebäude · CityGML / CityJSON / 2D“.
    Gebäude außerhalb des Geländes werden verworfen. **2D-Dateien** (GeoPackage, Shapefile, GeoJSON) tragen nur Grundrisse: Nach dem Laden erscheinen Auswahlfelder.
-   Bei **Geländehöhe** wählst du „aus dem Geländemodell“, ein **Attribut** (zum Beispiel `HOEHE_BODEN_MIN`) oder einen festen Wert. Bei **Gebäudehöhe** wählst du das
+   (Eine INSPIRE-GML-Datei mit Geschosszahlen bekommt die Geschosszahl als Höhe, Faktor 3 voreingestellt.) Bei **Geländehöhe** wählst du „aus dem Geländemodell“, ein **Attribut** (zum Beispiel `HOEHE_BODEN_MIN`) oder einen festen Wert. Bei **Gebäudehöhe** wählst du das
    Attribut (zum Beispiel `HOEHE_OBJEKT_MAX`) oder einen festen Wert; dazu sagst du, ob der Wert die **Höhe über Grund** oder die **absolute Höhe** ist, und kannst mit einem
    **Faktor** rechnen (3 bei einer Geschosszahl). Fehlt einem Gebäude die Höhe, gilt die **Ersatzhöhe**. Jede Änderung baut die Gebäude sofort neu.
 
@@ -80,6 +80,7 @@ gesperrt.
 | Gebäude | **CityGML** (`.gml`, `.xml`) | LoD2, die Achsenreihenfolge wird erkannt |
 | Gebäude (2D) | **GeoPackage** (`.gpkg`) | Flächenebene mit Höhenattributen; auch über 2 GB (zum Beispiel das BEV-Modell „DLM Bauwerke“): gelesen wird nur der Ausschnitt um das Gelände. Gibt es mehrere Flächentabellen, wählst du die Tabelle. Das Bezugssystem steht in der Datei |
 | Gebäude (2D) | **Shapefile** (`.shp` zusammen mit `.dbf`, `.prj`, `.cpg`) | alle Dateien gleichzeitig wählen; ohne `.prj` gilt das Bezugssystem des Geländes, sonst wählst du es selbst |
+| Gebäude (2D) | **INSPIRE-GML** (`.xml`, `.gml`, Gebäude 2D) | zum Beispiel der Export „INSPIRE Gebäude“ des tschechischen ČÚZK (RÚIAN): Grundrisse in Breite/Länge (EPSG:4258), Geschosszahl und Höhe nur, wo sie befüllt sind (in dieser Datei meist nicht: dann feste Höhe wählen). Wird erkannt und nicht als CityGML gelesen |
 | Gebäude (2D) | **GeoJSON** (`.geojson`, `.json`) | ohne Angabe WGS84 (Länge/Breite), sonst das `crs`-Feld |
 | Gebäude | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | auch CityJSONSeq und Merkmalslisten (3DBAG); je Bauteil die höchste Detailstufe, Grundrisse und Gelände fallen weg. Das Bezugssystem muss zum Gelände passen (3DBAG: Rijksdriehoek, passend zum AHN) |
 

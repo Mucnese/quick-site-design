@@ -3462,6 +3462,81 @@ async function readGpkgFootprints(readRange, size, name, window, tableName) {
   return set;
 }
 
+/* ---------- INSPIRE Gebäude 2D (GML: bu-core2d / bu-ext2d / bu-base), zum Beispiel ČÚZK (RÚIAN) ----------
+   Grundrisse als gml:Polygon, dazu Merkmale wie Geschosszahl und Höhe (bei vielen Ländern nicht befüllt). Kein CityGML: die Polygone haben
+   nur zwei Koordinaten je Punkt, bei Breite/Länge in der Reihenfolge Breite, Länge (INSPIRE-Achsenfolge). Gelesen wird mit Mustern statt DOM:
+   die Dateien sind groß und sehr regelmäßig. */
+function fpLooksLikeInspireGml(head) {
+  const h = String(head || '').slice(0, 6000);
+  return /inspire\.ec\.europa\.eu\/schemas\/bu-(core2d|ext2d|base)/.test(h) && !/citygml/i.test(h);
+}
+
+function fpGmlEpsg(srs) {
+  const m = String(srs || '').match(/EPSG[/:]+(?:[0-9.]*[/:])?(\d{4,6})/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function parseInspireBuildings(text, name) {
+  const set = { name: name || 'INSPIRE-GML', epsg: null, feats: [], fields: [] };
+  const docSrs = (String(text).match(/srsName="([^"]+)"/) || [])[1];
+  const num = function (block, tag) {
+    const m = block.match(new RegExp('<[a-z0-9-]+:' + tag + '\\b[^>]*>([^<]+)<'));
+    const v = m ? fpNum(m[1]) : NaN;
+    return isFinite(v) ? v : null;
+  };
+  const re = /<([a-z0-9-]+):(Building|BuildingPart)\b[^>]*?gml:id="([^"]*)"[^>]*>([\s\S]*?)<\/\1:\2>/g;
+  let m, points = 0;
+  while ((m = re.exec(text))) {
+    const block = m[4];
+    const polys = [];
+    const pre = /<gml:Polygon\b([^>]*)>([\s\S]*?)<\/gml:Polygon>/g;
+    let pm;
+    while ((pm = pre.exec(block))) {
+      const srs = (pm[1].match(/srsName="([^"]+)"/) || [])[1] || docSrs;
+      const code = fpGmlEpsg(srs);
+      const dim = parseInt((pm[1].match(/srsDimension="(\d)"/) || [])[1] || '2', 10) || 2;
+      const swap = !!code && !!FP_GEOGRAPHIC[code] && /def[/:]crs|urn:ogc/i.test(srs || '');     // Breite, Länge -> Länge, Breite
+      if (code && !set.epsg) set.epsg = code;
+      const ring = function (s) {
+        const v = fpGmlNumbersFromString(s), out = [];
+        for (let i = 0; i + dim <= v.length; i += dim) out.push(swap ? [v[i + 1], v[i]] : [v[i], v[i + 1]]);
+        if (out.length > 1) { const a = out[0], b = out[out.length - 1]; if (a[0] === b[0] && a[1] === b[1]) out.pop(); }
+        return out;
+      };
+      const ext = pm[2].match(/<gml:exterior>[\s\S]*?<gml:posList[^>]*>([^<]*)<\/gml:posList>/);
+      if (!ext) continue;
+      const outer = ring(ext[1]);
+      if (outer.length < 3) continue;
+      const holes = [];
+      const ire = /<gml:interior>[\s\S]*?<gml:posList[^>]*>([^<]*)<\/gml:posList>/g;
+      let im;
+      while ((im = ire.exec(pm[2]))) { const h = ring(im[1]); if (h.length >= 3) holes.push(h); }
+      polys.push({ outer: outer, holes: holes });
+    }
+    if (!polys.length) { if (/<gml:Point\b/.test(block)) points++; continue; }
+    const hb = (block.match(/<[a-z0-9-]+:heightAboveGround\b[^>]*>([\s\S]*?)<\/[a-z0-9-]+:heightAboveGround>/) || [])[1] || '';
+    let height = hb ? num(hb, 'value') : null;
+    if (height === null) height = num(block, 'heightAboveGround');
+    const use = (block.match(/<[a-z0-9-]+:currentUse\b[^>]*xlink:title="([^"]+)"/) || [])[1] || null;
+    set.feats.push({ polys: polys, props: {
+      id: (m[3] || '').replace(/^(BU|BP)\./, ''), art: m[2] === 'Building' ? 'Gebäude' : 'Gebäudeteil',
+      name: ((block.match(/<gn:text>([^<]*)<\/gn:text>/) || [])[1] || '').trim() || null,
+      geschosse: num(block, 'numberOfFloorsAboveGround'), hoehe: height, hoehe_gelaende: num(block, 'elevation'),
+      nutzung: use, baujahr: ((block.match(/<[a-z0-9-]+:anyPoint>(\d{4})/) || [])[1] || null) && parseInt(block.match(/<[a-z0-9-]+:anyPoint>(\d{4})/)[1], 10)
+    } });
+  }
+  if (!set.feats.length) throw new Error('fpNoPolygons');
+  set.fields = fpFields(set.feats);
+  set.skippedPoints = points;
+  return set;
+}
+
+function fpGmlNumbersFromString(s) {
+  const p = String(s).trim().split(/\s+/), out = [];
+  for (let i = 0; i < p.length; i++) { const v = parseFloat(p[i]); if (isFinite(v)) out.push(v); }
+  return out;
+}
+
 /* ---------- Von den Grundrissen zu den Flächen (Quader mit Flachdach) ---------- */
 
 const FP_GEOGRAPHIC = { 4326: 1, 4258: 1, 4979: 1, 4937: 1, 4269: 1, 4617: 1 };
@@ -7099,7 +7174,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // Gebäude aus 2D-Daten
     fpNum: fpNum, fpFields: fpFields, fpLooksLikeGeoJson: fpLooksLikeGeoJson, parseGeoJsonFootprints: parseGeoJsonFootprints, parseShp: parseShp, parseDbf: parseDbf,
     parseShapefileSet: parseShapefileSet, fpPrjEpsg: fpPrjEpsg, sqliteOpen: sqliteOpen, readGpkgFootprints: readGpkgFootprints, fpWkb: fpWkb,
-    footprintRings: footprintRings,
+    footprintRings: footprintRings, fpLooksLikeInspireGml: fpLooksLikeInspireGml, parseInspireBuildings: parseInspireBuildings,
     isLasName: isLasName, lasHeader: lasHeader, lasPeekEpsg: lasPeekEpsg, readLasTile: readLasTile, lasFillGaps: lasFillGaps, fpWindowFor: fpWindowFor, fpMedian: fpMedian, fpBridgeHoles: fpBridgeHoles,
 
     // IFC-Export

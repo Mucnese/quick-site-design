@@ -916,6 +916,36 @@ await test('2D-Gebäude: Datei wählen -> Auswahlfelder erscheinen mit sinnvolle
   assert.strictEqual(vm.runInContext('lastFootprints', s), null);
 });
 
+await test('2D-Gebäude: INSPIRE-GML (ČÚZK, EPSG:4258 mit Breite/Länge-Reihenfolge) wird als Grundriss erkannt, nicht als CityGML', async function () {
+  const s = await scopeWith2dTerrain();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  const text = fs.readFileSync(path.join(FX_DIR, 'inspire_bu2d.xml'), 'utf8');
+  assert.strictEqual(s.fpLooksLikeInspireGml(text.slice(0, 6000)), true);
+  assert.strictEqual(s.fpLooksLikeInspireGml('<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0"/>'), false);
+  const set = s.parseInspireBuildings(text, 'x.xml');
+  assert.strictEqual(set.feats.length, 4, 'vier Gebäude mit Polygon');
+  assert.strictEqual(set.skippedPoints, 1, 'der Gebäudeteil mit Punktgeometrie wird übersprungen');
+  assert.strictEqual(set.epsg, 4258);
+  const p0 = set.feats[0].polys[0].outer[0];
+  assert.ok(p0[0] > 11 && p0[0] < 13 && p0[1] > 49 && p0[1] < 51, 'Länge zuerst, dann Breite: ' + p0);
+  assert.strictEqual(set.feats[1].props.geschosse, 3);
+  assert.strictEqual(set.feats[2].props.hoehe, 12.5, 'Höhe aus HeightAboveGround/value');
+  assert.strictEqual(set.feats[0].props.geschosse, null, 'nicht befüllt (xsi:nil)');
+  assert.ok(set.fields.some(function (f) { return f.name === 'geschosse' && f.numeric; }) && set.fields.some(function (f) { return f.name === 'hoehe' && f.numeric; }));
+  // Gelände dorthin legen (UTM 33N, EPSG:25833), Gebäude laden
+  const c = s.lonLatToCrs(s.crsGeoDefinition(25833), p0[1], p0[0]);
+  vm.runInContext('TERRAIN.epsg = 25833; TERRAIN.originE = ' + c.e + '; TERRAIN.originN = ' + c.n + '; TERRAIN.w = 150000; TERRAIN.d = 150000;', s);
+  await s.handleGmlFiles([fxFile('inspire_bu2d.xml')]);
+  assert.strictEqual(g('fp-panel').style.display, 'block', g('gml-status').textContent);
+  assert.ok(g('gml-status').textContent.indexOf('INSPIRE-GML') > 0 && g('gml-status').className.indexOf('ok') > 0, g('gml-status').textContent);
+  assert.strictEqual(g('fp-h-src').value, 'attr', 'Höhenfeld gefunden');
+  assert.strictEqual(g('fp-h-attr').value, 'hoehe');
+  assert.ok(g('fp-info').textContent.indexOf('4 Gebäude') === 0 && g('fp-info').textContent.indexOf('3 ohne') > 0, g('fp-info').textContent);
+  assert.ok(vm.runInContext('buildingsMesh', s), 'Gebäude gebaut');
+  assert.ok(g('fp-crs').children[0].textContent.indexOf('EPSG:4258') >= 0, 'Bezugssystem aus der Datei');
+});
+
 await test('2D-Gebäude: Shapefile mit .dbf/.prj und GeoPackage über den Datei-Dialog, .dbf ohne .shp und fehlendes Gelände geben Meldungen', async function () {
   const s = await scopeWith2dTerrain();
   const g = function (id) { return s.document.getElementById(id); };

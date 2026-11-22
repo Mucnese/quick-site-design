@@ -274,6 +274,10 @@ ist das Gelände samt 20 % Rand (`fpWindowFor`). Testdateien in `test/fixtures/`
 
 **Frankreich/Spanien.** `frLidar` (78 % der Fläche, Stand 6.9.2026, plus Link „Abdeckung nach Gemeinde") und `esMdt` ersetzen das pauschale `euPartial`; REGCAN95 (EPSG:4082/4083, Kanaren) steht in `crsGeoDefinition` (4083 = ETRS89 UTM 28N, 4082 = UTM 27N).
 
+**INSPIRE-Gebäude 2D (GML).** `fpLooksLikeInspireGml` (Namensraum bu-core2d/bu-ext2d/bu-base, kein citygml) und `parseInspireBuildings` (Muster statt DOM: je `Building`/`BuildingPart` die `gml:Polygon`, Achsenfolge Breite/Länge bei
+geographischen EPSG-URIs vertauscht, Punktgeometrien übersprungen; Merkmale `geschosse`, `hoehe` (auch `HeightAboveGround/value`), `hoehe_gelaende`, `nutzung`, `baujahr`). `fpClassify` erkennt `.xml`/`.gml` am Kopf und leitet sie in den
+2D-Import statt in den CityGML-Weg. `fpDefaultOptions` nimmt ohne Höhenfeld ein Geschossfeld (Faktor 3).
+
 **Gebäudemodelle (LoD).** In `GEO_EU` tragen Estland, Polen, Finnland und Flandern (`only.state`) einen `bldg`-Eintrag; Notizen `plLod2`, `bldgShp` (nicht ladbar), Österreich: `GEO_AT_FEDERAL_BLDG`
 (`atGpkg`). `bldgNote` (`noEuBldg`) erscheint nur, wenn nach dem Filtern kein Link bleibt. Stadtmodelle (3D) stehen in `GEO_CITIES` (`kind: '3d'`). Nicht geladen werden GeoPackage,
 Shapefile und KML; die Anwendung liest CityGML und CityJSON.

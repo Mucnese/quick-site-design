@@ -15,3 +15,4 @@ cloud_f1.las            40 x 40 m, LAS 1.2, unkomprimiert
 cloud_nocrs.las         wie cloud_f1.las, aber ohne GeoKey-Verzeichnis (Bezugssystem muss gewählt werden)
 cloud_unclassified.laz  60 x 60 m, alle Punkte Klasse 0 (tiefster Punkt je Zelle)
 cloud_class8.laz        80 x 80 m, LAS 1.4, Punktformat 6, nur Klasse 8 (Modell-Schlüsselpunkte wie bei NRW), 0,5 Punkte je m², ohne Bezugssystem
+inspire_bu2d.xml        vier Gebäude und ein Gebäudeteil (Punkt) aus einem ČÚZK-Export "INSPIRE Gebäude 2D" (RÚIAN), EPSG:4258 (Breite, Länge); eines mit Geschossen = 3, eines mit Höhe 12,5 m (nachträglich eingetragen, im Original sind beide nicht befüllt)
