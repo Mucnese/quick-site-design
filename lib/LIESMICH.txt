@@ -2,8 +2,8 @@ Bibliotheken
 ============
 
 Diese drei Dateien muessen hier liegen, sonst startet die Anwendung nicht.
-Dazu kommt web-ifc fuer den IFC-Import (siehe unten); es wird erst beim ersten
-IFC-Import nachgeladen und ist fuer den Start nicht noetig.
+Dazu kommen web-ifc fuer den IFC-Import und laz-perf fuer LAZ-Dateien (siehe unten); beide
+werden erst beim ersten Gebrauch nachgeladen und sind fuer den Start nicht noetig.
 Sie liegen bewusst lokal bei und werden nicht von einem CDN geladen: so
 gehen beim Aufruf der Seite keine Besucherdaten an fremde Server.
 
@@ -32,6 +32,16 @@ Herunterzuladen
     web-ifc.wasm         5f28f448c35c47b87010a51a8812b4301a58330b6affdb1485f23f6aef6f9e07)
    Quelltext: https://github.com/ThatOpen/engine_web-ifc
 
+5. laz-perf (nur fuer LAZ-Punktwolken), Version 0.0.7
+   npm-Paket laz-perf: https://registry.npmjs.org/laz-perf/-/laz-perf-0.0.7.tgz
+   aus dem Paket (Ordner package/lib/web/) zwei Dateien hier ablegen:
+     laz-perf.js    -> hier als  laz-perf.js
+     laz-perf.wasm  -> hier als  laz-perf.wasm
+   (die Dateien sind unveraendert; SHA-256 der Fassung im Repository:
+    laz-perf.js    d9a91a08979dd9f717884e33c9f61997e79122da2c02be8414a5d7e99061985e
+    laz-perf.wasm  9c1802bc31b567dd4aa1ce9ab010e7e51e095dc42af8379b474ae6f221a9327f)
+   Quelltext: https://github.com/hobuinc/laz-perf (Apache-2.0, Lizenztext: LICENSE-laz-perf.txt)
+
 Wichtig: Die Versionen nicht wechseln. Die Anwendung ist gegen three.js r128
 gebaut; neuere Fassungen haben eine andere Schnittstelle.
 
@@ -44,8 +54,8 @@ Im Browser: Link oeffnen, dann Ablage -> Sichern unter. Oder im Terminal:
 Lizenzen
 --------
 
-three.js und geotiff.js stehen unter der MIT-Lizenz, web-ifc unter der Mozilla
-Public License 2.0; alle sind mit der GPLv3 vertraeglich (MPL 2.0 erlaubt die
+three.js und geotiff.js stehen unter der MIT-Lizenz, laz-perf unter der Apache-Lizenz 2.0,
+web-ifc unter der Mozilla Public License 2.0; alle sind mit der GPLv3 vertraeglich (MPL 2.0 erlaubt die
 Kombination mit GPL-Code, solange die web-ifc-Dateien unveraendert und mit
 ihrer Lizenz beiliegen).
 Die MIT-Lizenz verlangt, dass ihr Lizenztext mitgeliefert wird. Lade deshalb

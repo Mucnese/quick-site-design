@@ -759,7 +759,7 @@ const GEO_EU = {
     dem: [{ label: 'ČÚZK DMR 4G · 5 m', url: 'https://geoportal.cuzk.cz/', fmt: 'unclear', note: 'euCheckFormat' }],
     bldg: [], bldgNote: 'noEuBldg' },
   DK: { name: 'Dänemark',
-    dem: [{ label: 'Højdemodel Terræn · 0,4 m', url: 'https://dataforsyningen.dk/data/930', fmt: 'unclear', note: 'euCheckFormat' }],
+    dem: [{ label: 'Højdemodel Terræn · 0,4 m', url: 'https://dataforsyningen.dk/data/930', fmt: 'tif' }],
     bldg: [], bldgNote: 'noEuBldg' },
   EE: { name: 'Estland',
     dem: [{ label: 'Maa-amet · 1 m', url: 'https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html', fmt: 'tif' }],
@@ -2091,7 +2091,7 @@ async function readTiffTileWindow(blob, fileName, win, soFarPixels) {
    dadurch spielen unterschiedliche Auflösungen und Überlappungen keine Rolle. */
 async function readTiffTiles(items, xyzEpsg) {
   if (!items || !items.length) throw new Error('Keine Datei ausgewählt.');
-  const hasTiff = items.some(function (it) { return !isXyzName(it.name); });
+  const hasTiff = items.some(function (it) { return !isXyzName(it.name) && !isLasName(it.name); });
   if (hasTiff && typeof GeoTIFF === 'undefined') {
     throw new Error('Die Datei lib/geotiff.js fehlt. Siehe lib/LIESMICH.txt.');
   }
@@ -2101,6 +2101,8 @@ async function readTiffTiles(items, xyzEpsg) {
     const it = items[i];
     const t = isXyzName(it.name)
       ? readXyzTile(it.buffer, it.name, xyzEpsg, pixels)
+      : isLasName(it.name)
+      ? await readLasTile(it.buffer, it.name, xyzEpsg, pixels, it.window)
       : (it.blob ? await readTiffTileWindow(it.blob, it.name, it.window, pixels) : await readTiffTile(it.buffer, it.name, pixels));
     if (!t) { outside++; continue; }                           // der gewählte Ausschnitt liegt nicht in dieser Datei
     pixels += t.W * t.H;
@@ -2224,6 +2226,238 @@ function readXyzTile(arrayBuffer, fileName, epsg, soFarPixels) {
     name: fileName, W: W, H: H, band: band,
     originX: minX - stepX / 2, originY: maxY + stepY / 2, resX: stepX, resY: stepY,
     nodata: XYZ_NODATA, epsg: epsg, srcRes: Math.min(stepX, stepY)
+  };
+}
+
+/* ---------- Punktwolken (LAS, LAZ) als Geländemodell ----------
+   Aus den Geländepunkten (Klasse 2, dazu Wasser, Klasse 9) wird ein Höhenraster gemittelt, kleine Lücken werden gefüllt.
+   LAS liest ein eigener Leser, LAZ (komprimiert) entpackt laz-perf (lib/laz-perf.js, Apache-2.0), das erst beim ersten LAZ nachgeladen wird.
+   Das Bezugssystem steht meist in der Datei (GeoKey-Verzeichnis oder WKT); sonst gilt die Wahl des Nutzers wie bei XYZ. */
+const LAS_MAX_BYTES = 300e6;          // die Datei liegt im Speicher, LAZ zusätzlich entpackt im WebAssembly-Speicher
+const LAS_MAX_CELLS = 16e6;           // Zellen des Rasters (je Zelle 10 Byte Arbeitsspeicher)
+const LAS_WINDOW_EXTENT = 3000;       // größere Wolken werden auf den Ausschnitt um den Pin begrenzt (m)
+const LAS_LIB_SCRIPT = 'lib/laz-perf.js';
+let lazPerfModule = null;             // Modul nach dem Laden
+let lazPerfLoading = null;            // laufendes Laden
+
+function isLasName(name) {
+  return /\.(las|laz)$/i.test(name || '');
+}
+
+/* Lädt laz-perf aus lib/ (nur im Browser, nur einmal) */
+function getLazPerf() {
+  if (lazPerfModule) return Promise.resolve(lazPerfModule);
+  if (lazPerfLoading) return lazPerfLoading;
+  lazPerfLoading = new Promise(function (resolve, reject) {
+    function init() {
+      try { Promise.resolve(createLazPerf()).then(function (m) { lazPerfModule = m; resolve(m); }, reject); } catch (e) { reject(e); }
+    }
+    if (typeof createLazPerf !== 'undefined') { init(); return; }
+    const s = document.createElement('script');
+    s.src = LAS_LIB_SCRIPT;
+    s.onload = init;
+    s.onerror = function () { lazPerfLoading = null; reject(new Error('lasLibFail')); };
+    document.head.appendChild(s);
+  }).catch(function (e) { lazPerfLoading = null; throw e; });
+  return lazPerfLoading;
+}
+
+/* Variable Längenangaben (VLR/EVLR) lesen: liefert das Bezugssystem (EPSG) aus GeoKeys oder WKT, sonst null */
+function lasVlrEpsg(b, dv, pos, count, extended) {
+  let epsg = null;
+  const hdr = extended ? 60 : 54;
+  for (let i = 0; i < count; i++) {
+    if (pos + hdr > b.length) break;
+    let uid = '';
+    for (let k = 0; k < 16 && b[pos + 2 + k]; k++) uid += String.fromCharCode(b[pos + 2 + k]);
+    const rid = dv.getUint16(pos + 18, true);
+    const len = extended ? dv.getUint32(pos + 20, true) + dv.getUint32(pos + 24, true) * 4294967296 : dv.getUint16(pos + 20, true);
+    const d = pos + hdr;
+    if (d + len > b.length) break;
+    if (uid === 'LASF_Projection' && rid === 34735 && len >= 8) {
+      const nKeys = dv.getUint16(d + 6, true);
+      for (let k = 0; k < nKeys && d + 8 + 8 * (k + 1) <= d + len; k++) {
+        const o = d + 8 + 8 * k;
+        if (dv.getUint16(o, true) === 3072 && dv.getUint16(o + 2, true) === 0) {
+          const v = dv.getUint16(o + 6, true);
+          if (v > 0 && v < 32767) epsg = epsg || v;
+        }
+      }
+    } else if (uid === 'LASF_Projection' && (rid === 2112 || rid === 2111) && len > 0 && !epsg) {
+      let wkt = '';
+      for (let k = 0; k < len && b[d + k]; k++) wkt += String.fromCharCode(b[d + k]);
+      epsg = fpPrjEpsg(wkt) || null;
+    }
+    pos = d + len;
+  }
+  return epsg;
+}
+
+/* Kopf einer LAS/LAZ-Datei (b: mindestens der Kopf samt VLRs, bei LAS 1.4 gern auch die EVLRs am Dateiende ab evlrStart) */
+function lasHeader(b) {
+  if (!b || b.length < 227 || b[0] !== 0x4c || b[1] !== 0x41 || b[2] !== 0x53 || b[3] !== 0x46) throw new Error('lasBad');
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  const major = b[24], minor = b[25], headerSize = dv.getUint16(94, true), offset = dv.getUint32(96, true), nVlr = dv.getUint32(100, true);
+  const raw = b[104];
+  let count = dv.getUint32(107, true), evlrStart = 0, evlrCount = 0;
+  if (major === 1 && minor >= 4 && headerSize >= 375 && b.length >= 375) {
+    const lo = dv.getUint32(247, true), hi = dv.getUint32(251, true);
+    if (lo || hi) count = hi * 4294967296 + lo;
+    evlrStart = dv.getUint32(235, true) + dv.getUint32(239, true) * 4294967296;
+    evlrCount = dv.getUint32(243, true);
+  }
+  const h = {
+    version: major + '.' + minor, headerSize: headerSize, offset: offset, format: raw & 0x3f, compressed: !!(raw & 0x80), recLen: dv.getUint16(105, true),
+    count: count, scale: [dv.getFloat64(131, true), dv.getFloat64(139, true), dv.getFloat64(147, true)],
+    off: [dv.getFloat64(155, true), dv.getFloat64(163, true), dv.getFloat64(171, true)],
+    max: [dv.getFloat64(179, true), dv.getFloat64(195, true), dv.getFloat64(211, true)],
+    min: [dv.getFloat64(187, true), dv.getFloat64(203, true), dv.getFloat64(219, true)],
+    evlrStart: evlrStart, evlrCount: evlrCount, epsg: null
+  };
+  if (h.format > 10 || !(h.recLen >= 20) || !(h.scale[0] > 0)) throw new Error('lasBad');
+  h.epsg = lasVlrEpsg(b, dv, headerSize, nVlr, false);
+  return h;
+}
+
+/* Bezugssystem einer Datei lesen, ohne sie ganz zu laden: Kopf samt VLRs, bei LAS 1.4 notfalls die EVLRs am Ende.
+   file: { size, slice(a, b).arrayBuffer() }. Liefert die EPSG-Zahl oder null. */
+async function lasPeekEpsg(file) {
+  const head = new Uint8Array(await file.slice(0, Math.min(file.size, 1 << 20)).arrayBuffer());
+  const h = lasHeader(head);
+  if (h.epsg || !(h.evlrCount > 0) || !(h.evlrStart > 0) || h.evlrStart >= file.size) return h.epsg;
+  const tail = new Uint8Array(await file.slice(h.evlrStart, Math.min(file.size, h.evlrStart + (1 << 20))).arrayBuffer());
+  return lasVlrEpsg(tail, new DataView(tail.buffer, tail.byteOffset, tail.byteLength), 0, h.evlrCount, true);
+}
+
+/* Alle Punkte der Datei nacheinander: fn(x, y, z, klasse, zurückgehalten) in Koordinaten des Bezugssystems.
+   Unkomprimiert direkt aus dem Puffer, LAZ über laz-perf (ein Punkt je Aufruf). */
+async function lasForEachPoint(bytes, h, fn) {
+  const sx = h.scale[0], sy = h.scale[1], sz = h.scale[2], ox = h.off[0], oy = h.off[1], oz = h.off[2];
+  const wide = h.format >= 6;
+  if (!h.compressed) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const n = Math.min(h.count, Math.floor((bytes.length - h.offset) / h.recLen));
+    for (let i = 0, p = h.offset; i < n; i++, p += h.recLen) {
+      const cls = wide ? bytes[p + 16] : bytes[p + 15] & 31;
+      const hold = wide ? (bytes[p + 15] & 4) !== 0 : (bytes[p + 15] & 128) !== 0;
+      fn(dv.getInt32(p, true) * sx + ox, dv.getInt32(p + 4, true) * sy + oy, dv.getInt32(p + 8, true) * sz + oz, cls, hold);
+    }
+    return;
+  }
+  const lp = await getLazPerf();
+  const size = bytes.length;
+  const ptr = lp._malloc(size);
+  lp.HEAPU8.set(bytes, ptr);
+  const lz = new lp.LASZip();
+  let dest = 0;
+  try {
+    lz.open(ptr, size);
+    const n = lz.getCount(), len = lz.getPointLength();
+    dest = lp._malloc(len);
+    for (let i = 0; i < n; i++) {
+      lz.getPoint(dest);
+      const heap = lp.HEAPU8, dv = new DataView(heap.buffer, dest, len);
+      const f = heap[dest + 15];
+      fn(dv.getInt32(0, true) * sx + ox, dv.getInt32(4, true) * sy + oy, dv.getInt32(8, true) * sz + oz,
+         wide ? heap[dest + 16] : f & 31, wide ? (f & 4) !== 0 : (f & 128) !== 0);
+    }
+  } finally {
+    lz.delete();
+    if (dest) lp._free(dest);
+    lp._free(ptr);
+  }
+}
+
+/* Fehlende Zellen aus den gefüllten Nachbarn auffüllen (mehrere Durchgänge, höchstens `passes`); Rest bleibt NoData */
+function lasFillGaps(band, W, H, nodata, passes) {
+  let cur = band;
+  for (let p = 0; p < passes; p++) {
+    const next = cur.slice();
+    let changed = false;
+    for (let r = 0; r < H; r++) {
+      for (let c = 0; c < W; c++) {
+        const i = r * W + c;
+        if (cur[i] !== nodata) continue;
+        let s = 0, k = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          const rr = r + dr;
+          if (rr < 0 || rr >= H) continue;
+          for (let dc = -1; dc <= 1; dc++) {
+            const cc = c + dc;
+            if (cc < 0 || cc >= W || (!dr && !dc)) continue;
+            const v = cur[rr * W + cc];
+            if (v !== nodata) { s += v; k++; }
+          }
+        }
+        if (k) { next[i] = s / k; changed = true; }
+      }
+    }
+    cur = next;
+    if (!changed) break;
+  }
+  return cur;
+}
+
+/* Eine LAS/LAZ-Datei zu einer Geländekachel rastern (Format wie bei GeoTIFF und XYZ).
+   epsg: Wahl des Nutzers, gilt nur, wenn die Datei kein Bezugssystem nennt. window: {lon, lat, size} (Pin), nur für große Wolken. */
+async function readLasTile(arrayBuffer, fileName, epsg, soFarPixels, window) {
+  const bytes = new Uint8Array(arrayBuffer);
+  let h;
+  try { h = lasHeader(bytes); } catch (e) { throw new Error(e.message === 'lasBad' ? 'lasBad' : e.message); }
+  if (h.count < 1) throw new Error('lasNoPoints');
+  // LAS 1.4: Bezugssystem steht oft in den EVLRs am Dateiende
+  if (!h.epsg && h.evlrCount > 0 && h.evlrStart > 0 && h.evlrStart < bytes.length) {
+    const tail = bytes.subarray(h.evlrStart);
+    h.epsg = lasVlrEpsg(tail, new DataView(tail.buffer, tail.byteOffset, tail.byteLength), 0, h.evlrCount, true);
+  }
+  const crs = h.epsg || epsg;
+  if (!(crs > 0)) throw new Error(fileName + ': für LAS-Dateien ohne Bezugssystem fehlt der EPSG-Code.');
+  let x0 = h.min[0], x1 = h.max[0], y0 = h.min[1], y1 = h.max[1];
+  let windowed = false;
+  if (x1 - x0 > LAS_WINDOW_EXTENT || y1 - y0 > LAS_WINDOW_EXTENT) {
+    const def = window && crsGeoDefinition(crs);
+    if (!def || def.merc || !window.size) throw new Error('lasBigNoPin');
+    const c = lonLatToCrs(def, window.lat, window.lon), half = window.size / 2;
+    if (c.e + half < x0 || c.e - half > x1 || c.n + half < y0 || c.n - half > y1) return null;     // der Pin liegt nicht in dieser Datei
+    x0 = Math.max(x0, c.e - half); x1 = Math.min(x1, c.e + half); y0 = Math.max(y0, c.n - half); y1 = Math.min(y1, c.n + half);
+    windowed = true;
+  }
+  // Rasterweite: im Mittel mindestens etwa zwei Geländepunkte je Zelle (halbe Punktdichte als Geländeanteil), in Stufen
+  const area = Math.max(1, (h.max[0] - h.min[0]) * (h.max[1] - h.min[1]));
+  const want = Math.sqrt(2 / Math.max(1e-6, 0.5 * h.count / area));
+  let cell = [0.5, 1, 2, 5, 10].filter(function (s) { return s >= want; })[0] || 10;
+  let W, H;
+  for (;;) {
+    W = Math.max(1, Math.ceil((x1 - x0) / cell)); H = Math.max(1, Math.ceil((y1 - y0) / cell));
+    if (W * H <= LAS_MAX_CELLS) break;
+    cell *= 2;
+  }
+  checkTiffPixels(fileName, W, H, soFarPixels);
+  const z0 = h.min[2];
+  const n = W * H;
+  const sum = new Float32Array(n), cnt = new Uint16Array(n), low = new Float32Array(n).fill(Infinity);
+  let nGround = 0, nUsed = 0;
+  await lasForEachPoint(bytes, h, function (x, y, z, cls, hold) {
+    if (hold || cls === 7 || cls === 18) return;                    // zurückgehaltene Punkte und Rauschen
+    if (x < x0 || x > x1 || y < y0 || y > y1) return;
+    const c = Math.min(W - 1, Math.floor((x - x0) / cell)), r = Math.min(H - 1, Math.floor((y1 - y) / cell)), i = r * W + c;
+    const zr = z - z0;
+    nUsed++;
+    if (zr < low[i]) low[i] = zr;
+    if (cls === 2 || cls === 9) { if (cnt[i] < 65535) { sum[i] += zr; cnt[i]++; } nGround++; }
+  });
+  if (!nUsed) throw new Error('lasNoPoints');
+  // Geländepunkte vorhanden und flächig genug? Sonst (nicht klassifizierte Wolke) der tiefste Punkt je Zelle
+  let withGround = 0, withAny = 0;
+  for (let i = 0; i < n; i++) { if (cnt[i]) withGround++; if (low[i] !== Infinity) withAny++; }
+  const classified = withGround >= 0.1 * withAny;
+  let band = new Float32Array(n);
+  for (let i = 0; i < n; i++) band[i] = classified ? (cnt[i] ? sum[i] / cnt[i] + z0 : XYZ_NODATA) : (low[i] !== Infinity ? low[i] + z0 : XYZ_NODATA);
+  band = lasFillGaps(band, W, H, XYZ_NODATA, Math.max(2, Math.min(12, Math.ceil(10 / cell))));
+  return {
+    name: fileName, W: W, H: H, band: band, originX: x0, originY: y1, resX: cell, resY: cell,
+    nodata: XYZ_NODATA, epsg: crs, srcRes: cell, windowed: windowed,
+    pointCloud: { points: h.count, ground: nGround, used: nUsed, cell: cell, classified: classified, laz: h.compressed }
   };
 }
 
@@ -6850,7 +7084,8 @@ if (typeof module !== 'undefined' && module.exports) {
     // Gebäude aus 2D-Daten
     fpNum: fpNum, fpFields: fpFields, fpLooksLikeGeoJson: fpLooksLikeGeoJson, parseGeoJsonFootprints: parseGeoJsonFootprints, parseShp: parseShp, parseDbf: parseDbf,
     parseShapefileSet: parseShapefileSet, fpPrjEpsg: fpPrjEpsg, sqliteOpen: sqliteOpen, readGpkgFootprints: readGpkgFootprints, fpWkb: fpWkb,
-    footprintRings: footprintRings, fpWindowFor: fpWindowFor, fpMedian: fpMedian, fpBridgeHoles: fpBridgeHoles,
+    footprintRings: footprintRings,
+    isLasName: isLasName, lasHeader: lasHeader, lasPeekEpsg: lasPeekEpsg, readLasTile: readLasTile, lasFillGaps: lasFillGaps, fpWindowFor: fpWindowFor, fpMedian: fpMedian, fpBridgeHoles: fpBridgeHoles,
 
     // IFC-Export
     terrainGridInRect: terrainGridInRect,

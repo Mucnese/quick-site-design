@@ -7,3 +7,10 @@ buildings4326.geojson / .gpkg  dasselbe in WGS84 (-t_srs EPSG:4326, GeoJSON mit 
 many25832.gpkg          1600 Gebäude im 25-m-Raster (40 x 40): mehrere B-Baum-Ebenen und ein R-Baum mit Tiefe > 0
 
 Attribute: name, hoehe (Höhe über Grund, teils als Text mit Komma), gelaende (Gelände, absolut), geschosse.
+
+Punktwolken (LAS/LAZ), mit laspy (Python) erzeugt, synthetische Fläche z = 500 + 0,05 * (E - 692000) + 3 * sin((N - 5336000) / 20), EPSG:25832:
+cloud_f1.laz            100 x 100 m, LAS 1.2, Punktformat 1, komprimiert (24100 Punkte: 20000 Gelände Klasse 2, 4000 Vegetation Klasse 5/6, 100 Rauschen Klasse 7)
+cloud_f6.laz            dasselbe als LAS 1.4, Punktformat 6, komprimiert
+cloud_f1.las            40 x 40 m, LAS 1.2, unkomprimiert
+cloud_nocrs.las         wie cloud_f1.las, aber ohne GeoKey-Verzeichnis (Bezugssystem muss gewählt werden)
+cloud_unclassified.laz  60 x 60 m, alle Punkte Klasse 0 (tiefster Punkt je Zelle)

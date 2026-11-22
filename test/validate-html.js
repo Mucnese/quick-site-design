@@ -70,7 +70,11 @@ test('die drei Bibliotheken aus lib/ werden eingebunden und liegen vor', functio
   });
 });
 
-test('web-ifc liegt lokal vor, mit Lizenztext, und steht nicht fest im HTML', function () {
+test('web-ifc und laz-perf liegen lokal vor, mit Lizenztext, und stehen nicht fest im HTML', function () {
+  ['lib/laz-perf.js', 'lib/laz-perf.wasm', 'lib/LICENSE-laz-perf.txt'].forEach(function (rel) {
+    assert.ok(fs.existsSync(path.join(ROOT, rel)), rel + ' fehlt');
+  });
+  assert.ok(indexHtml.indexOf('<script src="lib/laz-perf') < 0, 'laz-perf darf nur nachgeladen werden');
   ['lib/web-ifc-api-iife.js', 'lib/web-ifc.wasm', 'lib/LICENSE-web-ifc.txt'].forEach(function (rel) {
     assert.ok(fs.existsSync(path.join(ROOT, rel)), rel + ' fehlt im Projekt');
   });
@@ -103,7 +107,7 @@ test('Content Security Policy: kein unsafe-inline für Skripte, Prüfsumme des P
 
 test('Bibliotheken in lib/ stimmen mit den Prüfsummen in lib/SHA256SUMS überein (Lieferkette)', function () {
   const sums = fs.readFileSync(path.join(ROOT, 'lib/SHA256SUMS'), 'utf8').trim().split('\n');
-  const names = ['OrbitControls.js', 'geotiff.js', 'three.min.js', 'web-ifc-api-iife.js', 'web-ifc.wasm'];
+  const names = ['OrbitControls.js', 'geotiff.js', 'laz-perf.js', 'laz-perf.wasm', 'three.min.js', 'web-ifc-api-iife.js', 'web-ifc.wasm'];
   assert.deepStrictEqual(sums.map(function (l) { return l.split(/\s+/)[1]; }).sort(), names.slice().sort());
   sums.forEach(function (l) {
     const parts = l.split(/\s+/);
@@ -114,10 +118,10 @@ test('Bibliotheken in lib/ stimmen mit den Prüfsummen in lib/SHA256SUMS überei
 
 test('Dateien für Open Source liegen vor (Lizenz, Mitarbeit, Verhaltenskodex, Sicherheit, Drittlizenzen, Vorlagen)', function () {
   ['LICENSE', 'CONTRIBUTING.md', 'CODE_OF_CONDUCT.md', 'SECURITY.md', 'THIRD-PARTY-NOTICES.md', 'CHANGELOG.md', 'CHANGELOG.en.md',
-   'demo/LIESMICH.txt', 'lib/LICENSE-three.txt', 'lib/LICENSE-geotiff.txt', 'lib/LICENSE-web-ifc.txt',
+   'demo/LIESMICH.txt', 'lib/LICENSE-three.txt', 'lib/LICENSE-geotiff.txt', 'lib/LICENSE-web-ifc.txt', 'lib/LICENSE-laz-perf.txt',
    '.github/PULL_REQUEST_TEMPLATE.md', '.github/ISSUE_TEMPLATE/bug_report.md', '.github/ISSUE_TEMPLATE/feature_request.md'].forEach(function (rel) { assert.ok(fs.existsSync(path.join(ROOT, rel)), rel + ' fehlt'); });
   const notices = fs.readFileSync(path.join(ROOT, 'THIRD-PARTY-NOTICES.md'), 'utf8');
-  ['three.js', 'geotiff.js', 'web-ifc', 'OpenStreetMap', 'Photon'].forEach(function (n) { assert.ok(notices.indexOf(n) >= 0, n + ' fehlt in THIRD-PARTY-NOTICES.md'); });
+  ['three.js', 'geotiff.js', 'web-ifc', 'laz-perf', 'OpenStreetMap', 'Photon'].forEach(function (n) { assert.ok(notices.indexOf(n) >= 0, n + ' fehlt in THIRD-PARTY-NOTICES.md'); });
 });
 
 test('keine CDN-Verweise', function () {

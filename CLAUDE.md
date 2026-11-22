@@ -73,6 +73,12 @@ Sitzung. Die Datenschutzerklärung sagt das ausdrücklich zu.
 **Mausrad (3D-Ansicht).** `onCanvasWheel` setzt `controls.zoomSpeed` je Ereignis so (`linearZoomSpeed`), dass der Abstand um eine feste Strecke wächst oder schrumpft
 (`wheelStepMeters`: Geländekante / 60, mindestens 5 m); `lib/OrbitControls.js` bleibt unverändert. Der Listener hängt am `window` (Capture), damit er vor OrbitControls läuft.
 
+**Punktwolken (LAS/LAZ).** Abschnitt „Punktwolken“ in `app.js`: `lasHeader` (Kopf, Bezugssystem aus GeoKey 3072 oder WKT-VLR 2111/2112, bei LAS 1.4 auch aus den EVLRs), `lasPeekEpsg` (nur Kopf lesen,
+damit `handleDemFiles` vorher weiß, ob die Wahl des Bezugssystems fehlt), `lasForEachPoint` (LAS direkt, LAZ über `laz-perf`: `getLazPerf` lädt `lib/laz-perf.js` erst beim ersten LAZ, ein Punkt je `getPoint`),
+`readLasTile` rastert Klassen 2 und 9 (Mittel je Zelle, `LAS_MAX_CELLS`), sonst den tiefsten Punkt; Lücken über `lasFillGaps`. Rasterweite aus der Punktdichte (0,5 bis 10 m). Wolken über `LAS_WINDOW_EXTENT` (3 km)
+brauchen den Pin (`currentSiteWindow`). Fehler sind Schlüssel (`lasBad` ...), `lasErrText` übersetzt. Testdateien `test/fixtures/cloud_*.la[sz]` (laspy, synthetische Fläche); in den UI-Tests liegt `createLazPerf`
+mit eingebettetem wasm im Sandkasten. Ungeprüft: echte Daten des ČÚZK (S-JTSK, Klassen) - kein Zugang.
+
 **XYZ-Dateien.** `readXyzTile` (über `readTiffTiles(items, epsg)`, Endungen `.xyz/.txt/.csv`)
 macht aus Textzeilen (Rechts Hoch Höhe, Punkt als Dezimalzeichen) dieselbe Kachel wie `readTiffTile`:
 Rasterweite = häufigster Koordinatenabstand, Punkte gelten als Zellmitten, Lücken sind NoData

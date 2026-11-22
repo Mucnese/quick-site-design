@@ -15,7 +15,7 @@ Kranradien überschneiden, ob die Containeranlage auf die verfügbare Fläche pa
 und wie die Baustraße im Gelände liegt. Eine Ausführungsplanung ersetzt das
 nicht.
 
-Technisch eine HTML-Datei von rund 150 KB und vier Bibliotheken daneben. Kein
+Technisch eine HTML-Datei von rund 150 KB und fünf Bibliotheken daneben. Kein
 Server, keine Installation, kein Build. Nach dem Öffnen bleiben alle Daten im
 Browser.
 
@@ -26,7 +26,7 @@ Browser.
 ## Funktionsumfang
 
 **Geobasisdaten**
-- GeoTIFF- und XYZ-Geländemodelle (bei XYZ mit Wahl des EPSG-Codes), mehrere Kacheln gleichzeitig. Die Pixel aller Kacheln
+- GeoTIFF- und XYZ-Geländemodelle (bei XYZ mit Wahl des EPSG-Codes) sowie **Punktwolken (LAS, LAZ)**, aus denen die Geländepunkte zu einem Raster gemittelt werden; mehrere Kacheln gleichzeitig. Die Pixel aller Kacheln
   werden in ein gemeinsames Raster gemittelt, unterschiedliche Auflösungen und
   Überlappungen sind daher unkritisch.
 - CityGML LOD2 und **CityJSON** (auch CityJSONSeq und die Merkmalslisten der 3DBAG-Schnittstelle), ebenfalls als Stapel. Bei
@@ -230,7 +230,7 @@ Rumänien (Stereo 70), Bulgarien und Zypern; dort schaltet sich die Karte mit ei
 | Land | Geländemodell | Format | Gebäudemodell | Lizenz (Geländemodell) |
 |---|---|---|---|---|
 | Belgien | [Flandern · 1 m](https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m), [Wallonien · 0,5 m](https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html) | GeoTIFF | [3D GRB · LoD1](https://www.vlaanderen.be/digitaal-vlaanderen/onze-diensten-en-platformen/basiskaart-vlaanderen-grb/3d-grb) (nur Flandern), Shapefile/KML | Flandern: Modelllizenz für freie Weiterverwendung; Wallonien: CC BY 4.0 |
-| Dänemark | [Højdemodel Terræn · 0,4 m](https://dataforsyningen.dk/data/930) | nicht eindeutig | — | CC BY 4.0 |
+| Dänemark | [Højdemodel Terræn · 0,4 m](https://dataforsyningen.dk/data/930) | GeoTIFF | — | CC BY 4.0 |
 | Estland | [Maa-amet · 1 m](https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html) | GeoTIFF (auch ASCII, XYZ) | [Maa- ja Ruumiamet · LoD2, ganz Estland](https://geoportaal.maaruum.ee/eng/Download-3D-data-p837.html), CityGML, OBJ, GDB | Open-Data-Lizenz des Landesamts |
 | Finnland | [Maanmittauslaitos · 2 m](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m) | GeoTIFF (auch ASCII) | [Buildings 3D · LoD2](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/buildings-3d), CityGML, CC BY 4.0 (bisher nur Beispielgebiete) | CC BY 4.0 |
 | Frankreich | [MNT LiDAR HD · 0,5 m](https://www.data.gouv.fr/datasets/mnt-lidar-hd) (Stand 6.9.2026 rund 78 % der Fläche, Guyane nicht im Programm; [Abdeckung nach Gemeinde](https://www.data.gouv.fr/datasets/carte-du-lidar-hd-de-lign-par-commune-date-du-vol-et-couverture-en-france)), [RGE ALTI · 1 m](https://geoservices.ign.fr/rgealti) | GeoTIFF bzw. nicht eindeutig | [IGN LiDAR HD, Gebäude 3D](https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire) (LoD2, Beta, nicht überall) | Licence Ouverte 2.0 |
@@ -378,7 +378,10 @@ quick-site-design/
 │   ├── geotiff.js
 │   ├── web-ifc-api-iife.js   IFC-Leser (wird erst beim IFC-Import geladen)
 │   ├── web-ifc.wasm
+│   ├── laz-perf.js       LAZ-Entpacker (wird erst beim LAZ-Import geladen)
+│   ├── laz-perf.wasm
 │   ├── LICENSE-web-ifc.txt
+│   ├── LICENSE-laz-perf.txt
 │   └── LIESMICH.txt      welche Datei woher kommt
 ├── demo/
 │   ├── demo_dgm.tif      Geländemodell für den Demo-Link
@@ -408,7 +411,7 @@ Browser. Einzelheiten stehen in `PROJEKT.md`.
 
 ## Selbst betreiben
 
-Die Anwendung braucht vier Bibliotheken:
+Die Anwendung braucht fünf Bibliotheken:
 
 | Bibliothek | Lizenz |
 |---|---|
@@ -416,8 +419,9 @@ Die Anwendung braucht vier Bibliotheken:
 | OrbitControls (three.js examples) | MIT |
 | geotiff.js 2.1.3 | MIT |
 | web-ifc 0.0.79 (nur für den IFC-Import) | MPL-2.0 |
+| laz-perf 0.0.7 (nur für LAZ-Punktwolken) | Apache-2.0 |
 
-Alle vier sind mit der GPLv3 verträglich und liegen im Ordner `lib/`. Sie
+Alle fünf sind mit der GPLv3 verträglich und liegen im Ordner `lib/`. Sie
 werden **nicht** von einem CDN nachgeladen: so entstehen beim Aufruf keine
 Verbindungen zu fremden Servern, und die Anwendung läuft auch ohne
 Internetverbindung.

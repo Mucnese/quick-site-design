@@ -18,12 +18,21 @@ compatible with the GPLv3. They are included unmodified in `lib/`; checksums are
 | `lib/OrbitControls.js` | three.js (examples) | r128 | MIT | [`lib/LICENSE-three.txt`](lib/LICENSE-three.txt) | https://github.com/mrdoob/three.js |
 | `lib/geotiff.js` | geotiff.js | 2.1.3 | MIT | [`lib/LICENSE-geotiff.txt`](lib/LICENSE-geotiff.txt) | https://github.com/geotiffjs/geotiff.js |
 | `lib/web-ifc-api-iife.js`, `lib/web-ifc.wasm` | web-ifc (That Open Company) | 0.0.79 | MPL-2.0 | [`lib/LICENSE-web-ifc.txt`](lib/LICENSE-web-ifc.txt) | https://github.com/ThatOpen/engine_web-ifc |
+| `lib/laz-perf.js`, `lib/laz-perf.wasm` | laz-perf (Hobu, Inc.) | 0.0.7 | Apache-2.0 | [`lib/LICENSE-laz-perf.txt`](lib/LICENSE-laz-perf.txt) | https://github.com/hobuinc/laz-perf |
 
 Herkunft der Dateien und Download-Adressen: [`lib/LIESMICH.txt`](lib/LIESMICH.txt). Die Dateien three.js,
 OrbitControls und geotiff.js stimmen byte-genau mit den offiziellen Downloads überein (Stand 19. November 2026).
 
 Origin of the files and download addresses: [`lib/LIESMICH.txt`](lib/LIESMICH.txt). The three.js,
 OrbitControls and geotiff.js files are byte-identical to the official downloads (as of 19 November 2026).
+
+### Apache-2.0 (laz-perf)
+
+laz-perf (LAZ-Entpacker, nur für LAZ-Punktwolken) steht unter der Apache-Lizenz 2.0, die mit der GPLv3 verträglich ist. Die Dateien liegen **unverändert**
+bei (npm-Paket 0.0.7, Ordner `lib/web/`); sie werden erst beim ersten LAZ-Import geladen. Der Lizenztext liegt bei.
+
+laz-perf (LAZ decompressor, only for LAZ point clouds) is under the Apache License 2.0, which is compatible with the GPLv3. The files are included **unmodified**
+(npm package 0.0.7, folder `lib/web/`); they are loaded only on the first LAZ import. The licence text is included.
 
 ### MPL-2.0 (web-ifc)
 

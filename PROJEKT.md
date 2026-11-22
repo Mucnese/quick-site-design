@@ -116,6 +116,7 @@ Kurzschluss macht daraus 9. Deshalb `fieldRank()`.
 app.js
   buildTerrain / gridTiles            Gelände aufbauen und rastern
   readTiffTiles / parseCityGML        Dateien einlesen
+  readLasTile / lasHeader             Punktwolken (LAS, LAZ) zu einem Höhenraster
   parseGeoJsonFootprints / parseShapefileSet / readGpkgFootprints
                                       2D-Gebäude (GeoJSON, Shapefile, GeoPackage) mit Attributen
   footprintRings                      Grundrisse + gewählte Höhen -> Flächen (Quader mit Flachdach)

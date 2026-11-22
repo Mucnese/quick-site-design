@@ -6,6 +6,16 @@ because there are no fixed version numbers. German version: [CHANGELOG.md](CHANG
 
 Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy**.
 
+## 2026-11-22
+
+### New
+- **Point clouds (LAS and LAZ) as terrain model:** The ground points (class 2, plus water) are averaged into a height grid, small gaps are filled, vegetation, buildings and noise are dropped
+  (without classification the lowest point per cell is used). Coordinate system from the file (GeoKey or WKT), otherwise a choice as for XYZ. Clouds over 3 km need a pin (only the area is gridded).
+  New library `laz-perf` (Apache-2.0, LAZ only, loaded only then). Checked in the browser with 4.2 million points (25 MB LAZ): under 2 seconds. LAS 1.2 and LAZ 1.2 and 1.4 are tested.
+
+### Changed
+- **Denmark:** The elevation model is listed as GeoTIFF (as reported; the page loads by script and could not be read here). Privacy policy: now names five libraries.
+
 ## 2026-11-21
 
 ### Changed

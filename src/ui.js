@@ -81,7 +81,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF oder XYZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -122,11 +122,15 @@ const STRINGS = {
     geoNote_esMdt: 'Ganz Spanien in Blättern (MTN25, COG-GeoTIFF). Ceuta, Melilla und Alborán stammen aus Luftbildern (geringere Qualität); die Kanaren liegen in REGCAN95.',
     geoNote_euBldgNotCityGml: 'Als CityJSON (lässt sich laden), GeoPackage (als 2D-Datei lesbar) oder OBJ (nicht).',
     geoNote_euUnreachable: 'Die Seite war bei der Prüfung nicht erreichbar.',
-    xyzCrs: 'Bezugssystem für XYZ-Dateien', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
-    xyzNeedCrs: 'XYZ-Datei erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
+    xyzCrs: 'Bezugssystem für XYZ-Dateien (und LAS, wenn die Datei keines nennt)', xyzChoose: '– bitte wählen –', xyzOther: 'anderer EPSG-Code …',
+    xyzNeedCrs: 'XYZ- oder LAS-Datei ohne Bezugssystem erkannt: bitte das Bezugssystem wählen oder den EPSG-Code eintippen.',
+    lasBad: 'Die Datei ist keine gültige LAS/LAZ-Datei.', lasNoPoints: 'Die Punktwolke enthält keine brauchbaren Punkte im Ausschnitt.', lasLibFail: 'Die LAZ-Bibliothek (lib/laz-perf.js) konnte nicht geladen werden.',
+    lasBigNoPin: 'Die Punktwolke ist sehr groß. Bitte zuerst auf der Startkarte einen Pin setzen: Dann wird nur der Ausschnitt um den Pin gerastert.',
+    lasTooBig: '{s} MB sind zu viel für den Browser (Grenze {m} MB). Bitte die Wolke vorher kacheln oder zuschneiden.',
+    lasInfo: 'Punktwolke {n} Punkte, Geländepunkte auf {c} m gerastert', lasInfoRaw: 'Punktwolke {n} Punkte (nicht klassifiziert), tiefster Punkt je {c}-m-Zelle',
     xyzBadEpsg: 'Ungültiger EPSG-Code (vier bis fünf Ziffern).',
     xyzFar: 'Achtung: Im gewählten System {c} liegen die Koordinaten bei Breite {lat}, Länge {lon}, also außerhalb Europas.',
-    terrainFile: 'Gelände · GeoTIFF / XYZ', buildingFile: 'Gebäude · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON)',
+    terrainFile: 'Gelände · GeoTIFF / XYZ / LAS / LAZ', buildingFile: 'Gebäude · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON)',
     noFile: 'Keine Datei', remove: 'Entfernen',
     heightRange: 'Höhenbereich', objects: 'Objekte', containers: 'Container',
     cranes: 'Krane', road: 'Baustraße',
@@ -275,7 +279,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF or XYZ (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -316,11 +320,15 @@ const STRINGS = {
     geoNote_esMdt: 'All of Spain in sheets (MTN25, COG GeoTIFF). Ceuta, Melilla and Alborán come from aerial photos (lower quality); the Canary Islands use REGCAN95.',
     geoNote_euBldgNotCityGml: 'As CityJSON (can be loaded), GeoPackage (readable as a 2D file) or OBJ (cannot).',
     geoNote_euUnreachable: 'The page could not be reached when checked.',
-    xyzCrs: 'Coordinate system for XYZ files', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
-    xyzNeedCrs: 'XYZ file detected: please choose the coordinate system or type the EPSG code.',
+    xyzCrs: 'Coordinate system for XYZ files (and LAS if the file gives none)', xyzChoose: '– please choose –', xyzOther: 'other EPSG code …',
+    xyzNeedCrs: 'XYZ or LAS file without a coordinate system detected: please choose the coordinate system or type the EPSG code.',
+    lasBad: 'The file is not a valid LAS/LAZ file.', lasNoPoints: 'The point cloud has no usable points in the area.', lasLibFail: 'The LAZ library (lib/laz-perf.js) could not be loaded.',
+    lasBigNoPin: 'The point cloud is very large. Please set a pin on the start map first: then only the area around the pin is gridded.',
+    lasTooBig: '{s} MB is too much for the browser (limit {m} MB). Please tile or clip the cloud first.',
+    lasInfo: 'point cloud {n} points, ground points gridded at {c} m', lasInfoRaw: 'point cloud {n} points (unclassified), lowest point per {c} m cell',
     xyzBadEpsg: 'Invalid EPSG code (four to five digits).',
     xyzFar: 'Warning: in the chosen system {c} the coordinates lie at latitude {lat}, longitude {lon}, outside Europe.',
-    terrainFile: 'Terrain · GeoTIFF / XYZ', buildingFile: 'Buildings · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON)',
+    terrainFile: 'Terrain · GeoTIFF / XYZ / LAS / LAZ', buildingFile: 'Buildings · CityGML / CityJSON / 2D (GPKG, SHP, GeoJSON)',
     noFile: 'No file', remove: 'Remove',
     heightRange: 'Elevation range', objects: 'Objects', containers: 'Containers',
     cranes: 'Cranes', road: 'Haul road',
@@ -2078,11 +2086,19 @@ async function onOsmToggle() {
   }
 }
 
+/* Meldungen aus der LAS-Verarbeitung sind Schlüssel (lasBad ...) und werden hier in den Text übersetzt */
+function lasErrText(e) {
+  const m = e && e.message ? e.message : String(e);
+  return /^las[A-Z][A-Za-z]+$/.test(m) ? T(m) : m;
+}
+
 function demStatusText(t) {
   let st = lastDemNames.length > 1
     ? lastDemNames.length + ' Kacheln verbunden'
     : (lastDemNames[0] || '');
   if (lastDemTiles && lastDemTiles.some(function (x) { return x.windowed; })) st += ' · ' + T('demWindow');
+  const pc = lastDemTiles && lastDemTiles.filter(function (x) { return x.pointCloud; })[0];
+  if (pc) st += ' · ' + T(pc.pointCloud.classified ? 'lasInfo' : 'lasInfoRaw').replace('{n}', (pc.pointCloud.points / 1e6 >= 1 ? (pc.pointCloud.points / 1e6).toFixed(1) + ' Mio.' : String(pc.pointCloud.points))).replace('{c}', String(pc.pointCloud.cell).replace('.', ','));
   st += ' · ' + t.nx + '×' + t.nz;
   if (t.gaps) st += ' · ' + t.gaps + ' Lücken gefüllt';
   return st;
@@ -2993,8 +3009,14 @@ async function handleDemFiles(files, isDemo) {
   const list = Array.prototype.slice.call(files || []);
   if (!list.length) return;
   const hasXyz = list.some(function (f) { return isXyzName(f.name); });
+  // LAS/LAZ: das Bezugssystem steht meist im Kopf; sonst wie bei XYZ die Wahl des Nutzers
+  let lasNeedsCrs = false;
+  for (let i = 0; i < list.length && !lasNeedsCrs; i++) {
+    if (!isLasName(list[i].name)) continue;
+    try { lasNeedsCrs = !(await lasPeekEpsg(list[i])); } catch (e) { setFileStatus('dem', lasErrText(e), 'err'); return; }
+  }
   let xyzEpsg = null;
-  if (hasXyz) {
+  if (hasXyz || lasNeedsCrs) {
     xyzEpsg = getXyzEpsg();
     if (!xyzEpsg) {
       const sel = document.getElementById('xyz-crs');
@@ -3009,21 +3031,22 @@ async function handleDemFiles(files, isDemo) {
   setFileStatus('dem', list.length === 1 ? 'Lese ' + list[0].name : 'Lese ' + list.length + ' Kacheln', 'busy');
   try {
     // Sehr große GeoTIFF-Dateien werden nicht ganz gelesen, sondern nur der Ausschnitt um den gewählten Ort (Pin oder Adresse)
-    const isBig = function (f) { return !isXyzName(f.name) && f.size > TIFF_BLOB_BYTES; };
-    const win = list.some(isBig) ? currentSiteWindow() : null;
+    const isBig = function (f) { return !isXyzName(f.name) && !isLasName(f.name) && f.size > TIFF_BLOB_BYTES; };
+    const win = list.some(function (f) { return isBig(f) || isLasName(f.name); }) ? currentSiteWindow() : null;
+    list.forEach(function (f) { if (isLasName(f.name) && f.size > LAS_MAX_BYTES) throw new Error(f.name + ': ' + T('lasTooBig').replace('{s}', (f.size / 1e6).toFixed(0)).replace('{m}', String(LAS_MAX_BYTES / 1e6))); });
     // Größen prüfen, bevor die erste Datei in den Speicher gelesen wird (die großen entscheidet der Fensterleser nach dem Kopf)
     checkTiffFiles(list.filter(function (f) { return !isBig(f); }).map(function (f) { return { name: f.name, size: f.size }; }));
     const items = [];
     for (let i = 0; i < list.length; i++) {
-      items.push(isBig(list[i]) ? { blob: list[i], name: list[i].name, window: win } : { buffer: await list[i].arrayBuffer(), name: list[i].name });
+      items.push(isBig(list[i]) ? { blob: list[i], name: list[i].name, window: win } : { buffer: await list[i].arrayBuffer(), name: list[i].name, window: win });
     }
     lastDemTiles = await readTiffTiles(items, xyzEpsg);
     lastDemNames = items.map(function (x) { return x.name; });
-    lastXyzLoad = hasXyz ? { files: list, isDemo: isDemo } : null;
+    lastXyzLoad = (hasXyz || lasNeedsCrs) ? { files: list, isDemo: isDemo } : null;
     const t = gridTiles(lastDemTiles, GRID_MAX);
     // XYZ ohne Bezugssystem in der Datei: liegt das Ergebnis weit weg von Europa, stimmt der Code vermutlich nicht
     let crsWarn = '';
-    if (hasXyz) {
+    if (hasXyz || lasNeedsCrs) {
       const g = crsToLonLat(t.epsg, t.originE, t.originN);
       if (g && (g.lat < 34 || g.lat > 72 || g.lon < -12 || g.lon > 45)) {
         crsWarn = ' ' + T('xyzFar').replace('{c}', 'EPSG:' + t.epsg).replace('{lat}', g.lat.toFixed(1)).replace('{lon}', g.lon.toFixed(1));
@@ -3060,8 +3083,8 @@ async function handleDemFiles(files, isDemo) {
       }
     }
   } catch (err) {
-    setFileStatus('dem', err.message, 'err');
-    setStatus('GeoTIFF nicht lesbar: ' + err.message, true);
+    setFileStatus('dem', lasErrText(err), 'err');
+    setStatus('GeoTIFF nicht lesbar: ' + lasErrText(err), true);
   }
 }
 

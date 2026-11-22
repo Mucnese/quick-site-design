@@ -14,7 +14,7 @@ visible: whether the radius reaches, whether two crane radii overlap, whether
 the office block fits the available area, and how the haul road sits in the
 terrain. It does not replace detailed design.
 
-Technically one HTML file of roughly 150 KB plus four libraries next to it. No
+Technically one HTML file of roughly 150 KB plus five libraries next to it. No
 server, no installation, no build step. Once opened, all data stays in the
 browser.
 
@@ -25,7 +25,7 @@ browser.
 ## What it does
 
 **Geospatial data**
-- GeoTIFF terrain models, several tiles at once. Pixels from all tiles are
+- GeoTIFF terrain models and **point clouds (LAS, LAZ)**, whose ground points are averaged into a grid; several tiles at once. Pixels from all tiles are
   averaged into a common grid, so differing resolutions and overlaps are not a
   problem.
 - CityGML LOD2 and **CityJSON** (also CityJSONSeq and the feature lists of the 3DBAG API), also as a batch. For CityJSON the
@@ -235,7 +235,7 @@ Bulgaria and Cyprus; there the map switches itself off with a message.
 | Belgium | [Flanders · 1 m](https://www.vlaanderen.be/datavindplaats/catalogus/digitaal-hoogtemodel-vlaanderen-ii-dtm-raster-1-m), [Wallonia · 0.5 m](https://geoportail.wallonie.be/catalogue/a004e570-99d6-4fe5-b83d-49b774409278.html) | GeoTIFF | [3D GRB · LoD1](https://www.vlaanderen.be/digitaal-vlaanderen/onze-diensten-en-platformen/basiskaart-vlaanderen-grb/3d-grb) (Flanders only), shapefile/KML | Flanders: model licence for free reuse; Wallonia: CC BY 4.0 |
 | Cyprus | [Cyprus · 1 m](https://www.data.gov.cy/el/dataset/ypsometria-inspire) | not clear | — | CC BY 4.0 |
 | Czechia | [ČÚZK DMR 4G · 5 m](https://geoportal.cuzk.cz/) | not clear | — | CC BY 4.0 |
-| Denmark | [Højdemodel Terræn · 0.4 m](https://dataforsyningen.dk/data/930) | not clear | — | CC BY 4.0 |
+| Denmark | [Højdemodel Terræn · 0.4 m](https://dataforsyningen.dk/data/930) | GeoTIFF | — | CC BY 4.0 |
 | Estonia | [Maa-amet · 1 m](https://geoportaal.maaruum.ee/eng/spatial-data/elevation-data-p308.html) | GeoTIFF (also ASCII, XYZ) | [Maa- ja Ruumiamet · LoD2, all of Estonia](https://geoportaal.maaruum.ee/eng/Download-3D-data-p837.html), CityGML, OBJ, GDB | open data licence of the agency |
 | Finland | [Maanmittauslaitos · 2 m](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/elevation-model-2-m) | GeoTIFF (also ASCII) | [Buildings 3D · LoD2](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/buildings-3d), CityGML, CC BY 4.0 (so far example areas only) | CC BY 4.0 |
 | France | [MNT LiDAR HD · 0.5 m](https://www.data.gouv.fr/datasets/mnt-lidar-hd) (as of 6 Sep 2026 about 78 % of the area, French Guiana not in the programme; [coverage by municipality](https://www.data.gouv.fr/datasets/carte-du-lidar-hd-de-lign-par-commune-date-du-vol-et-couverture-en-france)), [RGE ALTI · 1 m](https://geoservices.ign.fr/rgealti) | GeoTIFF / not clear | [IGN LiDAR HD, 3D buildings](https://www.ign.fr/institut/programme-lidar-hd-vers-une-nouvelle-cartographie-3d-du-territoire) (LoD2, beta, not everywhere) | Licence Ouverte 2.0 |
@@ -380,7 +380,10 @@ quick-site-design/
 │   ├── geotiff.js
 │   ├── web-ifc-api-iife.js   IFC reader (loaded only on the first IFC import)
 │   ├── web-ifc.wasm
+│   ├── laz-perf.js       LAZ decompressor (loaded only on LAZ import)
+│   ├── laz-perf.wasm
 │   ├── LICENSE-web-ifc.txt
+│   ├── LICENSE-laz-perf.txt
 │   └── LIESMICH.txt      which file comes from where
 ├── demo/
 │   ├── demo_dgm.tif      terrain model for the demo link
@@ -410,7 +413,7 @@ Details are in `PROJEKT.md` (German).
 
 ## Running it yourself
 
-The application requires four libraries:
+The application requires five libraries:
 
 | Library | Licence |
 |---|---|
@@ -418,8 +421,9 @@ The application requires four libraries:
 | OrbitControls (three.js examples) | MIT |
 | geotiff.js 2.1.3 | MIT |
 | web-ifc 0.0.79 (IFC import only) | MPL-2.0 |
+| laz-perf 0.0.7 (LAZ point clouds only) | Apache-2.0 |
 
-All four are compatible with the GPLv3 and live in the `lib/` folder. They are
+All five are compatible with the GPLv3 and live in the `lib/` folder. They are
 **not** loaded from a CDN, so opening the page creates no connections to third
 parties and the application also works offline.
 

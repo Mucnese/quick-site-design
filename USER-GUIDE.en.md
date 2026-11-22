@@ -72,6 +72,7 @@ locked.
 |---|---|---|
 | Terrain | **GeoTIFF** (`.tif`, `.tiff`) | the coordinate system is in the file |
 | Terrain | **XYZ text** (`.xyz`, `.txt`, `.csv`) | easting, northing, height on a regular grid. The file has no coordinate system: choose it beforehand in the **Data** window under “Coordinate system for XYZ files” or type an EPSG code. If you change the choice later, the application re-reads the file with the new system and the terrain moves there |
+| Terrain | **Point cloud** (`.las`, `.laz`) | LAS 1.0 to 1.4, LAZ (compressed). The ground points (class 2, plus water) are averaged into a height grid (cell size from the point density: 0.5 to 10 m), small gaps are filled; vegetation, buildings and noise are dropped. Without classification the lowest point per cell is used. The coordinate system is usually in the file; if not, you choose it as for XYZ. Files over 3 km extent need a pin (only the area is gridded), limit 300 MB per file |
 | Buildings | **CityGML** (`.gml`, `.xml`) | LoD2, the axis order is detected |
 | Buildings (2D) | **GeoPackage** (`.gpkg`) | area layer with height attributes; also over 2 GB (for example the BEV model “DLM Bauwerke”): only the area around the terrain is read. With several area tables you choose the table. The coordinate system is in the file |
 | Buildings (2D) | **Shapefile** (`.shp` together with `.dbf`, `.prj`, `.cpg`) | choose all files at once; without `.prj` the coordinate system of the terrain is assumed, otherwise you choose it yourself |
@@ -88,7 +89,7 @@ about half a second; the data window says “extract”. Without a chosen place,
 
 **Size.** Smaller files are read completely into memory. Before reading the tool therefore rejects:
 files over 1 GB (for GeoTIFF over 300 MB the extract applies, see above), tiles over 100 million pixels, and more than 150 million pixels (or 2 GB) in
-total; for XYZ more than 30 million points; for CityGML more than 300 MB in total; for IFC more than 300 MB per file. The message names the file and the number. If you prefer
+total; for XYZ more than 30 million points; for LAS/LAZ more than 300 MB per file; for CityGML more than 300 MB in total; for IFC more than 300 MB per file. The message names the file and the number. If you prefer
 to cut out an area yourself first, you can use
 `gdal_translate -projwin <left> <top> <right> <bottom> -of GTiff input.tif cutout.tif`.
 
@@ -358,7 +359,8 @@ excavation lies below the terrain surface.
 |---|---|
 | Building blocks are grey | Load a terrain model first |
 | “too large for the browser” | Cut out an area (section 1, “Size”) |
-| XYZ file does not load | Choose the coordinate system under “Coordinate system for XYZ files” or type an EPSG code |
+| XYZ or LAS file does not load | Choose the coordinate system under “Coordinate system for XYZ files” or type an EPSG code |
+| LAS/LAZ: “set a pin” | the cloud is larger than 3 km: set a pin on the start map, then choose the file |
 | Warning “outside Europe” | The EPSG code does not match the coordinates: choose the right code |
 | Buildings are missing | They lie outside the terrain, or the coordinate system of the CityGML file differs |
 | Map does not load | Offline or blocked; or the coordinate system is not supported |

@@ -7,6 +7,16 @@ Alle nennenswerten Änderungen an Quick-Site-Design, neueste zuerst. Das Format 
 
 Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und Datenschutz**.
 
+## 2026-11-22
+
+### Neu
+- **Punktwolken (LAS und LAZ) als Geländemodell:** Aus den Geländepunkten (Klasse 2, dazu Wasser) wird ein Höhenraster gemittelt, kleine Lücken werden gefüllt, Vegetation, Gebäude und Rauschen fallen weg
+  (ohne Klassifizierung gilt der tiefste Punkt je Zelle). Bezugssystem aus der Datei (GeoKey oder WKT), sonst Wahl wie bei XYZ. Wolken über 3 km brauchen einen Pin (nur der Ausschnitt wird gerastert).
+  Neue Bibliothek `laz-perf` (Apache-2.0, nur für LAZ, wird erst dabei geladen). Geprüft im Browser mit 4,2 Mio. Punkten (25 MB LAZ): unter 2 Sekunden. LAS 1.2 und LAZ 1.2 und 1.4 sind getestet.
+
+### Geändert
+- **Dänemark:** Das Höhenmodell ist als GeoTIFF eingetragen (laut Hinweis; die Seite lädt per Skript und ließ sich hier nicht auslesen). Datenschutzerklärung: nennt jetzt fünf Bibliotheken.
+
 ## 2026-11-21
 
 ### Geändert

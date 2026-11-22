@@ -116,6 +116,17 @@ function fakeFile(name, content) {
 
 /* ---------- Gemeinsamen Scope aufbauen (wie der Browser) ---------- */
 
+/* laz-perf für die Tests: dieselbe Datei wie im Browser (lib/laz-perf.js), mit dem wasm direkt übergeben statt per Netzwerk */
+const LAZ_SANDBOX = (function () {
+  const sb = { window: {}, document: { currentScript: null }, location: { href: 'http://x/' }, console: console, WebAssembly: WebAssembly, TextDecoder: TextDecoder,
+               URL: URL, setTimeout: setTimeout, clearTimeout: clearTimeout, performance: performance, Promise: Promise };
+  vm.createContext(sb);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../lib/laz-perf.js'), 'utf8'), sb);
+  return sb;
+})();
+const LAZ_WASM = fs.readFileSync(path.join(__dirname, '../lib/laz-perf.wasm'));
+function createLazPerfForTests(opts) { return LAZ_SANDBOX.createLazPerf(Object.assign({ wasmBinary: LAZ_WASM }, opts)); }
+
 function newScope() {
   const document = makeDocument();
   const sandbox = {
@@ -128,6 +139,7 @@ function newScope() {
     THREE: THREE,
     DOMParser: DOMParser,
     GeoTIFF: fakeGeoTIFF(20, 20, 500, 692000, 5336020),
+    createLazPerf: createLazPerfForTests,
     Blob: function (parts, opts) { this.parts = parts; this.type = opts && opts.type; },
     URL: { createObjectURL: function () { return 'blob:fake'; }, revokeObjectURL: function () {} },
     document: document,
@@ -940,6 +952,118 @@ await test('2D-Gebäude: Shapefile mit .dbf/.prj und GeoPackage über den Datei-
   await s3.handleGmlFiles([{ name: 'haus.city.json', size: 100, text: function () { return Promise.resolve(JSON.stringify(doc)); } }]);
   assert.strictEqual(vm.runInContext('lastFootprints', s3), null);
   assert.strictEqual(s3.document.getElementById('fp-panel').style.display, 'none');
+});
+
+/* ---------- Punktwolken (LAS, LAZ) als Geländemodell ---------- */
+
+/* Gelände der Testwolken: z = 500 + 0,05 * (E - 692000) + 3 * sin((N - 5336000) / 20) */
+const lasTruth = function (e, n) { return 500 + 0.05 * (e - 692000) + 3 * Math.sin((n - 5336000) / 20); };
+function lasBytes(name) { const b = fs.readFileSync(path.join(FX_DIR, name)); return b.buffer.slice(b.byteOffset, b.byteOffset + b.length); }
+function lasCheckTile(t, tol, label) {
+  // Mitte jeder Zelle gegen die bekannte Fläche (Rand und Lücken auslassen)
+  let n = 0, worst = 0;
+  for (let r = 2; r < t.H - 2; r += 3) for (let c = 2; c < t.W - 2; c += 3) {
+    const v = t.band[r * t.W + c];
+    if (v === t.nodata) continue;
+    const e = t.originX + (c + 0.5) * t.resX, nn = t.originY - (r + 0.5) * t.resY;
+    worst = Math.max(worst, Math.abs(v - lasTruth(e, nn))); n++;
+  }
+  assert.ok(n > 25, label + ': genug Zellen gelesen: ' + n);
+  assert.ok(worst < tol, label + ': größte Abweichung ' + worst.toFixed(3) + ' m');
+}
+
+await test('LAS/LAZ: Kopf nennt Format, Anzahl und Bezugssystem (GeoKey), auch bei LAS 1.4 und ohne Bezugssystem', function () {
+  const s = newScope();
+  const h = function (n) { return s.lasHeader(new Uint8Array(lasBytes(n))); };
+  const a = h('cloud_f1.las'), b = h('cloud_f1.laz'), c = h('cloud_f6.laz'), d = h('cloud_nocrs.las');
+  assert.strictEqual(a.version + '/' + a.format + '/' + a.compressed + '/' + a.count + '/' + a.epsg, '1.2/1/false/3860/25832');
+  assert.strictEqual(b.compressed + '/' + b.count + '/' + b.epsg, 'true/24100/25832');
+  assert.strictEqual(c.version + '/' + c.format + '/' + c.compressed + '/' + c.count + '/' + c.epsg, '1.4/6/true/24100/25832');
+  assert.strictEqual(d.epsg, null, 'ohne GeoKeys: kein Bezugssystem');
+  assert.ok(Math.abs(b.scale[0] - 0.01) < 1e-12 && Math.abs(b.min[0] - 692000) < 0.1 && b.max[0] > 692099);
+  assert.throws(function () { s.lasHeader(new Uint8Array(300)); }, /lasBad/);
+  assert.throws(function () { s.lasHeader(new Uint8Array(5)); }, /lasBad/);
+});
+
+await test('LAS/LAZ: Geländepunkte werden zu einem Raster, Vegetation und Rauschen fallen weg (LAS, LAZ 1.2 und LAZ 1.4)', async function () {
+  const s = newScope();
+  for (const f of ['cloud_f1.las', 'cloud_f1.laz', 'cloud_f6.laz']) {
+    const t = await s.readLasTile(lasBytes(f), f, null, 0, null);
+    assert.strictEqual(t.epsg, 25832, f);
+    assert.ok(t.pointCloud.classified, f + ': klassifiziert');
+    assert.strictEqual(t.resX, 2, f + ': Rasterweite aus der Punktdichte (2,4 Punkte je m², halb Gelände: 2 m)');
+    lasCheckTile(t, 0.3, f);                                   // Vegetation (6 bis 15 m darüber) und Rauschen (150 m) wären weit daneben
+    assert.ok(t.pointCloud.ground > 0 && t.pointCloud.used >= t.pointCloud.ground, f);
+  }
+  const t = await s.readLasTile(lasBytes('cloud_f1.laz'), 'x.laz', null, 0, null);
+  assert.ok(t.W === 50 && t.H === 50 && t.nodata === -9999, t.W + ' x ' + t.H);
+  assert.ok(Math.abs(t.originX - 692000) < 0.5 && Math.abs(t.originY - 5336100) < 0.5, 'Ecke: ' + t.originX + ' / ' + t.originY);
+});
+
+await test('LAS/LAZ: nicht klassifizierte Wolke nimmt den tiefsten Punkt je Zelle, Datei ohne Bezugssystem braucht die Wahl, kaputte Datei meldet lasBad', async function () {
+  const s = newScope();
+  const u = await s.readLasTile(lasBytes('cloud_unclassified.laz'), 'u.laz', null, 0, null);
+  assert.strictEqual(u.pointCloud.classified, false);
+  lasCheckTile(u, 0.6, 'unklassifiziert');
+  await assert.rejects(s.readLasTile(lasBytes('cloud_nocrs.las'), 'n.las', null, 0, null), /Bezugssystem/);
+  const t = await s.readLasTile(lasBytes('cloud_nocrs.las'), 'n.las', 25832, 0, null);
+  assert.strictEqual(t.epsg, 25832, 'gewähltes Bezugssystem');
+  await assert.rejects(s.readLasTile(new ArrayBuffer(400), 'k.las', 25832, 0, null), /lasBad/);
+  // Lücken werden aus den Nachbarn gefüllt, weit entfernte bleiben NoData
+  const band = new Float32Array([1, -9999, 3, -9999, -9999, -9999, -9999, -9999, -9999, -9999, -9999, 9]);
+  const f = s.lasFillGaps(band, 4, 3, -9999, 1);
+  assert.strictEqual(f[1], 2, 'Mittel der Nachbarn 1 und 3');
+  assert.strictEqual(f[7], -9999 === f[7] ? -9999 : f[7]);
+  assert.strictEqual(s.lasFillGaps(band, 4, 3, -9999, 0)[1], -9999, 'ohne Durchgänge bleibt alles');
+});
+
+await test('LAS/LAZ: sehr große Wolke braucht einen Pin und wird auf den Ausschnitt begrenzt; liegt der Pin daneben, kommt null', async function () {
+  const s = newScope();
+  const ab = lasBytes('cloud_f1.las');
+  const dv = new DataView(ab);
+  dv.setFloat64(179, 692000 + 20000, true);                    // MaxX und MaxY des Kopfes auf 20 km dehnen (Punkte bleiben, wo sie sind)
+  dv.setFloat64(195, 5336000 + 20000, true);
+  await assert.rejects(s.readLasTile(ab, 'g.las', null, 0, null), /lasBigNoPin/);
+  const g = s.crsToLonLat(25832, 692020, 5336020);
+  const t = await s.readLasTile(ab, 'g.las', null, 0, { lon: g.lon, lat: g.lat, size: 30 });
+  assert.strictEqual(t.windowed, true);
+  assert.ok(t.W * t.resX <= 31 && t.W * t.resX >= 29, 'Ausschnitt ca. 30 m: ' + t.W * t.resX);
+  assert.ok(Math.abs(t.originX - (692020 - 15)) < 1e-6, 'Ausschnitt um den Pin');
+  const far = s.crsToLonLat(25832, 900000, 5500000);
+  assert.strictEqual(await s.readLasTile(ab, 'g.las', null, 0, { lon: far.lon, lat: far.lat, size: 30 }), null);
+});
+
+await test('LAS/LAZ: über den Datei-Dialog wird daraus das Gelände; ohne Bezugssystem erst nach der Wahl, danach neu mit anderem System', async function () {
+  const s = newScope();
+  const g = function (id) { return s.document.getElementById(id); };
+  s.buildXyzCrsOptions();
+  await s.handleDemFiles([fxFile('cloud_f1.laz')]);
+  const t = vm.runInContext('TERRAIN', s);
+  assert.ok(t && t.epsg === 25832, g('dem-status').textContent);
+  assert.ok(g('dem-status').textContent.indexOf('Punktwolke') > 0 && g('dem-status').className.indexOf('ok') > 0, g('dem-status').textContent);
+  // Höhe in der Mitte stimmt mit der Fläche überein
+  const mid = s.worldToUTM(0, 0);
+  assert.ok(Math.abs(s.getAbsoluteHeightAt(0, 0) - lasTruth(mid.e, mid.n)) < 0.5, 'Mitte ' + s.getAbsoluteHeightAt(0, 0) + ' / ' + lasTruth(mid.e, mid.n));
+  // ohne Bezugssystem: vorgemerkt, wie bei XYZ
+  const s2 = newScope();
+  const g2 = function (id) { return s2.document.getElementById(id); };
+  s2.buildXyzCrsOptions();
+  await s2.handleDemFiles([fxFile('cloud_nocrs.las')]);
+  assert.strictEqual(g2('dem-status').textContent, s2.T('xyzNeedCrs'));
+  assert.strictEqual(vm.runInContext('TERRAIN', s2), null);
+  g2('xyz-crs').value = '25832';
+  s2.onXyzCrsChanged();
+  for (let i = 0; i < 8; i++) await new Promise(function (r) { setImmediate(r); });
+  assert.ok(vm.runInContext('TERRAIN', s2) && vm.runInContext('TERRAIN.epsg', s2) === 25832, g2('dem-status').textContent);
+  g2('xyz-crs').value = '25833';
+  s2.onXyzCrsChanged();
+  for (let i = 0; i < 8; i++) await new Promise(function (r) { setImmediate(r); });
+  assert.strictEqual(vm.runInContext('TERRAIN.epsg', s2), 25833, 'LAS ohne Bezugssystem lässt sich neu lesen');
+  // kaputte Datei: Meldung auf Deutsch statt Schlüssel
+  await s2.handleDemFiles([{ name: 'x.las', size: 400, arrayBuffer: function () { return Promise.resolve(new ArrayBuffer(400)); }, slice: function (a, b) { return { arrayBuffer: function () { return Promise.resolve(new ArrayBuffer(Math.min(400, b - a))); } }; } }]);
+  assert.strictEqual(g2('dem-status').textContent, s2.T('lasBad'));
+  assert.ok(g2('dem-status').className.indexOf('err') > 0);
+  assert.ok(g('dem-status') && s.__bridge.STRINGS.en.lasBad && s.__bridge.STRINGS.de.lasLibFail);
 });
 
 await test('Frankreich und Spanien: genaue Hinweise statt "nicht überall", Kanaren (REGCAN95) stimmen mit GDAL überein', async function () {

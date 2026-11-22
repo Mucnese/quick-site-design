@@ -76,6 +76,7 @@ gesperrt.
 |---|---|---|
 | Gelände | **GeoTIFF** (`.tif`, `.tiff`) | Bezugssystem steht in der Datei |
 | Gelände | **XYZ-Text** (`.xyz`, `.txt`, `.csv`) | Rechtswert, Hochwert, Höhe auf einem regelmäßigen Raster. Das Bezugssystem fehlt in der Datei: vorher im Fenster **Daten** unter „Bezugssystem für XYZ-Dateien“ wählen oder einen EPSG-Code eintippen. Ändert man die Wahl später, liest die Anwendung die Datei mit dem neuen System neu und das Gelände wandert dorthin |
+| Gelände | **Punktwolke** (`.las`, `.laz`) | LAS 1.0 bis 1.4, LAZ (komprimiert). Aus den Geländepunkten (Klasse 2, dazu Wasser) wird ein Höhenraster gemittelt (Rasterweite aus der Punktdichte: 0,5 bis 10 m), kleine Lücken werden gefüllt; Vegetation, Gebäude und Rauschen fallen weg. Ohne Klassifizierung gilt der tiefste Punkt je Zelle. Das Bezugssystem steht meist in der Datei; fehlt es, wählst du es wie bei XYZ. Dateien über 3 km Ausdehnung brauchen einen Pin (nur der Ausschnitt wird gerastert), Grenze 300 MB je Datei |
 | Gebäude | **CityGML** (`.gml`, `.xml`) | LoD2, die Achsenreihenfolge wird erkannt |
 | Gebäude (2D) | **GeoPackage** (`.gpkg`) | Flächenebene mit Höhenattributen; auch über 2 GB (zum Beispiel das BEV-Modell „DLM Bauwerke“): gelesen wird nur der Ausschnitt um das Gelände. Gibt es mehrere Flächentabellen, wählst du die Tabelle. Das Bezugssystem steht in der Datei |
 | Gebäude (2D) | **Shapefile** (`.shp` zusammen mit `.dbf`, `.prj`, `.cpg`) | alle Dateien gleichzeitig wählen; ohne `.prj` gilt das Bezugssystem des Geländes, sonst wählst du es selbst |
@@ -92,7 +93,7 @@ einem Ort außerhalb der Datei oder einem Ausschnitt über 100 Millionen Pixel e
 
 **Größe.** Kleinere Dateien liest das Tool ganz in den Speicher. Es lehnt deshalb vor dem Lesen ab:
 Dateien über 1 GB (bei GeoTIFF über 300 MB gilt der Ausschnitt, s. o.), Kacheln über 100 Millionen Pixel und mehr als 150 Millionen Pixel (oder 2 GB)
-zusammen; bei XYZ mehr als 30 Millionen Punkte; bei CityGML insgesamt mehr als 300 MB; bei IFC mehr als 300 MB je Datei. Die Meldung nennt die Datei und die Zahl. Wer
+zusammen; bei XYZ mehr als 30 Millionen Punkte; bei LAS/LAZ mehr als 300 MB je Datei; bei CityGML insgesamt mehr als 300 MB; bei IFC mehr als 300 MB je Datei. Die Meldung nennt die Datei und die Zahl. Wer
 lieber selbst vorher einen Ausschnitt schneidet, kann `gdal_translate -projwin <links> <oben> <rechts> <unten> -of GTiff eingabe.tif ausschnitt.tif` nehmen.
 
 ---
@@ -363,7 +364,8 @@ unter der Geländefläche.
 |---|---|
 | Bausteine sind grau | Erst ein Geländemodell laden |
 | „zu groß für den Browser“ | Ausschnitt schneiden (Abschnitt 1, „Größe“) |
-| XYZ-Datei wird nicht geladen | Bezugssystem unter „Bezugssystem für XYZ-Dateien“ wählen oder EPSG-Code eintippen |
+| XYZ- oder LAS-Datei wird nicht geladen | Bezugssystem unter „Bezugssystem für XYZ-Dateien“ wählen oder EPSG-Code eintippen |
+| LAS/LAZ: „Pin setzen“ | die Wolke ist größer als 3 km: auf der Startkarte einen Pin setzen, dann die Datei wählen |
 | Warnung „außerhalb Europas“ | Der EPSG-Code passt nicht zu den Koordinaten: richtigen Code wählen |
 | Gebäude fehlen | Sie liegen außerhalb des Geländes, oder das Bezugssystem der CityGML-Datei weicht ab |
 | Karte lädt nicht | Offline oder von einer Sperre blockiert; oder das Bezugssystem wird nicht unterstützt |
