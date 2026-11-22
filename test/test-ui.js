@@ -376,12 +376,43 @@ async function scopeWithTerrain() {
 }
 
 function dragRect(s, ax, az, bx, bz) {
+  s.__bridge.camera.position.set(0, 300, 0.001);              // Norden oben: das Rechteck ist achsenparallel wie bisher
+  s.__bridge.controls.target.set(0, 0, 0);
   s.startRectExport();
   setTerrainHit(s, ax, 0, az);
   s.onCanvasPointerDown({ button: 0, clientX: 0, clientY: 0, pointerId: 1 });
   setTerrainHit(s, bx, 0, bz);
   s.onCanvasPointerUp({ clientX: 0, clientY: 0, pointerId: 1 });
 }
+
+await test('IFC-Auswahl: Das Rechteck richtet sich nach der Ansicht, bei Norden oben achsenparallel, bei gedrehter Ansicht gedreht; Export schneidet genau diese Fläche', async function () {
+  const s = await scopeWithTerrain();
+  const geoOf = function () { return s.getExportGeometry(); };
+  // Norden oben: wie bisher
+  dragRect(s, -5, -4, 5, 4);
+  let r = s.getExportRect();
+  assert.ok(Math.abs(r.ux - 1) < 1e-9 && Math.abs(r.uz) < 1e-9, 'u = Ost');
+  assert.ok(Math.abs(r.minX + 5) < 1e-9 && Math.abs(r.maxX - 5) < 1e-9 && Math.abs(r.minZ + 4) < 1e-9 && Math.abs(r.maxZ - 4) < 1e-9);
+  // Ansicht gedreht (Kamera östlich vom Ziel, blickt nach Westen): u zeigt nach Süden (Bildschirm rechts = Süd)
+  const cam = s.__bridge.camera, ctl = s.__bridge.controls;
+  ctl.target.set(0, 0, 0);
+  cam.position.set(300, 300, 0.001);
+  s.startRectExport();
+  setTerrainHit(s, -6, 0, -2);
+  s.onCanvasPointerDown({ button: 0, clientX: 0, clientY: 0, pointerId: 1 });
+  setTerrainHit(s, 6, 0, 2);
+  s.onCanvasPointerUp({ clientX: 0, clientY: 0, pointerId: 1 });
+  r = s.getExportRect();
+  assert.ok(r, 'Rechteck gesetzt: ' + s.document.getElementById('status').textContent);
+  assert.ok(Math.abs(r.ux) < 1e-4 && Math.abs(r.uz + 1) < 1e-4, 'Kamera im Osten: Bildschirm rechts = Nord, u = (0, -1): ' + r.ux + ' / ' + r.uz);
+  // Ecken sind im Rahmen ein Rechteck, der umschließende Kasten ist größer als die Auswahl
+  assert.ok(Math.abs((r.u1 - r.u0) - 4) < 1e-3 && Math.abs((r.v1 - r.v0) - 12) < 1e-3, 'Maße im Rahmen: ' + (r.u1 - r.u0) + ' x ' + (r.v1 - r.v0));
+  // alle Geländedreiecke liegen innerhalb des gedrehten Rechtecks
+  const inside = function (p) { const u = p[0] * r.ux + p[2] * r.uz, v = -p[0] * r.uz + p[2] * r.ux; return u >= r.u0 - 1e-6 && u <= r.u1 + 1e-6 && v >= r.v0 - 1e-6 && v <= r.v1 + 1e-6; };
+  const g = geoOf();
+  assert.ok(g.terrain.length > 0 && g.terrain.every(function (t) { return inside(t.a) && inside(t.b) && inside(t.c); }), 'Gelände nur innerhalb des gedrehten Rechtecks');
+  assert.strictEqual(s.document.getElementById('ifc-extent').textContent, '4 × 12 m', 'Maße im Panel aus dem gedrehten Rechteck');
+});
 
 await test('Ausschnitt wählen: aktiviert den Rechteckmodus und sperrt Drehen/Verschieben, nicht das Zoomen', async function () {
   const s = await scopeWithTerrain();

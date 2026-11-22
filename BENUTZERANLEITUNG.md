@@ -316,7 +316,7 @@ jeder Baustein ist ein eigenes Bauteil). Die Teile tragen **Farben**: Bausteine 
 unter der Geländefläche.
 
 1. Auf **IFC Export** klicken. Die Ansicht wechselt in die Draufsicht.
-2. Auf dem Gelände ein **Rechteck aufziehen**. Zoomen ist währenddessen möglich.
+2. Auf dem Gelände ein **Rechteck aufziehen**. Zoomen ist währenddessen möglich. Die Ansicht geht in die Draufsicht, **dreht sich aber nicht nach Norden**, und das Rechteck richtet sich nach dem Bildschirm: Ist die Ansicht gedreht, ist es gegen Norden gedreht, und der Export schneidet genau diese gedrehte Fläche aus (Gelände, Gebäude, Bausteine). Die Koordinaten in der Datei bleiben im Bezugssystem, nur der Ausschnitt ist gedreht; „Ausdehnung“ nennt die Kantenlängen des Rechtecks.
 3. Im Fenster **IFC-Export** erscheinen Ausdehnung und Koordinatenbezug. Unter **Koordinaten**
    wählst du, wie die Lage in die Datei kommt: **absolut im Bezugssystem** (Voreinstellung:
    Rechtswert, Hochwert und Höhe ü. NHN stehen direkt im Modell, sichtbar in jedem Programm)

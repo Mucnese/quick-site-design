@@ -310,7 +310,7 @@ on by default; every block is a building element of its own). The parts carry **
 excavation lies below the terrain surface.
 
 1. Click **IFC export**. The view switches to the top view.
-2. **Drag a rectangle** on the terrain. Zooming is possible meanwhile.
+2. **Drag a rectangle** on the terrain. Zooming is possible meanwhile. The view goes to the top view but **does not turn to north**, and the rectangle follows the screen: if the view is turned, it is turned against north, and the export cuts out exactly this turned area (terrain, buildings, blocks). The coordinates in the file stay in the coordinate system, only the cut-out is turned; “Extent” gives the edge lengths of the rectangle.
 3. The **IFC export** window shows the extent and the coordinate reference. Under **Coordinates**
    you choose how the position gets into the file: **absolute in the CRS** (default: easting,
    northing and height above sea level are written directly into the model, visible in any

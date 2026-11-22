@@ -10,7 +10,8 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 ## 2026-11-22
 
 ### Geändert
-- **IFC-Export dreht nicht mehr nach Norden:** Beim Start des Rechtecks wechselt die Ansicht in die Draufsicht, behält aber ihre Blickrichtung. Die Taste „2D“ dreht wie bisher Norden nach oben.
+- **IFC-Export dreht nicht mehr nach Norden, das Rechteck folgt dem Bildschirm:** Beim Start des Rechtecks wechselt die Ansicht in die Draufsicht, behält aber ihre Blickrichtung (auch beim Einrahmen danach). Das aufgezogene Rechteck richtet sich nach dem Bildschirm,
+  ist bei gedrehter Ansicht also gegen Norden gedreht; der Export schneidet genau diese Fläche aus (Gelände, Gebäude, Bausteine, mit glatten Kanten). Die Koordinaten im IFC bleiben achsenparallel im Bezugssystem. Bei Norden oben ändert sich nichts. Die Taste „2D“ dreht wie bisher Norden nach oben.
 - **Datenfenster übersichtlicher:** Gelände, Gebäude und Bauwerk sind einklappbar (Klick auf die Überschrift, ▾/▸). Eine geladene Datei klappt von selbst zu und zeigt nur noch die Statuszeile;
   Fehler und leere Abschnitte bleiben offen, ebenso die 2D-Einstellungen der Gebäude. Die Auswahl des Bezugssystems für XYZ und LAS erscheint nur noch, wenn sie gebraucht wird.
 

@@ -73,6 +73,10 @@ Sitzung. Die Datenschutzerklärung sagt das ausdrücklich zu.
 **Mausrad (3D-Ansicht).** `onCanvasWheel` setzt `controls.zoomSpeed` je Ereignis so (`linearZoomSpeed`), dass der Abstand um eine feste Strecke wächst oder schrumpft
 (`wheelStepMeters`: Geländekante / 60, mindestens 5 m); `lib/OrbitControls.js` bleibt unverändert. Der Listener hängt am `window` (Capture), damit er vor OrbitControls läuft.
 
+**Auswahlrechteck für den IFC-Export.** `groundFrameFromCamera` liefert die Bildschirmrichtung (u rechts, v unten) im Grundriss, `orientedRect(a, b, frame)` das Rechteck (u0..v1, `corners`, umschließender Kasten `minX..maxZ`); bei Norden oben ist es das alte
+achsenparallele Rechteck. `terrainGridInRect`, `clipTrianglesToRect`, `collectExportObjects` (`frameTouchesBox`, Trennachsenprobe) und `collectExportGeometry` nehmen den Rahmen als letzten Parameter; der Rahmen wird beim pointerdown gesetzt (`rectFrame`).
+Beim IFC bleibt die Geometrie achsenparallel (Ursprung = umschließender Kasten); gedreht ist nur der Ausschnitt. `frameRect` behält die Blickrichtung.
+
 **Draufsicht.** `setTopView(keepHeading)`: ohne Angabe Norden oben (Taste „2D“), mit `true` bleibt die Blickrichtung (IFC-Export, `startRectExport`).
 
 **Datenfenster.** `.file-row` (`#row-dem`, `#row-gml`, `#ifc-row`) klappt über die Überschrift (`toggleFileRow`, `setFileRowCollapsed`, nur `className`); `setFileStatus` klappt bei `ok` zu (Gebäude mit `lastFootprints` bleiben offen),

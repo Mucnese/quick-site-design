@@ -6375,12 +6375,47 @@ function radiusConflicts() {
    IFC-Export (Rechteckauswahl in der 2D-Ansicht)
    ========================================================= */
 
+/* Rechteck im Rahmen der Ansicht: Die Auswahl richtet sich nach dem Bildschirm, nicht nach Norden. Der Rahmen hat die Achse u (auf dem
+   Bildschirm nach rechts, als Richtung (ux, uz) im Grundriss) und v senkrecht dazu (auf dem Bildschirm nach unten, (-uz, ux)). Bei Norden oben
+   ist u = Ost (1, 0) und v = Süd (0, 1): dann ist es das gewohnte achsenparallele Rechteck. */
+function groundFrameFromCamera() {
+  const t = controls.target, dx = camera.position.x - t.x, dz = camera.position.z - t.z, h = Math.sqrt(dx * dx + dz * dz);
+  if (!(h > 1e-9)) return { ux: 1, uz: 0 };
+  return { ux: dz / h, uz: -dx / h };
+}
+
+/* Rechteck aus zwei gegenüberliegenden Ecken a und b (Grundriss x/z) im Rahmen; frame fehlt: achsenparallel.
+   Liefert { ux, uz, u0, u1, v0, v1, corners (4 Ecken im Umlaufsinn), minX, minZ, maxX, maxZ (umschließender Kasten) } */
+function orientedRect(a, b, frame) {
+  const ux = frame ? frame.ux : 1, uz = frame ? frame.uz : 0, vx = -uz, vz = ux;
+  const pa = [a.x * ux + a.z * uz, a.x * vx + a.z * vz], pb = [b.x * ux + b.z * uz, b.x * vx + b.z * vz];
+  const u0 = Math.min(pa[0], pb[0]), u1 = Math.max(pa[0], pb[0]), v0 = Math.min(pa[1], pb[1]), v1 = Math.max(pa[1], pb[1]);
+  const corners = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]].map(function (c) { return [c[0] * ux + c[1] * vx, c[0] * uz + c[1] * vz]; });
+  const xs = corners.map(function (c) { return c[0]; }), zs = corners.map(function (c) { return c[1]; });
+  return { ux: ux, uz: uz, u0: u0, u1: u1, v0: v0, v1: v1, corners: corners,
+           minX: Math.min.apply(null, xs), maxX: Math.max.apply(null, xs), minZ: Math.min.apply(null, zs), maxZ: Math.max.apply(null, zs) };
+}
+
+/* Berührt der achsenparallele Kasten [x0, x1] x [z0, z1] das (gedrehte) Rechteck? Trennachsenprobe mit den vier Achsen beider Rechtecke. */
+function frameTouchesBox(frame, x0, x1, z0, z1) {
+  if (x1 < frame.minX || x0 > frame.maxX || z1 < frame.minZ || z0 > frame.maxZ) return false;
+  const boxCorners = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
+  const axes = [[frame.ux, frame.uz, frame.u0, frame.u1], [-frame.uz, frame.ux, frame.v0, frame.v1]];
+  for (let i = 0; i < axes.length; i++) {
+    const ax = axes[i];
+    let lo = Infinity, hi = -Infinity;
+    boxCorners.forEach(function (c) { const p = c[0] * ax[0] + c[1] * ax[1]; if (p < lo) lo = p; if (p > hi) hi = p; });
+    if (hi < ax[2] || lo > ax[3]) return false;
+  }
+  return true;
+}
+
 /* Tastet ein eigenes, regelmäßiges Raster über dem Rechteck ab –
    unabhängig von der internen Vertex-Reihenfolge von THREE.PlaneGeometry,
    die dafür nicht erneut nachgebildet werden muss – und liefert Dreiecke
    in Lokalkoordinaten. Das Rechteck wird auf die geladene Kachel begrenzt;
    die Zellgröße folgt der geladenen Geländeauflösung. */
-function terrainGridInRect(minX, minZ, maxX, maxZ) {
+function terrainGridInRect(minX, minZ, maxX, maxZ, frame) {
   const t = TERRAIN;
   if (!t) throw new Error('Bitte zuerst ein Geländemodell laden.');
   const x0 = Math.max(minX, -t.w / 2), x1 = Math.min(maxX, t.w / 2);
@@ -6415,6 +6450,11 @@ function terrainGridInRect(minX, minZ, maxX, maxZ) {
       triangles.push({ a: a, b: d, c: b });
     }
   }
+  if (frame) {                                               // gedrehtes Rechteck: das Raster des umschließenden Kastens an den Kanten sauber abschneiden
+    const cut = clipTrianglesToRect(triangles, minX, minZ, maxX, maxZ, frame);
+    if (!cut.length) throw new Error('Das Rechteck liegt außerhalb des geladenen Geländes.');
+    return cut;
+  }
   return triangles;
 }
 
@@ -6422,9 +6462,12 @@ function terrainGridInRect(minX, minZ, maxX, maxZ) {
    mitgeschnitten). Dreiecke ganz innen bleiben, ganz außen entfallen, die dazwischen werden an der Rechteckkante
    gekappt und als Fächer neu zerlegt, Umlaufsinn bleibt erhalten. Gebäude haben so eine glatte, gerade Schnittkante
    statt langer Dreiecke, die über den Rand hinausragen oder ganz fehlen. */
-function clipTrianglesToRect(triangles, minX, minZ, maxX, maxZ) {
-  // Abstand eines Punkts von der jeweiligen Rechteckkante, innen positiv
-  const planes = [
+function clipTrianglesToRect(triangles, minX, minZ, maxX, maxZ, frame) {
+  // Abstand eines Punkts von der jeweiligen Rechteckkante, innen positiv (mit frame: Kanten des gedrehten Rechtecks)
+  const planes = frame ? [
+    { d: function (p) { return p[0] * frame.ux + p[2] * frame.uz - frame.u0; } }, { d: function (p) { return frame.u1 - (p[0] * frame.ux + p[2] * frame.uz); } },
+    { d: function (p) { return -p[0] * frame.uz + p[2] * frame.ux - frame.v0; } }, { d: function (p) { return frame.v1 - (-p[0] * frame.uz + p[2] * frame.ux); } }
+  ] : [
     { d: function (p) { return p[0] - minX; } }, { d: function (p) { return maxX - p[0]; } },
     { d: function (p) { return p[2] - minZ; } }, { d: function (p) { return maxZ - p[2]; } }
   ];
@@ -6434,7 +6477,8 @@ function clipTrianglesToRect(triangles, minX, minZ, maxX, maxZ) {
     let inside = true;
     for (let i = 0; i < 3; i++) {
       const p = poly[i];
-      if (p[0] < minX || p[0] > maxX || p[2] < minZ || p[2] > maxZ) { inside = false; break; }
+      if (frame ? (planes[0].d(p) < 0 || planes[1].d(p) < 0 || planes[2].d(p) < 0 || planes[3].d(p) < 0)
+                : (p[0] < minX || p[0] > maxX || p[2] < minZ || p[2] > maxZ)) { inside = false; break; }
     }
     if (inside) { out.push(tri); return; }
     for (let pi = 0; pi < planes.length && poly.length; pi++) {
@@ -6525,7 +6569,7 @@ function objectIfcName(obj) {
 }
 
 /* Bausteine, die das Rechteck berühren, mit ihren Dreiecken: [{ name, type, triangles }] */
-function collectExportObjects(minX, minZ, maxX, maxZ) {
+function collectExportObjects(minX, minZ, maxX, maxZ, frame) {
   const out = [];
   (objects || []).forEach(function (obj) {
     const tris = objectTriangles(obj.group);
@@ -6537,7 +6581,7 @@ function collectExportObjects(minX, minZ, maxX, maxZ) {
         if (p[2] < z0) z0 = p[2]; if (p[2] > z1) z1 = p[2];
       });
     });
-    if (x1 < minX || x0 > maxX || z1 < minZ || z0 > maxZ) return;
+    if (frame ? !frameTouchesBox(frame, x0, x1, z0, z1) : (x1 < minX || x0 > maxX || z1 < minZ || z0 > maxZ)) return;
     out.push({ name: objectIfcName(obj), type: obj.type, triangles: tris });
   });
   return out;
@@ -6546,13 +6590,13 @@ function collectExportObjects(minX, minZ, maxX, maxZ) {
 /* Geländeraster + Gebäude-Dreiecke innerhalb des Rechtecks, auf Wunsch (withObjects) auch die Bausteine.
    rings kommt vom Aufrufer (in ui.js liegt lastGmlRings), damit app.js wie überall
    sonst auch hier keine Kenntnis vom Dateiimport-Zustand braucht. */
-function collectExportGeometry(rings, minX, minZ, maxX, maxZ, withObjects) {
-  const terrain = terrainGridInRect(minX, minZ, maxX, maxZ);
+function collectExportGeometry(rings, minX, minZ, maxX, maxZ, withObjects, frame) {
+  const terrain = terrainGridInRect(minX, minZ, maxX, maxZ, frame);
   let buildings = [];
   if (rings && rings.length) {
-    buildings = clipTrianglesToRect(triangulateBuildingRings(rings).triangles, minX, minZ, maxX, maxZ);
+    buildings = clipTrianglesToRect(triangulateBuildingRings(rings).triangles, minX, minZ, maxX, maxZ, frame);
   }
-  return { terrain: terrain, buildings: buildings, objects: withObjects ? collectExportObjects(minX, minZ, maxX, maxZ) : [] };
+  return { terrain: terrain, buildings: buildings, objects: withObjects ? collectExportObjects(minX, minZ, maxX, maxZ, frame) : [] };
 }
 
 function trianglesToGeometry(triangles) {
@@ -6602,7 +6646,10 @@ function frameRect(minX, minZ, maxX, maxZ) {
   const dist = (radius / Math.tan(fov / 2)) * 1.45 + radius;
 
   const tilt = Math.PI / 4;
-  const ux = 0.6, uz = 0.8; // feste, normierte Diagonalrichtung
+  // Blickrichtung um die Hochachse bleibt, wie sie ist (aus der Draufsicht kommend); ohne erkennbare Richtung die feste Diagonale
+  let ux = 0.6, uz = 0.8;
+  const hx = camera.position.x - controls.target.x, hz = camera.position.z - controls.target.z, hh = Math.sqrt(hx * hx + hz * hz);
+  if (hh > 1e-9) { ux = hx / hh; uz = hz / hh; }
   camGoal = new THREE.Vector3(
     cx + ux * Math.cos(tilt) * dist,
     focusGoal.y + Math.sin(tilt) * dist,
@@ -7130,6 +7177,7 @@ if (typeof module !== 'undefined' && module.exports) {
     setRoadSectionSlope: setRoadSectionSlope, setRoadUniformSlope: setRoadUniformSlope, setRoadSectionLength: setRoadSectionLength,
     roadSlopeVariable: roadSlopeVariable, roadSlopeList: roadSlopeList, IFC_SKIP_KINDS: IFC_SKIP_KINDS,
     getCameraGoals: function () { return { cam: camGoal, focus: focusGoal }; },
+    groundFrameFromCamera: groundFrameFromCamera, orientedRect: orientedRect, frameTouchesBox: frameTouchesBox,
     getControls: function () { return controls; },
     getCamera: function () { return camera; },
     setTopView: setTopView,

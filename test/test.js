@@ -1652,6 +1652,43 @@ test('Draufsicht schaltet die OrbitControls-Trägheit aus, sonst dreht sich die 
   assert.strictEqual(controls.enableDamping, true, 'außerhalb der Draufsicht wieder wie gewohnt an');
 });
 
+test('Gedrehtes Auswahlrechteck: Rahmen aus der Kamera, Ecken, Abschneiden und Berührungsprobe; bei Norden oben identisch zum achsenparallelen Rechteck', function () {
+  terrainForExportTests();
+  const camera = app.getCamera(), controls = app.getControls();
+  controls.target.set(0, 0, 0);
+  camera.position.set(0, 100, 50);                            // Kamera im Süden: Bildschirm rechts = Ost
+  let f = app.groundFrameFromCamera();
+  assert.ok(Math.abs(f.ux - 1) < 1e-12 && Math.abs(f.uz) < 1e-12, 'Norden oben');
+  camera.position.set(50, 100, 0);                            // Kamera im Osten, blickt nach Westen: rechts = Nord
+  f = app.groundFrameFromCamera();
+  assert.ok(Math.abs(f.ux) < 1e-12 && Math.abs(f.uz + 1) < 1e-12, 'Osten: ' + JSON.stringify(f));
+  camera.position.set(0, 100, 0);                             // genau darüber: Norden oben als Ersatz
+  assert.deepStrictEqual(app.groundFrameFromCamera(), { ux: 1, uz: 0 });
+  // achsenparallel = wie die vier Werte
+  const A = app.orientedRect({ x: -5, z: -3 }, { x: 5, z: 3 }, { ux: 1, uz: 0 });
+  assert.deepStrictEqual([A.minX, A.minZ, A.maxX, A.maxZ], [-5, -3, 5, 3]);
+  // 45 Grad: ein Quadrat im Rahmen, der umschließende Kasten ist größer
+  const q = Math.SQRT1_2, B = app.orientedRect({ x: 0, z: 0 }, { x: 10, z: 0 }, { ux: q, uz: q });
+  assert.ok(Math.abs((B.u1 - B.u0) - 10 * q) < 1e-9 && Math.abs((B.v1 - B.v0) - 10 * q) < 1e-9, 'Quadrat mit Kante ' + 10 * q);
+  assert.ok(Math.abs((B.maxX - B.minX) - 10) < 1e-9, 'umschließender Kasten 10 breit');
+  // Abschneiden: ein Dreieck über die schräge Kante wird gekappt; mit Rahmen north == ohne Rahmen
+  const tri = { a: [-20, 0, -20], b: [20, 0, -20], c: [0, 0, 20] };
+  const N = app.orientedRect({ x: -5, z: -5 }, { x: 5, z: 5 }, { ux: 1, uz: 0 });
+  assert.deepStrictEqual(JSON.stringify(app.clipTrianglesToRect([tri], -5, -5, 5, 5, N)), JSON.stringify(app.clipTrianglesToRect([tri], -5, -5, 5, 5)), 'achsenparallel identisch');
+  const R = app.orientedRect({ x: -5, z: -5 }, { x: 5, z: -5 }, { ux: q, uz: q });       // gedrehtes Quadrat, Kante 7,07
+  const cut = app.clipTrianglesToRect([tri], R.minX, R.minZ, R.maxX, R.maxZ, R);
+  const inR = function (p) { const u = p[0] * R.ux + p[2] * R.uz, v = -p[0] * R.uz + p[2] * R.ux; return u >= R.u0 - 1e-6 && u <= R.u1 + 1e-6 && v >= R.v0 - 1e-6 && v <= R.v1 + 1e-6; };
+  assert.ok(cut.length > 0 && cut.every(function (t) { return inR(t.a) && inR(t.b) && inR(t.c); }), 'alles im gedrehten Rechteck (' + cut.length + ' Teile)');
+  const area = cut.reduce(function (a, t) { return a + Math.abs((t.b[0] - t.a[0]) * (t.c[2] - t.a[2]) - (t.c[0] - t.a[0]) * (t.b[2] - t.a[2])) / 2; }, 0);
+  assert.ok(Math.abs(area - 50) < 1e-6, 'das ganze Quadrat (50 m²) liegt im Dreieck: ' + area);
+  // Berührungsprobe: Kasten in der Ecke des umschließenden Kastens, aber außerhalb des gedrehten Rechtecks
+  const D = B;
+  assert.strictEqual(app.frameTouchesBox(D, D.minX, D.minX + 0.3, D.minZ, D.minZ + 0.3), false, 'Ecke des Kastens, aber nicht des Rechtecks');
+  const cx = (D.corners[0][0] + D.corners[2][0]) / 2, cz = (D.corners[0][1] + D.corners[2][1]) / 2;
+  assert.strictEqual(app.frameTouchesBox(D, cx - 0.5, cx + 0.5, cz - 0.5, cz + 0.5), true, 'mitten im Rechteck');
+  assert.strictEqual(app.frameTouchesBox(D, 100, 101, 100, 101), false, 'weit weg');
+});
+
 test('Draufsicht für den IFC-Export dreht die Ansicht nicht nach Norden; die 2D-Taste tut es weiter', function () {
   terrainForExportTests();
   const camera = app.getCamera();

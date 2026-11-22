@@ -3483,7 +3483,8 @@ let rectSelectActive = false;
 let rectStart = null;          // Weltkoordinaten der ersten Ecke während des Ziehens
 let rectPreviewGroup = null;   // Rechteck-Vorschau während des Ziehens
 let exportPreviewGroup = null; // Vorschau des tatsächlich exportierten Ausschnitts
-let exportRect = null;         // { minX, minZ, maxX, maxZ } des zuletzt gezeichneten Rechtecks
+let rectFrame = null;          // Rahmen der Ansicht beim Ziehen: { ux, uz } (siehe groundFrameFromCamera)
+let exportRect = null;         // orientiertes Rechteck des zuletzt gezeichneten Auswahlbereichs (orientedRect: u0..v1, Ecken, umschließender Kasten)
 let exportGeometry = null;     // zuletzt eingesammelte {terrain, buildings}-Dreiecke
 
 /* Nur Drehen/Verschieben sperren, nicht das Zoomen - sonst kollidiert das
@@ -3546,13 +3547,9 @@ function clearExportPreview() {
 
 function updateRectDragPreview(a, b) {
   clearRectDragPreview();
-  const minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x);
-  const minZ = Math.min(a.z, b.z), maxZ = Math.max(a.z, b.z);
-  const y = getHeightAt((minX + maxX) / 2, (minZ + maxZ) / 2) + 0.3;
-  const pts = [
-    new THREE.Vector3(minX, y, minZ), new THREE.Vector3(maxX, y, minZ),
-    new THREE.Vector3(maxX, y, maxZ), new THREE.Vector3(minX, y, maxZ)
-  ];
+  const R = orientedRect(a, b, rectFrame);
+  const y = getHeightAt((R.minX + R.maxX) / 2, (R.minZ + R.maxZ) / 2) + 0.3;
+  const pts = R.corners.map(function (c) { return new THREE.Vector3(c[0], y, c[1]); });
   rectPreviewGroup = thickLine(pts, 1.5, MAT.drawPreview, true);
   scene.add(rectPreviewGroup);
 }
@@ -3563,18 +3560,18 @@ function finishRectExport(a, b) {
   setOrbitLocked(false);
   clearRectDragPreview();
 
-  const minX = Math.min(a.x, b.x), maxX = Math.max(a.x, b.x);
-  const minZ = Math.min(a.z, b.z), maxZ = Math.max(a.z, b.z);
-  if (maxX - minX < 1 || maxZ - minZ < 1) { setStatus(''); return; }
+  const R = orientedRect(a, b, rectFrame);                    // an der Ansicht ausgerichtet; bei Norden oben achsenparallel
+  const minX = R.minX, maxX = R.maxX, minZ = R.minZ, maxZ = R.maxZ;
+  if (R.u1 - R.u0 < 1 || R.v1 - R.v0 < 1) { setStatus(''); return; }
 
   try {
-    exportGeometry = collectExportGeometry(lastGmlRings, minX, minZ, maxX, maxZ);
+    exportGeometry = collectExportGeometry(lastGmlRings, minX, minZ, maxX, maxZ, false, R);
   } catch (err) {
     setStatus(err.message, true);
     return;
   }
 
-  exportRect = { minX: minX, minZ: minZ, maxX: maxX, maxZ: maxZ };
+  exportRect = R;
   frameRect(minX, minZ, maxX, maxZ);
   exportPreviewGroup = buildExportPreview(exportGeometry);
   scene.add(exportPreviewGroup);
@@ -3586,7 +3583,7 @@ function finishRectExport(a, b) {
 function showIfcPanel() {
   const r = exportRect;
   document.getElementById('ifc-extent').textContent =
-    Math.round(r.maxX - r.minX) + ' × ' + Math.round(r.maxZ - r.minZ) + ' m';
+    Math.round(r.u1 - r.u0) + ' × ' + Math.round(r.v1 - r.v0) + ' m';
   document.getElementById('ifc-crs').textContent = crsLabel(TERRAIN.epsg);
   fillIfcTargets();
   document.getElementById('ifc-error').textContent = '';
@@ -3649,7 +3646,7 @@ function runIfcExport() {
     const objEl = document.getElementById('ifc-objects'), r = exportRect;
     const targetEl = document.getElementById('ifc-target');
     const geo = Object.assign({}, exportGeometry, {
-      objects: objEl && objEl.checked ? collectExportObjects(r.minX, r.minZ, r.maxX, r.maxZ) : []
+      objects: objEl && objEl.checked ? collectExportObjects(r.minX, r.minZ, r.maxX, r.maxZ, r) : []
     });
     const ifc = buildIfc(geo, r.minX, r.minZ, TERRAIN.epsg,
                          { coords: modeEl && modeEl.value === 'local' ? 'local' : 'abs',
@@ -3691,6 +3688,7 @@ function onCanvasPointerDown(event) {
   if (rectSelectActive) {
     const pt = raycastTerrain(event);
     rectStart = pt ? { x: pt.x, z: pt.z } : null;
+    rectFrame = groundFrameFromCamera();                      // das Rechteck richtet sich nach dem Bildschirm
     return;
   }
   pressInfo = { x: event.clientX, y: event.clientY, id: event.pointerId, t: Date.now() };
