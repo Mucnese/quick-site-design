@@ -2468,7 +2468,7 @@ test('Standortsuche: Datenquellen der übrigen EU-Länder - alle 25 Länder, Lin
       seen[x.url] = true;
       assert.ok(x.label, cc + ': Bezeichnung');
       readmes.forEach(function (r, i) { assert.ok(r.indexOf(x.url) >= 0, cc + ': ' + x.url + ' fehlt in README' + (i ? '.en' : '')); });
-      if (x.fmt) assert.ok(['tif', 'xyz', 'unclear'].indexOf(x.fmt) >= 0, cc + ': Format ' + x.fmt);
+      if (x.fmt) assert.ok(['tif', 'xyz', 'laz', 'unclear'].indexOf(x.fmt) >= 0, cc + ': Format ' + x.fmt);
     });
     // ohne Link muss ein Hinweis erklären, warum
     if (!e.dem.length) assert.strictEqual(e.demNote, 'euNoOpenDem', cc);

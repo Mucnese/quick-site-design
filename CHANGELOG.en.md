@@ -14,6 +14,8 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
   New library `laz-perf` (Apache-2.0, LAZ only, loaded only then). Checked in the browser with 4.2 million points (25 MB LAZ): under 2 seconds. LAS 1.2 and LAZ 1.2 and 1.4 are tested.
 
 ### Changed
+- **Czechia:** The DMR 5G in ETRS89 (LAZ tiles of 2 × 2 km, free of charge, CC BY 4.0, coordinates according to the page UTM 33N) is listed; it loads directly. For LAS/LAZ class 8 (model key points, as in NRW) counts as ground
+  when there is no class 2; the cell size follows the ground share of a sample (checked with an NRW file: 0.3 million points on 4 km², 5 m grid).
 - **Denmark:** The elevation model is listed as GeoTIFF (as reported; the page loads by script and could not be read here). Privacy policy: now names five libraries.
 
 ## 2026-11-21

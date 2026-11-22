@@ -75,7 +75,7 @@ Sitzung. Die Datenschutzerklärung sagt das ausdrücklich zu.
 
 **Punktwolken (LAS/LAZ).** Abschnitt „Punktwolken“ in `app.js`: `lasHeader` (Kopf, Bezugssystem aus GeoKey 3072 oder WKT-VLR 2111/2112, bei LAS 1.4 auch aus den EVLRs), `lasPeekEpsg` (nur Kopf lesen,
 damit `handleDemFiles` vorher weiß, ob die Wahl des Bezugssystems fehlt), `lasForEachPoint` (LAS direkt, LAZ über `laz-perf`: `getLazPerf` lädt `lib/laz-perf.js` erst beim ersten LAZ, ein Punkt je `getPoint`),
-`readLasTile` rastert Klassen 2 und 9 (Mittel je Zelle, `LAS_MAX_CELLS`), sonst den tiefsten Punkt; Lücken über `lasFillGaps`. Rasterweite aus der Punktdichte (0,5 bis 10 m). Wolken über `LAS_WINDOW_EXTENT` (3 km)
+`readLasTile` rastert Klassen 2 und 9, ersatzweise 8 (Modell-Schlüsselpunkte, NRW) (Mittel je Zelle, `LAS_MAX_CELLS`), sonst den tiefsten Punkt; die Rasterweite folgt dem Geländeanteil der ersten 100000 Punkte; Lücken über `lasFillGaps`. Rasterweite aus der Punktdichte (0,5 bis 10 m). Wolken über `LAS_WINDOW_EXTENT` (3 km)
 brauchen den Pin (`currentSiteWindow`). Fehler sind Schlüssel (`lasBad` ...), `lasErrText` übersetzt. Testdateien `test/fixtures/cloud_*.la[sz]` (laspy, synthetische Fläche); in den UI-Tests liegt `createLazPerf`
 mit eingebettetem wasm im Sandkasten. Ungeprüft: echte Daten des ČÚZK (S-JTSK, Klassen) - kein Zugang.
 

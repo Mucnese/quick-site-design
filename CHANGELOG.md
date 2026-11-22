@@ -15,6 +15,8 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
   Neue Bibliothek `laz-perf` (Apache-2.0, nur für LAZ, wird erst dabei geladen). Geprüft im Browser mit 4,2 Mio. Punkten (25 MB LAZ): unter 2 Sekunden. LAS 1.2 und LAZ 1.2 und 1.4 sind getestet.
 
 ### Geändert
+- **Tschechien:** Das DMR 5G im ETRS89 (LAZ-Kacheln 2 × 2 km, kostenlos, CC BY 4.0, Koordinaten laut Seite UTM 33N) ist eingetragen; es lässt sich direkt laden. Bei LAS/LAZ zählt Klasse 8 (Modell-Schlüsselpunkte, wie in NRW) als Gelände,
+  wenn es keine Klasse 2 gibt; die Rasterweite folgt dem Geländeanteil einer Stichprobe (geprüft an einer NRW-Datei: 0,3 Mio. Punkte auf 4 km², Raster 5 m).
 - **Dänemark:** Das Höhenmodell ist als GeoTIFF eingetragen (laut Hinweis; die Seite lädt per Skript und ließ sich hier nicht auslesen). Datenschutzerklärung: nennt jetzt fünf Bibliotheken.
 
 ## 2026-11-21

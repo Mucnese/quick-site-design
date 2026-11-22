@@ -991,12 +991,12 @@ await test('LAS/LAZ: Geländepunkte werden zu einem Raster, Vegetation und Rausc
     const t = await s.readLasTile(lasBytes(f), f, null, 0, null);
     assert.strictEqual(t.epsg, 25832, f);
     assert.ok(t.pointCloud.classified, f + ': klassifiziert');
-    assert.strictEqual(t.resX, 2, f + ': Rasterweite aus der Punktdichte (2,4 Punkte je m², halb Gelände: 2 m)');
+    assert.strictEqual(t.resX, 1, f + ': Rasterweite aus Punktdichte und Geländeanteil (2,4 Punkte je m², davon 83 % Gelände: 1 m)');
     lasCheckTile(t, 0.3, f);                                   // Vegetation (6 bis 15 m darüber) und Rauschen (150 m) wären weit daneben
     assert.ok(t.pointCloud.ground > 0 && t.pointCloud.used >= t.pointCloud.ground, f);
   }
   const t = await s.readLasTile(lasBytes('cloud_f1.laz'), 'x.laz', null, 0, null);
-  assert.ok(t.W === 50 && t.H === 50 && t.nodata === -9999, t.W + ' x ' + t.H);
+  assert.ok(t.W === 100 && t.H === 100 && t.nodata === -9999, t.W + ' x ' + t.H);
   assert.ok(Math.abs(t.originX - 692000) < 0.5 && Math.abs(t.originY - 5336100) < 0.5, 'Ecke: ' + t.originX + ' / ' + t.originY);
 });
 
@@ -1015,6 +1015,23 @@ await test('LAS/LAZ: nicht klassifizierte Wolke nimmt den tiefsten Punkt je Zell
   assert.strictEqual(f[1], 2, 'Mittel der Nachbarn 1 und 3');
   assert.strictEqual(f[7], -9999 === f[7] ? -9999 : f[7]);
   assert.strictEqual(s.lasFillGaps(band, 4, 3, -9999, 0)[1], -9999, 'ohne Durchgänge bleibt alles');
+});
+
+await test('LAS/LAZ: dünne Wolke nur aus Klasse 8 (Modell-Schlüsselpunkte, wie in NRW) zählt als Gelände; die Rasterweite folgt dem Geländeanteil', async function () {
+  const s = newScope();
+  const t = await s.readLasTile(lasBytes('cloud_class8.laz'), 'k8.laz', 25832, 0, null);
+  assert.strictEqual(t.pointCloud.classified, true);
+  assert.strictEqual(t.pointCloud.keyPoints, true, 'Klasse 8 als Gelände erkannt');
+  assert.strictEqual(t.resX, 2, '0,5 Punkte je m², alle Gelände: 2 m');
+  lasCheckTile(t, 0.35, 'Klasse 8');
+  // mit Klasse 2 daneben bleibt Klasse 8 außen vor
+  const m = await s.readLasTile(lasBytes('cloud_f1.laz'), 'm.laz', null, 0, null);
+  assert.strictEqual(m.pointCloud.keyPoints, false);
+  // Tschechien: DMR 5G als LAZ mit Hinweis
+  const cz = s.geoSourcesFor({ country: 'CZ', state: '', city: 'Praha' });
+  assert.strictEqual(cz.dem[0].fmt, 'laz');
+  assert.ok(cz.dem[0].url.indexOf('CZ-CUZK-DMR5G-ETRS89-V') > 0 && cz.dem[0].url.indexOf('(S(') < 0, 'ohne Sitzungskennung');
+  assert.strictEqual(cz.dem[0].note, 'czLaz');
 });
 
 await test('LAS/LAZ: sehr große Wolke braucht einen Pin und wird auf den Ausschnitt begrenzt; liegt der Pin daneben, kommt null', async function () {

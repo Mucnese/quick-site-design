@@ -248,7 +248,7 @@ Rumänien (Stereo 70), Bulgarien und Zypern; dort schaltet sich die Karte mit ei
 | Slowakei | [ÚGKK DMR 5.0 · 1 m](https://geoportal.gov.sk/gallery/datasets/detail/c310bf1e-68a0-43b9-9955-c7dad13a93aa) | nicht eindeutig | — | CC BY 4.0 |
 | Slowenien | [ARSO DMR · 1 m](https://gis.arso.gov.si/evode/) | nicht eindeutig | — | CC BY 4.0 |
 | Spanien | [CNIG MDT02 · 2 m](https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt02-segunda-cobertura) (ganz Spanien; Ceuta, Melilla und Alborán aus Luftbildern, Kanaren in REGCAN95), [CNIG MDT05 · 5 m](https://centrodedescargas.cnig.es/CentroDescargas/modelo-digital-terreno-mdt05-primera-cobertura) | GeoTIFF | — | CC BY 4.0 |
-| Tschechien | [ČÚZK DMR 4G · 5 m](https://geoportal.cuzk.cz/) | nicht eindeutig | — | CC BY 4.0 |
+| Tschechien | [ČÚZK DMR 5G (ETRS89)](https://geoportal.cuzk.cz/Default.aspx?mode=TextMeta&side=vyskopis&metadataID=CZ-CUZK-DMR5G-ETRS89-V&head_tab=sekce-02-gp&menu=3021) (2 × 2 km-Kacheln, kostenlos), [ČÚZK DMR 4G · 5 m](https://geoportal.cuzk.cz/) | LAZ-Punktwolke (direkt ladbar), nicht eindeutig | — | CC BY 4.0 |
 | Zypern | [Zypern · 1 m](https://www.data.gov.cy/el/dataset/ypsometria-inspire) | nicht eindeutig | — | CC BY 4.0 |
 
 Für **Bulgarien, Griechenland, Litauen und Ungarn** wurde kein belegbares offenes Geländemodell gefunden und deshalb

@@ -756,7 +756,10 @@ const GEO_EU = {
     dem: [{ label: 'Zypern · 1 m', url: 'https://www.data.gov.cy/el/dataset/ypsometria-inspire', fmt: 'unclear', note: 'euCheckFormat' }],
     bldg: [], bldgNote: 'noEuBldg' },
   CZ: { name: 'Tschechien',
-    dem: [{ label: 'ČÚZK DMR 4G · 5 m', url: 'https://geoportal.cuzk.cz/', fmt: 'unclear', note: 'euCheckFormat' }],
+    dem: [
+      { label: 'ČÚZK DMR 5G (ETRS89) · Punktwolke', url: 'https://geoportal.cuzk.cz/Default.aspx?mode=TextMeta&side=vyskopis&metadataID=CZ-CUZK-DMR5G-ETRS89-V&head_tab=sekce-02-gp&menu=3021', fmt: 'laz', note: 'czLaz' },
+      { label: 'ČÚZK DMR 4G · 5 m', url: 'https://geoportal.cuzk.cz/', fmt: 'unclear', note: 'euCheckFormat' }
+    ],
     bldg: [], bldgNote: 'noEuBldg' },
   DK: { name: 'Dänemark',
     dem: [{ label: 'Højdemodel Terræn · 0,4 m', url: 'https://dataforsyningen.dk/data/930', fmt: 'tif' }],
@@ -2329,7 +2332,7 @@ async function lasPeekEpsg(file) {
   return lasVlrEpsg(tail, new DataView(tail.buffer, tail.byteOffset, tail.byteLength), 0, h.evlrCount, true);
 }
 
-/* Alle Punkte der Datei nacheinander: fn(x, y, z, klasse, zurückgehalten) in Koordinaten des Bezugssystems.
+/* Alle Punkte der Datei nacheinander: fn(x, y, z, klasse, zurückgehalten) in Koordinaten des Bezugssystems; fn liefert false zum Abbrechen.
    Unkomprimiert direkt aus dem Puffer, LAZ über laz-perf (ein Punkt je Aufruf). */
 async function lasForEachPoint(bytes, h, fn) {
   const sx = h.scale[0], sy = h.scale[1], sz = h.scale[2], ox = h.off[0], oy = h.off[1], oz = h.off[2];
@@ -2340,7 +2343,7 @@ async function lasForEachPoint(bytes, h, fn) {
     for (let i = 0, p = h.offset; i < n; i++, p += h.recLen) {
       const cls = wide ? bytes[p + 16] : bytes[p + 15] & 31;
       const hold = wide ? (bytes[p + 15] & 4) !== 0 : (bytes[p + 15] & 128) !== 0;
-      fn(dv.getInt32(p, true) * sx + ox, dv.getInt32(p + 4, true) * sy + oy, dv.getInt32(p + 8, true) * sz + oz, cls, hold);
+      if (fn(dv.getInt32(p, true) * sx + ox, dv.getInt32(p + 4, true) * sy + oy, dv.getInt32(p + 8, true) * sz + oz, cls, hold) === false) break;
     }
     return;
   }
@@ -2358,8 +2361,8 @@ async function lasForEachPoint(bytes, h, fn) {
       lz.getPoint(dest);
       const heap = lp.HEAPU8, dv = new DataView(heap.buffer, dest, len);
       const f = heap[dest + 15];
-      fn(dv.getInt32(0, true) * sx + ox, dv.getInt32(4, true) * sy + oy, dv.getInt32(8, true) * sz + oz,
-         wide ? heap[dest + 16] : f & 31, wide ? (f & 4) !== 0 : (f & 128) !== 0);
+      if (fn(dv.getInt32(0, true) * sx + ox, dv.getInt32(4, true) * sy + oy, dv.getInt32(8, true) * sz + oz,
+             wide ? heap[dest + 16] : f & 31, wide ? (f & 4) !== 0 : (f & 128) !== 0) === false) break;
     }
   } finally {
     lz.delete();
@@ -2422,10 +2425,19 @@ async function readLasTile(arrayBuffer, fileName, epsg, soFarPixels, window) {
     x0 = Math.max(x0, c.e - half); x1 = Math.min(x1, c.e + half); y0 = Math.max(y0, c.n - half); y1 = Math.min(y1, c.n + half);
     windowed = true;
   }
-  // Rasterweite: im Mittel mindestens etwa zwei Geländepunkte je Zelle (halbe Punktdichte als Geländeanteil), in Stufen
+  // Rasterweite: im Mittel etwa zwei Geländepunkte je Zelle. Den Geländeanteil schätzt eine Stichprobe der ersten Punkte
+  // (Klassen 2, 8, 9 zählen als Gelände); die Weite wird auf die nächste Stufe gerundet.
   const area = Math.max(1, (h.max[0] - h.min[0]) * (h.max[1] - h.min[1]));
-  const want = Math.sqrt(2 / Math.max(1e-6, 0.5 * h.count / area));
-  let cell = [0.5, 1, 2, 5, 10].filter(function (s) { return s >= want; })[0] || 10;
+  let sampled = 0, sGround = 0;
+  await lasForEachPoint(bytes, h, function (x, y, z, cls, hold) {
+    if (hold || cls === 7 || cls === 18) return true;
+    sampled++;
+    if (cls === 2 || cls === 8 || cls === 9) sGround++;
+    return sampled < 100000;
+  });
+  const gFrac = Math.max(0.1, sampled ? sGround / sampled : 0.5);
+  const want = Math.sqrt(2 / Math.max(1e-6, gFrac * h.count / area));
+  let cell = [0.5, 1, 2, 3, 4, 5, 6, 8, 10].reduce(function (best, s) { return Math.abs(Math.log(s / want)) < Math.abs(Math.log(best / want)) ? s : best; }, 10);
   let W, H;
   for (;;) {
     W = Math.max(1, Math.ceil((x1 - x0) / cell)); H = Math.max(1, Math.ceil((y1 - y0) / cell));
@@ -2435,7 +2447,7 @@ async function readLasTile(arrayBuffer, fileName, epsg, soFarPixels, window) {
   checkTiffPixels(fileName, W, H, soFarPixels);
   const z0 = h.min[2];
   const n = W * H;
-  const sum = new Float32Array(n), cnt = new Uint16Array(n), low = new Float32Array(n).fill(Infinity);
+  const sum = new Float32Array(n), cnt = new Uint16Array(n), sum8 = new Float32Array(n), cnt8 = new Uint16Array(n), low = new Float32Array(n).fill(Infinity);
   let nGround = 0, nUsed = 0;
   await lasForEachPoint(bytes, h, function (x, y, z, cls, hold) {
     if (hold || cls === 7 || cls === 18) return;                    // zurückgehaltene Punkte und Rauschen
@@ -2445,19 +2457,22 @@ async function readLasTile(arrayBuffer, fileName, epsg, soFarPixels, window) {
     nUsed++;
     if (zr < low[i]) low[i] = zr;
     if (cls === 2 || cls === 9) { if (cnt[i] < 65535) { sum[i] += zr; cnt[i]++; } nGround++; }
+    else if (cls === 8) { if (cnt8[i] < 65535) { sum8[i] += zr; cnt8[i]++; } }          // Klasse 8: Modell-Schlüsselpunkte (zum Beispiel NRW), nur wenn es keine Klasse 2 gibt
   });
   if (!nUsed) throw new Error('lasNoPoints');
   // Geländepunkte vorhanden und flächig genug? Sonst (nicht klassifizierte Wolke) der tiefste Punkt je Zelle
-  let withGround = 0, withAny = 0;
-  for (let i = 0; i < n; i++) { if (cnt[i]) withGround++; if (low[i] !== Infinity) withAny++; }
-  const classified = withGround >= 0.1 * withAny;
+  let withGround = 0, withKey = 0, withAny = 0;
+  for (let i = 0; i < n; i++) { if (cnt[i]) withGround++; if (cnt8[i]) withKey++; if (low[i] !== Infinity) withAny++; }
+  const useKey = withGround < 0.1 * withAny && withKey >= 0.1 * withAny;
+  const classified = withGround >= 0.1 * withAny || useKey;
+  const sA = useKey ? sum8 : sum, cA = useKey ? cnt8 : cnt;
   let band = new Float32Array(n);
-  for (let i = 0; i < n; i++) band[i] = classified ? (cnt[i] ? sum[i] / cnt[i] + z0 : XYZ_NODATA) : (low[i] !== Infinity ? low[i] + z0 : XYZ_NODATA);
+  for (let i = 0; i < n; i++) band[i] = classified ? (cA[i] ? sA[i] / cA[i] + z0 : XYZ_NODATA) : (low[i] !== Infinity ? low[i] + z0 : XYZ_NODATA);
   band = lasFillGaps(band, W, H, XYZ_NODATA, Math.max(2, Math.min(12, Math.ceil(10 / cell))));
   return {
     name: fileName, W: W, H: H, band: band, originX: x0, originY: y1, resX: cell, resY: cell,
     nodata: XYZ_NODATA, epsg: crs, srcRes: cell, windowed: windowed,
-    pointCloud: { points: h.count, ground: nGround, used: nUsed, cell: cell, classified: classified, laz: h.compressed }
+    pointCloud: { points: h.count, ground: nGround, used: nUsed, cell: cell, classified: classified, keyPoints: useKey, laz: h.compressed }
   };
 }
 

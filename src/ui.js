@@ -102,7 +102,7 @@ const STRINGS = {
     addrOnlyDeAt: 'Für diesen Ort sind keine Datenquellen hinterlegt (nur Länder der EU).',
     addrDem: 'Geländemodell (DGM)', addrBldg: 'Gebäudemodell (LoD1/LoD2)',
     addrCity: 'Stadtgeoportale · {c}', cityKind_map: 'Karte / Geoportal', cityKind_data: 'Offene Daten / Downloads', cityKind_3d: '3D-Stadtmodell',
-    geoFmtTif: 'GeoTIFF, direkt ladbar', geoFmtXyz: 'XYZ-Text, direkt ladbar (Bezugssystem wählen)', geoFmtUnclear: 'Format unklar',
+    geoFmtTif: 'GeoTIFF, direkt ladbar', geoFmtXyz: 'XYZ-Text, direkt ladbar (Bezugssystem wählen)', geoFmtLaz: 'LAZ-Punktwolke, direkt ladbar', geoFmtUnclear: 'Format unklar',
     geoNote_dgm025: 'Das DGM1 gibt es hier nur als XYZ-Text, GeoTIFF nur beim DGM025 (0,25 m).',
     geoNote_berlin: 'Berlin liegt vermutlich in den Brandenburg-Daten (nicht geprüft).',
     geoNote_catalog: 'Katalogeintrag, nicht selbst geprüft.',
@@ -118,6 +118,7 @@ const STRINGS = {
     geoNote_bldgShp: 'Als Shapefile oder KML (LoD1-Blockmodell). Ein Shapefile lässt sich als 2D-Datei laden (zusammen mit .dbf und .prj); ob es Höhenattribute enthält, wurde nicht geprüft.',
     geoNote_euCheckFormat: 'Das Format steht auf der Seite nicht eindeutig; vor dem Laden prüfen (GeoTIFF wird direkt geladen).',
     geoNote_euPartial: 'Nicht überall verfügbar.',
+    geoNote_czLaz: 'Ganz Tschechien in 2 × 2 km-Kacheln (LAZ), kostenlos, CC BY 4.0. Koordinaten laut Seite ETRS89 / UTM 33N (EPSG:25833): Steht kein Bezugssystem in der Datei, dieses wählen.',
     geoNote_frLidar: 'Noch nicht überall: Stand 6. September 2026 rund 78 % der Fläche, Guyane gehört nicht zum Programm. Ob ein Ort schon dabei ist, zeigt der Link „Abdeckung nach Gemeinde“.',
     geoNote_esMdt: 'Ganz Spanien in Blättern (MTN25, COG-GeoTIFF). Ceuta, Melilla und Alborán stammen aus Luftbildern (geringere Qualität); die Kanaren liegen in REGCAN95.',
     geoNote_euBldgNotCityGml: 'Als CityJSON (lässt sich laden), GeoPackage (als 2D-Datei lesbar) oder OBJ (nicht).',
@@ -300,7 +301,7 @@ const STRINGS = {
     addrOnlyDeAt: 'No data sources are listed for this place (EU countries only).',
     addrDem: 'Terrain model (DGM)', addrBldg: 'Building model (LoD1/LoD2)',
     addrCity: 'City geoportals · {c}', cityKind_map: 'Map / geoportal', cityKind_data: 'Open data / downloads', cityKind_3d: '3D city model',
-    geoFmtTif: 'GeoTIFF, loads directly', geoFmtXyz: 'XYZ text, loads directly (choose the coordinate system)', geoFmtUnclear: 'Format unclear',
+    geoFmtTif: 'GeoTIFF, loads directly', geoFmtXyz: 'XYZ text, loads directly (choose the coordinate system)', geoFmtLaz: 'LAZ point cloud, loads directly', geoFmtUnclear: 'Format unclear',
     geoNote_dgm025: 'The DGM1 is only offered as XYZ text here, GeoTIFF only for the DGM025 (0.25 m).',
     geoNote_berlin: 'Berlin is probably part of the Brandenburg data (not checked).',
     geoNote_catalog: 'Catalogue entry, not checked myself.',
@@ -316,6 +317,7 @@ const STRINGS = {
     geoNote_bldgShp: 'As shapefile or KML (LoD1 block model). A shapefile can be loaded as a 2D file (together with .dbf and .prj); whether it contains height attributes was not checked.',
     geoNote_euCheckFormat: 'The page does not state the format clearly; check before loading (GeoTIFF loads directly).',
     geoNote_euPartial: 'Not available everywhere.',
+    geoNote_czLaz: 'All of Czechia in 2 × 2 km tiles (LAZ), free of charge, CC BY 4.0. Coordinates according to the page: ETRS89 / UTM 33N (EPSG:25833): if the file has no coordinate system, choose this one.',
     geoNote_frLidar: 'Not everywhere yet: as of 6 September 2026 about 78 % of the area; French Guiana is not part of the programme. Whether a place is covered yet is shown by the link “coverage by municipality”.',
     geoNote_esMdt: 'All of Spain in sheets (MTN25, COG GeoTIFF). Ceuta, Melilla and Alborán come from aerial photos (lower quality); the Canary Islands use REGCAN95.',
     geoNote_euBldgNotCityGml: 'As CityJSON (can be loaded), GeoPackage (readable as a 2D file) or OBJ (cannot).',
@@ -2662,8 +2664,8 @@ function addrRow(src, kind) {
   row.appendChild(a);
   if (kind === 'dem' && src.fmt) {
     const f = document.createElement('div');
-    f.className = 'addr-fmt' + (src.fmt === 'tif' ? '' : ' warn');
-    f.textContent = T(src.fmt === 'tif' ? 'geoFmtTif' : (src.fmt === 'xyz' ? 'geoFmtXyz' : 'geoFmtUnclear'));
+    f.className = 'addr-fmt' + (src.fmt === 'tif' || src.fmt === 'laz' ? '' : ' warn');
+    f.textContent = T(src.fmt === 'tif' ? 'geoFmtTif' : (src.fmt === 'xyz' ? 'geoFmtXyz' : (src.fmt === 'laz' ? 'geoFmtLaz' : 'geoFmtUnclear')));
     row.appendChild(f);
   }
   if (kind === 'city' && src.kind) {
