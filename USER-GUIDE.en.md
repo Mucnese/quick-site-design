@@ -158,7 +158,8 @@ range is set to the limit.
 - **Several objects:** an entry in the **Overview** selects the whole group (for example all mobile
   cranes). There the group can be deselected or deleted.
 - **Esc** clears the selection. **Delete** or **Backspace** deletes the selected objects.
-- **Clear** (bottom) removes all blocks.
+- **Clear** (bottom) removes all blocks, after a confirmation.
+- **Reset** (bottom, below “Clear”) resets everything: terrain, buildings, structure (IFC) and all blocks are removed, the page restarts, nothing is loaded. This also asks first (Cancel is preselected, **Esc** cancels).
 
 ---
 

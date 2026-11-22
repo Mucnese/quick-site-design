@@ -369,6 +369,13 @@
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   .dock-act:hover { color: var(--accent); border-color: var(--accent); }
+  #dock-acts { display: flex; flex-direction: column; gap: 5px; }
+  #dock-acts .dock-act { flex: 1 1 0; }
+  #confirm-wrap { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); }
+  #confirm-box { width: min(380px, calc(100vw - 32px)); padding: 16px; }
+  #confirm-text { font-size: 0.92em; line-height: 1.5; margin-bottom: 14px; }
+  #confirm-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  #confirm-btns .btn-block { width: auto; margin: 0; padding: 7px 14px; }
 
   /* ---------- Parameter ---------- */
   #param-wrap { flex: 1 1 auto; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
@@ -787,7 +794,21 @@
 
 <div id="dock">
   <div id="palette"></div>
-  <button class="dock-act" id="clear-all" data-i18n="clear">Leeren</button>
+  <div id="dock-acts">
+    <button class="dock-act" id="clear-all" data-i18n="clear">Leeren</button>
+    <button class="dock-act" id="reset-all" data-i18n="resetAll">Reset</button>
+  </div>
+</div>
+
+<!-- Bestätigung vor dem Leeren und vor dem Zurücksetzen -->
+<div id="confirm-wrap">
+  <div id="confirm-box" class="panel" role="alertdialog" aria-modal="true" aria-labelledby="confirm-text">
+    <div id="confirm-text"></div>
+    <div id="confirm-btns">
+      <button class="btn-block" id="confirm-no" data-i18n="confirmNo">Abbrechen</button>
+      <button class="btn-block accent" id="confirm-yes">OK</button>
+    </div>
+  </div>
 </div>
 
 <!-- Kartenknopf unten links wie bei Kartendiensten; das Fenster darüber trägt den Datenschutzhinweis und den Schalter -->

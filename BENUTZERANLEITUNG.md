@@ -161,7 +161,8 @@ Wert außerhalb des Bereichs wird auf die Grenze gesetzt.
 - **Mehrere Objekte:** Ein Eintrag in der **Übersicht** wählt die ganze Gruppe (zum Beispiel alle
   Mobilkrane). Dort lässt sich die Gruppe abwählen oder löschen.
 - **Esc** hebt die Auswahl auf. **Entf** oder **Rücktaste** löscht die gewählten Objekte.
-- **Leeren** (unten) entfernt alle Bausteine.
+- **Leeren** (unten) entfernt alle Bausteine, nach einer Rückfrage.
+- **Reset** (unten, unter „Leeren“) setzt alles zurück: Gelände, Gebäude, Bauwerk (IFC) und alle Bausteine werden entfernt, die Seite startet neu, nichts ist geladen. Auch das fragt vorher nach (Abbrechen ist vorgewählt, **Esc** bricht ab).
 
 ---
 

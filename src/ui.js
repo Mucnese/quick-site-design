@@ -20,7 +20,11 @@ const STRINGS = {
   de: {
     lang: 'Deutsch',
     overview: 'Übersicht', data: 'Daten', view: 'Ansicht', site: 'Baustelle',
-    clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
+    clear: 'Leeren', resetAll: 'Reset', confirmNo: 'Abbrechen',
+    confirmClear: 'Alle {n} Bausteine löschen? Das lässt sich nicht rückgängig machen. Gelände, Gebäude und Bauwerk bleiben.', confirmClearYes: 'Ja, löschen',
+    confirmReset: 'Alles zurücksetzen? Gelände, Gebäude, Bauwerk (IFC) und alle Bausteine werden entfernt, die Seite startet neu und nichts ist geladen. Das lässt sich nicht rückgängig machen.', confirmResetYes: 'Ja, zurücksetzen',
+    msgNothingToClear: 'Es gibt keine Bausteine zu löschen.',
+    appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
     smTitle: 'Lade OpenStreetMap',
@@ -219,7 +223,11 @@ const STRINGS = {
   en: {
     lang: 'English',
     overview: 'Overview', data: 'Data', view: 'View', site: 'Site',
-    clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
+    clear: 'Clear', resetAll: 'Reset', confirmNo: 'Cancel',
+    confirmClear: 'Delete all {n} blocks? This cannot be undone. Terrain, buildings and structure stay.', confirmClearYes: 'Yes, delete',
+    confirmReset: 'Reset everything? Terrain, buildings, structure (IFC) and all blocks are removed, the page restarts and nothing is loaded. This cannot be undone.', confirmResetYes: 'Yes, reset',
+    msgNothingToClear: 'There are no blocks to delete.',
+    appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
     smTitle: 'Load OpenStreetMap',
@@ -3910,7 +3918,44 @@ function isTypingTarget(event) {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable === true;
 }
 
+/* ---------- Bestätigung (Leeren, Reset) ---------- */
+let confirmAction = null;
+
+function askConfirm(textKey, vars, yesKey, action) {
+  let text = T(textKey);
+  Object.keys(vars || {}).forEach(function (k) { text = text.replace('{' + k + '}', String(vars[k])); });
+  confirmAction = action;
+  document.getElementById('confirm-text').textContent = text;
+  document.getElementById('confirm-yes').textContent = T(yesKey);
+  document.getElementById('confirm-wrap').style.display = 'flex';
+  const no = document.getElementById('confirm-no');
+  if (no.focus) no.focus();                                  // Abbrechen ist vorbelegt: ein versehentliches Enter löscht nichts
+}
+
+function closeConfirm() {
+  confirmAction = null;
+  document.getElementById('confirm-wrap').style.display = 'none';
+}
+
+function clearAllObjects() {
+  objects.slice().forEach(function (o) { removeObject(o.id); });
+  selectTool(null);
+  hideMeasure();
+  renderOverview();
+  setStatus(T('msgCleared'));
+}
+
+/* Alles zurück auf den Anfang: nichts geladen, keine Bausteine. Ein Neuladen der Seite ohne Zusätze (auch ohne ?demo=1) ist der sicherste Weg:
+   kein Zustand bleibt hängen (Gelände, Gebäude, IFC, Karte, Zwischenspeicher). */
+function resetEverything() {
+  try { window.location.replace(window.location.pathname || '.'); } catch (e) { window.location.reload(); }
+}
+
 function onKeyDown(event) {
+  if (confirmAction) {                                       // solange die Bestätigung offen ist, gilt nur Esc
+    if (event.key === 'Escape') closeConfirm();
+    return;
+  }
   if (event.key === 'Escape' && smPopOpen && smVisible) { smPopOpen = false; smRenderPop(); return; }
   if (event.key === 'Escape' && smForced && smVisible && !isTypingTarget(event)) { smForced = false; showStartMap(); return; }
   if (event.key !== 'Escape' && isTypingTarget(event)) return;
@@ -4062,12 +4107,19 @@ function initUI() {
   });
 
   document.getElementById('clear-all').addEventListener('click', function () {
-    objects.slice().forEach(function (o) { removeObject(o.id); });
-    selectTool(null);
-    hideMeasure();
-    renderOverview();
-    setStatus(T('msgCleared'));
+    if (!objects.length) { setStatus(T('msgNothingToClear')); return; }
+    askConfirm('confirmClear', { n: objects.length }, 'confirmClearYes', clearAllObjects);
   });
+  document.getElementById('reset-all').addEventListener('click', function () {
+    askConfirm('confirmReset', {}, 'confirmResetYes', resetEverything);
+  });
+  document.getElementById('confirm-no').addEventListener('click', closeConfirm);
+  document.getElementById('confirm-yes').addEventListener('click', function () {
+    const act = confirmAction;
+    closeConfirm();
+    if (act) act();
+  });
+  document.getElementById('confirm-wrap').addEventListener('click', function (e) { if (e && e.target === document.getElementById('confirm-wrap')) closeConfirm(); });
 
   Object.keys(STRINGS).forEach(function (code) {
     const b = document.getElementById('lang-' + code);

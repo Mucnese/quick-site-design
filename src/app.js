@@ -467,8 +467,15 @@ function buildTerrain(t) {
   // Gelände, läge ihre Sohle sonst im Sockel und wäre nicht zu sehen
   const plinthMat = new THREE.MeshLambertMaterial({ color: 0x151c20 });
   plinthMat.onBeforeCompile = pitHoleShader;
+  // Die Oberseite des Sockels liegt nur wenig unter dem tiefsten Gelände. Aus der Ferne reicht die Tiefenauflösung nicht (bei 3 km etwa 0,5 m),
+  // und Gelände und Sockel flimmern am Rand gegeneinander. Darum liegt der Sockel nach Kachelgröße tiefer, und polygonOffset schiebt ihn
+  // in der Tiefe nach hinten: das Gelände gewinnt immer.
+  plinthMat.polygonOffset = true;
+  plinthMat.polygonOffsetFactor = 4;
+  plinthMat.polygonOffsetUnits = 8;
+  const plinthGap = Math.max(0.2, Math.max(t.w, t.d) * 0.0005);
   plinthMesh = new THREE.Mesh(new THREE.BoxGeometry(t.w, plinthH, t.d), plinthMat);
-  plinthMesh.position.y = -plinthH / 2 - 0.2;
+  plinthMesh.position.y = -plinthH / 2 - plinthGap;
   plinthMesh.receiveShadow = true;
   scene.add(plinthMesh);
 

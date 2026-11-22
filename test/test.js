@@ -50,6 +50,21 @@ test('worldToUTM/utmToWorld sind zueinander invers, sobald ein Gelände geladen 
   assert.strictEqual(back.z, -7);
 });
 
+test('Gelände: der schwarze Sockel liegt tiefer und wird in der Tiefe nach hinten geschoben, damit er am Rand nicht mit dem Gelände flimmert', function () {
+  freshScene();
+  const mk = function (w) {
+    const t = app.terrainFromEmbedded({ n: 4, heights: new Array(16).fill(0), scale: 100, zmin: 500, zmax: 520, width: w, depth: w, originE: 692000, originN: 5336000, epsg: 25832 });
+    app.buildTerrain(t);
+    return app.getScene().children.filter(function (c) { return c.material && c.material.polygonOffset && c.geometry && c.geometry.kind === 'BoxGeometry' && c.geometry.params[0] === w; })[0];
+  };
+  const small = mk(200), big = mk(4000);
+  assert.ok(small && big, 'Sockel mit polygonOffset gefunden');
+  assert.ok(small.material.polygonOffsetFactor > 0 && small.material.polygonOffsetUnits > 0, 'positiver Versatz schiebt nach hinten');
+  const top = function (m) { return m.position.y + m.geometry.params[1] / 2; };
+  assert.ok(top(small) <= -0.2 + 1e-9, 'Oberseite unter dem tiefsten Gelände: ' + top(small));
+  assert.ok(top(big) < top(small) - 1, 'große Kachel: größerer Abstand (' + top(big) + ' statt ' + top(small) + ')');
+});
+
 /* ---------- Gelände: Verschmelzen, Lücken, Detailstufe "Original" ---------- */
 
 function makeTile(opts) {

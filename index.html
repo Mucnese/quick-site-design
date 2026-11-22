@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ez8pG5hdMdC+G88H3f44wtjMRDY3XqR5gj16FNKwGFk=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-/mfMq9mV+kp5KVDNLR01FVDtZk7jqxWd7jmAAyN5c00=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -369,6 +369,13 @@
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   .dock-act:hover { color: var(--accent); border-color: var(--accent); }
+  #dock-acts { display: flex; flex-direction: column; gap: 5px; }
+  #dock-acts .dock-act { flex: 1 1 0; }
+  #confirm-wrap { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); }
+  #confirm-box { width: min(380px, calc(100vw - 32px)); padding: 16px; }
+  #confirm-text { font-size: 0.92em; line-height: 1.5; margin-bottom: 14px; }
+  #confirm-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  #confirm-btns .btn-block { width: auto; margin: 0; padding: 7px 14px; }
 
   /* ---------- Parameter ---------- */
   #param-wrap { flex: 1 1 auto; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
@@ -787,7 +794,21 @@
 
 <div id="dock">
   <div id="palette"></div>
-  <button class="dock-act" id="clear-all" data-i18n="clear">Leeren</button>
+  <div id="dock-acts">
+    <button class="dock-act" id="clear-all" data-i18n="clear">Leeren</button>
+    <button class="dock-act" id="reset-all" data-i18n="resetAll">Reset</button>
+  </div>
+</div>
+
+<!-- Bestätigung vor dem Leeren und vor dem Zurücksetzen -->
+<div id="confirm-wrap">
+  <div id="confirm-box" class="panel" role="alertdialog" aria-modal="true" aria-labelledby="confirm-text">
+    <div id="confirm-text"></div>
+    <div id="confirm-btns">
+      <button class="btn-block" id="confirm-no" data-i18n="confirmNo">Abbrechen</button>
+      <button class="btn-block accent" id="confirm-yes">OK</button>
+    </div>
+  </div>
 </div>
 
 <!-- Kartenknopf unten links wie bei Kartendiensten; das Fenster darüber trägt den Datenschutzhinweis und den Schalter -->
@@ -1376,8 +1397,15 @@ function buildTerrain(t) {
   // Gelände, läge ihre Sohle sonst im Sockel und wäre nicht zu sehen
   const plinthMat = new THREE.MeshLambertMaterial({ color: 0x151c20 });
   plinthMat.onBeforeCompile = pitHoleShader;
+  // Die Oberseite des Sockels liegt nur wenig unter dem tiefsten Gelände. Aus der Ferne reicht die Tiefenauflösung nicht (bei 3 km etwa 0,5 m),
+  // und Gelände und Sockel flimmern am Rand gegeneinander. Darum liegt der Sockel nach Kachelgröße tiefer, und polygonOffset schiebt ihn
+  // in der Tiefe nach hinten: das Gelände gewinnt immer.
+  plinthMat.polygonOffset = true;
+  plinthMat.polygonOffsetFactor = 4;
+  plinthMat.polygonOffsetUnits = 8;
+  const plinthGap = Math.max(0.2, Math.max(t.w, t.d) * 0.0005);
   plinthMesh = new THREE.Mesh(new THREE.BoxGeometry(t.w, plinthH, t.d), plinthMat);
-  plinthMesh.position.y = -plinthH / 2 - 0.2;
+  plinthMesh.position.y = -plinthH / 2 - plinthGap;
   plinthMesh.receiveShadow = true;
   scene.add(plinthMesh);
 
@@ -8034,7 +8062,11 @@ const STRINGS = {
   de: {
     lang: 'Deutsch',
     overview: 'Übersicht', data: 'Daten', view: 'Ansicht', site: 'Baustelle',
-    clear: 'Leeren', appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
+    clear: 'Leeren', resetAll: 'Reset', confirmNo: 'Abbrechen',
+    confirmClear: 'Alle {n} Bausteine löschen? Das lässt sich nicht rückgängig machen. Gelände, Gebäude und Bauwerk bleiben.', confirmClearYes: 'Ja, löschen',
+    confirmReset: 'Alles zurücksetzen? Gelände, Gebäude, Bauwerk (IFC) und alle Bausteine werden entfernt, die Seite startet neu und nichts ist geladen. Das lässt sich nicht rückgängig machen.', confirmResetYes: 'Ja, zurücksetzen',
+    msgNothingToClear: 'Es gibt keine Bausteine zu löschen.',
+    appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
     loadFirst: 'Zum Starten ein Geländemodell laden',
     smTitle: 'Lade OpenStreetMap',
@@ -8233,7 +8265,11 @@ const STRINGS = {
   en: {
     lang: 'English',
     overview: 'Overview', data: 'Data', view: 'View', site: 'Site',
-    clear: 'Clear', appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
+    clear: 'Clear', resetAll: 'Reset', confirmNo: 'Cancel',
+    confirmClear: 'Delete all {n} blocks? This cannot be undone. Terrain, buildings and structure stay.', confirmClearYes: 'Yes, delete',
+    confirmReset: 'Reset everything? Terrain, buildings, structure (IFC) and all blocks are removed, the page restarts and nothing is loaded. This cannot be undone.', confirmResetYes: 'Yes, reset',
+    msgNothingToClear: 'There are no blocks to delete.',
+    appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
     loadFirst: 'Load a terrain model to begin',
     smTitle: 'Load OpenStreetMap',
@@ -11924,7 +11960,44 @@ function isTypingTarget(event) {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable === true;
 }
 
+/* ---------- Bestätigung (Leeren, Reset) ---------- */
+let confirmAction = null;
+
+function askConfirm(textKey, vars, yesKey, action) {
+  let text = T(textKey);
+  Object.keys(vars || {}).forEach(function (k) { text = text.replace('{' + k + '}', String(vars[k])); });
+  confirmAction = action;
+  document.getElementById('confirm-text').textContent = text;
+  document.getElementById('confirm-yes').textContent = T(yesKey);
+  document.getElementById('confirm-wrap').style.display = 'flex';
+  const no = document.getElementById('confirm-no');
+  if (no.focus) no.focus();                                  // Abbrechen ist vorbelegt: ein versehentliches Enter löscht nichts
+}
+
+function closeConfirm() {
+  confirmAction = null;
+  document.getElementById('confirm-wrap').style.display = 'none';
+}
+
+function clearAllObjects() {
+  objects.slice().forEach(function (o) { removeObject(o.id); });
+  selectTool(null);
+  hideMeasure();
+  renderOverview();
+  setStatus(T('msgCleared'));
+}
+
+/* Alles zurück auf den Anfang: nichts geladen, keine Bausteine. Ein Neuladen der Seite ohne Zusätze (auch ohne ?demo=1) ist der sicherste Weg:
+   kein Zustand bleibt hängen (Gelände, Gebäude, IFC, Karte, Zwischenspeicher). */
+function resetEverything() {
+  try { window.location.replace(window.location.pathname || '.'); } catch (e) { window.location.reload(); }
+}
+
 function onKeyDown(event) {
+  if (confirmAction) {                                       // solange die Bestätigung offen ist, gilt nur Esc
+    if (event.key === 'Escape') closeConfirm();
+    return;
+  }
   if (event.key === 'Escape' && smPopOpen && smVisible) { smPopOpen = false; smRenderPop(); return; }
   if (event.key === 'Escape' && smForced && smVisible && !isTypingTarget(event)) { smForced = false; showStartMap(); return; }
   if (event.key !== 'Escape' && isTypingTarget(event)) return;
@@ -12076,12 +12149,19 @@ function initUI() {
   });
 
   document.getElementById('clear-all').addEventListener('click', function () {
-    objects.slice().forEach(function (o) { removeObject(o.id); });
-    selectTool(null);
-    hideMeasure();
-    renderOverview();
-    setStatus(T('msgCleared'));
+    if (!objects.length) { setStatus(T('msgNothingToClear')); return; }
+    askConfirm('confirmClear', { n: objects.length }, 'confirmClearYes', clearAllObjects);
   });
+  document.getElementById('reset-all').addEventListener('click', function () {
+    askConfirm('confirmReset', {}, 'confirmResetYes', resetEverything);
+  });
+  document.getElementById('confirm-no').addEventListener('click', closeConfirm);
+  document.getElementById('confirm-yes').addEventListener('click', function () {
+    const act = confirmAction;
+    closeConfirm();
+    if (act) act();
+  });
+  document.getElementById('confirm-wrap').addEventListener('click', function (e) { if (e && e.target === document.getElementById('confirm-wrap')) closeConfirm(); });
 
   Object.keys(STRINGS).forEach(function (code) {
     const b = document.getElementById('lang-' + code);

@@ -1113,6 +1113,62 @@ await test('LAS/LAZ: über den Datei-Dialog wird daraus das Gelände; ohne Bezug
   assert.ok(g('dem-status') && s.__bridge.STRINGS.en.lasBad && s.__bridge.STRINGS.de.lasLibFail);
 });
 
+await test('Leeren und Reset fragen vor dem Löschen nach; Abbrechen, Esc und Klick daneben lassen alles, wie es ist', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  const click = function (id) { g(id)._listeners.click[0]({ target: g(id) }); };
+  // ohne Bausteine: nur ein Hinweis, kein Dialog
+  click('clear-all');
+  assert.notStrictEqual(g('confirm-wrap').style.display, 'flex');
+  assert.strictEqual(g('status').textContent, s.T('msgNothingToClear'));
+  s.addObject('tower', 0, 0, s.defaultTowerParams());
+  s.addObject('container', 5, 5, s.defaultContainerParams());
+  const count = function () { return vm.runInContext('objects.length', s); };
+  assert.strictEqual(count(), 2);
+  // Leeren: Dialog mit Anzahl, Abbrechen löscht nichts
+  click('clear-all');
+  assert.strictEqual(g('confirm-wrap').style.display, 'flex');
+  assert.ok(g('confirm-text').textContent.indexOf('2 Bausteine') >= 0, g('confirm-text').textContent);
+  assert.strictEqual(g('confirm-yes').textContent, s.T('confirmClearYes'));
+  assert.strictEqual(count(), 2, 'noch nichts gelöscht');
+  click('confirm-no');
+  assert.strictEqual(g('confirm-wrap').style.display, 'none');
+  assert.strictEqual(count(), 2);
+  // Esc schließt, Entf bei offenem Dialog löscht nichts
+  click('clear-all');
+  s.onKeyDown({ key: 'Delete', target: {} });
+  assert.strictEqual(count(), 2, 'Tastenkürzel ruhen bei offenem Dialog');
+  assert.strictEqual(g('confirm-wrap').style.display, 'flex');
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(g('confirm-wrap').style.display, 'none');
+  // Klick auf den Hintergrund schließt, Klick in den Kasten nicht
+  click('clear-all');
+  g('confirm-wrap')._listeners.click[0]({ target: g('confirm-box') });
+  assert.strictEqual(g('confirm-wrap').style.display, 'flex');
+  g('confirm-wrap')._listeners.click[0]({ target: g('confirm-wrap') });
+  assert.strictEqual(g('confirm-wrap').style.display, 'none');
+  // Bestätigen löscht alle Bausteine, das Gelände bleibt
+  click('clear-all');
+  click('confirm-yes');
+  assert.strictEqual(count(), 0);
+  assert.strictEqual(g('confirm-wrap').style.display, 'none');
+  assert.ok(vm.runInContext('TERRAIN', s), 'Gelände bleibt beim Leeren');
+  // Reset: Dialog, Abbrechen tut nichts, Bestätigen lädt die Seite ohne Zusätze neu
+  const calls = [];
+  s.window.location = { pathname: '/app/', search: '?demo=1', replace: function (u) { calls.push(u); }, reload: function () { calls.push('reload'); } };
+  click('reset-all');
+  assert.strictEqual(g('confirm-wrap').style.display, 'flex');
+  assert.ok(g('confirm-text').textContent.indexOf('nichts ist geladen') >= 0, g('confirm-text').textContent);
+  assert.strictEqual(g('confirm-yes').textContent, s.T('confirmResetYes'));
+  click('confirm-no');
+  assert.strictEqual(calls.length, 0, 'Abbrechen: nichts passiert');
+  click('reset-all');
+  click('confirm-yes');
+  assert.deepStrictEqual(calls.slice(), ['/app/'], 'Seite ohne ?demo=1 neu laden');
+  assert.ok(s.__bridge.STRINGS.en.confirmReset && s.__bridge.STRINGS.en.confirmClear.indexOf('{n}') > 0 && s.__bridge.STRINGS.de.resetAll === 'Reset');
+});
+
 await test('Frankreich und Spanien: genaue Hinweise statt "nicht überall", Kanaren (REGCAN95) stimmen mit GDAL überein', async function () {
   const s = newScope();
   const fr = s.geoSourcesFor({ country: 'FR', state: 'Île-de-France', city: 'Paris' });
