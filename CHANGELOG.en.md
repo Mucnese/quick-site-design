@@ -9,6 +9,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 ## 2026-11-22
 
 ### Changed
+- **IFC export no longer turns to north:** When the rectangle starts, the view switches to the top view but keeps its heading. The “2D” button still turns north up as before.
 - **Data window clearer:** Terrain, buildings and structure can be collapsed (click the heading, ▾/▸). A loaded file collapses by itself and shows only the status line;
   errors and empty sections stay open, and so do the 2D settings of the buildings. The coordinate-system choice for XYZ and LAS appears only when it is needed.
 

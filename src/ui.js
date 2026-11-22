@@ -3509,7 +3509,7 @@ function startRectExport() {
   clearExportPreview();
   rectSelectActive = true;
   rectStart = null;
-  setTopView();
+  setTopView(true);                                          // Draufsicht, aber die Ansicht nicht nach Norden drehen
   setOrbitLocked(true);
   selectTool(null);
   setStatus(T('ifcExportHint'));

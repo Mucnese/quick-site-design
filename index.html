@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S/c39YoBD47lir371Up/vxH0M5hMbUCW97YxguXMt0M=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-reoxEWRk8W8suxzpv4EaWHzWuQVPAXZYeFvjQR76/Sc=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -1434,12 +1434,19 @@ function isTopView() { return topView; }
 
 /* Setzt die Ansicht senkrecht von oben. Kein Sperrzustand: sobald gedreht
    wird, kippt die Kamera wieder frei in den Raum. */
-function setTopView() {
+function setTopView(keepHeading) {
   const t = controls.target;
   const span = TERRAIN ? Math.max(TERRAIN.w, TERRAIN.d) : 500;
   let d = camera.position.distanceTo(t);
   if (!(d > 1)) d = span * 0.6;
-  camGoal = new THREE.Vector3(t.x, t.y + d, t.z + 0.001);
+  // Standard: Norden oben. Mit keepHeading bleibt die Blickrichtung um die Hochachse, wie sie ist (der Versatz von 1 mm
+  // zeigt weiter in dieselbe Richtung wie die Kamera, die Ansicht dreht sich nicht).
+  let ox = 0, oz = 0.001;
+  if (keepHeading) {
+    const dx = camera.position.x - t.x, dz = camera.position.z - t.z, h = Math.sqrt(dx * dx + dz * dz);
+    if (h > 1e-6) { ox = dx / h * 0.001; oz = dz / h * 0.001; }
+  }
+  camGoal = new THREE.Vector3(t.x + ox, t.y + d, t.z + oz);
   focusGoal = new THREE.Vector3(t.x, t.y, t.z);
   topView = true;
   return topView;
@@ -11558,7 +11565,7 @@ function startRectExport() {
   clearExportPreview();
   rectSelectActive = true;
   rectStart = null;
-  setTopView();
+  setTopView(true);                                          // Draufsicht, aber die Ansicht nicht nach Norden drehen
   setOrbitLocked(true);
   selectTool(null);
   setStatus(T('ifcExportHint'));

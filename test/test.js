@@ -1652,6 +1652,24 @@ test('Draufsicht schaltet die OrbitControls-Trägheit aus, sonst dreht sich die 
   assert.strictEqual(controls.enableDamping, true, 'außerhalb der Draufsicht wieder wie gewohnt an');
 });
 
+test('Draufsicht für den IFC-Export dreht die Ansicht nicht nach Norden; die 2D-Taste tut es weiter', function () {
+  terrainForExportTests();
+  const camera = app.getCamera();
+  const controls = app.getControls();
+  controls.target.set(10, 0, 20);
+  // Kamera östlich-südöstlich vom Zielpunkt, schräg von oben
+  camera.position.set(10 + 80, 60, 20 + 40);
+  app.setTopView(true);
+  const g = app.getCameraGoals().cam;
+  assert.ok(Math.abs(g.x - 10) < 0.002 && Math.abs(g.z - 20) < 0.002, 'fast genau darüber: ' + g.x + ' / ' + g.z);
+  const h = Math.atan2(g.x - 10, g.z - 20), h0 = Math.atan2(80, 40);
+  assert.ok(Math.abs(h - h0) < 1e-6, 'Richtung des Versatzes bleibt: ' + h + ' statt ' + h0);
+  camera.position.set(10 + 80, 60, 20 + 40);
+  app.setTopView();
+  const n = app.getCameraGoals().cam;
+  assert.ok(Math.abs(n.x - 10) < 1e-9 && n.z > 20 && n.z - 20 < 0.002, 'Standard: Versatz nach Süden, Norden oben');
+});
+
 /* ---------- Schleppkurve Sattelzug ---------- */
 
 /* Leitlinie: gerade nach Osten, Bogen R rechtsrum um

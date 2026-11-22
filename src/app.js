@@ -497,12 +497,19 @@ function isTopView() { return topView; }
 
 /* Setzt die Ansicht senkrecht von oben. Kein Sperrzustand: sobald gedreht
    wird, kippt die Kamera wieder frei in den Raum. */
-function setTopView() {
+function setTopView(keepHeading) {
   const t = controls.target;
   const span = TERRAIN ? Math.max(TERRAIN.w, TERRAIN.d) : 500;
   let d = camera.position.distanceTo(t);
   if (!(d > 1)) d = span * 0.6;
-  camGoal = new THREE.Vector3(t.x, t.y + d, t.z + 0.001);
+  // Standard: Norden oben. Mit keepHeading bleibt die Blickrichtung um die Hochachse, wie sie ist (der Versatz von 1 mm
+  // zeigt weiter in dieselbe Richtung wie die Kamera, die Ansicht dreht sich nicht).
+  let ox = 0, oz = 0.001;
+  if (keepHeading) {
+    const dx = camera.position.x - t.x, dz = camera.position.z - t.z, h = Math.sqrt(dx * dx + dz * dz);
+    if (h > 1e-6) { ox = dx / h * 0.001; oz = dz / h * 0.001; }
+  }
+  camGoal = new THREE.Vector3(t.x + ox, t.y + d, t.z + oz);
   focusGoal = new THREE.Vector3(t.x, t.y, t.z);
   topView = true;
   return topView;
