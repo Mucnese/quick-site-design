@@ -2041,6 +2041,30 @@ function setFileStatus(which, msg, kind) {
   const el = document.getElementById(which === 'dem' ? 'dem-status' : 'gml-status');
   el.textContent = msg;
   el.className = 'file-status' + (kind ? ' ' + kind : '');
+  // Geladen: der Abschnitt klappt zu (die Statuszeile bleibt). Hat ein Gebäudesatz 2D-Einstellungen, bleibt er offen. Fehler, Laden und leer: offen.
+  setFileRowCollapsed(which === 'dem' ? 'row-dem' : 'row-gml', kind === 'ok' && !(which === 'gml' && typeof lastFootprints !== 'undefined' && lastFootprints));
+  if (which === 'dem') updateXyzCrsRow();
+}
+
+/* Abschnitt im Datenfenster ein- oder ausklappen (className statt classList, damit es auch ohne echtes DOM geht) */
+function setFileRowCollapsed(rowId, on) {
+  const row = document.getElementById(rowId);
+  if (!row) return;
+  const rest = String(row.className || '').split(/\s+/).filter(function (c) { return c && c !== 'collapsed'; });
+  row.className = rest.concat(on ? ['collapsed'] : []).join(' ');
+  const head = row.children && row.children[0] && row.children[0].children ? row.children[0].children[0] : null;
+  if (head && head.setAttribute) head.setAttribute('aria-expanded', on ? 'false' : 'true');
+}
+
+function toggleFileRow(rowId) {
+  const row = document.getElementById(rowId);
+  setFileRowCollapsed(rowId, !(row && /(^|\s)collapsed(\s|$)/.test(String(row.className || ''))));
+}
+
+/* Die Auswahl des Bezugssystems für XYZ und LAS erscheint nur, wenn sie gebraucht wird: eine Datei wartet darauf oder die geladene hatte keines */
+function updateXyzCrsRow() {
+  const row = document.getElementById('xyz-crs-row');
+  if (row) row.style.display = (pendingDemFiles || lastXyzLoad) ? 'flex' : 'none';
 }
 
 /* ---------- Karte (OpenStreetMap) ----------
@@ -4037,6 +4061,13 @@ function initUI() {
   addr.addEventListener('blur', function () { addrItems = []; addrSel = -1; renderAddrList(null); });
   buildXyzCrsOptions();
   document.getElementById('xyz-crs').addEventListener('change', onXyzCrsChanged);
+  [['row-dem', 'dem-input'], ['row-gml', 'gml-input'], ['ifc-row', 'ifc-input']].forEach(function (r) {
+    const row = document.getElementById(r[0]);
+    const head = row.children && row.children[0] && row.children[0].children ? row.children[0].children[0] : null;
+    if (!head || !head.addEventListener) return;
+    head.addEventListener('click', function () { toggleFileRow(r[0]); });
+    head.addEventListener('keydown', function (e) { if (e && (e.key === 'Enter' || e.key === ' ')) { if (e.preventDefault) e.preventDefault(); toggleFileRow(r[0]); } });
+  });
   document.getElementById('xyz-epsg').addEventListener('change', onXyzCrsChanged);
   const demInput = document.getElementById('dem-input');
   demInput.addEventListener('change', function () {

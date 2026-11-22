@@ -9,6 +9,10 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-22
 
+### Geändert
+- **Datenfenster übersichtlicher:** Gelände, Gebäude und Bauwerk sind einklappbar (Klick auf die Überschrift, ▾/▸). Eine geladene Datei klappt von selbst zu und zeigt nur noch die Statuszeile;
+  Fehler und leere Abschnitte bleiben offen, ebenso die 2D-Einstellungen der Gebäude. Die Auswahl des Bezugssystems für XYZ und LAS erscheint nur noch, wenn sie gebraucht wird.
+
 ### Neu
 - **Reset:** Ein Knopf unter „Leeren“ setzt alles zurück (Gelände, Gebäude, Bauwerk, Bausteine; die Seite lädt neu, ohne ?demo=1). Eine Rückfrage kommt vorher, Abbrechen ist vorgewählt, Esc bricht ab.
   „Leeren“ fragt jetzt ebenfalls zurück (mit der Zahl der Bausteine) und meldet „keine Bausteine“, wenn es nichts zu löschen gibt.

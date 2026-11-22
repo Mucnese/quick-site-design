@@ -1113,6 +1113,46 @@ await test('LAS/LAZ: über den Datei-Dialog wird daraus das Gelände; ohne Bezug
   assert.ok(g('dem-status') && s.__bridge.STRINGS.en.lasBad && s.__bridge.STRINGS.de.lasLibFail);
 });
 
+await test('Datenfenster: geladene Abschnitte klappen zu, Fehler und leere bleiben offen, Klick auf die Überschrift klappt auf; die Bezugssystem-Zeile erscheint nur bei Bedarf', async function () {
+  const s = newScope();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  const col = function (id) { return /(^|\s)collapsed(\s|$)/.test(String(g(id).className || '')); };
+  assert.strictEqual(col('row-dem'), false, 'am Anfang offen');
+  s.setFileStatus('dem', 'x.tif', 'ok');
+  assert.strictEqual(col('row-dem'), true, 'geladen: zugeklappt');
+  assert.strictEqual(g('dem-status').textContent, 'x.tif', 'die Statuszeile bleibt');
+  s.setFileStatus('dem', 'kaputt', 'err');
+  assert.strictEqual(col('row-dem'), false, 'Fehler: offen');
+  s.setFileStatus('dem', 'x.tif', 'ok');
+  s.toggleFileRow('row-dem');
+  assert.strictEqual(col('row-dem'), false, 'Klick klappt auf');
+  s.toggleFileRow('row-dem');
+  assert.strictEqual(col('row-dem'), true, 'noch ein Klick klappt zu');
+  s.setFileStatus('dem', 'Keine Datei');
+  assert.strictEqual(col('row-dem'), false, 'ohne Datei offen');
+  // Gebäude: mit 2D-Einstellungen bleibt der Abschnitt offen, ohne klappt er zu
+  vm.runInContext('lastFootprints = { set: { feats: [], fields: [] } }', s);
+  s.setFileStatus('gml', '5 Gebäude', 'ok');
+  assert.strictEqual(col('row-gml'), false, '2D-Einstellungen bleiben sichtbar');
+  vm.runInContext('lastFootprints = null', s);
+  s.setFileStatus('gml', '6 Flächen', 'ok');
+  assert.strictEqual(col('row-gml'), true);
+  // Bezugssystem-Zeile
+  const s2 = await scopeWithTerrain();
+  s2.initUI();
+  s2.buildXyzCrsOptions();
+  const g2 = function (id) { return s2.document.getElementById(id); };
+  await s2.handleDemFiles([fxFile('cloud_nocrs.las')]);
+  assert.strictEqual(g2('xyz-crs-row').style.display, 'flex', 'wartet auf das Bezugssystem: Zeile da');
+  g2('xyz-crs').value = '25832';
+  s2.onXyzCrsChanged();
+  for (let i = 0; i < 8; i++) await new Promise(function (r) { setImmediate(r); });
+  assert.strictEqual(g2('xyz-crs-row').style.display, 'flex', 'nach der Wahl noch da: ändern und neu lesen');
+  await s2.handleDemFiles([fxFile('cloud_f1.laz')]);
+  assert.strictEqual(g2('xyz-crs-row').style.display, 'none', 'Datei mit Bezugssystem: Zeile weg');
+});
+
 await test('Leeren und Reset fragen vor dem Löschen nach; Abbrechen, Esc und Klick daneben lassen alles, wie es ist', async function () {
   const s = await scopeWithTerrain();
   s.initUI();

@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-/mfMq9mV+kp5KVDNLR01FVDtZk7jqxWd7jmAAyN5c00=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S/c39YoBD47lir371Up/vxH0M5hMbUCW97YxguXMt0M=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -265,6 +265,13 @@
     padding: 3px 9px; font-size: 1em; font-family: inherit; cursor: pointer; margin-right: 8px;
   }
   .file-head .hintx { font-size: 0.85em; color: var(--text-dim2); }
+  /* Einklappen: Kopfzeile und Status bleiben sichtbar, der Rest verschwindet. Geladene Dateien klappen von selbst zu. */
+  .file-head > span:first-child { cursor: pointer; user-select: none; }
+  .file-head > span:first-child::before { content: "▾ "; color: var(--text-dim2); }
+  .file-row.collapsed .file-head > span:first-child::before { content: "▸ "; }
+  .file-head > span:first-child:hover { color: var(--text); }
+  .file-row.collapsed > :not(.file-head):not(.file-status) { display: none !important; }
+  .file-row.collapsed .file-head { margin-bottom: 0; }
   .file-status { font-size: 0.78em; color: var(--text-dim2); margin-top: 3px; line-height: 1.35; word-break: break-word; }
   .file-status.ok { color: var(--accent); }
   .file-status.err { color: var(--danger); }
@@ -723,18 +730,18 @@
   <div id="data" class="panel">
     <div class="sec"><span data-i18n="data">Daten</span><a class="act" id="geoportal-link" href="https://github.com/Mucnese/quick-site-design#datenquellen" target="_blank" rel="noopener noreferrer" data-i18n="geoportals">Geoportale</a></div>
     <div class="body">
-      <div class="file-row">
-        <div class="file-head"><span data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="hintx">mehrere möglich</span></div>
+      <div class="file-row" id="row-dem">
+        <div class="file-head"><span role="button" tabindex="0" aria-expanded="true" data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="hintx">mehrere möglich</span></div>
         <input type="file" id="dem-input" multiple accept=".tif,.tiff,.xyz,.txt,.csv,.las,.laz,image/tiff">
         <div class="file-status" id="dem-status">Keine Datei</div>
-        <div id="xyz-crs-row">
+        <div id="xyz-crs-row" style="display:none">
           <div class="xyz-label" data-i18n="xyzCrs">Bezugssystem für XYZ-Dateien</div>
           <select id="xyz-crs"></select>
           <input type="number" id="xyz-epsg" min="1000" max="99999" step="1" placeholder="EPSG" style="display:none">
         </div>
       </div>
-      <div class="file-row">
-        <div class="file-head"><span data-i18n="buildingFile">Gebäude · CityGML / CityJSON</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>
+      <div class="file-row" id="row-gml">
+        <div class="file-head"><span role="button" tabindex="0" aria-expanded="true" data-i18n="buildingFile">Gebäude · CityGML / CityJSON</span><span class="act" id="gml-clear" data-i18n="remove">Entfernen</span></div>
         <input type="file" id="gml-input" multiple accept=".gml,.xml,.citygml,.json,.jsonl,.geojson,.gpkg,.shp,.dbf,.prj,.cpg,.shx,text/xml,application/json">
         <div class="file-status" id="gml-status">Keine Datei</div>
         <div id="fp-panel">
@@ -756,7 +763,7 @@
         </div>
       </div>
       <div class="file-row" id="ifc-row">
-        <div class="file-head"><span data-i18n="ifcFile">Bauwerk · IFC</span><span class="act" id="ifc-clear" data-i18n="remove">Entfernen</span></div>
+        <div class="file-head"><span role="button" tabindex="0" aria-expanded="true" data-i18n="ifcFile">Bauwerk · IFC</span><span class="act" id="ifc-clear" data-i18n="remove">Entfernen</span></div>
         <input type="file" id="ifc-input" accept=".ifc">
         <div class="file-status" id="ifc-status">Keine Datei</div>
         <div id="ifc-tools">
@@ -10083,6 +10090,30 @@ function setFileStatus(which, msg, kind) {
   const el = document.getElementById(which === 'dem' ? 'dem-status' : 'gml-status');
   el.textContent = msg;
   el.className = 'file-status' + (kind ? ' ' + kind : '');
+  // Geladen: der Abschnitt klappt zu (die Statuszeile bleibt). Hat ein Gebäudesatz 2D-Einstellungen, bleibt er offen. Fehler, Laden und leer: offen.
+  setFileRowCollapsed(which === 'dem' ? 'row-dem' : 'row-gml', kind === 'ok' && !(which === 'gml' && typeof lastFootprints !== 'undefined' && lastFootprints));
+  if (which === 'dem') updateXyzCrsRow();
+}
+
+/* Abschnitt im Datenfenster ein- oder ausklappen (className statt classList, damit es auch ohne echtes DOM geht) */
+function setFileRowCollapsed(rowId, on) {
+  const row = document.getElementById(rowId);
+  if (!row) return;
+  const rest = String(row.className || '').split(/\s+/).filter(function (c) { return c && c !== 'collapsed'; });
+  row.className = rest.concat(on ? ['collapsed'] : []).join(' ');
+  const head = row.children && row.children[0] && row.children[0].children ? row.children[0].children[0] : null;
+  if (head && head.setAttribute) head.setAttribute('aria-expanded', on ? 'false' : 'true');
+}
+
+function toggleFileRow(rowId) {
+  const row = document.getElementById(rowId);
+  setFileRowCollapsed(rowId, !(row && /(^|\s)collapsed(\s|$)/.test(String(row.className || ''))));
+}
+
+/* Die Auswahl des Bezugssystems für XYZ und LAS erscheint nur, wenn sie gebraucht wird: eine Datei wartet darauf oder die geladene hatte keines */
+function updateXyzCrsRow() {
+  const row = document.getElementById('xyz-crs-row');
+  if (row) row.style.display = (pendingDemFiles || lastXyzLoad) ? 'flex' : 'none';
 }
 
 /* ---------- Karte (OpenStreetMap) ----------
@@ -12079,6 +12110,13 @@ function initUI() {
   addr.addEventListener('blur', function () { addrItems = []; addrSel = -1; renderAddrList(null); });
   buildXyzCrsOptions();
   document.getElementById('xyz-crs').addEventListener('change', onXyzCrsChanged);
+  [['row-dem', 'dem-input'], ['row-gml', 'gml-input'], ['ifc-row', 'ifc-input']].forEach(function (r) {
+    const row = document.getElementById(r[0]);
+    const head = row.children && row.children[0] && row.children[0].children ? row.children[0].children[0] : null;
+    if (!head || !head.addEventListener) return;
+    head.addEventListener('click', function () { toggleFileRow(r[0]); });
+    head.addEventListener('keydown', function (e) { if (e && (e.key === 'Enter' || e.key === ' ')) { if (e.preventDefault) e.preventDefault(); toggleFileRow(r[0]); } });
+  });
   document.getElementById('xyz-epsg').addEventListener('change', onXyzCrsChanged);
   const demInput = document.getElementById('dem-input');
   demInput.addEventListener('change', function () {
