@@ -2789,6 +2789,41 @@ test('Alte Gauß-Krüger-Nummern (31462 bis 31465, 5676 bis 5679) gelten wie 314
   assert.strictEqual(app.buildingTextEpsg('<a srsName="EPSG:31463">'), 31467);
 });
 
+test('Mehrere IFC-Dateien: ein Modell, jede an ihrem Platz (Georeferenz oder Dateikoordinaten); anderes System und weit Entferntes bleibt weg', function () {
+  const box = function () { return { minX: -5, maxX: 5, minY: -2, maxY: 2, minZ: -3, maxZ: 3 }; };
+  // Datei = Netz - coord: Mitte bei (E, N, H)
+  const part = function (name, e, n, h, georef) {
+    return { name: name, group: new THREE.Group(), coord: [-e, -h, n], bbox: box(), triangles: 10, georef: georef };
+  };
+  const geo = function (epsg) { return { E0: 0, N0: 0, H0: 0, a: 1, b: 0, scale: 1, mapUnit: 1, projUnit: 1, epsg: epsg }; };
+  const one = part('a', 3479000, 5371000, 400, null);
+  assert.strictEqual(app.ifcCombine([one]).model, one, 'eine Datei bleibt wie sie ist');
+  const res = app.ifcCombine([part('unter', 3479000, 5371000, 400, geo(31467)), part('ueber', 3479100, 5371050, 430, null),
+    part('anders', 3479000, 5371000, 400, geo(25832)), part('lokal', 0, 0, 0, null)]);
+  assert.strictEqual(res.used, 2);
+  assert.deepStrictEqual(res.skipped.map(function (x) { return x.name + ':' + x.why; }), ['anders:crs', 'lokal:far']);
+  const m = res.model;
+  assert.strictEqual(m.group.children.length, 2);
+  assert.strictEqual(m.triangles, 20);
+  assert.strictEqual(m.georef.epsg, 31467);
+  // Auf ein Gelände gesetzt, stehen beide an ihren Landeskoordinaten
+  const terrain = { originE: 3479000, originN: 5371000, zmin: 380 };
+  const pl = app.ifcRawPlacement(m.bbox, m.coord, Object.assign({ w: 2000, d: 2000 }, terrain));
+  const sec = m.group.children[1].position;
+  assert.ok(pl && Math.abs(pl.x + sec.x - 100) < 1e-6 && Math.abs(pl.y + sec.y - 50) < 1e-6 && Math.abs(pl.z + sec.z + 50) < 1e-6, JSON.stringify([pl, sec]));
+  assert.ok(Math.abs(m.bbox.maxX - 105) < 1e-6 && Math.abs(m.bbox.minZ + 53) < 1e-6);
+});
+
+test('Mitte ohne Ausreißer: ein winziges Teil weit weg zählt nicht, ein normales Modell behält seine Box', function () {
+  const main = new Float32Array(3000 * 3);
+  for (let i = 0; i < 3000; i++) { main[i * 3] = i % 100; main[i * 3 + 1] = 400 + (i % 60); main[i * 3 + 2] = i % 20; }
+  const normal = { minX: 0, maxX: 99, minY: 400, maxY: 459, minZ: 0, maxZ: 19 };
+  assert.strictEqual(app.ifcCoreBox([main], normal), normal);
+  const stray = new Float32Array([600, 0, 5, 600, 0.1, 5, 600, 0, 5.1]);
+  const core = app.ifcCoreBox([main, stray], { minX: 0, maxX: 600, minY: 0, maxY: 459, minZ: 0, maxZ: 19 });
+  assert.ok(core.minY >= 400 && core.maxX <= 99, JSON.stringify(core));
+});
+
 test('Drehring: Richtungswinkel in der waagerechten Ebene (Ost 0, Nord 90 Grad), null beim waagerechten Blick; Winkel auf (-180, 180]', function () {
   const c = { x: 5, y: 2, z: 5 }, down = { x: 0, y: -1, z: 0 };
   assert.ok(Math.abs(app.ringDragAngle({ x: 9, y: 30, z: 5 }, down, c)) < 1e-9);

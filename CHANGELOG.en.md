@@ -8,7 +8,12 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-27
 
+### Added
+- **Several IFC files at once:** parts of a structure (superstructure, substructure, temporary works) are combined into one structure and placed together.
+- Single small parts far from the structure (such as a marker at height 0) no longer shift the centre used by the arrows, the rotation and the camera.
+
 ### Fixed
+- **IFC import, length unit:** The project unit (`IfcProject.UnitsInContext`) now applies, not the first length unit in the file. Before, a structure from a file with further units (for example decimetres in Revit files) could appear at the wrong size.
 - **Old Gauss-Krüger codes:** EPSG:31462 to 31465 (for example `31463` in Revit IFC files) and the variants 5676 to 5679 are now understood like 31466 to 31469.
 
 ### Added

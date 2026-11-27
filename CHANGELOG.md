@@ -9,7 +9,12 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-27
 
+### Neu
+- **Mehrere IFC-Dateien zugleich:** Teile eines Bauwerks (Überbau, Unterbau, Behelfe) werden zu einem Bauwerk zusammengefasst und gemeinsam platziert.
+- Einzelne Kleinteile weit weg vom Bauwerk (etwa ein Marker auf Höhe 0) verschieben die Mitte für Pfeile, Drehzentrum und Kamera nicht mehr.
+
 ### Behoben
+- **IFC-Import, Längeneinheit:** Maßgeblich ist jetzt die Einheit des Projekts (`IfcProject.UnitsInContext`), nicht die erste Längeneinheit in der Datei. Bisher konnte ein Bauwerk aus einer Datei mit weiteren Einheiten (etwa Dezimeter in Revit-Dateien) in falscher Größe erscheinen.
 - **Alte Gauß-Krüger-Nummern:** EPSG:31462 bis 31465 (zum Beispiel `31463` in Revit-IFC-Dateien) und die Fassungen 5676 bis 5679 werden jetzt wie 31466 bis 31469 verstanden.
 
 ### Neu

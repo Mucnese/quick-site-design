@@ -301,7 +301,10 @@ Gelände. Er ist **standardmäßig aus**. Beim Einschalten lädt dein Browser Ka
 
 Im Fenster **Daten** liest die Zeile **Bauwerk · IFC** ein Bauwerk (Neubau, Gebäude, Brücke) als
 IFC-Datei ein. Voraussetzung ist ein geladenes Gelände. Die Bibliothek zum Lesen wird erst jetzt
-nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Größe bis 300 MB.
+nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Größe bis 300 MB (zusammen).
+
+**Mehrere Dateien:** Liegt ein Bauwerk in Teilen vor (Überbau, Unterbau, Behelfe), wähle **alle zugleich**. Sie werden zu einem Bauwerk zusammengefasst, jede an ihrem Platz; Platzieren, Schieben, Drehen und Entfernen wirken auf alles.
+Dateien ohne Georeferenz gelten im System der anderen. Dateien in einem anderen Bezugssystem, weit entfernte (über 20 km) oder nicht lesbare werden weggelassen und genannt. Eine neue Auswahl ersetzt das bisherige Bauwerk.
 
 - **Automatisch:** Ist die Datei georeferenziert (`IfcMapConversion`) und hat **dasselbe
   Bezugssystem (EPSG)** wie das Gelände, steht das Bauwerk sofort an der richtigen Stelle,

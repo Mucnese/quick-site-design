@@ -84,7 +84,7 @@ const STRINGS = {
     ifcFail: 'IFC konnte nicht gelesen werden: {e}', ifcEmpty: 'Die IFC-Datei enthält keine darstellbare Geometrie.',
     ifcLibFail: 'Die IFC-Bibliothek (lib/web-ifc-api-iife.js) konnte nicht geladen werden.',
     ifcNeedTerrain: 'Zuerst ein Geländemodell laden.', ifcCancelled: 'Platzierung abgebrochen.', ifcRemoved: 'Bauwerk entfernt.',
-    ifcInfo: '{n} · {t} Dreiecke',
+    ifcInfo: '{n} · {t} Dreiecke', ifcFiles: '{n} IFC-Dateien', multiOk: 'mehrere möglich', ifcSkipped: 'Weggelassen: {l}.', ifcSkipCrs: 'anderes Bezugssystem', ifcSkipFar: 'liegt weit weg', ifcSkipRead: 'nicht lesbar',
     helpBtn: 'Hilfe', helpGuide: 'Vollständige Anleitung auf GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/BENUTZERANLEITUNG.md',
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
@@ -289,7 +289,7 @@ const STRINGS = {
     ifcFail: 'The IFC could not be read: {e}', ifcEmpty: 'The IFC file contains no displayable geometry.',
     ifcLibFail: 'The IFC library (lib/web-ifc-api-iife.js) could not be loaded.',
     ifcNeedTerrain: 'Load a terrain model first.', ifcCancelled: 'Placement cancelled.', ifcRemoved: 'Structure removed.',
-    ifcInfo: '{n} · {t} triangles',
+    ifcInfo: '{n} · {t} triangles', ifcFiles: '{n} IFC files', multiOk: 'several possible', ifcSkipped: 'Left out: {l}.', ifcSkipCrs: 'other coordinate system', ifcSkipFar: 'far away', ifcSkipRead: 'cannot be read',
     helpBtn: 'Help', helpGuide: 'Full user guide on GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/USER-GUIDE.en.md',
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
@@ -2847,7 +2847,7 @@ function addIfcMarker(pt, step) {
 function ifcCrsWarning(model) {
   if (!TERRAIN || !TERRAIN.epsg) return '';
   const g = model.georef;
-  const code = g ? g.epsg : ifcGuessGk(model.bbox, model.coord);
+  const code = g ? g.epsg : ifcGuessGk(ifcBox(model), model.coord);
   if (!code || code === TERRAIN.epsg) return '';
   let text = ifcFormat(g ? 'ifcWhyCrs' : 'ifcCrsGuess', { a: code, b: TERRAIN.epsg });
   if (crsGeoDefinition(code) && lastDemTiles) text += ' ' + ifcFormat('ifcSuggestCrs', { c: code });
@@ -2869,7 +2869,7 @@ function startIfcManual(fresh, why, warn) {
 }
 
 function frameIfcModel() {
-  const b = ifcModel.bbox, c = ifcCenterWorld(ifcModel);
+  const b = ifcBox(ifcModel), c = ifcCenterWorld(ifcModel);
   const cx = c.x, cy = c.y, cz = c.z;
   const size = Math.max(b.maxX - b.minX, b.maxZ - b.minZ, b.maxY - b.minY, 5);
   // Blickrichtung beibehalten, Abstand nach der Größe des Bauwerks
@@ -2939,11 +2939,41 @@ function finishIfcPick() {
   setStatus(msg, far || !!warn);
 }
 
-async function handleIfcFile(file) {
-  if (!file) return;
+/* Gelesenes Bauwerk in die Szene setzen: passt die Lage aus der Datei, automatisch, sonst von Hand */
+function placeNewIfc(m) {
+  const model = ifcSetModel(m);
+  renderIfcUi();
+  ['ifc-dx', 'ifc-dy', 'ifc-dz', 'ifc-dr'].forEach(function (id) { document.getElementById(id).value = '0'; });
+  const kind = ifcTryAutoPlace(model);
+  if (kind) {
+    if (kind === 'geo' && !ifcInsideTerrain(model, TERRAIN)) {
+      setIfcStatus(T('ifcOutside'), 'err');
+      setStatus(T('ifcOutside'), true);
+    } else {
+      const placed = kind === 'raw' ? T('ifcPlacedRaw') : ifcFormat('ifcPlacedAuto', { c: model.georef.epsg });
+      setIfcStatus(placed + ' ' + ifcFormat('ifcInfo', { n: m.name, t: m.triangles }), 'ok');
+      setStatus(placed);
+    }
+    focusOnIfc();
+    return;
+  }
+  const g = model.georef;
+  const warn = ifcCrsWarning(model);
+  let why = warn;
+  if (!why) why = !g ? T('ifcWhyNoGeo') : !g.epsg ? T('ifcWhyNoCrs') : T('ifcWhyTerrainCrs');
+  startIfcManual(true, why, !!warn);
+}
+
+/* Eine Datei oder mehrere zugleich (ein Bauwerk in Teilen) */
+async function handleIfcFile(input) {
+  const files = !input ? [] : (input.name !== undefined ? [input] : Array.prototype.slice.call(input));
+  if (!files.length) return;
   if (!TERRAIN) { setIfcStatus(T('ifcNeedTerrain'), 'err'); return; }
-  if (file.size > IFC_MAX_BYTES) {
-    setIfcStatus(ifcFormat('ifcTooBig', { n: file.name, s: (file.size / 1e6).toFixed(0), m: IFC_MAX_BYTES / 1e6 }), 'err');
+  const many = files.length > 1;
+  const total = files.reduce(function (sum, f) { return sum + (f.size || 0); }, 0);
+  if (total > IFC_MAX_BYTES) {
+    const name = many ? ifcFormat('ifcFiles', { n: files.length }) : files[0].name;
+    setIfcStatus(ifcFormat('ifcTooBig', { n: name, s: (total / 1e6).toFixed(0), m: IFC_MAX_BYTES / 1e6 }), 'err');
     return;
   }
   if (ifcPick) cancelIfcPick(true);
@@ -2953,28 +2983,30 @@ async function handleIfcFile(file) {
   // dem Browser Zeit geben, die Meldung zu zeigen, bevor das Lesen blockiert
   await new Promise(function (r) { setTimeout(r, 30); });
   try {
-    const m = await ifcReadModel(await file.arrayBuffer(), file.name);
-    const model = ifcSetModel(m);
-    renderIfcUi();
-    ['ifc-dx', 'ifc-dy', 'ifc-dz', 'ifc-dr'].forEach(function (id) { document.getElementById(id).value = '0'; });
-    const kind = ifcTryAutoPlace(model);
-    if (kind) {
-      if (kind === 'geo' && !ifcInsideTerrain(model, TERRAIN)) {
-        setIfcStatus(T('ifcOutside'), 'err');
-        setStatus(T('ifcOutside'), true);
-      } else {
-        const placed = kind === 'raw' ? T('ifcPlacedRaw') : ifcFormat('ifcPlacedAuto', { c: model.georef.epsg });
-        setIfcStatus(placed + ' ' + ifcFormat('ifcInfo', { n: m.name, t: m.triangles }), 'ok');
-        setStatus(placed);
+    const parts = [], skipped = [];
+    let firstError = null;
+    for (let i = 0; i < files.length; i++) {
+      if (many) { setIfcStatus(T('ifcReading') + ' ' + (i + 1) + '/' + files.length, 'busy'); await yieldToPaint(); }
+      try { parts.push(await ifcReadModel(await files[i].arrayBuffer(), files[i].name)); }
+      catch (e) {
+        if (!many || (e && e.message) === 'ifcLibFail') throw e;
+        firstError = firstError || e;
+        skipped.push({ name: files[i].name, why: 'read' });
       }
-      focusOnIfc();
-      return;
     }
-    const g = model.georef;
-    const warn = ifcCrsWarning(model);
-    let why = warn;
-    if (!why) why = !g ? T('ifcWhyNoGeo') : !g.epsg ? T('ifcWhyNoCrs') : T('ifcWhyTerrainCrs');
-    startIfcManual(true, why, !!warn);
+    if (!parts.length) throw firstError;
+    const res = ifcCombine(parts);
+    if (res.used > 1) res.model.name = ifcFormat('ifcFiles', { n: res.used });
+    else if (!res.model.name) res.model.name = files[0].name;
+    placeNewIfc(res.model);
+    const left = skipped.concat(res.skipped);
+    if (left.length) {
+      const why = { crs: 'ifcSkipCrs', far: 'ifcSkipFar', read: 'ifcSkipRead' };
+      const note = ifcFormat('ifcSkipped', { l: left.map(function (x) { return x.name + ' (' + T(why[x.why]) + ')'; }).join(', ') });
+      const el = document.getElementById('ifc-status');
+      setIfcStatus(el.textContent + ' ' + note, 'err');
+      setStatus(note, true);
+    }
   } catch (e) {
     const code = e && e.message;
     const msg = code === 'ifcLibFail' ? T('ifcLibFail') : code === 'ifcEmpty' ? T('ifcEmpty') : ifcFormat('ifcFail', { e: code });
@@ -2991,7 +3023,7 @@ function ifcTryAutoPlace(model) {
   const g = model.georef;
   let pl = null, kind = null;
   if (g && g.epsg && g.epsg === TERRAIN.epsg) { pl = ifcAutoPlacement(g, model.coord, TERRAIN); kind = 'geo'; }
-  else if (!g) { pl = ifcRawPlacement(model.bbox, model.coord, TERRAIN); kind = pl ? 'raw' : null; }
+  else if (!g) { pl = ifcRawPlacement(ifcBox(model), model.coord, TERRAIN); kind = pl ? 'raw' : null; }
   if (!pl) return null;
   // Eine Feinkorrektur von Hand gilt weiter, solange das Bezugssystem dasselbe bleibt
   const keep = model.how === 'auto' && model.placedCrs === TERRAIN.epsg;
@@ -4459,7 +4491,7 @@ function initUI() {
 
   const ifcInput = document.getElementById('ifc-input');
   ifcInput.addEventListener('change', function () {
-    if (ifcInput.files && ifcInput.files.length) handleIfcFile(ifcInput.files[0]);
+    if (ifcInput.files && ifcInput.files.length) handleIfcFile(ifcInput.files);
   });
   document.getElementById('ifc-clear').addEventListener('click', removeIfc);
   document.getElementById('ruler-new').addEventListener('click', newRuler);

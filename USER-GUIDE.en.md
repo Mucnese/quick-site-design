@@ -296,7 +296,10 @@ transmitted (see [privacy](datenschutz.html)). At the bottom left the attributio
 
 In the **Data** window, the **Structure · IFC** row loads a structure (new building, building,
 bridge) from an IFC file. Terrain must be loaded first. The reading library is loaded only now; the
-file stays in the browser and is not transmitted. Size up to 300 MB.
+file stays in the browser and is not transmitted. Size up to 300 MB (together).
+
+**Several files:** If a structure comes in parts (superstructure, substructure, temporary works), choose **all of them at once**. They are combined into one structure, each in its place; placing, moving, rotating and removing act on all of it.
+Files without a georeference are taken to be in the system of the others. Files in another coordinate system, far away (over 20 km) or unreadable are left out and named. A new selection replaces the current structure.
 
 - **Automatic:** If the file is georeferenced (`IfcMapConversion`) and uses the **same coordinate
   system (EPSG)** as the terrain, the structure appears at the right place, rotated and at the right

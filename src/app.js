@@ -7130,6 +7130,34 @@ function getWebIfc() {
   return webIfcLoading;
 }
 
+/* Längeneinheit des Projekts in Metern. Maßgeblich ist IfcProject.UnitsInContext: eine Datei kann weitere IfcSIUnit mit
+   LENGTHUNIT enthalten (MapUnit, Bestandteile abgeleiteter Einheiten), auch vor der des Projekts. Steht dort keine
+   metrische Längeneinheit, gilt die erste IfcSIUnit mit LENGTHUNIT der Datei, sonst Meter. */
+function ifcProjectUnit(api, modelId, W) {
+  const isLength = function (u) { return !!u && String(ifcVal(u.UnitType)) === 'LENGTHUNIT'; };
+  const factor = function (u) { return IFC_PREFIX[String(ifcVal(u.Prefix) || '').toUpperCase()] || 1; };
+  const line = function (ref) { const r = ifcVal(ref); return r ? api.GetLine(modelId, r) : null; };
+  try {
+    const ps = api.GetLineIDsWithType(modelId, W.IFCPROJECT);
+    const project = ps.size() ? api.GetLine(modelId, ps.get(0)) : null;
+    const assignment = project ? line(project.UnitsInContext) : null;
+    const units = (assignment && assignment.Units) || [];
+    for (let i = 0; i < units.length; i++) {
+      const u = line(units[i]);
+      // Name METRE: nur IfcSIUnit; eine IfcConversionBasedUnit (z. B. Fuß) hat keinen Vorsatz und wird nicht ausgewertet
+      if (isLength(u) && String(ifcVal(u.Name)) === 'METRE') return factor(u);
+    }
+  } catch (e) { /* unlesbare Zuordnung: Rückfall unten */ }
+  try {
+    const us = api.GetLineIDsWithType(modelId, W.IFCSIUNIT);
+    for (let i = 0; i < us.size(); i++) {
+      const u = api.GetLine(modelId, us.get(i));
+      if (isLength(u)) return factor(u);
+    }
+  } catch (e) { /* Meter */ }
+  return 1;
+}
+
 /* Lesen der Georeferenz: IfcMapConversion und IfcProjectedCRS. Liefert null, wenn keine da ist.
    Die Einheiten: web-ifc rechnet die Geometrie in Meter um; die Umrechnung der Karte
    (Eastings, Northings, Höhe) steht in der Kartenmaßeinheit des Koordinatensystems, Scale
@@ -7156,14 +7184,7 @@ function ifcReadGeoref(api, modelId, W) {
     } catch (e) { return 1; }
   }
   const mapUnit = crs && crs.MapUnit ? unitFactor(crs.MapUnit) : 1;
-  let projUnit = 1;
-  try {
-    const us = api.GetLineIDsWithType(modelId, W.IFCSIUNIT);
-    for (let i = 0; i < us.size(); i++) {
-      const u = api.GetLine(modelId, us.get(i));
-      if (String(ifcVal(u.UnitType)) === 'LENGTHUNIT') { projUnit = IFC_PREFIX[String(ifcVal(u.Prefix) || '').toUpperCase()] || 1; break; }
-    }
-  } catch (e) { projUnit = 1; }
+  const projUnit = ifcProjectUnit(api, modelId, W);
   const num = function (x, d) { const v = ifcVal(x); return (v === null || v === undefined || !isFinite(v)) ? d : Number(v); };
   return {
     epsg: epsg, crsName: crsName,
@@ -7205,6 +7226,85 @@ function ifcGuessGk(bbox, coord) {
   return zone >= 2 && zone <= 5 && rest >= 150000 && rest <= 850000 && n >= 5.2e6 && n <= 6.2e6 ? 31464 + zone : null;
 }
 
+/* ---------- Mehrere IFC-Dateien ----------
+   Ein Bauwerk liegt oft in mehreren Dateien (Überbau, Unterbau, Behelfe). Sie werden zu einem Modell zusammengefasst:
+   Jede Datei bekommt aus ihrer Georeferenz (sonst gelten die Koordinaten der Datei) ihren Platz zu einem gemeinsamen
+   Bezugspunkt, danach wirken Platzieren, Schieben und Entfernen auf alles zusammen. Dateien in einem anderen
+   Bezugssystem oder weit weg (mehr als IFC_MAX_SPREAD) bleiben weg. */
+const IFC_MAX_SPREAD = 20000;
+const IFC_PLAIN_GEOREF = { E0: 0, N0: 0, H0: 0, a: 1, b: 0, scale: 1, mapUnit: 1, projUnit: 1 };
+
+/* Ecken der Bounding-Box eines Netzes nach Drehung, Maßstab und Verschiebung */
+function ifcBoxCorners(b, pl) {
+  const c = Math.cos(pl.rotY), s = Math.sin(pl.rotY), out = [];
+  [b.minX, b.maxX].forEach(function (x) {
+    [b.minY, b.maxY].forEach(function (y) {
+      [b.minZ, b.maxZ].forEach(function (z) {
+        out.push({ x: pl.x + pl.scale * (c * x + s * z), y: pl.y + pl.scale * y, z: pl.z + pl.scale * (-s * x + c * z) });
+      });
+    });
+  });
+  return out;
+}
+
+/* Mitte einer Datei in Landeskoordinaten (Rechtswert, Hochwert, Höhe) */
+function ifcMapCentre(part) {
+  const pl = ifcAutoPlacement(part.georef || IFC_PLAIN_GEOREF, part.coord, { originE: 0, originN: 0, zmin: 0 });
+  const list = ifcBoxCorners(ifcBox(part), pl);
+  const sum = list.reduce(function (a, p) { return { x: a.x + p.x, y: a.y + p.y, z: a.z + p.z }; }, { x: 0, y: 0, z: 0 });
+  return { e: sum.x / 8, n: -sum.z / 8, h: sum.y / 8 };
+}
+
+/* parts: gelesene Dateien wie aus ifcReadModel. Ergebnis { model, used, skipped: [{ name, why: 'crs' | 'far' }] } */
+function ifcCombine(parts) {
+  if (parts.length === 1) return { model: parts[0], used: 1, skipped: [] };
+  const centres = parts.map(ifcMapCentre);
+  // Bezug: die erste Datei mit genanntem Bezugssystem, sonst die mit den größten Koordinaten (Landeskoordinaten)
+  let a = parts.findIndex(function (p) { return p.georef && p.georef.epsg; });
+  if (a < 0) {
+    a = 0;
+    centres.forEach(function (c, i) { if (Math.abs(c.e) + Math.abs(c.n) > Math.abs(centres[a].e) + Math.abs(centres[a].n)) a = i; });
+  }
+  const epsg = parts[a].georef ? parts[a].georef.epsg : null;
+  const ref = { originE: Math.round(centres[a].e), originN: Math.round(centres[a].n), zmin: Math.round(centres[a].h) };
+  const group = new THREE.Group();
+  const skipped = [];
+  const empty = function () { return { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity }; };
+  const box = empty(), core = empty();
+  const grow = function (target, list) {
+    list.forEach(function (q) {
+      target.minX = Math.min(target.minX, q.x); target.maxX = Math.max(target.maxX, q.x);
+      target.minY = Math.min(target.minY, q.y); target.maxY = Math.max(target.maxY, q.y);
+      target.minZ = Math.min(target.minZ, q.z); target.maxZ = Math.max(target.maxZ, q.z);
+    });
+  };
+  let triangles = 0, used = 0, georef = false;
+  parts.forEach(function (p, i) {
+    const other = p.georef && p.georef.epsg;
+    const why = other && epsg && other !== epsg ? 'crs'
+      : Math.hypot(centres[i].e - centres[a].e, centres[i].n - centres[a].n) > IFC_MAX_SPREAD ? 'far' : null;
+    if (why) { skipped.push({ name: p.name, why: why }); disposeGroup(p.group); return; }
+    const pl = ifcAutoPlacement(p.georef || IFC_PLAIN_GEOREF, p.coord, ref);
+    p.group.rotation.y = pl.rotY;
+    p.group.scale.set(pl.scale, pl.scale, pl.scale);
+    p.group.position.set(pl.x, pl.y, pl.z);
+    group.add(p.group);
+    grow(box, ifcBoxCorners(p.bbox, pl));
+    grow(core, ifcBoxCorners(ifcBox(p), pl));
+    triangles += p.triangles;
+    used++;
+    if (p.georef) georef = true;
+  });
+  return {
+    model: {
+      group: group, name: '', bbox: box, core: core, triangles: triangles,
+      coord: [-ref.originE, -ref.zmin, ref.originN],
+      georef: georef || epsg ? Object.assign({}, IFC_PLAIN_GEOREF, { epsg: epsg, crsName: epsg ? 'EPSG:' + epsg : '' }) : null
+    },
+    used: used, skipped: skipped
+  };
+}
+
 /* Drehung um die Hochachse in der Szene: der Winkel eines Vektors (vx, vz) ist atan2(-vz, vx) */
 function ifcAngle(vx, vz) { return Math.atan2(-vz, vx); }
 
@@ -7232,7 +7332,7 @@ function ifcApplyPlacement(model, pl, dz, de, dn, rot) {
 /* Abweichung von der Platzierung: Verschiebung in m (Ost, Nord, Höhe; in der Szene ist Norden -z) und Drehung in Grad
    um die Hochachse durch die Mitte des Bauwerks (positiv gegen den Uhrzeigersinn, von oben gesehen). */
 function ifcSetShift(model, de, dn, dz, rot) {
-  const pl = model.placement, b = model.bbox;
+  const pl = model.placement, b = ifcBox(model);
   if (rot !== undefined) model.rot = rot;
   model.de = de; model.dn = dn; model.dz = dz;
   const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
@@ -7248,7 +7348,7 @@ function ifcSetShift(model, de, dn, dz, rot) {
 
 /* Mitte des Bauwerks in Szenenkoordinaten */
 function ifcCenterWorld(model) {
-  const b = model.bbox, pl = model.placement, s = pl.scale;
+  const b = ifcBox(model), pl = model.placement, s = pl.scale;
   const cx = (b.minX + b.maxX) / 2, cy = ((b.minY + b.maxY) / 2) || 0, cz = (b.minZ + b.maxZ) / 2;
   const c = Math.cos(pl.rotY), n = Math.sin(pl.rotY);
   return {
@@ -7286,6 +7386,32 @@ function ifcInsideTerrain(model, terrain) {
   const m = ifcCenterWorld(model);
   return Math.abs(m.x) <= terrain.w / 2 && Math.abs(m.z) <= terrain.d / 2;
 }
+
+/* Ausdehnung ohne Ausreißer: Ein einzelnes Kleinteil weit weg (etwa ein Marker auf Höhe 0) würde sonst die Mitte des
+   Bauwerks verschieben und damit die Pfeile, das Drehzentrum und die Kamera. arrays: Eckpunkte [x, y, z, ...]. Je Achse
+   zählen die 0,2 % äußersten Punkte nicht, aber nur, wenn die Ausdehnung dadurch deutlich schrumpft; sonst gilt bbox.
+   Am Modell selbst wird nichts weggelassen. */
+function ifcCoreBox(arrays, bbox) {
+  let total = 0;
+  arrays.forEach(function (a) { total += a.length / 3; });
+  const step = 3 * Math.max(1, Math.floor(total / 100000));
+  const lists = [[], [], []];
+  arrays.forEach(function (a) {
+    for (let i = 0; i + 2 < a.length; i += step) { lists[0].push(a[i]); lists[1].push(a[i + 1]); lists[2].push(a[i + 2]); }
+  });
+  if (!lists[0].length) return bbox;
+  const r = lists.map(function (v) {
+    const s = Float64Array.from(v).sort();
+    const k = Math.floor(s.length * 0.002);
+    return [s[k], s[s.length - 1 - k]];
+  });
+  const full = [[bbox.minX, bbox.maxX], [bbox.minY, bbox.maxY], [bbox.minZ, bbox.maxZ]];
+  const outlier = full.some(function (f, i) { return f[1] - f[0] > 1.3 * (r[i][1] - r[i][0]) + 5; });
+  return outlier ? { minX: r[0][0], maxX: r[0][1], minY: r[1][0], maxY: r[1][1], minZ: r[2][0], maxZ: r[2][1] } : bbox;
+}
+
+/* Die für Mitte und Ausdehnung maßgebende Box */
+function ifcBox(model) { return model.core || model.bbox; }
 
 /* Liest eine IFC-Datei und baut daraus eine Gruppe (je Farbe ein Netz). Gibt {group, coord, georef, bbox, count}
    zurück. Die Gruppe wird noch nicht in die Szene gesetzt. */
@@ -7342,8 +7468,10 @@ async function ifcReadModel(arrayBuffer, fileName) {
       arrs.forEach(function (a) { out.set(a, o); o += a.length; });
       return out;
     }
+    const arrays = [];
     byColor.forEach(function (e) {
       const pos = cat(e.pos, Float32Array);
+      arrays.push(pos);
       for (let k = 0; k < pos.length; k += 3) {
         if (pos[k] < bbox.minX) bbox.minX = pos[k]; if (pos[k] > bbox.maxX) bbox.maxX = pos[k];
         if (pos[k + 1] < bbox.minY) bbox.minY = pos[k + 1]; if (pos[k + 1] > bbox.maxY) bbox.maxY = pos[k + 1];
@@ -7362,7 +7490,7 @@ async function ifcReadModel(arrayBuffer, fileName) {
       mesh.castShadow = true;
       group.add(mesh);
     });
-    return { group: group, name: fileName, coord: coord, georef: georef, bbox: bbox, triangles: tris };
+    return { group: group, name: fileName, coord: coord, georef: georef, bbox: bbox, core: ifcCoreBox(arrays, bbox), triangles: tris };
   } finally {
     api.CloseModel(id);
   }
@@ -7378,7 +7506,7 @@ function ifcRemoveModel() {
 /* Setzt ein gelesenes Modell in die Szene (ersetzt ein vorhandenes) */
 function ifcSetModel(m) {
   ifcRemoveModel();
-  ifcModel = { group: m.group, name: m.name, coord: m.coord, georef: m.georef, bbox: m.bbox, triangles: m.triangles,
+  ifcModel = { group: m.group, name: m.name, coord: m.coord, georef: m.georef, bbox: m.bbox, core: m.core, triangles: m.triangles,
                placement: null, de: 0, dn: 0, dz: 0, rot: 0, how: null };
   scene.add(ifcModel.group);
   return ifcModel;
@@ -7386,7 +7514,7 @@ function ifcSetModel(m) {
 
 /* Vorläufige Lage für das Anklicken von Punkten am Bauwerk: Mitte des Blickzentrums, unten auf dem Gelände */
 function ifcPreviewPlacement(model) {
-  const b = model.bbox;
+  const b = ifcBox(model);
   const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
   const tx = controls ? controls.target.x : 0, tz = controls ? controls.target.z : 0;
   ifcApplyPlacement(model, { rotY: 0, scale: 1, x: tx - cx, y: getHeightAt(tx, tz) - b.minY, z: tz - cz }, 0);
@@ -7556,6 +7684,7 @@ if (typeof module !== 'undefined' && module.exports) {
     axisDragParam: axisDragParam,
     ringDragAngle: ringDragAngle,
     canonicalEpsg: canonicalEpsg,
+    ifcCombine: ifcCombine, ifcCoreBox: ifcCoreBox,
     reprojectTerrain: reprojectTerrain, reprojectRings: reprojectRings, buildingTextEpsg: buildingTextEpsg, crsAccuracy: crsAccuracy,
     parseBeta2007: parseBeta2007, ensureBeta2007: ensureBeta2007, hasBeta2007: hasBeta2007, ifcRawPlacement: ifcRawPlacement, ifcGuessGk: ifcGuessGk,
     normDeg: normDeg,

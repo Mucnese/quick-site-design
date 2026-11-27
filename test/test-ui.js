@@ -2295,7 +2295,7 @@ function fakeWebIfc(conv, opts) {
   opts = opts || {};
   const v = function (x) { return { value: x }; };
   const vec = function (a) { return { size: function () { return a.length; }, get: function (i) { return a[i]; } }; };
-  const W = { IFCMAPCONVERSION: 1, IFCSIUNIT: 2 };
+  const W = { IFCMAPCONVERSION: 1, IFCSIUNIT: 2, IFCPROJECT: 3 };
   const verts = new Float32Array(8 * 6), idx = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 2, 3, 7, 2, 7, 6, 1, 2, 6, 1, 6, 5, 0, 3, 7, 0, 7, 4]);
   [[0, 0, 0], [10, 0, 0], [10, 0, 8], [0, 0, 8], [0, 6, 0], [10, 6, 0], [10, 6, 8], [0, 6, 8]].forEach(function (p, i) { verts.set([p[0], p[1], p[2], 0, 1, 0], i * 6); });
   W.IfcAPI = function () {
@@ -2303,8 +2303,12 @@ function fakeWebIfc(conv, opts) {
     this.Init = function () { return opts.initFails ? Promise.reject(new Error('ifcLibFail')) : Promise.resolve(); };
     this.OpenModel = function () { return 1; };
     this.CloseModel = function () { W.closed = (W.closed || 0) + 1; };
-    this.GetLineIDsWithType = function (id, t) { return vec(t === 1 && conv ? [10] : t === 2 ? [30] : []); };
+    this.GetLineIDsWithType = function (id, t) {
+      if (opts.ids && opts.ids[t]) return vec(opts.ids[t]);                 // eigene Zeilen eines Tests
+      return vec(t === 1 && conv ? [10] : t === 2 ? [30] : []);
+    };
     this.GetLine = function (id, eid) {
+      if (opts.lines && opts.lines[eid]) return opts.lines[eid];
       if (eid === 10) return { Eastings: v(conv.E), Northings: v(conv.N), OrthogonalHeight: v(conv.H), XAxisAbscissa: v(1), XAxisOrdinate: v(0), Scale: v(1), TargetCRS: v(20) };
       if (eid === 20) return { Name: v('EPSG:' + conv.epsg), Description: null, MapUnit: null };
       return { UnitType: v('LENGTHUNIT'), Prefix: null, Name: v('METRE') };
@@ -2353,6 +2357,33 @@ await test('IFC-Import: gleiches Bezugssystem - automatisch platziert, Lage aus 
   // Höhenversatz
   s.applyIfcDz('2.5');
   assert.ok(Math.abs(m.group.position.y - 3.5) < 1e-6);
+});
+
+await test('IFC-Import: Längeneinheit des Projekts aus IfcProject.UnitsInContext, nicht aus der ersten IfcSIUnit', async function () {
+  const v = function (x) { return { value: x }; };
+  const si = function (type, prefix, name) { return { UnitType: v(type), Prefix: prefix ? v(prefix) : null, Name: v(name) }; };
+  const read = async function (project, assigned) {
+    const lines = {
+      31: si('LENGTHUNIT', 'DECI', 'METRE'),              // falsche Einheit an erster Stelle
+      32: si('PLANEANGLEUNIT', null, 'RADIAN'),
+      33: si('LENGTHUNIT', null, 'METRE'),
+      34: si('LENGTHUNIT', 'MILLI', 'METRE'),
+      35: { UnitType: v('LENGTHUNIT'), Name: v('FOOT'), ConversionFactor: v(36) },
+      40: project,
+      41: { Units: [v(32), v(assigned)] }
+    };
+    const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 }, { ids: { 2: [31, 32, 33, 34], 3: [40] }, lines: lines });
+    await s.handleIfcFile(ifcFile('haus.ifc'));
+    return ifcModelOf(s);
+  };
+  const m = await read({ UnitsInContext: v(41) }, 33);
+  assert.strictEqual(m.georef.projUnit, 1);
+  assert.strictEqual(m.group.scale.x, 1, 'mit der Dezimeter-Einheit wäre das Bauwerk zehnfach zu groß');
+  assert.strictEqual((await read({ UnitsInContext: v(41) }, 34)).georef.projUnit, 0.001);
+  // Rückfall auf die erste IfcSIUnit: keine Einheiten am Projekt, keine Längeneinheit darin, oder Fuß (wird nicht ausgewertet)
+  assert.strictEqual((await read({ UnitsInContext: null }, 33)).georef.projUnit, 0.1);
+  assert.strictEqual((await read({ UnitsInContext: v(41) }, 32)).georef.projUnit, 0.1);
+  assert.strictEqual((await read({ UnitsInContext: v(41) }, 35)).georef.projUnit, 0.1);
 });
 
 await test('IFC-Import: anderes Bezugssystem oder keine Georeferenz - Platzierung von Hand mit vier Schritten', async function () {
@@ -2569,6 +2600,23 @@ await test('Bezugssystem wählen: Gelände und Gebäude werden umgerechnet und w
   await s.onProjectCrsChange();
   assert.strictEqual(t().epsg, 25832);
   assert.ok(g('project-crs-note').textContent.indexOf('4326') > 0);
+});
+
+await test('IFC-Import: mehrere Dateien zugleich werden ein Bauwerk; eine kaputte wird genannt und weggelassen', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  const g = function (id) { return s.document.getElementById(id); };
+  await s.handleIfcFile([ifcFile('ueberbau.ifc'), ifcFile('unterbau.ifc')]);
+  const m = ifcModelOf(s);
+  assert.strictEqual(m.group.children.length, 2);
+  assert.strictEqual(m.how, 'auto');
+  assert.ok(g('ifc-status').textContent.indexOf('2 IFC-Dateien') > 0, g('ifc-status').textContent);
+  assert.ok(Math.abs(m.group.position.x + m.group.children[0].position.x - (692480 - 692500)) < 1e-6, 'wie eine einzelne Datei');
+  const bad = { name: 'kaputt.ifc', size: 5, arrayBuffer: function () { return Promise.reject(new Error('x')); } };
+  await s.handleIfcFile([ifcFile('a.ifc'), bad]);
+  assert.ok(g('ifc-status').textContent.indexOf('Weggelassen: kaputt.ifc (nicht lesbar)') > 0 && g('ifc-status').className === 'file-status err', g('ifc-status').textContent);
+  assert.ok(ifcModelOf(s));
+  await s.handleIfcFile([ifcFile('g1.ifc', 200e6), ifcFile('g2.ifc', 200e6)]);
+  assert.ok(g('ifc-status').textContent.indexOf('400 MB') > 0, g('ifc-status').textContent);
 });
 
 await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {
