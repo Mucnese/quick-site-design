@@ -8,6 +8,8 @@ let formRefs = {};
 let statusTimer = null;
 let lastGmlRings = null;
 let lastDemTiles = null;      // eingelesene Kacheln, für Auflösungswechsel
+let projectCrs = null;        // gewähltes Bezugssystem (EPSG), null = wie die Geländedaten
+let gmlSource = null;         // Gebäude wie gelesen, je Datei { rings, epsg }, zum Neu-Umrechnen
 let lastDemNames = [];
 let gridLimit = MAX_GRID;
 let addNodeMode = false;         // nächster Klick fügt einen Punkt hinzu (Straße, Baugrube)
@@ -23,7 +25,8 @@ const STRINGS = {
     clear: 'Leeren', resetAll: 'Reset', confirmNo: 'Abbrechen',
     confirmClear: 'Alle {n} Bausteine löschen? Das lässt sich nicht rückgängig machen. Gelände, Gebäude und Bauwerk bleiben.', confirmClearYes: 'Ja, löschen',
     confirmReset: 'Alles zurücksetzen? Gelände, Gebäude, Bauwerk (IFC) und alle Bausteine werden entfernt, die Seite startet neu und nichts ist geladen. Das lässt sich nicht rückgängig machen.', confirmResetYes: 'Ja, zurücksetzen',
-    confirmDem: 'Gelände entfernen? Alles andere hängt am Gelände: Gebäude, Bauwerk (IFC) und alle Bausteine werden mit entfernt, die Seite startet neu. Das lässt sich nicht rückgängig machen.', confirmDemYes: 'Ja, entfernen', msgNoDem: 'Es ist kein Gelände geladen.',
+    confirmDem: 'Gelände entfernen? Alles andere hängt am Gelände: Gebäude, Bauwerk (IFC) und alle Bausteine werden mit entfernt, die Seite startet neu. Das lässt sich nicht rückgängig machen.', confirmDemYes: 'Ja, entfernen', confirmCrs: 'Bezugssystem wechseln? Die {n} Bausteine werden dabei entfernt. Das lässt sich nicht rückgängig machen.', confirmCrsYes: 'Ja, wechseln',
+    projCrs: 'Bezugssystem (KBS)', projCrsAuto: 'wie das Gelände', projCrsPending: 'Gilt für das nächste geladene Gelände.', projCrsNoSrc: 'Das Gelände nennt kein Bezugssystem und wird nicht umgerechnet.', projCrsBad: 'EPSG:{c} kann nicht umgerechnet werden.', projCrsDone: 'Gelände und Gebäude von EPSG:{a} nach EPSG:{b} umgerechnet.', projCrsBack: 'Gelände und Gebäude wieder im Bezugssystem der Daten.', crsAcc: 'Lage nur auf etwa {m} m genau{g}, Höhen unverändert.', crsAccGrid: ' (BeTA2007-Gitter)', crsExact: 'Ohne Datumswechsel, praktisch genau; Höhen unverändert.', ifcPlacedRaw: 'Automatisch platziert: Die Koordinaten der Datei passen zum Gelände.', ifcSuggestCrs: 'Oben als Bezugssystem (KBS) EPSG:{c} wählen.', msgNoDem: 'Es ist kein Gelände geladen.',
     msgNothingToClear: 'Es gibt keine Bausteine zu löschen.',
     appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
@@ -87,7 +90,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Passt das Bezugssystem nicht (zum Beispiel IFC in Gauß-Krüger, Gelände in UTM), wähle oben im Fenster „Daten“ das Bezugssystem (KBS): Gelände und Gebäude werden umgerechnet.\n- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -176,7 +179,6 @@ const STRINGS = {
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
     ifcTarget: 'Bezugssystem der Datei', ifcTargetSame: 'wie Gelände', ifcObjects: 'Straßen, Baugruben und Bausteine mitnehmen',
     ifcTargetNote: 'Die Punkte werden umgerechnet und absolut geschrieben.',
-    ifcTargetApprox: 'Bessel-System (DHDN/MGI): Umrechnung nur auf etwa 1 bis 2 m genau, ohne Höhenänderung.',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'DGM-Rasterung', unit: 'Einheit', unitMeter: 'Meter',
     hintClick: 'Linksklick', hintMeasure: 'Messpunkt', hintDrag: 'Links', hintDragX: ' ziehen',
@@ -228,7 +230,8 @@ const STRINGS = {
     clear: 'Clear', resetAll: 'Reset', confirmNo: 'Cancel',
     confirmClear: 'Delete all {n} blocks? This cannot be undone. Terrain, buildings and structure stay.', confirmClearYes: 'Yes, delete',
     confirmReset: 'Reset everything? Terrain, buildings, structure (IFC) and all blocks are removed, the page restarts and nothing is loaded. This cannot be undone.', confirmResetYes: 'Yes, reset',
-    confirmDem: 'Remove the terrain? Everything else depends on it: buildings, structure (IFC) and all blocks are removed too, and the page restarts. This cannot be undone.', confirmDemYes: 'Yes, remove', msgNoDem: 'No terrain is loaded.',
+    confirmDem: 'Remove the terrain? Everything else depends on it: buildings, structure (IFC) and all blocks are removed too, and the page restarts. This cannot be undone.', confirmDemYes: 'Yes, remove', confirmCrs: 'Change the coordinate system? The {n} blocks are removed. This cannot be undone.', confirmCrsYes: 'Yes, change',
+    projCrs: 'Coordinate system (CRS)', projCrsAuto: 'as the terrain', projCrsPending: 'Applies to the next terrain you load.', projCrsNoSrc: 'The terrain names no coordinate system and is not converted.', projCrsBad: 'EPSG:{c} cannot be converted.', projCrsDone: 'Terrain and buildings converted from EPSG:{a} to EPSG:{b}.', projCrsBack: 'Terrain and buildings are back in the coordinate system of the data.', crsAcc: 'Position only accurate to about {m} m{g}, heights unchanged.', crsAccGrid: ' (BeTA2007 grid)', crsExact: 'No datum change, practically exact; heights unchanged.', ifcPlacedRaw: 'Placed automatically: the coordinates in the file fit the terrain.', ifcSuggestCrs: 'Choose EPSG:{c} as coordinate system (CRS) above.', msgNoDem: 'No terrain is loaded.',
     msgNothingToClear: 'There are no blocks to delete.',
     appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
@@ -292,7 +295,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- If the coordinate systems differ (for example IFC in Gauss-Krüger, terrain in UTM), choose the coordinate system (CRS) at the top of the “Data” window: terrain and buildings are converted.\n- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -381,7 +384,6 @@ const STRINGS = {
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
     ifcTarget: 'CRS of the file', ifcTargetSame: 'same as terrain', ifcObjects: 'Include roads, excavations and blocks',
     ifcTargetNote: 'Points are converted and written as absolute coordinates.',
-    ifcTargetApprox: 'Bessel system (DHDN/MGI): conversion accurate to about 1 to 2 m only, heights unchanged.',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'DTM grid', unit: 'Unit', unitMeter: 'Metre',
     hintClick: 'Left click', hintMeasure: 'Measure point', hintDrag: 'Left', hintDragX: ' drag',
@@ -746,6 +748,7 @@ function refreshTexts() {
   refreshAttribution();
   renderOsmUi();
   buildXyzCrsOptions();
+  buildProjectCrsOptions();
   renderFpPanel();
   renderAddrUi();
   if (ifcPick) showIfcHint(ifcPick.step);
@@ -2912,6 +2915,7 @@ function finishIfcPick() {
   ifcApplyPlacement(ifcModel, pl, 0);
   updateIfcShiftFields();
   ifcModel.how = 'manual';
+  ifcModel.placedCrs = TERRAIN.epsg;
   let msg = ifcFormat('ifcPlacedManual', { m: pl.distModel.toFixed(2), t: pl.distTerrain.toFixed(2) });
   const diff = Math.abs(pl.distModel - pl.distTerrain);
   if (diff > Math.max(0.5, 0.02 * pl.distTerrain)) msg += ' ' + ifcFormat('ifcDistWarn', { d: diff.toFixed(2) });
@@ -2937,25 +2941,27 @@ async function handleIfcFile(file) {
     const model = ifcSetModel(m);
     renderIfcUi();
     ['ifc-dx', 'ifc-dy', 'ifc-dz', 'ifc-dr'].forEach(function (id) { document.getElementById(id).value = '0'; });
+    const kind = ifcTryAutoPlace(model);
+    if (kind) {
+      if (kind === 'geo' && !ifcInsideTerrain(model, TERRAIN)) {
+        setIfcStatus(T('ifcOutside'), 'err');
+        setStatus(T('ifcOutside'), true);
+      } else {
+        const placed = kind === 'raw' ? T('ifcPlacedRaw') : ifcFormat('ifcPlacedAuto', { c: model.georef.epsg });
+        setIfcStatus(placed + ' ' + ifcFormat('ifcInfo', { n: m.name, t: m.triangles }), 'ok');
+        setStatus(placed);
+      }
+      focusOnIfc();
+      return;
+    }
     const g = model.georef;
     let why = '';
     if (!g) why = T('ifcWhyNoGeo');
     else if (!g.epsg) why = T('ifcWhyNoCrs');
     else if (!TERRAIN.epsg) why = T('ifcWhyTerrainCrs');
-    else if (g.epsg !== TERRAIN.epsg) why = ifcFormat('ifcWhyCrs', { a: g.epsg, b: TERRAIN.epsg });
-    if (!why) {
-      ifcApplyPlacement(model, ifcAutoPlacement(g, model.coord, TERRAIN), 0);
-      model.how = 'auto';
-      if (!ifcInsideTerrain(model, TERRAIN)) {
-        setIfcStatus(T('ifcOutside'), 'err');
-        setStatus(T('ifcOutside'), true);
-      } else {
-        setIfcStatus(ifcFormat('ifcPlacedAuto', { c: g.epsg }) + ' ' + ifcFormat('ifcInfo', { n: m.name, t: m.triangles }), 'ok');
-        setStatus(ifcFormat('ifcPlacedAuto', { c: g.epsg }));
-      }
-      focusOnIfc();
-      return;
-    }
+    else why = ifcFormat('ifcWhyCrs', { a: g.epsg, b: TERRAIN.epsg });
+    const guess = g && g.epsg ? (crsGeoDefinition(g.epsg) ? g.epsg : null) : ifcGuessGk(m.bbox, m.coord);
+    if (guess && guess !== TERRAIN.epsg && lastDemTiles) why += ' ' + ifcFormat('ifcSuggestCrs', { c: guess });
     startIfcManual(true, why);
   } catch (e) {
     const code = e && e.message;
@@ -2967,15 +2973,34 @@ async function handleIfcFile(file) {
   }
 }
 
-/* Nach einem neuen Gelände: automatisch platzierte Bauwerke mit demselben Bezugssystem neu einpassen,
-   alles andere entfernen (die Lage gilt nur für das alte Gelände) */
+/* Passt die Lage aus der Datei zum Gelände? Dann setzen: 'geo' (Georeferenz mit demselben EPSG) oder 'raw'
+   (keine Georeferenz, aber die Koordinaten der Datei liegen im Gelände); sonst null. */
+function ifcTryAutoPlace(model) {
+  const g = model.georef;
+  let pl = null, kind = null;
+  if (g && g.epsg && g.epsg === TERRAIN.epsg) { pl = ifcAutoPlacement(g, model.coord, TERRAIN); kind = 'geo'; }
+  else if (!g) { pl = ifcRawPlacement(model.bbox, model.coord, TERRAIN); kind = pl ? 'raw' : null; }
+  if (!pl) return null;
+  // Eine Feinkorrektur von Hand gilt weiter, solange das Bezugssystem dasselbe bleibt
+  const keep = model.how === 'auto' && model.placedCrs === TERRAIN.epsg;
+  ifcApplyPlacement(model, pl, keep ? model.dz : 0, keep ? model.de : 0, keep ? model.dn : 0, keep ? model.rot : 0);
+  model.how = 'auto';
+  model.placedCrs = TERRAIN.epsg;
+  updateIfcShiftFields();
+  return kind;
+}
+
+/* Nach neuem oder umgerechnetem Gelände: Passt die Lage aus der Datei, wird das Bauwerk neu gesetzt, sonst entfernt
+   (eine Lage von Hand gilt nur für das alte Gelände) */
 function refreshIfcAfterTerrain() {
-  if (ifcPick) cancelIfcPick(true);
+  if (ifcPick) { clearIfcMarkers(); ifcPick = null; showIfcHint(null); }
   stopIfcMove(true);
   if (!ifcModel) return;
-  const g = ifcModel.georef;
-  if (ifcModel.how === 'auto' && g && g.epsg && g.epsg === TERRAIN.epsg) {
-    ifcApplyPlacement(ifcModel, ifcAutoPlacement(g, ifcModel.coord, TERRAIN), ifcModel.dz, ifcModel.de, ifcModel.dn, ifcModel.rot);
+  // von Hand im selben Bezugssystem gesetzt: gilt nicht fürs neue Gelände; nach einem Systemwechsel zählt die Datei
+  const manual = ifcModel.how === 'manual' && ifcModel.placedCrs === TERRAIN.epsg;
+  const kind = manual ? null : ifcTryAutoPlace(ifcModel);
+  if (kind) {
+    setIfcStatus(kind === 'raw' ? T('ifcPlacedRaw') : ifcFormat('ifcPlacedAuto', { c: TERRAIN.epsg }), 'ok');
     return;
   }
   ifcRemoveModel();
@@ -3063,7 +3088,7 @@ function startIfcMove() {
     ifcPick = null;
     showIfcHint(null);
     if (p.before) ifcApplyPlacement(ifcModel, p.before.pl, p.before.dz, p.before.de, p.before.dn, p.before.rot);
-    else { ifcModel.how = 'manual'; setIfcStatus(T('ifcPlacedMove'), 'ok'); }
+    else { ifcModel.how = 'manual'; ifcModel.placedCrs = TERRAIN.epsg; setIfcStatus(T('ifcPlacedMove'), 'ok'); }
   }
   if (!ifcModel.placement) return;
   if (rulerActive) stopRuler();
@@ -3287,7 +3312,8 @@ async function handleDemFiles(files, isDemo) {
     lastDemTiles = await readTiffTiles(items, xyzEpsg);
     lastDemNames = items.map(function (x) { return x.name; });
     lastXyzLoad = (hasXyz || lasNeedsCrs) ? { files: list, isDemo: isDemo } : null;
-    const t = gridTiles(lastDemTiles, GRID_MAX);
+    if (isDhdnCrs(projectCrs) || isDhdnCrs(lastDemTiles[0] && lastDemTiles[0].epsg)) await ensureBeta2007();
+    const t = terrainFromTiles(lastDemTiles);
     // XYZ ohne Bezugssystem in der Datei: liegt das Ergebnis weit weg von Europa, stimmt der Code vermutlich nicht
     let crsWarn = '';
     if (hasXyz || lasNeedsCrs) {
@@ -3297,35 +3323,7 @@ async function handleDemFiles(files, isDemo) {
       }
     }
 
-    hideMeasure();
-    buildTerrain(t);
-    refreshIfcAfterTerrain();
-    frameTerrain();
-    const removed = pruneObjectsOutside();
-    reseatAllObjects();
-    updateTerrainInfo();
-    renderOverview();
-
-    demoAttribDem = !!isDemo;
-    refreshAttribution();
-
-    setFileStatus('dem', demStatusText(t) + crsWarn, crsWarn ? 'err' : 'ok');
-
-    let msg = 'Gelände ersetzt: ' + Math.round(t.w) + ' × ' + Math.round(t.d) + ' m.';
-    if (removed) msg += ' ' + removed + ' Objekt(e) außerhalb entfernt.';
-    setStatus(msg);
-
-    if (lastFootprints) {
-      applyFootprints();                                        // Grundrisse neu auf das neue Gelände setzen
-    } else if (lastGmlRings) {
-      try {
-        setBuildings(buildBuildingsMesh(lastGmlRings));
-        setFileStatus('gml', 'Neu eingepasst', 'ok');
-      } catch (e) {
-        clearBuildings();
-        setFileStatus('gml', e.message, 'err');
-      }
-    }
+    applyDemTerrain(t, isDemo, crsWarn);
   } catch (err) {
     setFileStatus('dem', lasErrText(err), 'err');
     setStatus('GeoTIFF nicht lesbar: ' + lasErrText(err), true);
@@ -3369,11 +3367,13 @@ async function handleGmlFiles(files, isDemo) {
       texts.push({ name: list[i].name, text: await list[i].text() });
     }
     const merged = mergeCityGML(texts);
-    lastGmlRings = merged.rings;
+    gmlSource = merged.parts;
+    if (merged.parts.some(function (p) { return isDhdnCrs(p.epsg); })) await ensureBeta2007();
+    lastGmlRings = ringsForTerrain();
 
     showBusy('busyGmlRender');
     await yieldToPaint();
-    const mesh = buildBuildingsMesh(merged.rings);
+    const mesh = buildBuildingsMesh(lastGmlRings);
     setBuildings(mesh);
     await yieldToPaint();                    // das erste Bild mit den Gebäuden ist gezeichnet
 
@@ -3515,6 +3515,7 @@ function applyFootprints() {
   const info = document.getElementById('fp-info');
   try {
     const res = footprintRings(fp.set, { epsg: fp.opts.crs || null, ground: fp.opts.ground, height: fp.opts.height, fallback: fp.opts.fallback });
+    gmlSource = null;
     lastGmlRings = res.rings;
     const mesh = buildBuildingsMesh(res.rings);
     setBuildings(mesh);
@@ -3831,8 +3832,8 @@ function updateIfcTargetUi() {
   coords.disabled = other;
   note.className = '';
   if (!other) { note.textContent = ''; return; }
-  const approx = crsTransformIsApprox(TERRAIN.epsg, parseInt(v, 10));
-  note.textContent = T('ifcTargetNote') + (approx ? ' ' + T('ifcTargetApprox') : '');
+  const approx = crsAccuracy(TERRAIN.epsg, parseInt(v, 10));
+  note.textContent = T('ifcTargetNote') + (approx ? ' ' + crsAccuracyText(TERRAIN.epsg, parseInt(v, 10)) : '');
   if (approx) note.className = 'warn';
 }
 
@@ -4151,6 +4152,148 @@ function isTypingTarget(event) {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable === true;
 }
 
+/* Raster aus den Kacheln, bei gewähltem Bezugssystem dorthin umgerechnet */
+function terrainFromTiles(tiles) {
+  const t = gridTiles(tiles, GRID_MAX);
+  if (!projectCrs || !t.epsg || t.epsg === projectCrs) return t;
+  return reprojectTerrain(t, projectCrs);
+}
+
+function isDhdnCrs(code) { return code >= 31466 && code <= 31469; }
+
+/* Gelesene Gebäude in das System des Geländes bringen (nennt die Datei keines, gilt das der Geländedaten) */
+function ringsForTerrain() {
+  if (!gmlSource || !TERRAIN) return lastGmlRings;
+  let out = [];
+  gmlSource.forEach(function (part) {
+    const src = part.epsg || TERRAIN.srcEpsg || TERRAIN.epsg;
+    const rings = src && TERRAIN.epsg && src !== TERRAIN.epsg ? reprojectRings(part.rings, src, TERRAIN.epsg, TERRAIN.originE, TERRAIN.originN) : part.rings;
+    for (let i = 0; i < rings.length; i++) out.push(rings[i]);
+  });
+  return out;
+}
+
+/* Neues (oder neu umgerechnetes) Gelände einsetzen und alles darauf neu einpassen */
+function applyDemTerrain(t, isDemo, crsWarn) {
+    hideMeasure();
+    buildTerrain(t);
+    refreshIfcAfterTerrain();
+    frameTerrain();
+    const removed = pruneObjectsOutside();
+    reseatAllObjects();
+    updateTerrainInfo();
+    renderOverview();
+
+    demoAttribDem = !!isDemo;
+    refreshAttribution();
+
+    setFileStatus('dem', demStatusText(t) + crsWarn, crsWarn ? 'err' : 'ok');
+
+    let msg = 'Gelände ersetzt: ' + Math.round(t.w) + ' × ' + Math.round(t.d) + ' m.';
+    if (removed) msg += ' ' + removed + ' Objekt(e) außerhalb entfernt.';
+    setStatus(msg);
+
+    if (lastFootprints) {
+      applyFootprints();                                        // Grundrisse neu auf das neue Gelände setzen
+    } else if (lastGmlRings) {
+      try {
+        lastGmlRings = ringsForTerrain();
+        setBuildings(buildBuildingsMesh(lastGmlRings));
+        setFileStatus('gml', 'Neu eingepasst', 'ok');
+      } catch (e) {
+        clearBuildings();
+        setFileStatus('gml', e.message, 'err');
+      }
+    }
+  updateProjectCrsNote();
+}
+
+/* ---------- Bezugssystem des Projekts ----------
+   „wie das Gelände“ oder ein gewähltes System: Gelände und Gebäude werden beim Laden (oder beim Wechsel) dorthin
+   umgerechnet, damit etwa ein Bauwerk in Gauß-Krüger zu Geländedaten in UTM passt. */
+function buildProjectCrsOptions() {
+  const sel = document.getElementById('project-crs');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const add = function (value, label) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    sel.appendChild(o);
+  };
+  add('', T('projCrsAuto'));
+  XYZ_CRS_CHOICES.forEach(function (c) { add(String(c), crsLabel(c)); });
+  add('other', T('xyzOther'));
+  syncProjectCrsUi();
+}
+
+function syncProjectCrsUi() {
+  const sel = document.getElementById('project-crs'), inp = document.getElementById('project-epsg');
+  if (!sel) return;
+  const listed = projectCrs && XYZ_CRS_CHOICES.indexOf(projectCrs) >= 0;
+  sel.value = !projectCrs ? '' : listed ? String(projectCrs) : 'other';
+  inp.value = projectCrs && !listed ? String(projectCrs) : '';
+  inp.style.display = sel.value === 'other' ? '' : 'none';
+  updateProjectCrsNote();
+}
+
+function setProjectCrsNote(text, kind) {
+  const el = document.getElementById('project-crs-note');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'file-status' + (kind ? ' ' + kind : '');
+  el.style.display = text ? '' : 'none';
+}
+
+function crsAccuracyText(from, to) {
+  const a = crsAccuracy(from, to);
+  return a ? ifcFormat('crsAcc', { m: a.m, g: a.grid ? T('crsAccGrid') : '' }) : T('crsExact');
+}
+
+function updateProjectCrsNote() {
+  if (TERRAIN && TERRAIN.srcEpsg) setProjectCrsNote('EPSG:' + TERRAIN.srcEpsg + ' → ' + TERRAIN.epsg + ': ' + crsAccuracyText(TERRAIN.srcEpsg, TERRAIN.epsg), 'busy');
+  else if (!projectCrs) setProjectCrsNote('');
+  else if (!TERRAIN) setProjectCrsNote(T('projCrsPending'));
+  else if (!TERRAIN.epsg) setProjectCrsNote(T('projCrsNoSrc'), 'err');
+  else setProjectCrsNote('');
+}
+
+function onProjectCrsChange() {
+  const sel = document.getElementById('project-crs'), inp = document.getElementById('project-epsg');
+  if (sel.value === 'other') {
+    inp.style.display = '';
+    if (!String(inp.value).trim()) { if (inp.focus) inp.focus(); return; }
+  }
+  const code = sel.value === '' ? null : sel.value === 'other' ? parseInt(inp.value, 10) : parseInt(sel.value, 10);
+  if (code !== null) {
+    const def = code > 0 ? crsGeoDefinition(code) : null;
+    if (!def || def.merc) { setProjectCrsNote(ifcFormat('projCrsBad', { c: inp.value }), 'err'); return; }
+  }
+  if (code === projectCrs) { syncProjectCrsUi(); return; }
+  if (hasTerrain() && lastDemTiles && objects.length) {
+    const count = objects.length;
+    syncProjectCrsUi();                                       // bei Abbrechen bleibt die alte Wahl stehen
+    askConfirm('confirmCrs', { n: count }, 'confirmCrsYes', function () { setProjectCrs(code); });
+    return;
+  }
+  return setProjectCrs(code);
+}
+
+async function setProjectCrs(code) {
+  projectCrs = code;
+  syncProjectCrsUi();
+  if (!hasTerrain() || !lastDemTiles) return;
+  if (isDhdnCrs(code) || isDhdnCrs(lastDemTiles[0].epsg)) await ensureBeta2007();
+  let t;
+  try { t = terrainFromTiles(lastDemTiles); }
+  catch (e) { setProjectCrsNote(ifcFormat('projCrsBad', { c: code }), 'err'); return; }
+  if (rulerActive) stopRuler();
+  clearExportPreview();
+  if (objects.length) clearAllObjects();
+  selectTool(null);
+  applyDemTerrain(t, demoAttribDem, '');
+  setStatus(t.srcEpsg ? ifcFormat('projCrsDone', { a: t.srcEpsg, b: t.epsg }) : T('projCrsBack'));
+}
+
 /* ---------- Bestätigung (Leeren, Reset) ---------- */
 let confirmAction = null;
 
@@ -4305,6 +4448,9 @@ function initUI() {
   document.getElementById('ruler-close').addEventListener('click', stopRuler);
   document.getElementById('ifc-manual-btn').addEventListener('click', function () { startIfcManual(false); });
   document.getElementById('ifc-move-btn').addEventListener('click', toggleIfcMove);
+  buildProjectCrsOptions();
+  document.getElementById('project-crs').addEventListener('change', onProjectCrsChange);
+  document.getElementById('project-epsg').addEventListener('change', onProjectCrsChange);
   [['ifc-dx', 'e'], ['ifc-dy', 'n'], ['ifc-dz', 'z'], ['ifc-dr', 'r']].forEach(function (f) {
     document.getElementById(f[0]).addEventListener('input', function (e) {
       applyIfcShift(f[1], (e && e.target ? e.target : this).value);
@@ -4341,6 +4487,7 @@ function initUI() {
   document.getElementById('gml-clear').addEventListener('click', function () {
     clearBuildings();
     lastGmlRings = null;
+    gmlSource = null;
     lastFootprints = null;
     renderFpPanel();
     demoAttribGml = false;
@@ -4465,6 +4612,7 @@ if (typeof module !== 'undefined' && module.exports) {
     removeIfc: removeIfc,
     refreshIfcAfterTerrain: refreshIfcAfterTerrain,
     getIfcPick: function () { return ifcPick; },
+    onProjectCrsChange: onProjectCrsChange, setProjectCrs: setProjectCrs,
     startIfcMove: startIfcMove, stopIfcMove: stopIfcMove, updateIfcGizmo: updateIfcGizmo, applyIfcShift: applyIfcShift,
     startIfcGizmoDrag: startIfcGizmoDrag, buildIfcGizmo: buildIfcGizmo, onIfcGizmoMove: onIfcGizmoMove, endIfcGizmoDrag: endIfcGizmoDrag,
     setIfcPick: function (p) { ifcPick = p; },

@@ -8,6 +8,12 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-27
 
+### Added
+- **Choose the coordinate system (CRS):** In the data window you can choose a system or type an EPSG code; terrain and buildings are converted to it (for example UTM to Gauss-Krüger), with the accuracy stated. Heights stay unchanged; blocks are removed after a question when changing.
+- **More accurate with BeTA2007:** Between German Gauss-Krüger (DHDN) and ETRS89 the application now uses the AdV BeTA2007 grid (about 1 m instead of about 3 m), also for IFC export and the map.
+- **IFC with national coordinates but no georeference** is placed automatically if the coordinates lie within the terrain.
+- Building files naming another coordinate system than the terrain are converted.
+
 ### Changed
 - **“Remove” for all data:** The terrain now has the button too; for terrain, buildings and structure it is always at the top right. For the terrain, after a question everything is removed, because everything depends on it.
 

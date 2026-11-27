@@ -2733,6 +2733,54 @@ test('IFC-Import: Georeferenz wird aus IfcMapConversion und IfcProjectedCRS gele
   assert.strictEqual(app.ifcReadGeoref(api, 1, W).epsg, null);
 });
 
+test('Gelände umrechnen: Raster liegt im Zielsystem, Höhen folgen der Lage (schräge Ebene), Ränder werden abgeschnitten', function () {
+  const nx = 201, nz = 201, w = 1005, d = 1005, oe = 692000, on = 5336000;
+  const plane = function (e, n) { return 500 + (e - oe) * 0.05 + (n - on) * 0.02; };
+  const rel = new Float32Array(nx * nz);
+  for (let iz = 0; iz < nz; iz++) for (let ix = 0; ix < nx; ix++) {
+    rel[iz * nx + ix] = plane(oe - w / 2 + (ix + 0.5) * w / nx, on + d / 2 - (iz + 0.5) * d / nz) - 450;
+  }
+  const t = { nx: nx, nz: nz, w: w, d: d, originE: oe, originN: on, zmin: 450, zmax: 550, rel: rel, epsg: 25832, label: 'x' };
+  const g = app.reprojectTerrain(t, 31468);
+  assert.strictEqual(g.epsg, 31468);
+  assert.strictEqual(g.srcEpsg, 25832);
+  assert.ok(g.w < w && g.w > w * 0.85 && g.d < d && g.d > d * 0.85, g.w + ' x ' + g.d);
+  const back = app.crsTransformer(31468, 25832);
+  [[0, 0], [10, 20], [g.nx - 1, g.nz - 1], [g.nx >> 1, g.nz >> 1]].forEach(function (c) {
+    const e = g.originE - g.w / 2 + (c[0] + 0.5) * g.w / g.nx, n = g.originN + g.d / 2 - (c[1] + 0.5) * g.d / g.nz;
+    const p = back(e, n);
+    const h = g.zmin + g.rel[c[1] * g.nx + c[0]];
+    assert.ok(Math.abs(h - plane(p.e, p.n)) < 0.02, c + ': ' + h + ' / ' + plane(p.e, p.n));
+  });
+});
+
+test('Gebäude: genanntes Bezugssystem aus CityGML/CityJSON, Ringe umrechnen (auch mit vertauschten Achsen)', function () {
+  assert.strictEqual(app.buildingTextEpsg('<a srsName="urn:adv:crs:ETRS89_UTM32*DE_DHHN2016_NH">'), 25832);
+  assert.strictEqual(app.buildingTextEpsg('<a srsName="urn:adv:crs:DE_DHDN_3GK4*DE_DHHN12_NH">'), 31468);
+  assert.strictEqual(app.buildingTextEpsg('<a srsName="EPSG:5555">'), 25832);
+  assert.strictEqual(app.buildingTextEpsg('{"metadata":{"referenceSystem":"https://www.opengis.net/def/crs/EPSG/0/7415"}}'), 28992);
+  assert.strictEqual(app.buildingTextEpsg('<a>'), null);
+  assert.strictEqual(app.buildingTextEpsg('<a srsName="EPSG:4326">'), null);
+  const tr = app.crsTransformer(25832, 31468), a = tr(692000, 5336000), mid = tr(692005, 5336005);
+  const out = app.reprojectRings([[692000, 5336000, 500, 692010, 5336000, 500, 692010, 5336010, 505]], 25832, 31468, mid.e, mid.n);
+  assert.ok(Math.abs(out[0][0] - a.e) < 1e-6 && Math.abs(out[0][1] - a.n) < 1e-6 && out[0][8] === 505);
+  const swapped = app.reprojectRings([[5336000, 692000, 500, 5336000, 692010, 500, 5336010, 692010, 505]], 25832, 31468, mid.e, mid.n);
+  assert.ok(Math.abs(swapped[0][0] - a.e) < 1e-6 && Math.abs(swapped[0][1] - a.n) < 1e-6);
+});
+
+test('IFC ohne Georeferenz: Landeskoordinaten in der Datei, die im Gelände liegen, platzieren es; sonst Hinweis auf die Gauß-Krüger-Zone', function () {
+  const bbox = { minX: -5, maxX: 5, minY: 0, maxY: 6, minZ: -4, maxZ: 4 };
+  const terrain = { originE: 4468000, originN: 5333000, zmin: 500, w: 1000, d: 1000 };
+  // Verschiebung der web-ifc-Koordinationsmatrix: Datei = Netz - coord (x Ost, y Höhe, -z Nord)
+  const pl = app.ifcRawPlacement(bbox, [-4468100, -510, 5333050], terrain);
+  assert.ok(pl && Math.abs(pl.x - 100) < 1e-6 && Math.abs(pl.y - 10) < 1e-6 && Math.abs(pl.z + 50) < 1e-6, JSON.stringify(pl));
+  assert.strictEqual(app.ifcRawPlacement(bbox, [0, 0, 0], terrain), null);
+  assert.strictEqual(app.ifcRawPlacement(bbox, [-4468100, -510, 5333050], { originE: 692000, originN: 5336000, zmin: 500, w: 1000, d: 1000 }), null);
+  assert.strictEqual(app.ifcGuessGk(bbox, [-4468100, -510, 5333050]), 31468);
+  assert.strictEqual(app.ifcGuessGk(bbox, [0, 0, 0]), null);
+  assert.strictEqual(app.ifcGuessGk(bbox, [-692000, 0, 5336000]), null);
+});
+
 test('Drehring: Richtungswinkel in der waagerechten Ebene (Ost 0, Nord 90 Grad), null beim waagerechten Blick; Winkel auf (-180, 180]', function () {
   const c = { x: 5, y: 2, z: 5 }, down = { x: 0, y: -1, z: 0 };
   assert.ok(Math.abs(app.ringDragAngle({ x: 9, y: 30, z: 5 }, down, c)) < 1e-9);

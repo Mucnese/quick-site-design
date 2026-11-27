@@ -343,6 +343,9 @@ die Meshes (Meter, Y oben, `COORDINATE_TO_ORIGIN`); `ifcReadGeoref` holt IfcMapC
 Modell bleibt waagerecht. IfcConversionBasedUnit (z. B. Fuß) wird nicht ausgewertet. Nach dem Wechsel des
 Geländes setzt `refreshIfcAfterTerrain` automatisch platzierte Modelle neu, manuell platzierte entfallen.
 
+**Bezugssystem des Projekts.** `projectCrs` (ui.js): `terrainFromTiles` rechnet das fertige Raster mit `reprojectTerrain` um (`TERRAIN.epsg` = Ziel, `TERRAIN.srcEpsg` = System der Daten). Gebäude bleiben wie gelesen in `gmlSource` (je Datei `{rings, epsg}`), `ringsForTerrain` rechnet sie um; `lastGmlRings` ist immer im System des Geländes. Daten ohne eigene Angabe (Grundrisse, Gebäude) gelten im `srcEpsg`.
+DHDN rechnet über `datumToWgs84`/`datumFromWgs84` mit `lib/de_adv_BETA2007.tif` (beim Start nachgeladen, `ensureBeta2007`; ohne Gitter Helmert). Referenzwerte nur mit ausdrücklichem PROJ-Rechenweg prüfen (`cct … +step +proj=hgridshift`). IFC ohne Georeferenz: `ifcRawPlacement`.
+
 **IFC verschieben und drehen.** Zweite Platzierung von Hand (`startIfcMove`, `ifcGizmo` in `ui.js`). Die Lage ist `model.placement` plus Verschiebung `de`/`dn`/`dz` (Ost, Nord, Höhe; Norden = -z) und Drehung `rot` (Grad um die Hochachse durch die Mitte der Bounding-Box), gesetzt nur über `ifcSetShift`/`ifcApplyPlacement`.
 Der Griff eines Pfeils wird in `onOrbitPointerDown` (Capture am Fenster) vor allem anderen geprüft und stoppt das Ereignis; die Strecke rechnet `axisDragParam` (null beim Blick fast entlang der Achse), den Winkel am Ring `ringDragAngle`. `updateIfcGizmo` läuft pro Bild in `animate`. Wer einen neuen Modus einbaut, ruft `stopIfcMove`.
 
@@ -350,7 +353,7 @@ Der Griff eines Pfeils wird in `onOrbitPointerDown` (Capture am Fenster) vor all
 (`objectTriangles`: Meshes und Instanzen in Weltkoordinaten; Linien und `IFC_SKIP_KINDS`-Hilfsflächen der
 Straße bleiben draußen); `runIfcExport` ruft es erst beim Exportieren (Häkchen `ifc-objects`). `opts.targetEpsg`
 rechnet jeden Punkt mit `crsTransformer` um (Krüger-Reihe vor und zurück, Helmert für Bessel-Systeme DHDN/MGI,
-dort nur etwa 1 bis 2 m, Höhen unverändert); bei anderem Ziel immer absolute Koordinaten. Zielsysteme: `IFC_TARGET_CRS`.
+DHDN mit BeTA2007 etwa 1 m, MGI etwa 2 m, Höhen unverändert); bei anderem Ziel immer absolute Koordinaten. Zielsysteme: `IFC_TARGET_CRS`.
 Farben: `objectTriangles` gibt je Dreieck `col` (Materialfarbe mal Instanzfarbe); `addGroup` schreibt je Farbe eine
 IfcTriangulatedFaceSet mit IfcStyledItem und gemeinsamem IfcSurfaceStyle (`IFC_COLOR_*` für gleichfarbiges Gelände/Gebäude).
 Neue Systeme nur mit nachgeprüften Parametern (der Test vergleicht über `crsToLonLat` mit PROJ-Referenzwerten).

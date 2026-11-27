@@ -1334,7 +1334,7 @@ async function photonSearch(query, signal) {
    eine affine Abbildung Welt -> Kartenbild bestimmt; sie weicht bei 1 km
    Kantenlänge um etwa 0,2 m von der strengen Rechnung ab (plan.affineError).
    Bei Bezugssystemen auf Bessel (DHDN, MGI) kommt eine Helmert-Transformation
-   nach WGS 84 dazu; die Lage stimmt dann auf etwa 1 bis 2 m.
+   nach WGS 84 dazu; die Lage stimmt dann auf etwa 1 bis 3 m.
    ========================================================= */
 const GEO_ELL = {
   grs80: { a: 6378137, f: 1 / 298.257222101 },
@@ -1357,6 +1357,77 @@ function helmertSjtsk(lat, lon) {
   // Grenzlinie Slowakei/Tschechien grob von (16,95 E; 48,7 N) nach (18,85 E; 49,55 N); südlich davon gilt der slowakische Satz
   return (lon > 18.87 || lat < 48.7 + 0.4474 * (lon - 16.95)) && lon > 16.84 ? HELMERT_SJTSK_SK : HELMERT_SJTSK_CZ;
 }
+/* ---------- BeTA2007-Gitter (AdV): Lageverschiebung DHDN -> ETRS89 für Deutschland ----------
+   Genauer als die 7-Parameter-Umrechnung (etwa 1 m statt etwa 3 m, EPSG:15948 statt EPSG:1777). Die Datei
+   lib/de_adv_BETA2007.tif (24 KB, GeoTIFF aus PROJ-data) enthält je Stützpunkt die Verschiebung in Bogensekunden
+   (Breite; Länge, positiv nach Osten). Sie wird beim Start nachgeladen; fehlt sie oder liegt ein Punkt außerhalb,
+   rechnet die Helmert-Transformation. */
+const BETA2007_URL = 'lib/de_adv_BETA2007.tif';
+let betaGrid = null;            // { w, h, lon0, lat0 (erster Stützpunkt, Nordwest), dLon, dLat, lat, lon }
+let betaLoading = null;
+
+async function parseBeta2007(buffer) {
+  const tiff = await GeoTIFF.fromArrayBuffer(buffer);
+  const img = await tiff.getImage();
+  const tie = img.getTiePoints()[0], scale = img.getFileDirectory().ModelPixelScale;
+  const bands = await img.readRasters();
+  betaGrid = { w: img.getWidth(), h: img.getHeight(), lon0: tie.x, lat0: tie.y, dLon: scale[0], dLat: scale[1], lat: bands[0], lon: bands[1] };
+  return betaGrid;
+}
+
+function ensureBeta2007() {
+  if (betaGrid) return Promise.resolve(true);
+  if (typeof fetch !== 'function' || typeof GeoTIFF === 'undefined') return Promise.resolve(false);
+  if (!betaLoading) {
+    betaLoading = Promise.resolve()
+      .then(function () { return fetch(BETA2007_URL); })
+      .then(function (r) { if (!r.ok) throw new Error('beta'); return r.arrayBuffer(); })
+      .then(parseBeta2007)
+      .then(function () { return true; })
+      .catch(function () { betaLoading = null; return false; });
+  }
+  return betaLoading;
+}
+
+function hasBeta2007() { return betaGrid !== null; }
+
+/* Verschiebung DHDN -> ETRS89 an der Stelle (Grad) in Grad, bilinear; null außerhalb des Gitters oder ohne Gitter */
+function betaShift(lat, lon) {
+  const g = betaGrid;
+  if (!g) return null;
+  const x = (lon - g.lon0) / g.dLon, y = (g.lat0 - lat) / g.dLat;
+  if (!(x >= 0 && y >= 0 && x <= g.w - 1 && y <= g.h - 1)) return null;
+  const i = Math.min(Math.floor(x), g.w - 2), j = Math.min(Math.floor(y), g.h - 2), fx = x - i, fy = y - j;
+  const at = function (band) {
+    const k = j * g.w + i;
+    return (band[k] * (1 - fx) + band[k + 1] * fx) * (1 - fy) + (band[k + g.w] * (1 - fx) + band[k + g.w + 1] * fx) * fy;
+  };
+  return { lat: at(g.lat) / 3600, lon: at(g.lon) / 3600 };
+}
+
+/* Geografische Koordinaten des Datums einer Definition nach WGS 84 / ETRS89 und zurück */
+function datumToWgs84(d, lat, lon) {
+  if (d.helmert === HELMERT_DHDN) {
+    const s = betaShift(lat, lon);
+    if (s) return { lat: lat + s.lat, lon: lon + s.lon };
+  }
+  return helmertToWgs84(lat, lon, d.ell, helmertOf(d, lat, lon));
+}
+function datumFromWgs84(d, lat, lon) {
+  if (d.helmert === HELMERT_DHDN) {
+    let s = betaShift(lat, lon);
+    if (s) {
+      let g = { lat: lat, lon: lon };
+      for (let i = 0; i < 4; i++) {                          // das Gitter ist in DHDN angegeben: schrittweise annähern
+        g = { lat: lat - s.lat, lon: lon - s.lon };
+        s = betaShift(g.lat, g.lon) || s;
+      }
+      return g;
+    }
+  }
+  return helmertFromWgs84(lat, lon, d.ell, helmertOf(d, lat, lon));
+}
+
 /* helmert einer Definition ist eine Parameterliste oder eine Funktion (Breite, Länge) -> Liste (je nach Lage verschieden) */
 function helmertOf(d, lat, lon) { return typeof d.helmert === 'function' ? d.helmert(lat, lon) : d.helmert; }
 
@@ -1677,20 +1748,32 @@ const IFC_TARGET_CRS = [25832, 25833, 25831, 4647, 5650, 31466, 31467, 31468, 31
 /* Rechnet Rechts-/Hochwerte von einem Bezugssystem in ein anderes um: Funktion (e, n) -> {e, n},
    oder null, wenn eines der beiden Systeme nicht bekannt ist. Der Weg führt über Breite/Länge
    (WGS 84 gleich ETRS89 auf Dezimeter genau); bei Bessel-Systemen (DHDN, MGI) kommt die
-   Helmert-Transformation dazu, die Lage stimmt dann auf etwa 1 bis 2 m. Höhen bleiben unverändert. */
+   Helmert-Transformation dazu, die Lage stimmt dann auf etwa 1 bis 3 m. Höhen bleiben unverändert. */
 function crsTransformer(fromEpsg, toEpsg) {
   const from = crsGeoDefinition(fromEpsg), to = crsGeoDefinition(toEpsg);
   if (!from || !to || from.merc || to.merc) return null;
   if (fromEpsg === toEpsg) return function (e, n) { return { e: e, n: n }; };
+  const same = from.helmert && from.helmert === to.helmert;          // gleiches Datum: nur die Abbildung wechselt
   return function (e, n) {
     let g = projInverse(from, e, n);
-    if (from.helmert) g = helmertToWgs84(g.lat, g.lon, from.ell, helmertOf(from, g.lat, g.lon));
-    if (to.helmert) g = helmertFromWgs84(g.lat, g.lon, to.ell, helmertOf(to, g.lat, g.lon));
+    if (same) return projForward(to, g.lat, g.lon);
+    if (from.helmert) g = datumToWgs84(from, g.lat, g.lon);
+    if (to.helmert) g = datumFromWgs84(to, g.lat, g.lon);
     return projForward(to, g.lat, g.lon);
   };
 }
 
-/* Gibt es bei dieser Umrechnung eine Helmert-Transformation (Lagegenauigkeit nur etwa 1 bis 2 m)? */
+/* Lagegenauigkeit einer Umrechnung: null ohne Datumswechsel (praktisch genau), sonst { m: etwa so viele Meter, grid: mit BeTA2007 } */
+function crsAccuracy(fromEpsg, toEpsg) {
+  const a = crsGeoDefinition(fromEpsg), b = crsGeoDefinition(toEpsg);
+  if (!a || !b || fromEpsg === toEpsg || a.helmert === b.helmert) return null;
+  const list = [a.helmert, b.helmert].filter(Boolean);
+  const dhdn = list.indexOf(HELMERT_DHDN) >= 0, grid = dhdn && hasBeta2007();
+  if (list.length === 1 && dhdn) return { m: grid ? 1 : 3, grid: grid };
+  return { m: dhdn && !grid ? 3 : 2, grid: grid };
+}
+
+/* Gibt es bei dieser Umrechnung einen Datumswechsel (Lage nur auf etwa 1 bis 3 m genau)? */
 function crsTransformIsApprox(fromEpsg, toEpsg) {
   const a = crsGeoDefinition(fromEpsg), b = crsGeoDefinition(toEpsg);
   return !!((a && a.helmert) || (b && b.helmert)) && fromEpsg !== toEpsg;
@@ -1705,7 +1788,7 @@ function crsToLonLat(epsg, e, n) {
     return { lon: e / R * 180 / Math.PI, lat: (2 * Math.atan(Math.exp(n / R)) - Math.PI / 2) * 180 / Math.PI };
   }
   const g = projInverse(d, e, n);
-  return d.helmert ? helmertToWgs84(g.lat, g.lon, d.ell, helmertOf(d, g.lat, g.lon)) : g;
+  return d.helmert ? datumToWgs84(d, g.lat, g.lon) : g;
 }
 
 /* ---------- Startkarte (Web-Mercator, Kacheln 256 px) ----------
@@ -2052,7 +2135,7 @@ const TIFF_BLOB_BYTES = 300e6;
 /* Breite/Länge (WGS 84 / ETRS89) -> Rechts-/Hochwert im System einer Definition aus crsGeoDefinition */
 function lonLatToCrs(def, lat, lon) {
   let g = { lat: lat, lon: lon };
-  if (def.helmert) g = helmertFromWgs84(lat, lon, def.ell, helmertOf(def, lat, lon));
+  if (def.helmert) g = datumFromWgs84(def, lat, lon);
   return projForward(def, g.lat, g.lon);
 }
 
@@ -2600,6 +2683,58 @@ function gridTiles(tiles, maxGrid) {
   };
 }
 
+/* Rechnet ein Geländeraster in ein anderes Bezugssystem um (Höhen unverändert). Das neue Raster liegt achsparallel
+   im Zielsystem; weil die Systeme gegeneinander gedreht sein können, ist es das Rechteck innerhalb der alten Fläche
+   (die schmalen Ränder fallen weg). Jede Zelle holt ihren Wert bilinear aus dem alten Raster. */
+function reprojectTerrain(t, target) {
+  const fwd = crsTransformer(t.epsg, target), back = crsTransformer(target, t.epsg);
+  if (!fwd || !back) throw new Error('crsNoConvert');
+  const minE = t.originE - t.w / 2, maxE = t.originE + t.w / 2, minN = t.originN - t.d / 2, maxN = t.originN + t.d / 2;
+  const tl = fwd(minE, maxN), tr = fwd(maxE, maxN), bl = fwd(minE, minN), br = fwd(maxE, minN);
+  const west = Math.max(tl.e, bl.e), east = Math.min(tr.e, br.e), south = Math.max(bl.n, br.n), north = Math.min(tl.n, tr.n);
+  const width = east - west, depth = north - south;
+  if (!(width > 0 && depth > 0)) throw new Error('crsNoConvert');
+  const cell = Math.max(t.w / t.nx, t.d / t.nz);
+  const nx = Math.max(2, Math.round(width / cell)), nz = Math.max(2, Math.round(depth / cell));
+
+  // Die Abbildung ist sehr glatt: Quellkoordinaten nur auf einem 100-m-Gitter rechnen, dazwischen bilinear
+  const gx = Math.max(1, Math.ceil(width / 100)), gz = Math.max(1, Math.ceil(depth / 100));
+  const le = new Float64Array((gx + 1) * (gz + 1)), ln = new Float64Array((gx + 1) * (gz + 1));
+  for (let j = 0; j <= gz; j++) {
+    for (let i = 0; i <= gx; i++) {
+      const p = back(west + width * i / gx, north - depth * j / gz);
+      le[j * (gx + 1) + i] = p.e; ln[j * (gx + 1) + i] = p.n;
+    }
+  }
+  const abs = new Float32Array(nx * nz);
+  let vmin = Infinity, vmax = -Infinity;
+  for (let iz = 0; iz < nz; iz++) {
+    const v = (iz + 0.5) / nz * gz, j = Math.min(Math.floor(v), gz - 1), fv = v - j;
+    for (let ix = 0; ix < nx; ix++) {
+      const u = (ix + 0.5) / nx * gx, i = Math.min(Math.floor(u), gx - 1), fu = u - i, k = j * (gx + 1) + i;
+      const lerp = function (a) {
+        return (a[k] * (1 - fu) + a[k + 1] * fu) * (1 - fv) + (a[k + gx + 1] * (1 - fu) + a[k + gx + 2] * fu) * fv;
+      };
+      const sx = Math.max(0, Math.min(t.nx - 1, (lerp(le) - minE) / t.w * t.nx - 0.5));
+      const sz = Math.max(0, Math.min(t.nz - 1, (maxN - lerp(ln)) / t.d * t.nz - 0.5));
+      const x0 = Math.min(Math.floor(sx), t.nx - 2), z0 = Math.min(Math.floor(sz), t.nz - 2), fx = sx - x0, fz = sz - z0;
+      const q = z0 * t.nx + x0;
+      const h = t.zmin + (t.rel[q] * (1 - fx) + t.rel[q + 1] * fx) * (1 - fz) + (t.rel[q + t.nx] * (1 - fx) + t.rel[q + t.nx + 1] * fx) * fz;
+      abs[iz * nx + ix] = h;
+      if (h < vmin) vmin = h;
+      if (h > vmax) vmax = h;
+    }
+  }
+  if (vmax - vmin < 0.001) vmax = vmin + 0.001;
+  const rel = new Float32Array(nx * nz);
+  for (let i = 0; i < abs.length; i++) rel[i] = abs[i] - vmin;
+  return Object.assign({}, t, {
+    nx: nx, nz: nz, w: width, d: depth, originE: (west + east) / 2, originN: (south + north) / 2,
+    zmin: vmin, zmax: vmax, rel: rel, cell: width / nx, epsg: target, srcEpsg: t.epsg, crs: crsLabel(target),
+    label: t.label + ' · EPSG:' + t.epsg + ' → ' + target
+  });
+}
+
 /* Einzeldatei als Sonderfall des Merges */
 async function terrainFromGeoTIFF(arrayBuffer, fileName) {
   return terrainFromGeoTIFFs([{ buffer: arrayBuffer, name: fileName || 'GeoTIFF' }]);
@@ -2794,14 +2929,44 @@ function parseNumbers(s) {
   return out;
 }
 
+/* Bezugssystem, das eine CityGML- oder CityJSON-Datei nennt (srsName bzw. referenceSystem), sonst null */
+const BUILDING_COMPOUND_CRS = { 5554: 25831, 5555: 25832, 5556: 25833, 7415: 28992 };      // Lage + Höhe in einem Code
+function buildingTextEpsg(text) {
+  const m = String(text || '').slice(0, 300000).match(/(?:srsName\s*=\s*|"referenceSystem"\s*:\s*)["']([^"']+)["']/);
+  if (!m) return null;
+  const adv = m[1].match(/ETRS89_UTM(\d\d)/i), gk = m[1].match(/DHDN_3GK(\d)/i);
+  let code = adv ? 25800 + Number(adv[1]) : gk ? 31464 + Number(gk[1]) : fpGmlEpsg(m[1]);
+  code = BUILDING_COMPOUND_CRS[code] || code;
+  const def = code ? crsGeoDefinition(code) : null;
+  return def && !def.merc ? code : null;
+}
+
+/* Gebäuderinge [x, y, z, ...] vom System src in das System dst (Höhen unverändert); eine vertauschte Achsenfolge
+   wird dabei bereinigt. originE/originN: Geländemitte im System dst. */
+function reprojectRings(rings, src, dst, originE, originN) {
+  const tr = crsTransformer(src, dst), back = crsTransformer(dst, src);
+  if (!tr || !back) return rings;
+  const o = back(originE, originN);
+  const swap = detectAxisOrder(rings, o.e, o.n).swap;
+  return rings.map(function (ring) {
+    const out = [];
+    for (let i = 0; i + 2 < ring.length; i += 3) {
+      const p = tr(swap ? ring[i + 1] : ring[i], swap ? ring[i] : ring[i + 1]);
+      out.push(p.e, p.n, ring[i + 2]);
+    }
+    return out;
+  });
+}
+
 /* Mehrere Gebäudedateien (CityGML oder CityJSON) zu einer Ringliste zusammenführen */
 function mergeCityGML(files) {
   if (!files || !files.length) throw new Error('Keine Datei ausgewählt.');
   let rings = [];
-  const failed = [];
+  const failed = [], parts = [];
   files.forEach(function (f) {
     try {
       const r = parseBuildingText(f.text);
+      parts.push({ rings: r, epsg: buildingTextEpsg(f.text) });
       for (let i = 0; i < r.length; i++) rings.push(r[i]);
     } catch (e) {
       failed.push(f.name + ': ' + e.message);
@@ -2810,7 +2975,7 @@ function mergeCityGML(files) {
   if (!rings.length) {
     throw new Error(failed.length ? failed.join(' | ') : 'Keine Gebäudeflächen gefunden.');
   }
-  return { rings: rings, failed: failed, files: files.length };
+  return { rings: rings, parts: parts, failed: failed, files: files.length };
 }
 
 /* Ermittelt, ob die erste Koordinate Rechts- oder Hochwert ist */
@@ -3610,7 +3775,7 @@ function fpMedian(set, attr) {
 function fpWindowFor(epsg) {
   const t = TERRAIN;
   if (!t) return null;
-  const src = epsg || t.epsg;
+  const src = epsg || t.srcEpsg || t.epsg;
   const mx = t.w * 0.6, mz = t.d * 0.6;
   const corners = [[-mx, -mz], [mx, -mz], [mx, mz], [-mx, mz]].map(function (c) { return [t.originE + c[0], t.originN + c[1]]; });
   if (src === t.epsg) return [Math.min.apply(null, corners.map(function (c) { return c[0]; })), Math.min.apply(null, corners.map(function (c) { return c[1]; })),
@@ -3639,7 +3804,7 @@ function fpWindowFor(epsg) {
 function footprintRings(set, opts) {
   const t = TERRAIN;
   if (!t) throw new Error('Bitte zuerst ein Geländemodell laden.');
-  const src = (opts && opts.epsg) || set.epsg || t.epsg;
+  const src = (opts && opts.epsg) || set.epsg || t.srcEpsg || t.epsg;
   let conv;
   if (src === t.epsg) conv = function (x, y) { return [x, y]; };
   else if (FP_GEOGRAPHIC[src]) {
@@ -6704,7 +6869,7 @@ function ifcString(s) {
    IfcMapConversion, im EPSG-Code des geladenen Geländes oder (opts.targetEpsg) in einem
    anderen der Liste IFC_TARGET_CRS: dann werden alle Punkte mit crsTransformer umgerechnet
    (nur absolute Koordinaten). Bei Bessel-Systemen (DHDN, MGI) gilt eine Helmert-Transformation,
-   die Lage stimmt auf etwa 1 bis 2 m - die Oberfläche sagt das dazu; ein Umrechnungsgitter
+   die Lage stimmt auf etwa 1 bis 3 m - die Oberfläche sagt das dazu; ein Umrechnungsgitter
    (NTv2) liegt nicht bei.
    Bausteine (geo.objects: Straße, Baugrube, Kran, Container) kommen als eigene Bauteile mit.
    Zwei Arten der Koordinaten (opts.coords):
@@ -7016,6 +7181,22 @@ function ifcAutoPlacement(g, coord, terrain) {
     y: H0 - terrain.zmin - s * ty,
     z: terrain.originN - N0 + s * (sb * tx - ca * tz)
   };
+}
+
+/* Ohne Georeferenz: Stehen in der Datei selbst Landeskoordinaten (im System des Geländes), liegt die Mitte des Bauwerks
+   im Gelände. Dann gilt die Lage aus der Datei, sonst null. */
+function ifcRawPlacement(bbox, coord, terrain) {
+  const pl = ifcAutoPlacement({ E0: 0, N0: 0, H0: 0, a: 1, b: 0, scale: 1, mapUnit: 1, projUnit: 1 }, coord, terrain);
+  const x = pl.x + (bbox.minX + bbox.maxX) / 2, z = pl.z + (bbox.minZ + bbox.maxZ) / 2;
+  return Math.abs(x) <= terrain.w / 2 && Math.abs(z) <= terrain.d / 2 ? pl : null;
+}
+
+/* Sehen die Koordinaten der Datei nach Gauß-Krüger (DHDN) in Deutschland aus? Liefert den EPSG-Code der Zone oder null */
+function ifcGuessGk(bbox, coord) {
+  const e = (bbox.minX + bbox.maxX) / 2 - coord[0], n = -((bbox.minZ + bbox.maxZ) / 2 - coord[2]);
+  const zone = Math.floor(e / 1e6);
+  const rest = e - zone * 1e6;
+  return zone >= 2 && zone <= 5 && rest >= 150000 && rest <= 850000 && n >= 5.2e6 && n <= 6.2e6 ? 31464 + zone : null;
 }
 
 /* Drehung um die Hochachse in der Szene: der Winkel eines Vektors (vx, vz) ist atan2(-vz, vx) */
@@ -7368,6 +7549,8 @@ if (typeof module !== 'undefined' && module.exports) {
     ifcRemoveModel: ifcRemoveModel,
     axisDragParam: axisDragParam,
     ringDragAngle: ringDragAngle,
+    reprojectTerrain: reprojectTerrain, reprojectRings: reprojectRings, buildingTextEpsg: buildingTextEpsg, crsAccuracy: crsAccuracy,
+    parseBeta2007: parseBeta2007, ensureBeta2007: ensureBeta2007, hasBeta2007: hasBeta2007, ifcRawPlacement: ifcRawPlacement, ifcGuessGk: ifcGuessGk,
     normDeg: normDeg,
     ifcSetShift: ifcSetShift,
     ifcCenterWorld: ifcCenterWorld,

@@ -20,6 +20,12 @@ compatible with the GPLv3. They are included unmodified in `lib/`; checksums are
 | `lib/web-ifc-api-iife.js`, `lib/web-ifc.wasm` | web-ifc (That Open Company) | 0.0.79 | MPL-2.0 | [`lib/LICENSE-web-ifc.txt`](lib/LICENSE-web-ifc.txt) | https://github.com/ThatOpen/engine_web-ifc |
 | `lib/laz-perf.js`, `lib/laz-perf.wasm` | laz-perf (Hobu, Inc.) | 0.0.7 | Apache-2.0 | [`lib/LICENSE-laz-perf.txt`](lib/LICENSE-laz-perf.txt) | https://github.com/hobuinc/laz-perf |
 
+## Daten / Data
+
+| Datei / File | Inhalt / Content | Herkunft / Origin | Nutzungsvermerk / Terms |
+|---|---|---|---|
+| `lib/de_adv_BETA2007.tif` | BeTA2007: DHDN → ETRS89 (Deutschland / Germany), EPSG:15948 | AdV (BKG), als GeoTIFF aus / as GeoTIFF from [PROJ-data](https://github.com/OSGeo/PROJ-data) | „Derived from work by AdV. Free redistribution is allowed and welcome“ (Vermerk in der Datei / note inside the file) |
+
 Herkunft der Dateien und Download-Adressen: [`lib/LIESMICH.txt`](lib/LIESMICH.txt). Die Dateien three.js,
 OrbitControls und geotiff.js stimmen byte-genau mit den offiziellen Downloads überein (Stand 19. November 2026).
 

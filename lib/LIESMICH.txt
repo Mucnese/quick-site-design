@@ -42,6 +42,11 @@ Herunterzuladen
     laz-perf.wasm  9c1802bc31b567dd4aa1ce9ab010e7e51e095dc42af8379b474ae6f221a9327f)
    Quelltext: https://github.com/hobuinc/laz-perf (Apache-2.0, Lizenztext: LICENSE-laz-perf.txt)
 
+6. de_adv_BETA2007.tif (Daten, kein Programm): BeTA2007-Gitter der AdV, DHDN -> ETRS89, 24 KB
+   Quelle: PROJ-data, https://cdn.proj.org/de_adv_BETA2007.tif
+   (hier unveraendert aus der PROJ-Installation 9.9.0 uebernommen)
+   Vermerk in der Datei: "Derived from work by AdV. Free redistribution is allowed and welcome"
+
 Wichtig: Die Versionen nicht wechseln. Die Anwendung ist gegen three.js r128
 gebaut; neuere Fassungen haben eine andere Schnittstelle.
 

@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-9WwvoXkBjyR234cIcp9sFpFU0djDra73dKu9yEj+mVU=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-5u83gVV/cNQ76hwtgolvH9diqbFzogJdSySDPW3nnnk=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -251,6 +251,10 @@
   .axis-label span { opacity: 0.75; padding-left: 2px; }
 
   /* ---------- Dateien ---------- */
+  #crs-row { margin-bottom: 9px; font-size: 0.86em; color: var(--text-dim); }
+  #crs-row label { display: block; margin-bottom: 3px; }
+  #crs-row select, #crs-row input { width: 100%; box-sizing: border-box; background: var(--field); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: inherit; font-size: 1em; padding: 3px 6px; }
+  #crs-row input { margin-top: 4px; }
   .file-row { margin-bottom: 9px; }
   .file-row:last-child { margin-bottom: 0; }
   .file-head {
@@ -742,6 +746,12 @@
   <div id="data" class="panel">
     <div class="sec"><span data-i18n="data">Daten</span><a class="act" id="geoportal-link" href="https://github.com/Mucnese/quick-site-design#datenquellen" target="_blank" rel="noopener noreferrer" data-i18n="geoportals">Geoportale</a></div>
     <div class="body">
+      <div id="crs-row">
+        <label for="project-crs" data-i18n="projCrs">Bezugssystem (KBS)</label>
+        <select id="project-crs"></select>
+        <input type="number" id="project-epsg" min="1000" max="99999" step="1" placeholder="EPSG" style="display:none">
+        <div class="file-status" id="project-crs-note" style="display:none"></div>
+      </div>
       <div class="file-row" id="row-dem">
         <div class="file-head"><span role="button" tabindex="0" aria-expanded="true" data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="act" id="dem-clear" data-i18n="remove">Entfernen</span><span class="hintx">mehrere möglich</span></div>
         <input type="file" id="dem-input" multiple accept=".tif,.tiff,.xyz,.txt,.csv,.las,.laz,image/tiff">
@@ -2292,7 +2302,7 @@ async function photonSearch(query, signal) {
    eine affine Abbildung Welt -> Kartenbild bestimmt; sie weicht bei 1 km
    Kantenlänge um etwa 0,2 m von der strengen Rechnung ab (plan.affineError).
    Bei Bezugssystemen auf Bessel (DHDN, MGI) kommt eine Helmert-Transformation
-   nach WGS 84 dazu; die Lage stimmt dann auf etwa 1 bis 2 m.
+   nach WGS 84 dazu; die Lage stimmt dann auf etwa 1 bis 3 m.
    ========================================================= */
 const GEO_ELL = {
   grs80: { a: 6378137, f: 1 / 298.257222101 },
@@ -2315,6 +2325,77 @@ function helmertSjtsk(lat, lon) {
   // Grenzlinie Slowakei/Tschechien grob von (16,95 E; 48,7 N) nach (18,85 E; 49,55 N); südlich davon gilt der slowakische Satz
   return (lon > 18.87 || lat < 48.7 + 0.4474 * (lon - 16.95)) && lon > 16.84 ? HELMERT_SJTSK_SK : HELMERT_SJTSK_CZ;
 }
+/* ---------- BeTA2007-Gitter (AdV): Lageverschiebung DHDN -> ETRS89 für Deutschland ----------
+   Genauer als die 7-Parameter-Umrechnung (etwa 1 m statt etwa 3 m, EPSG:15948 statt EPSG:1777). Die Datei
+   lib/de_adv_BETA2007.tif (24 KB, GeoTIFF aus PROJ-data) enthält je Stützpunkt die Verschiebung in Bogensekunden
+   (Breite; Länge, positiv nach Osten). Sie wird beim Start nachgeladen; fehlt sie oder liegt ein Punkt außerhalb,
+   rechnet die Helmert-Transformation. */
+const BETA2007_URL = 'lib/de_adv_BETA2007.tif';
+let betaGrid = null;            // { w, h, lon0, lat0 (erster Stützpunkt, Nordwest), dLon, dLat, lat, lon }
+let betaLoading = null;
+
+async function parseBeta2007(buffer) {
+  const tiff = await GeoTIFF.fromArrayBuffer(buffer);
+  const img = await tiff.getImage();
+  const tie = img.getTiePoints()[0], scale = img.getFileDirectory().ModelPixelScale;
+  const bands = await img.readRasters();
+  betaGrid = { w: img.getWidth(), h: img.getHeight(), lon0: tie.x, lat0: tie.y, dLon: scale[0], dLat: scale[1], lat: bands[0], lon: bands[1] };
+  return betaGrid;
+}
+
+function ensureBeta2007() {
+  if (betaGrid) return Promise.resolve(true);
+  if (typeof fetch !== 'function' || typeof GeoTIFF === 'undefined') return Promise.resolve(false);
+  if (!betaLoading) {
+    betaLoading = Promise.resolve()
+      .then(function () { return fetch(BETA2007_URL); })
+      .then(function (r) { if (!r.ok) throw new Error('beta'); return r.arrayBuffer(); })
+      .then(parseBeta2007)
+      .then(function () { return true; })
+      .catch(function () { betaLoading = null; return false; });
+  }
+  return betaLoading;
+}
+
+function hasBeta2007() { return betaGrid !== null; }
+
+/* Verschiebung DHDN -> ETRS89 an der Stelle (Grad) in Grad, bilinear; null außerhalb des Gitters oder ohne Gitter */
+function betaShift(lat, lon) {
+  const g = betaGrid;
+  if (!g) return null;
+  const x = (lon - g.lon0) / g.dLon, y = (g.lat0 - lat) / g.dLat;
+  if (!(x >= 0 && y >= 0 && x <= g.w - 1 && y <= g.h - 1)) return null;
+  const i = Math.min(Math.floor(x), g.w - 2), j = Math.min(Math.floor(y), g.h - 2), fx = x - i, fy = y - j;
+  const at = function (band) {
+    const k = j * g.w + i;
+    return (band[k] * (1 - fx) + band[k + 1] * fx) * (1 - fy) + (band[k + g.w] * (1 - fx) + band[k + g.w + 1] * fx) * fy;
+  };
+  return { lat: at(g.lat) / 3600, lon: at(g.lon) / 3600 };
+}
+
+/* Geografische Koordinaten des Datums einer Definition nach WGS 84 / ETRS89 und zurück */
+function datumToWgs84(d, lat, lon) {
+  if (d.helmert === HELMERT_DHDN) {
+    const s = betaShift(lat, lon);
+    if (s) return { lat: lat + s.lat, lon: lon + s.lon };
+  }
+  return helmertToWgs84(lat, lon, d.ell, helmertOf(d, lat, lon));
+}
+function datumFromWgs84(d, lat, lon) {
+  if (d.helmert === HELMERT_DHDN) {
+    let s = betaShift(lat, lon);
+    if (s) {
+      let g = { lat: lat, lon: lon };
+      for (let i = 0; i < 4; i++) {                          // das Gitter ist in DHDN angegeben: schrittweise annähern
+        g = { lat: lat - s.lat, lon: lon - s.lon };
+        s = betaShift(g.lat, g.lon) || s;
+      }
+      return g;
+    }
+  }
+  return helmertFromWgs84(lat, lon, d.ell, helmertOf(d, lat, lon));
+}
+
 /* helmert einer Definition ist eine Parameterliste oder eine Funktion (Breite, Länge) -> Liste (je nach Lage verschieden) */
 function helmertOf(d, lat, lon) { return typeof d.helmert === 'function' ? d.helmert(lat, lon) : d.helmert; }
 
@@ -2635,20 +2716,32 @@ const IFC_TARGET_CRS = [25832, 25833, 25831, 4647, 5650, 31466, 31467, 31468, 31
 /* Rechnet Rechts-/Hochwerte von einem Bezugssystem in ein anderes um: Funktion (e, n) -> {e, n},
    oder null, wenn eines der beiden Systeme nicht bekannt ist. Der Weg führt über Breite/Länge
    (WGS 84 gleich ETRS89 auf Dezimeter genau); bei Bessel-Systemen (DHDN, MGI) kommt die
-   Helmert-Transformation dazu, die Lage stimmt dann auf etwa 1 bis 2 m. Höhen bleiben unverändert. */
+   Helmert-Transformation dazu, die Lage stimmt dann auf etwa 1 bis 3 m. Höhen bleiben unverändert. */
 function crsTransformer(fromEpsg, toEpsg) {
   const from = crsGeoDefinition(fromEpsg), to = crsGeoDefinition(toEpsg);
   if (!from || !to || from.merc || to.merc) return null;
   if (fromEpsg === toEpsg) return function (e, n) { return { e: e, n: n }; };
+  const same = from.helmert && from.helmert === to.helmert;          // gleiches Datum: nur die Abbildung wechselt
   return function (e, n) {
     let g = projInverse(from, e, n);
-    if (from.helmert) g = helmertToWgs84(g.lat, g.lon, from.ell, helmertOf(from, g.lat, g.lon));
-    if (to.helmert) g = helmertFromWgs84(g.lat, g.lon, to.ell, helmertOf(to, g.lat, g.lon));
+    if (same) return projForward(to, g.lat, g.lon);
+    if (from.helmert) g = datumToWgs84(from, g.lat, g.lon);
+    if (to.helmert) g = datumFromWgs84(to, g.lat, g.lon);
     return projForward(to, g.lat, g.lon);
   };
 }
 
-/* Gibt es bei dieser Umrechnung eine Helmert-Transformation (Lagegenauigkeit nur etwa 1 bis 2 m)? */
+/* Lagegenauigkeit einer Umrechnung: null ohne Datumswechsel (praktisch genau), sonst { m: etwa so viele Meter, grid: mit BeTA2007 } */
+function crsAccuracy(fromEpsg, toEpsg) {
+  const a = crsGeoDefinition(fromEpsg), b = crsGeoDefinition(toEpsg);
+  if (!a || !b || fromEpsg === toEpsg || a.helmert === b.helmert) return null;
+  const list = [a.helmert, b.helmert].filter(Boolean);
+  const dhdn = list.indexOf(HELMERT_DHDN) >= 0, grid = dhdn && hasBeta2007();
+  if (list.length === 1 && dhdn) return { m: grid ? 1 : 3, grid: grid };
+  return { m: dhdn && !grid ? 3 : 2, grid: grid };
+}
+
+/* Gibt es bei dieser Umrechnung einen Datumswechsel (Lage nur auf etwa 1 bis 3 m genau)? */
 function crsTransformIsApprox(fromEpsg, toEpsg) {
   const a = crsGeoDefinition(fromEpsg), b = crsGeoDefinition(toEpsg);
   return !!((a && a.helmert) || (b && b.helmert)) && fromEpsg !== toEpsg;
@@ -2663,7 +2756,7 @@ function crsToLonLat(epsg, e, n) {
     return { lon: e / R * 180 / Math.PI, lat: (2 * Math.atan(Math.exp(n / R)) - Math.PI / 2) * 180 / Math.PI };
   }
   const g = projInverse(d, e, n);
-  return d.helmert ? helmertToWgs84(g.lat, g.lon, d.ell, helmertOf(d, g.lat, g.lon)) : g;
+  return d.helmert ? datumToWgs84(d, g.lat, g.lon) : g;
 }
 
 /* ---------- Startkarte (Web-Mercator, Kacheln 256 px) ----------
@@ -3010,7 +3103,7 @@ const TIFF_BLOB_BYTES = 300e6;
 /* Breite/Länge (WGS 84 / ETRS89) -> Rechts-/Hochwert im System einer Definition aus crsGeoDefinition */
 function lonLatToCrs(def, lat, lon) {
   let g = { lat: lat, lon: lon };
-  if (def.helmert) g = helmertFromWgs84(lat, lon, def.ell, helmertOf(def, lat, lon));
+  if (def.helmert) g = datumFromWgs84(def, lat, lon);
   return projForward(def, g.lat, g.lon);
 }
 
@@ -3558,6 +3651,58 @@ function gridTiles(tiles, maxGrid) {
   };
 }
 
+/* Rechnet ein Geländeraster in ein anderes Bezugssystem um (Höhen unverändert). Das neue Raster liegt achsparallel
+   im Zielsystem; weil die Systeme gegeneinander gedreht sein können, ist es das Rechteck innerhalb der alten Fläche
+   (die schmalen Ränder fallen weg). Jede Zelle holt ihren Wert bilinear aus dem alten Raster. */
+function reprojectTerrain(t, target) {
+  const fwd = crsTransformer(t.epsg, target), back = crsTransformer(target, t.epsg);
+  if (!fwd || !back) throw new Error('crsNoConvert');
+  const minE = t.originE - t.w / 2, maxE = t.originE + t.w / 2, minN = t.originN - t.d / 2, maxN = t.originN + t.d / 2;
+  const tl = fwd(minE, maxN), tr = fwd(maxE, maxN), bl = fwd(minE, minN), br = fwd(maxE, minN);
+  const west = Math.max(tl.e, bl.e), east = Math.min(tr.e, br.e), south = Math.max(bl.n, br.n), north = Math.min(tl.n, tr.n);
+  const width = east - west, depth = north - south;
+  if (!(width > 0 && depth > 0)) throw new Error('crsNoConvert');
+  const cell = Math.max(t.w / t.nx, t.d / t.nz);
+  const nx = Math.max(2, Math.round(width / cell)), nz = Math.max(2, Math.round(depth / cell));
+
+  // Die Abbildung ist sehr glatt: Quellkoordinaten nur auf einem 100-m-Gitter rechnen, dazwischen bilinear
+  const gx = Math.max(1, Math.ceil(width / 100)), gz = Math.max(1, Math.ceil(depth / 100));
+  const le = new Float64Array((gx + 1) * (gz + 1)), ln = new Float64Array((gx + 1) * (gz + 1));
+  for (let j = 0; j <= gz; j++) {
+    for (let i = 0; i <= gx; i++) {
+      const p = back(west + width * i / gx, north - depth * j / gz);
+      le[j * (gx + 1) + i] = p.e; ln[j * (gx + 1) + i] = p.n;
+    }
+  }
+  const abs = new Float32Array(nx * nz);
+  let vmin = Infinity, vmax = -Infinity;
+  for (let iz = 0; iz < nz; iz++) {
+    const v = (iz + 0.5) / nz * gz, j = Math.min(Math.floor(v), gz - 1), fv = v - j;
+    for (let ix = 0; ix < nx; ix++) {
+      const u = (ix + 0.5) / nx * gx, i = Math.min(Math.floor(u), gx - 1), fu = u - i, k = j * (gx + 1) + i;
+      const lerp = function (a) {
+        return (a[k] * (1 - fu) + a[k + 1] * fu) * (1 - fv) + (a[k + gx + 1] * (1 - fu) + a[k + gx + 2] * fu) * fv;
+      };
+      const sx = Math.max(0, Math.min(t.nx - 1, (lerp(le) - minE) / t.w * t.nx - 0.5));
+      const sz = Math.max(0, Math.min(t.nz - 1, (maxN - lerp(ln)) / t.d * t.nz - 0.5));
+      const x0 = Math.min(Math.floor(sx), t.nx - 2), z0 = Math.min(Math.floor(sz), t.nz - 2), fx = sx - x0, fz = sz - z0;
+      const q = z0 * t.nx + x0;
+      const h = t.zmin + (t.rel[q] * (1 - fx) + t.rel[q + 1] * fx) * (1 - fz) + (t.rel[q + t.nx] * (1 - fx) + t.rel[q + t.nx + 1] * fx) * fz;
+      abs[iz * nx + ix] = h;
+      if (h < vmin) vmin = h;
+      if (h > vmax) vmax = h;
+    }
+  }
+  if (vmax - vmin < 0.001) vmax = vmin + 0.001;
+  const rel = new Float32Array(nx * nz);
+  for (let i = 0; i < abs.length; i++) rel[i] = abs[i] - vmin;
+  return Object.assign({}, t, {
+    nx: nx, nz: nz, w: width, d: depth, originE: (west + east) / 2, originN: (south + north) / 2,
+    zmin: vmin, zmax: vmax, rel: rel, cell: width / nx, epsg: target, srcEpsg: t.epsg, crs: crsLabel(target),
+    label: t.label + ' · EPSG:' + t.epsg + ' → ' + target
+  });
+}
+
 /* Einzeldatei als Sonderfall des Merges */
 async function terrainFromGeoTIFF(arrayBuffer, fileName) {
   return terrainFromGeoTIFFs([{ buffer: arrayBuffer, name: fileName || 'GeoTIFF' }]);
@@ -3752,14 +3897,44 @@ function parseNumbers(s) {
   return out;
 }
 
+/* Bezugssystem, das eine CityGML- oder CityJSON-Datei nennt (srsName bzw. referenceSystem), sonst null */
+const BUILDING_COMPOUND_CRS = { 5554: 25831, 5555: 25832, 5556: 25833, 7415: 28992 };      // Lage + Höhe in einem Code
+function buildingTextEpsg(text) {
+  const m = String(text || '').slice(0, 300000).match(/(?:srsName\s*=\s*|"referenceSystem"\s*:\s*)["']([^"']+)["']/);
+  if (!m) return null;
+  const adv = m[1].match(/ETRS89_UTM(\d\d)/i), gk = m[1].match(/DHDN_3GK(\d)/i);
+  let code = adv ? 25800 + Number(adv[1]) : gk ? 31464 + Number(gk[1]) : fpGmlEpsg(m[1]);
+  code = BUILDING_COMPOUND_CRS[code] || code;
+  const def = code ? crsGeoDefinition(code) : null;
+  return def && !def.merc ? code : null;
+}
+
+/* Gebäuderinge [x, y, z, ...] vom System src in das System dst (Höhen unverändert); eine vertauschte Achsenfolge
+   wird dabei bereinigt. originE/originN: Geländemitte im System dst. */
+function reprojectRings(rings, src, dst, originE, originN) {
+  const tr = crsTransformer(src, dst), back = crsTransformer(dst, src);
+  if (!tr || !back) return rings;
+  const o = back(originE, originN);
+  const swap = detectAxisOrder(rings, o.e, o.n).swap;
+  return rings.map(function (ring) {
+    const out = [];
+    for (let i = 0; i + 2 < ring.length; i += 3) {
+      const p = tr(swap ? ring[i + 1] : ring[i], swap ? ring[i] : ring[i + 1]);
+      out.push(p.e, p.n, ring[i + 2]);
+    }
+    return out;
+  });
+}
+
 /* Mehrere Gebäudedateien (CityGML oder CityJSON) zu einer Ringliste zusammenführen */
 function mergeCityGML(files) {
   if (!files || !files.length) throw new Error('Keine Datei ausgewählt.');
   let rings = [];
-  const failed = [];
+  const failed = [], parts = [];
   files.forEach(function (f) {
     try {
       const r = parseBuildingText(f.text);
+      parts.push({ rings: r, epsg: buildingTextEpsg(f.text) });
       for (let i = 0; i < r.length; i++) rings.push(r[i]);
     } catch (e) {
       failed.push(f.name + ': ' + e.message);
@@ -3768,7 +3943,7 @@ function mergeCityGML(files) {
   if (!rings.length) {
     throw new Error(failed.length ? failed.join(' | ') : 'Keine Gebäudeflächen gefunden.');
   }
-  return { rings: rings, failed: failed, files: files.length };
+  return { rings: rings, parts: parts, failed: failed, files: files.length };
 }
 
 /* Ermittelt, ob die erste Koordinate Rechts- oder Hochwert ist */
@@ -4568,7 +4743,7 @@ function fpMedian(set, attr) {
 function fpWindowFor(epsg) {
   const t = TERRAIN;
   if (!t) return null;
-  const src = epsg || t.epsg;
+  const src = epsg || t.srcEpsg || t.epsg;
   const mx = t.w * 0.6, mz = t.d * 0.6;
   const corners = [[-mx, -mz], [mx, -mz], [mx, mz], [-mx, mz]].map(function (c) { return [t.originE + c[0], t.originN + c[1]]; });
   if (src === t.epsg) return [Math.min.apply(null, corners.map(function (c) { return c[0]; })), Math.min.apply(null, corners.map(function (c) { return c[1]; })),
@@ -4597,7 +4772,7 @@ function fpWindowFor(epsg) {
 function footprintRings(set, opts) {
   const t = TERRAIN;
   if (!t) throw new Error('Bitte zuerst ein Geländemodell laden.');
-  const src = (opts && opts.epsg) || set.epsg || t.epsg;
+  const src = (opts && opts.epsg) || set.epsg || t.srcEpsg || t.epsg;
   let conv;
   if (src === t.epsg) conv = function (x, y) { return [x, y]; };
   else if (FP_GEOGRAPHIC[src]) {
@@ -7662,7 +7837,7 @@ function ifcString(s) {
    IfcMapConversion, im EPSG-Code des geladenen Geländes oder (opts.targetEpsg) in einem
    anderen der Liste IFC_TARGET_CRS: dann werden alle Punkte mit crsTransformer umgerechnet
    (nur absolute Koordinaten). Bei Bessel-Systemen (DHDN, MGI) gilt eine Helmert-Transformation,
-   die Lage stimmt auf etwa 1 bis 2 m - die Oberfläche sagt das dazu; ein Umrechnungsgitter
+   die Lage stimmt auf etwa 1 bis 3 m - die Oberfläche sagt das dazu; ein Umrechnungsgitter
    (NTv2) liegt nicht bei.
    Bausteine (geo.objects: Straße, Baugrube, Kran, Container) kommen als eigene Bauteile mit.
    Zwei Arten der Koordinaten (opts.coords):
@@ -7976,6 +8151,22 @@ function ifcAutoPlacement(g, coord, terrain) {
   };
 }
 
+/* Ohne Georeferenz: Stehen in der Datei selbst Landeskoordinaten (im System des Geländes), liegt die Mitte des Bauwerks
+   im Gelände. Dann gilt die Lage aus der Datei, sonst null. */
+function ifcRawPlacement(bbox, coord, terrain) {
+  const pl = ifcAutoPlacement({ E0: 0, N0: 0, H0: 0, a: 1, b: 0, scale: 1, mapUnit: 1, projUnit: 1 }, coord, terrain);
+  const x = pl.x + (bbox.minX + bbox.maxX) / 2, z = pl.z + (bbox.minZ + bbox.maxZ) / 2;
+  return Math.abs(x) <= terrain.w / 2 && Math.abs(z) <= terrain.d / 2 ? pl : null;
+}
+
+/* Sehen die Koordinaten der Datei nach Gauß-Krüger (DHDN) in Deutschland aus? Liefert den EPSG-Code der Zone oder null */
+function ifcGuessGk(bbox, coord) {
+  const e = (bbox.minX + bbox.maxX) / 2 - coord[0], n = -((bbox.minZ + bbox.maxZ) / 2 - coord[2]);
+  const zone = Math.floor(e / 1e6);
+  const rest = e - zone * 1e6;
+  return zone >= 2 && zone <= 5 && rest >= 150000 && rest <= 850000 && n >= 5.2e6 && n <= 6.2e6 ? 31464 + zone : null;
+}
+
 /* Drehung um die Hochachse in der Szene: der Winkel eines Vektors (vx, vz) ist atan2(-vz, vx) */
 function ifcAngle(vx, vz) { return Math.atan2(-vz, vx); }
 
@@ -8178,6 +8369,8 @@ let formRefs = {};
 let statusTimer = null;
 let lastGmlRings = null;
 let lastDemTiles = null;      // eingelesene Kacheln, für Auflösungswechsel
+let projectCrs = null;        // gewähltes Bezugssystem (EPSG), null = wie die Geländedaten
+let gmlSource = null;         // Gebäude wie gelesen, je Datei { rings, epsg }, zum Neu-Umrechnen
 let lastDemNames = [];
 let gridLimit = MAX_GRID;
 let addNodeMode = false;         // nächster Klick fügt einen Punkt hinzu (Straße, Baugrube)
@@ -8193,7 +8386,8 @@ const STRINGS = {
     clear: 'Leeren', resetAll: 'Reset', confirmNo: 'Abbrechen',
     confirmClear: 'Alle {n} Bausteine löschen? Das lässt sich nicht rückgängig machen. Gelände, Gebäude und Bauwerk bleiben.', confirmClearYes: 'Ja, löschen',
     confirmReset: 'Alles zurücksetzen? Gelände, Gebäude, Bauwerk (IFC) und alle Bausteine werden entfernt, die Seite startet neu und nichts ist geladen. Das lässt sich nicht rückgängig machen.', confirmResetYes: 'Ja, zurücksetzen',
-    confirmDem: 'Gelände entfernen? Alles andere hängt am Gelände: Gebäude, Bauwerk (IFC) und alle Bausteine werden mit entfernt, die Seite startet neu. Das lässt sich nicht rückgängig machen.', confirmDemYes: 'Ja, entfernen', msgNoDem: 'Es ist kein Gelände geladen.',
+    confirmDem: 'Gelände entfernen? Alles andere hängt am Gelände: Gebäude, Bauwerk (IFC) und alle Bausteine werden mit entfernt, die Seite startet neu. Das lässt sich nicht rückgängig machen.', confirmDemYes: 'Ja, entfernen', confirmCrs: 'Bezugssystem wechseln? Die {n} Bausteine werden dabei entfernt. Das lässt sich nicht rückgängig machen.', confirmCrsYes: 'Ja, wechseln',
+    projCrs: 'Bezugssystem (KBS)', projCrsAuto: 'wie das Gelände', projCrsPending: 'Gilt für das nächste geladene Gelände.', projCrsNoSrc: 'Das Gelände nennt kein Bezugssystem und wird nicht umgerechnet.', projCrsBad: 'EPSG:{c} kann nicht umgerechnet werden.', projCrsDone: 'Gelände und Gebäude von EPSG:{a} nach EPSG:{b} umgerechnet.', projCrsBack: 'Gelände und Gebäude wieder im Bezugssystem der Daten.', crsAcc: 'Lage nur auf etwa {m} m genau{g}, Höhen unverändert.', crsAccGrid: ' (BeTA2007-Gitter)', crsExact: 'Ohne Datumswechsel, praktisch genau; Höhen unverändert.', ifcPlacedRaw: 'Automatisch platziert: Die Koordinaten der Datei passen zum Gelände.', ifcSuggestCrs: 'Oben als Bezugssystem (KBS) EPSG:{c} wählen.', msgNoDem: 'Es ist kein Gelände geladen.',
     msgNothingToClear: 'Es gibt keine Bausteine zu löschen.',
     appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
@@ -8257,7 +8451,7 @@ const STRINGS = {
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- Passt das Bezugssystem nicht (zum Beispiel IFC in Gauß-Krüger, Gelände in UTM), wähle oben im Fenster „Daten“ das Bezugssystem (KBS): Gelände und Gebäude werden umgerechnet.\n- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -8346,7 +8540,6 @@ const STRINGS = {
     ifcPanelTitle: 'IFC-Export', ifcExtent: 'Ausdehnung', ifcCrs: 'Koordinatenbezug',
     ifcTarget: 'Bezugssystem der Datei', ifcTargetSame: 'wie Gelände', ifcObjects: 'Straßen, Baugruben und Bausteine mitnehmen',
     ifcTargetNote: 'Die Punkte werden umgerechnet und absolut geschrieben.',
-    ifcTargetApprox: 'Bessel-System (DHDN/MGI): Umrechnung nur auf etwa 1 bis 2 m genau, ohne Höhenänderung.',
     ifcExportAction: 'Exportieren', cancel: 'Abbrechen', msgIfcExported: 'IFC-Datei heruntergeladen.',
     crs: 'KBS', accuracy: 'DGM-Rasterung', unit: 'Einheit', unitMeter: 'Meter',
     hintClick: 'Linksklick', hintMeasure: 'Messpunkt', hintDrag: 'Links', hintDragX: ' ziehen',
@@ -8398,7 +8591,8 @@ const STRINGS = {
     clear: 'Clear', resetAll: 'Reset', confirmNo: 'Cancel',
     confirmClear: 'Delete all {n} blocks? This cannot be undone. Terrain, buildings and structure stay.', confirmClearYes: 'Yes, delete',
     confirmReset: 'Reset everything? Terrain, buildings, structure (IFC) and all blocks are removed, the page restarts and nothing is loaded. This cannot be undone.', confirmResetYes: 'Yes, reset',
-    confirmDem: 'Remove the terrain? Everything else depends on it: buildings, structure (IFC) and all blocks are removed too, and the page restarts. This cannot be undone.', confirmDemYes: 'Yes, remove', msgNoDem: 'No terrain is loaded.',
+    confirmDem: 'Remove the terrain? Everything else depends on it: buildings, structure (IFC) and all blocks are removed too, and the page restarts. This cannot be undone.', confirmDemYes: 'Yes, remove', confirmCrs: 'Change the coordinate system? The {n} blocks are removed. This cannot be undone.', confirmCrsYes: 'Yes, change',
+    projCrs: 'Coordinate system (CRS)', projCrsAuto: 'as the terrain', projCrsPending: 'Applies to the next terrain you load.', projCrsNoSrc: 'The terrain names no coordinate system and is not converted.', projCrsBad: 'EPSG:{c} cannot be converted.', projCrsDone: 'Terrain and buildings converted from EPSG:{a} to EPSG:{b}.', projCrsBack: 'Terrain and buildings are back in the coordinate system of the data.', crsAcc: 'Position only accurate to about {m} m{g}, heights unchanged.', crsAccGrid: ' (BeTA2007 grid)', crsExact: 'No datum change, practically exact; heights unchanged.', ifcPlacedRaw: 'Placed automatically: the coordinates in the file fit the terrain.', ifcSuggestCrs: 'Choose EPSG:{c} as coordinate system (CRS) above.', msgNoDem: 'No terrain is loaded.',
     msgNothingToClear: 'There are no blocks to delete.',
     appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
@@ -8462,7 +8656,7 @@ const STRINGS = {
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- If the coordinate systems differ (for example IFC in Gauss-Krüger, terrain in UTM), choose the coordinate system (CRS) at the top of the “Data” window: terrain and buildings are converted.\n- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -8551,7 +8745,6 @@ const STRINGS = {
     ifcPanelTitle: 'IFC export', ifcExtent: 'Extent', ifcCrs: 'Coordinate reference',
     ifcTarget: 'CRS of the file', ifcTargetSame: 'same as terrain', ifcObjects: 'Include roads, excavations and blocks',
     ifcTargetNote: 'Points are converted and written as absolute coordinates.',
-    ifcTargetApprox: 'Bessel system (DHDN/MGI): conversion accurate to about 1 to 2 m only, heights unchanged.',
     ifcExportAction: 'Export', cancel: 'Cancel', msgIfcExported: 'IFC file downloaded.',
     crs: 'CRS', accuracy: 'DTM grid', unit: 'Unit', unitMeter: 'Metre',
     hintClick: 'Left click', hintMeasure: 'Measure point', hintDrag: 'Left', hintDragX: ' drag',
@@ -8916,6 +9109,7 @@ function refreshTexts() {
   refreshAttribution();
   renderOsmUi();
   buildXyzCrsOptions();
+  buildProjectCrsOptions();
   renderFpPanel();
   renderAddrUi();
   if (ifcPick) showIfcHint(ifcPick.step);
@@ -11082,6 +11276,7 @@ function finishIfcPick() {
   ifcApplyPlacement(ifcModel, pl, 0);
   updateIfcShiftFields();
   ifcModel.how = 'manual';
+  ifcModel.placedCrs = TERRAIN.epsg;
   let msg = ifcFormat('ifcPlacedManual', { m: pl.distModel.toFixed(2), t: pl.distTerrain.toFixed(2) });
   const diff = Math.abs(pl.distModel - pl.distTerrain);
   if (diff > Math.max(0.5, 0.02 * pl.distTerrain)) msg += ' ' + ifcFormat('ifcDistWarn', { d: diff.toFixed(2) });
@@ -11107,25 +11302,27 @@ async function handleIfcFile(file) {
     const model = ifcSetModel(m);
     renderIfcUi();
     ['ifc-dx', 'ifc-dy', 'ifc-dz', 'ifc-dr'].forEach(function (id) { document.getElementById(id).value = '0'; });
+    const kind = ifcTryAutoPlace(model);
+    if (kind) {
+      if (kind === 'geo' && !ifcInsideTerrain(model, TERRAIN)) {
+        setIfcStatus(T('ifcOutside'), 'err');
+        setStatus(T('ifcOutside'), true);
+      } else {
+        const placed = kind === 'raw' ? T('ifcPlacedRaw') : ifcFormat('ifcPlacedAuto', { c: model.georef.epsg });
+        setIfcStatus(placed + ' ' + ifcFormat('ifcInfo', { n: m.name, t: m.triangles }), 'ok');
+        setStatus(placed);
+      }
+      focusOnIfc();
+      return;
+    }
     const g = model.georef;
     let why = '';
     if (!g) why = T('ifcWhyNoGeo');
     else if (!g.epsg) why = T('ifcWhyNoCrs');
     else if (!TERRAIN.epsg) why = T('ifcWhyTerrainCrs');
-    else if (g.epsg !== TERRAIN.epsg) why = ifcFormat('ifcWhyCrs', { a: g.epsg, b: TERRAIN.epsg });
-    if (!why) {
-      ifcApplyPlacement(model, ifcAutoPlacement(g, model.coord, TERRAIN), 0);
-      model.how = 'auto';
-      if (!ifcInsideTerrain(model, TERRAIN)) {
-        setIfcStatus(T('ifcOutside'), 'err');
-        setStatus(T('ifcOutside'), true);
-      } else {
-        setIfcStatus(ifcFormat('ifcPlacedAuto', { c: g.epsg }) + ' ' + ifcFormat('ifcInfo', { n: m.name, t: m.triangles }), 'ok');
-        setStatus(ifcFormat('ifcPlacedAuto', { c: g.epsg }));
-      }
-      focusOnIfc();
-      return;
-    }
+    else why = ifcFormat('ifcWhyCrs', { a: g.epsg, b: TERRAIN.epsg });
+    const guess = g && g.epsg ? (crsGeoDefinition(g.epsg) ? g.epsg : null) : ifcGuessGk(m.bbox, m.coord);
+    if (guess && guess !== TERRAIN.epsg && lastDemTiles) why += ' ' + ifcFormat('ifcSuggestCrs', { c: guess });
     startIfcManual(true, why);
   } catch (e) {
     const code = e && e.message;
@@ -11137,15 +11334,34 @@ async function handleIfcFile(file) {
   }
 }
 
-/* Nach einem neuen Gelände: automatisch platzierte Bauwerke mit demselben Bezugssystem neu einpassen,
-   alles andere entfernen (die Lage gilt nur für das alte Gelände) */
+/* Passt die Lage aus der Datei zum Gelände? Dann setzen: 'geo' (Georeferenz mit demselben EPSG) oder 'raw'
+   (keine Georeferenz, aber die Koordinaten der Datei liegen im Gelände); sonst null. */
+function ifcTryAutoPlace(model) {
+  const g = model.georef;
+  let pl = null, kind = null;
+  if (g && g.epsg && g.epsg === TERRAIN.epsg) { pl = ifcAutoPlacement(g, model.coord, TERRAIN); kind = 'geo'; }
+  else if (!g) { pl = ifcRawPlacement(model.bbox, model.coord, TERRAIN); kind = pl ? 'raw' : null; }
+  if (!pl) return null;
+  // Eine Feinkorrektur von Hand gilt weiter, solange das Bezugssystem dasselbe bleibt
+  const keep = model.how === 'auto' && model.placedCrs === TERRAIN.epsg;
+  ifcApplyPlacement(model, pl, keep ? model.dz : 0, keep ? model.de : 0, keep ? model.dn : 0, keep ? model.rot : 0);
+  model.how = 'auto';
+  model.placedCrs = TERRAIN.epsg;
+  updateIfcShiftFields();
+  return kind;
+}
+
+/* Nach neuem oder umgerechnetem Gelände: Passt die Lage aus der Datei, wird das Bauwerk neu gesetzt, sonst entfernt
+   (eine Lage von Hand gilt nur für das alte Gelände) */
 function refreshIfcAfterTerrain() {
-  if (ifcPick) cancelIfcPick(true);
+  if (ifcPick) { clearIfcMarkers(); ifcPick = null; showIfcHint(null); }
   stopIfcMove(true);
   if (!ifcModel) return;
-  const g = ifcModel.georef;
-  if (ifcModel.how === 'auto' && g && g.epsg && g.epsg === TERRAIN.epsg) {
-    ifcApplyPlacement(ifcModel, ifcAutoPlacement(g, ifcModel.coord, TERRAIN), ifcModel.dz, ifcModel.de, ifcModel.dn, ifcModel.rot);
+  // von Hand im selben Bezugssystem gesetzt: gilt nicht fürs neue Gelände; nach einem Systemwechsel zählt die Datei
+  const manual = ifcModel.how === 'manual' && ifcModel.placedCrs === TERRAIN.epsg;
+  const kind = manual ? null : ifcTryAutoPlace(ifcModel);
+  if (kind) {
+    setIfcStatus(kind === 'raw' ? T('ifcPlacedRaw') : ifcFormat('ifcPlacedAuto', { c: TERRAIN.epsg }), 'ok');
     return;
   }
   ifcRemoveModel();
@@ -11233,7 +11449,7 @@ function startIfcMove() {
     ifcPick = null;
     showIfcHint(null);
     if (p.before) ifcApplyPlacement(ifcModel, p.before.pl, p.before.dz, p.before.de, p.before.dn, p.before.rot);
-    else { ifcModel.how = 'manual'; setIfcStatus(T('ifcPlacedMove'), 'ok'); }
+    else { ifcModel.how = 'manual'; ifcModel.placedCrs = TERRAIN.epsg; setIfcStatus(T('ifcPlacedMove'), 'ok'); }
   }
   if (!ifcModel.placement) return;
   if (rulerActive) stopRuler();
@@ -11457,7 +11673,8 @@ async function handleDemFiles(files, isDemo) {
     lastDemTiles = await readTiffTiles(items, xyzEpsg);
     lastDemNames = items.map(function (x) { return x.name; });
     lastXyzLoad = (hasXyz || lasNeedsCrs) ? { files: list, isDemo: isDemo } : null;
-    const t = gridTiles(lastDemTiles, GRID_MAX);
+    if (isDhdnCrs(projectCrs) || isDhdnCrs(lastDemTiles[0] && lastDemTiles[0].epsg)) await ensureBeta2007();
+    const t = terrainFromTiles(lastDemTiles);
     // XYZ ohne Bezugssystem in der Datei: liegt das Ergebnis weit weg von Europa, stimmt der Code vermutlich nicht
     let crsWarn = '';
     if (hasXyz || lasNeedsCrs) {
@@ -11467,35 +11684,7 @@ async function handleDemFiles(files, isDemo) {
       }
     }
 
-    hideMeasure();
-    buildTerrain(t);
-    refreshIfcAfterTerrain();
-    frameTerrain();
-    const removed = pruneObjectsOutside();
-    reseatAllObjects();
-    updateTerrainInfo();
-    renderOverview();
-
-    demoAttribDem = !!isDemo;
-    refreshAttribution();
-
-    setFileStatus('dem', demStatusText(t) + crsWarn, crsWarn ? 'err' : 'ok');
-
-    let msg = 'Gelände ersetzt: ' + Math.round(t.w) + ' × ' + Math.round(t.d) + ' m.';
-    if (removed) msg += ' ' + removed + ' Objekt(e) außerhalb entfernt.';
-    setStatus(msg);
-
-    if (lastFootprints) {
-      applyFootprints();                                        // Grundrisse neu auf das neue Gelände setzen
-    } else if (lastGmlRings) {
-      try {
-        setBuildings(buildBuildingsMesh(lastGmlRings));
-        setFileStatus('gml', 'Neu eingepasst', 'ok');
-      } catch (e) {
-        clearBuildings();
-        setFileStatus('gml', e.message, 'err');
-      }
-    }
+    applyDemTerrain(t, isDemo, crsWarn);
   } catch (err) {
     setFileStatus('dem', lasErrText(err), 'err');
     setStatus('GeoTIFF nicht lesbar: ' + lasErrText(err), true);
@@ -11539,11 +11728,13 @@ async function handleGmlFiles(files, isDemo) {
       texts.push({ name: list[i].name, text: await list[i].text() });
     }
     const merged = mergeCityGML(texts);
-    lastGmlRings = merged.rings;
+    gmlSource = merged.parts;
+    if (merged.parts.some(function (p) { return isDhdnCrs(p.epsg); })) await ensureBeta2007();
+    lastGmlRings = ringsForTerrain();
 
     showBusy('busyGmlRender');
     await yieldToPaint();
-    const mesh = buildBuildingsMesh(merged.rings);
+    const mesh = buildBuildingsMesh(lastGmlRings);
     setBuildings(mesh);
     await yieldToPaint();                    // das erste Bild mit den Gebäuden ist gezeichnet
 
@@ -11685,6 +11876,7 @@ function applyFootprints() {
   const info = document.getElementById('fp-info');
   try {
     const res = footprintRings(fp.set, { epsg: fp.opts.crs || null, ground: fp.opts.ground, height: fp.opts.height, fallback: fp.opts.fallback });
+    gmlSource = null;
     lastGmlRings = res.rings;
     const mesh = buildBuildingsMesh(res.rings);
     setBuildings(mesh);
@@ -12001,8 +12193,8 @@ function updateIfcTargetUi() {
   coords.disabled = other;
   note.className = '';
   if (!other) { note.textContent = ''; return; }
-  const approx = crsTransformIsApprox(TERRAIN.epsg, parseInt(v, 10));
-  note.textContent = T('ifcTargetNote') + (approx ? ' ' + T('ifcTargetApprox') : '');
+  const approx = crsAccuracy(TERRAIN.epsg, parseInt(v, 10));
+  note.textContent = T('ifcTargetNote') + (approx ? ' ' + crsAccuracyText(TERRAIN.epsg, parseInt(v, 10)) : '');
   if (approx) note.className = 'warn';
 }
 
@@ -12321,6 +12513,148 @@ function isTypingTarget(event) {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable === true;
 }
 
+/* Raster aus den Kacheln, bei gewähltem Bezugssystem dorthin umgerechnet */
+function terrainFromTiles(tiles) {
+  const t = gridTiles(tiles, GRID_MAX);
+  if (!projectCrs || !t.epsg || t.epsg === projectCrs) return t;
+  return reprojectTerrain(t, projectCrs);
+}
+
+function isDhdnCrs(code) { return code >= 31466 && code <= 31469; }
+
+/* Gelesene Gebäude in das System des Geländes bringen (nennt die Datei keines, gilt das der Geländedaten) */
+function ringsForTerrain() {
+  if (!gmlSource || !TERRAIN) return lastGmlRings;
+  let out = [];
+  gmlSource.forEach(function (part) {
+    const src = part.epsg || TERRAIN.srcEpsg || TERRAIN.epsg;
+    const rings = src && TERRAIN.epsg && src !== TERRAIN.epsg ? reprojectRings(part.rings, src, TERRAIN.epsg, TERRAIN.originE, TERRAIN.originN) : part.rings;
+    for (let i = 0; i < rings.length; i++) out.push(rings[i]);
+  });
+  return out;
+}
+
+/* Neues (oder neu umgerechnetes) Gelände einsetzen und alles darauf neu einpassen */
+function applyDemTerrain(t, isDemo, crsWarn) {
+    hideMeasure();
+    buildTerrain(t);
+    refreshIfcAfterTerrain();
+    frameTerrain();
+    const removed = pruneObjectsOutside();
+    reseatAllObjects();
+    updateTerrainInfo();
+    renderOverview();
+
+    demoAttribDem = !!isDemo;
+    refreshAttribution();
+
+    setFileStatus('dem', demStatusText(t) + crsWarn, crsWarn ? 'err' : 'ok');
+
+    let msg = 'Gelände ersetzt: ' + Math.round(t.w) + ' × ' + Math.round(t.d) + ' m.';
+    if (removed) msg += ' ' + removed + ' Objekt(e) außerhalb entfernt.';
+    setStatus(msg);
+
+    if (lastFootprints) {
+      applyFootprints();                                        // Grundrisse neu auf das neue Gelände setzen
+    } else if (lastGmlRings) {
+      try {
+        lastGmlRings = ringsForTerrain();
+        setBuildings(buildBuildingsMesh(lastGmlRings));
+        setFileStatus('gml', 'Neu eingepasst', 'ok');
+      } catch (e) {
+        clearBuildings();
+        setFileStatus('gml', e.message, 'err');
+      }
+    }
+  updateProjectCrsNote();
+}
+
+/* ---------- Bezugssystem des Projekts ----------
+   „wie das Gelände“ oder ein gewähltes System: Gelände und Gebäude werden beim Laden (oder beim Wechsel) dorthin
+   umgerechnet, damit etwa ein Bauwerk in Gauß-Krüger zu Geländedaten in UTM passt. */
+function buildProjectCrsOptions() {
+  const sel = document.getElementById('project-crs');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const add = function (value, label) {
+    const o = document.createElement('option');
+    o.value = value; o.textContent = label;
+    sel.appendChild(o);
+  };
+  add('', T('projCrsAuto'));
+  XYZ_CRS_CHOICES.forEach(function (c) { add(String(c), crsLabel(c)); });
+  add('other', T('xyzOther'));
+  syncProjectCrsUi();
+}
+
+function syncProjectCrsUi() {
+  const sel = document.getElementById('project-crs'), inp = document.getElementById('project-epsg');
+  if (!sel) return;
+  const listed = projectCrs && XYZ_CRS_CHOICES.indexOf(projectCrs) >= 0;
+  sel.value = !projectCrs ? '' : listed ? String(projectCrs) : 'other';
+  inp.value = projectCrs && !listed ? String(projectCrs) : '';
+  inp.style.display = sel.value === 'other' ? '' : 'none';
+  updateProjectCrsNote();
+}
+
+function setProjectCrsNote(text, kind) {
+  const el = document.getElementById('project-crs-note');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'file-status' + (kind ? ' ' + kind : '');
+  el.style.display = text ? '' : 'none';
+}
+
+function crsAccuracyText(from, to) {
+  const a = crsAccuracy(from, to);
+  return a ? ifcFormat('crsAcc', { m: a.m, g: a.grid ? T('crsAccGrid') : '' }) : T('crsExact');
+}
+
+function updateProjectCrsNote() {
+  if (TERRAIN && TERRAIN.srcEpsg) setProjectCrsNote('EPSG:' + TERRAIN.srcEpsg + ' → ' + TERRAIN.epsg + ': ' + crsAccuracyText(TERRAIN.srcEpsg, TERRAIN.epsg), 'busy');
+  else if (!projectCrs) setProjectCrsNote('');
+  else if (!TERRAIN) setProjectCrsNote(T('projCrsPending'));
+  else if (!TERRAIN.epsg) setProjectCrsNote(T('projCrsNoSrc'), 'err');
+  else setProjectCrsNote('');
+}
+
+function onProjectCrsChange() {
+  const sel = document.getElementById('project-crs'), inp = document.getElementById('project-epsg');
+  if (sel.value === 'other') {
+    inp.style.display = '';
+    if (!String(inp.value).trim()) { if (inp.focus) inp.focus(); return; }
+  }
+  const code = sel.value === '' ? null : sel.value === 'other' ? parseInt(inp.value, 10) : parseInt(sel.value, 10);
+  if (code !== null) {
+    const def = code > 0 ? crsGeoDefinition(code) : null;
+    if (!def || def.merc) { setProjectCrsNote(ifcFormat('projCrsBad', { c: inp.value }), 'err'); return; }
+  }
+  if (code === projectCrs) { syncProjectCrsUi(); return; }
+  if (hasTerrain() && lastDemTiles && objects.length) {
+    const count = objects.length;
+    syncProjectCrsUi();                                       // bei Abbrechen bleibt die alte Wahl stehen
+    askConfirm('confirmCrs', { n: count }, 'confirmCrsYes', function () { setProjectCrs(code); });
+    return;
+  }
+  return setProjectCrs(code);
+}
+
+async function setProjectCrs(code) {
+  projectCrs = code;
+  syncProjectCrsUi();
+  if (!hasTerrain() || !lastDemTiles) return;
+  if (isDhdnCrs(code) || isDhdnCrs(lastDemTiles[0].epsg)) await ensureBeta2007();
+  let t;
+  try { t = terrainFromTiles(lastDemTiles); }
+  catch (e) { setProjectCrsNote(ifcFormat('projCrsBad', { c: code }), 'err'); return; }
+  if (rulerActive) stopRuler();
+  clearExportPreview();
+  if (objects.length) clearAllObjects();
+  selectTool(null);
+  applyDemTerrain(t, demoAttribDem, '');
+  setStatus(t.srcEpsg ? ifcFormat('projCrsDone', { a: t.srcEpsg, b: t.epsg }) : T('projCrsBack'));
+}
+
 /* ---------- Bestätigung (Leeren, Reset) ---------- */
 let confirmAction = null;
 
@@ -12475,6 +12809,9 @@ function initUI() {
   document.getElementById('ruler-close').addEventListener('click', stopRuler);
   document.getElementById('ifc-manual-btn').addEventListener('click', function () { startIfcManual(false); });
   document.getElementById('ifc-move-btn').addEventListener('click', toggleIfcMove);
+  buildProjectCrsOptions();
+  document.getElementById('project-crs').addEventListener('change', onProjectCrsChange);
+  document.getElementById('project-epsg').addEventListener('change', onProjectCrsChange);
   [['ifc-dx', 'e'], ['ifc-dy', 'n'], ['ifc-dz', 'z'], ['ifc-dr', 'r']].forEach(function (f) {
     document.getElementById(f[0]).addEventListener('input', function (e) {
       applyIfcShift(f[1], (e && e.target ? e.target : this).value);
@@ -12511,6 +12848,7 @@ function initUI() {
   document.getElementById('gml-clear').addEventListener('click', function () {
     clearBuildings();
     lastGmlRings = null;
+    gmlSource = null;
     lastFootprints = null;
     renderFpPanel();
     demoAttribGml = false;
@@ -12624,6 +12962,7 @@ function start() {
   }
 
   loading.style.display = 'none';
+  ensureBeta2007();                       // 24 KB, für genauere Umrechnung mit Gauß-Krüger (DHDN)
 
   // Beispieldatensatz, wenn die Adresse ?demo=1 enthält
   if (demoRequested()) loadDemo();

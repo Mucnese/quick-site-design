@@ -107,7 +107,7 @@ test('Content Security Policy: kein unsafe-inline für Skripte, Prüfsumme des P
 
 test('Bibliotheken in lib/ stimmen mit den Prüfsummen in lib/SHA256SUMS überein (Lieferkette)', function () {
   const sums = fs.readFileSync(path.join(ROOT, 'lib/SHA256SUMS'), 'utf8').trim().split('\n');
-  const names = ['OrbitControls.js', 'geotiff.js', 'laz-perf.js', 'laz-perf.wasm', 'three.min.js', 'web-ifc-api-iife.js', 'web-ifc.wasm'];
+  const names = ['OrbitControls.js', 'de_adv_BETA2007.tif', 'geotiff.js', 'laz-perf.js', 'laz-perf.wasm', 'three.min.js', 'web-ifc-api-iife.js', 'web-ifc.wasm'];
   assert.deepStrictEqual(sums.map(function (l) { return l.split(/\s+/)[1]; }).sort(), names.slice().sort());
   sums.forEach(function (l) {
     const parts = l.split(/\s+/);

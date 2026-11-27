@@ -251,6 +251,10 @@
   .axis-label span { opacity: 0.75; padding-left: 2px; }
 
   /* ---------- Dateien ---------- */
+  #crs-row { margin-bottom: 9px; font-size: 0.86em; color: var(--text-dim); }
+  #crs-row label { display: block; margin-bottom: 3px; }
+  #crs-row select, #crs-row input { width: 100%; box-sizing: border-box; background: var(--field); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: inherit; font-size: 1em; padding: 3px 6px; }
+  #crs-row input { margin-top: 4px; }
   .file-row { margin-bottom: 9px; }
   .file-row:last-child { margin-bottom: 0; }
   .file-head {
@@ -742,6 +746,12 @@
   <div id="data" class="panel">
     <div class="sec"><span data-i18n="data">Daten</span><a class="act" id="geoportal-link" href="https://github.com/Mucnese/quick-site-design#datenquellen" target="_blank" rel="noopener noreferrer" data-i18n="geoportals">Geoportale</a></div>
     <div class="body">
+      <div id="crs-row">
+        <label for="project-crs" data-i18n="projCrs">Bezugssystem (KBS)</label>
+        <select id="project-crs"></select>
+        <input type="number" id="project-epsg" min="1000" max="99999" step="1" placeholder="EPSG" style="display:none">
+        <div class="file-status" id="project-crs-note" style="display:none"></div>
+      </div>
       <div class="file-row" id="row-dem">
         <div class="file-head"><span role="button" tabindex="0" aria-expanded="true" data-i18n="terrainFile">Gelände · GeoTIFF</span><span class="act" id="dem-clear" data-i18n="remove">Entfernen</span><span class="hintx">mehrere möglich</span></div>
         <input type="file" id="dem-input" multiple accept=".tif,.tiff,.xyz,.txt,.csv,.las,.laz,image/tiff">

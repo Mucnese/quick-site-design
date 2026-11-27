@@ -82,10 +82,17 @@ gesperrt.
 | Gebäude (2D) | **Shapefile** (`.shp` zusammen mit `.dbf`, `.prj`, `.cpg`) | alle Dateien gleichzeitig wählen; ohne `.prj` gilt das Bezugssystem des Geländes, sonst wählst du es selbst |
 | Gebäude (2D) | **INSPIRE-GML** (`.xml`, `.gml`, Gebäude 2D) | zum Beispiel der Export „INSPIRE Gebäude“ des tschechischen ČÚZK (RÚIAN): Grundrisse in Breite/Länge (EPSG:4258), Geschosszahl und Höhe nur, wo sie befüllt sind (in dieser Datei meist nicht: dann feste Höhe wählen). Wird erkannt und nicht als CityGML gelesen |
 | Gebäude (2D) | **GeoJSON** (`.geojson`, `.json`) | ohne Angabe WGS84 (Länge/Breite), sonst das `crs`-Feld |
-| Gebäude | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | auch CityJSONSeq und Merkmalslisten (3DBAG); je Bauteil die höchste Detailstufe, Grundrisse und Gelände fallen weg. Das Bezugssystem muss zum Gelände passen (3DBAG: Rijksdriehoek, passend zum AHN) |
+| Gebäude | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | auch CityJSONSeq und Merkmalslisten (3DBAG); je Bauteil die höchste Detailstufe, Grundrisse und Gelände fallen weg. Nennt die Datei ein anderes Bezugssystem als das Gelände, wird umgerechnet (3DBAG: Rijksdriehoek, passend zum AHN) |
 
 Nicht gelesen werden ESRI-ASCII-Raster (`.asc`) und Dezimalkommas in XYZ-Dateien. Wandle sie
 vorher in GeoTIFF um, zum Beispiel mit GDAL.
+
+**Bezugssystem (KBS) wählen.** Oben im Fenster **Daten** steht „wie das Gelände“. Wählst du ein anderes System oder tippst einen EPSG-Code ein, werden **Gelände und Gebäude dorthin umgerechnet**, zum Beispiel von UTM nach Gauß-Krüger, damit ein Bauwerk in Gauß-Krüger passt. Das geht vor oder nach dem Laden.
+
+- **Genauigkeit:** Die Meldung darunter nennt sie. Zwischen ETRS89/UTM und Gauß-Krüger Deutschland (DHDN) etwa **1 m** mit dem beiliegenden BeTA2007-Gitter (etwa 3 m ohne: außerhalb Deutschlands oder wenn die Datei nicht geladen werden kann), bei Gauß-Krüger Österreich (MGI) etwa 2 m. Zwischen Systemen mit gleichem Datum praktisch ohne Fehler. **Höhen werden nie umgerechnet.**
+- Weil die Systeme gegeneinander gedreht sein können, wird das Geländeraster neu gerechnet; an den Rändern fällt dabei ein schmaler Streifen weg.
+- Gebäude gelten im System, das ihre Datei nennt, sonst in dem der Geländedaten.
+- Ein Wechsel nach dem Platzieren entfernt die **Bausteine** (mit Rückfrage). Wähle das System also am besten vorher.
 
 **Sehr große GeoTIFF (zum Beispiel BEV, 7,9 GB).** Dateien über 300 MB liest das Tool **nicht ganz, sondern nur den Ausschnitt um
 den gewählten Ort**. Setze zuerst auf der Startkarte einen Pin oder wähle eine Adresse, dann wähle die Datei
@@ -105,7 +112,7 @@ lieber selbst vorher einen Ausschnitt schneidet, kann `gdal_translate -projwin <
 |---|---|---|
 | **Adressleiste** | ganz oben links | Ort suchen, Links zu den Geodaten |
 | **Übersicht** | links | Gelände, Höhenbereich, Objektzahl, Liste der Bausteine mit Mengen |
-| **Daten** | links | Gelände, Gebäude, Bauwerk (IFC), Bezugssystem für XYZ |
+| **Daten** | links | Bezugssystem (KBS), Gelände, Gebäude, Bauwerk (IFC) |
 | **Karte** | unten links | Knopf für die OpenStreetMap-Karte |
 | **Eigenschaften** | rechts | Maße und Werte des gewählten Bausteins |
 | **Bausteine** | unten | Container, Turmdrehkran, Mobilkran, Baustraße, Baugrube, IFC Export, Messen |
@@ -281,7 +288,7 @@ Gelände. Er ist **standardmäßig aus**. Beim Einschalten lädt dein Browser Ka
   UTM (ETRS89 und WGS 84), Gauß-Krüger (DHDN), Gauß-Krüger Österreich (MGI, EPSG:31254 bis 31256), das europäische
   ETRS89-LAEA (EPSG:3035, BEV) und die nationalen Systeme vieler EU-Länder (Liste in der [README](README.md#datenquellen)).
   Bei anderen Systemen, zum Beispiel Ungarn (EOV), schaltet sich die Karte mit einer Meldung ab.
-- Bei Bessel-Systemen (DHDN, MGI) liegt die Karte auf etwa 1 bis 2 m genau.
+- Bei Bessel-Systemen liegt die Karte etwa so genau: DHDN etwa 1 m (BeTA2007-Gitter), MGI etwa 2 m.
 - Die Karte lädt je nach Größe des Geländes bis zu 144 Kacheln auf einmal. Je kleiner das Gelände, desto feiner die Stufe und desto kleiner wirkt die Beschriftung.
 - Nach einem neuen Gelände lädt sich die Karte von selbst neu.
 
@@ -298,6 +305,8 @@ nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Grö�
 - **Automatisch:** Ist die Datei georeferenziert (`IfcMapConversion`) und hat **dasselbe
   Bezugssystem (EPSG)** wie das Gelände, steht das Bauwerk sofort an der richtigen Stelle,
   gedreht und in der richtigen Höhe. Maßstab und Längeneinheit der Datei werden berücksichtigt.
+  Das gilt auch ohne Georeferenz, wenn in der Datei selbst Landeskoordinaten stehen, die im Gelände liegen (häufig bei Gauß-Krüger).
+  Liegt das Gelände in einem anderen System, nennt die Meldung den EPSG-Code, den du oben als **Bezugssystem (KBS)** wählen kannst; das Bauwerk setzt sich dann selbst.
 - **4 Punkte ausrichten (2 + 2):** Fehlt die Georeferenz oder weicht das Bezugssystem ab, nennt die Meldung
   den Grund und startet das Verfahren: abwechselnd **Punkt A am Bauwerk**, dann der **zugehörige
   Punkt A im Gelände**, danach ebenso Punkt B. Aus den Punktpaaren ergeben sich Lage und Drehung. Das Bauwerk bleibt
@@ -330,8 +339,8 @@ unter der Geländefläche.
    Koordinatensystem** umrechnen (UTM 31N bis 33N, Gauß-Krüger 2 bis 5, Gauß-Krüger Österreich und die nationalen Systeme der EU, zum Beispiel
    RD New der Niederlande, Lambert-93 Frankreichs, SWEREF 99 TM Schwedens, PL-1992 Polens). Alle
    Punkte werden dann einzeln umgerechnet und absolut geschrieben; die Höhen bleiben unverändert. Bei den
-   Bessel-Systemen (DHDN, MGI, mit ≈ markiert) stimmt die Lage nur auf etwa 1 bis 2 m, weil
-   kein Umrechnungsgitter beiliegt. Die Datei nennt außerdem das Bezugssystem (EPSG-Code, Datum, Zone) und
+   Bessel-Systemen (mit ≈ markiert) ist die Lage weniger genau: DHDN etwa 1 m mit dem BeTA2007-Gitter,
+   MGI etwa 2 m. Die Datei nennt außerdem das Bezugssystem (EPSG-Code, Datum, Zone) und
    trägt Breite und Länge der Baustelle ein, wo sich das System umrechnen lässt.
    **Exportieren** lädt die Datei herunter, **Abbrechen** oder **Esc** bricht ab.
 
@@ -374,7 +383,7 @@ unter der Geländefläche.
 | XYZ- oder LAS-Datei wird nicht geladen | Bezugssystem unter „Bezugssystem für XYZ-Dateien“ wählen oder EPSG-Code eintippen |
 | LAS/LAZ: „Pin setzen“ | die Wolke ist größer als 3 km: auf der Startkarte einen Pin setzen, dann die Datei wählen |
 | Warnung „außerhalb Europas“ | Der EPSG-Code passt nicht zu den Koordinaten: richtigen Code wählen |
-| Gebäude fehlen | Sie liegen außerhalb des Geländes, oder das Bezugssystem der CityGML-Datei weicht ab |
+| Gebäude fehlen | Sie liegen außerhalb des Geländes, oder die Gebäudedatei liegt in einem anderen Bezugssystem und nennt es nicht |
 | Karte lädt nicht | Offline oder von einer Sperre blockiert; oder das Bezugssystem wird nicht unterstützt |
 | Keine Vorschläge in der Adressleiste | Mindestens drei Zeichen tippen; der Suchdienst ist vielleicht nicht erreichbar |
 | Ein Bauwerk (zum Beispiel eine Brücke) wird nicht gefunden | In OpenStreetMap fehlt es oder heißt anders: den Ortsnamen oder die Straße suchen oder die Koordinaten eintippen |

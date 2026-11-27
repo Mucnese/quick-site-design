@@ -24,6 +24,7 @@ function start() {
   }
 
   loading.style.display = 'none';
+  ensureBeta2007();                       // 24 KB, für genauere Umrechnung mit Gauß-Krüger (DHDN)
 
   // Beispieldatensatz, wenn die Adresse ?demo=1 enthält
   if (demoRequested()) loadDemo();

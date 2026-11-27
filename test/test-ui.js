@@ -479,10 +479,10 @@ await test('IFC-Panel: Bezugssystem der Datei wählbar, anderes System sperrt "l
   s.updateIfcTargetUi();
   assert.strictEqual(g('ifc-coords').disabled, true);
   assert.strictEqual(g('ifc-coords').value, 'abs');
-  assert.ok(g('ifc-target-note').textContent.indexOf('umgerechnet') >= 0 && g('ifc-target-note').textContent.indexOf('1 bis 2 m') < 0);
+  assert.ok(g('ifc-target-note').textContent.indexOf('umgerechnet') >= 0 && g('ifc-target-note').textContent.indexOf('genau{') < 0 && g('ifc-target-note').textContent.indexOf('etwa 3 m') < 0);
   g('ifc-target').value = '31467';
   s.updateIfcTargetUi();
-  assert.ok(g('ifc-target-note').textContent.indexOf('1 bis 2 m') > 0, 'Bessel: Genauigkeitshinweis');
+  assert.ok(g('ifc-target-note').textContent.indexOf('etwa 3 m') > 0, 'Bessel ohne Gitter: Genauigkeitshinweis ' + g('ifc-target-note').textContent);
   let saved = null;
   s.downloadText = function (t) { saved = t; };
   s.runIfcExport();
@@ -2316,7 +2316,7 @@ function fakeWebIfc(conv, opts) {
     this.GetGeometry = function () { return { GetVertexData: function () { return 0; }, GetVertexDataSize: function () { return verts.length; }, GetIndexData: function () { return 0; }, GetIndexDataSize: function () { return idx.length; } }; };
     this.GetVertexArray = function () { return verts; };
     this.GetIndexArray = function () { return idx; };
-    this.GetCoordinationMatrix = function () { return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; };
+    this.GetCoordinationMatrix = function () { const c = opts.coord || [0, 0, 0]; return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, c[0], c[1], c[2], 1]; };
   };
   return W;
 }
@@ -2461,6 +2461,98 @@ await test('Datenfenster: Gelände, Gebäude und Bauwerk haben je „Entfernen�
   leer.document.getElementById('dem-clear').fire('click');
   assert.ok(leer.document.getElementById('confirm-wrap').style.display !== 'flex');
   assert.strictEqual(leer.document.getElementById('status').textContent, leer.T('msgNoDem'));
+});
+
+await test('BeTA2007-Gitter: Umrechnung DHDN nach UTM stimmt mit PROJ überein, ohne Gitter gilt die Helmert-Umrechnung (wenige Meter daneben)', async function () {
+  const s = newScope();
+  const helmert = s.crsTransformer(31468, 25832)(4468000, 5333000);
+  assert.strictEqual(JSON.stringify(s.crsAccuracy(31468, 25832)), JSON.stringify({ m: 3, grid: false }));
+  if (typeof global.Worker === 'undefined') global.Worker = class {};
+  s.GeoTIFF = require('../lib/geotiff.js');
+  const file = require('fs').readFileSync(require('path').join(__dirname, '../lib/de_adv_BETA2007.tif'));
+  await s.parseBeta2007(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength));
+  assert.strictEqual(JSON.stringify(s.crsAccuracy(31468, 25832)), JSON.stringify({ m: 1, grid: true }));
+  assert.strictEqual(s.crsAccuracy(31467, 31468), null);
+  assert.strictEqual(s.crsAccuracy(25832, 25833), null);
+  // Vergleichswerte: PROJ (cct: tmerc invers, hgridshift mit de_adv_BETA2007.tif, UTM 32)
+  const p = s.crsTransformer(31468, 25832)(4468000, 5333000);
+  assert.ok(Math.hypot(p.e - 691104.0987, p.n - 5334410.7909) < 0.002, p.e + ' ' + p.n);
+  [[31467, 3500000, 5600000, 499925.4934, 5598199.7808], [31466, 2570000, 5650000, 359340.2349, 5649617.8281]].forEach(function (c) {
+    const q = s.crsTransformer(c[0], 25832)(c[1], c[2]);
+    assert.ok(Math.hypot(q.e - c[3], q.n - c[4]) < 0.002, c[0] + ': ' + q.e + ' ' + q.n);
+  });
+  const back = s.crsTransformer(25832, 31468)(p.e, p.n);
+  assert.ok(Math.hypot(back.e - 4468000, back.n - 5333000) < 0.01);
+  const diff = Math.hypot(p.e - helmert.e, p.n - helmert.n);
+  assert.ok(diff > 0.05 && diff < 6, 'Helmert weicht um ' + diff + ' m ab');
+});
+
+await test('Bezugssystem wählen: Gelände und Gebäude werden umgerechnet und wieder zurück; Bausteine nur nach Rückfrage', async function () {
+  const s = newScope();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  let xyz = '';
+  for (let r = 0; r < 41; r++) for (let c = 0; c < 41; c++) xyz += (691800 + c * 10) + ' ' + (5336200 - r * 10) + ' ' + (500 + c * 0.1) + '\n';
+  g('xyz-crs').value = '25832';
+  const bytes = new TextEncoder().encode(xyz);
+  await s.handleDemFiles([{ name: 'dgm.xyz', size: bytes.length, arrayBuffer: function () { return Promise.resolve(bytes.slice().buffer); } }]);
+  const t = function () { return vm.runInContext('TERRAIN', s); };
+  assert.strictEqual(t().epsg, 25832);
+  const gml = '<CityModel xmlns:gml="http://www.opengis.net/gml"><gml:Polygon><gml:exterior><gml:LinearRing>' +
+    '<gml:posList>691995 5335995 500 692005 5335995 500 692005 5336005 500 691995 5336005 500</gml:posList>' +
+    '</gml:LinearRing></gml:exterior></gml:Polygon></CityModel>';
+  await s.handleGmlFiles([fakeFile('g.gml', gml)]);
+  const rings = function () { return vm.runInContext('lastGmlRings', s); };
+  assert.strictEqual(rings()[0][0], 691995);
+  g('project-crs').value = '31468';
+  await s.onProjectCrsChange();
+  assert.strictEqual(t().epsg, 31468);
+  assert.strictEqual(t().srcEpsg, 25832);
+  const exp = s.crsTransformer(25832, 31468)(691995, 5335995);
+  assert.ok(Math.abs(rings()[0][0] - exp.e) < 1e-6 && Math.abs(rings()[0][1] - exp.n) < 1e-6);
+  assert.ok(g('project-crs-note').textContent.indexOf('EPSG:25832 → 31468') === 0 && g('project-crs-note').textContent.indexOf('etwa 3 m') > 0, g('project-crs-note').textContent);
+  // mit Baustein: erst die Rückfrage, Abbrechen behält alles
+  s.placeObject ? null : null;
+  vm.runInContext("objects.push({ id: 99, type: 'x', group: new THREE.Group() })", s);
+  g('project-crs').value = '';
+  s.onProjectCrsChange();
+  assert.strictEqual(g('confirm-wrap').style.display, 'flex');
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(t().epsg, 31468);
+  assert.strictEqual(g('project-crs').value, '31468');
+  vm.runInContext('objects.length = 0', s);
+  g('project-crs').value = '';
+  await s.onProjectCrsChange();
+  assert.strictEqual(t().epsg, 25832);
+  assert.strictEqual(rings()[0][0], 691995);
+  assert.strictEqual(g('project-crs-note').textContent, '');
+  // Bauwerk in Gauß-Krüger auf UTM-Gelände: Meldung mit Vorschlag, nach dem Wechsel setzt es sich selbst
+  s.setTimeout = function (fn) { fn(); return 0; };
+  const mid = s.crsTransformer(25832, 31468)(692000, 5336000);
+  s.WebIFC = fakeWebIfc({ E: mid.e, N: mid.n, H: 501, epsg: 31468 });
+  await s.handleIfcFile(ifcFile('gk.ifc'));
+  assert.ok(ifcPickOf(s), 'erst von Hand');
+  assert.ok(g('ifc-status').textContent.indexOf('EPSG:31468 wählen') > 0, g('ifc-status').textContent);
+  g('project-crs').value = '31468';
+  await s.onProjectCrsChange();
+  assert.strictEqual(ifcPickOf(s), null);
+  assert.strictEqual(ifcModelOf(s).how, 'auto');
+  assert.ok(Math.abs(ifcModelOf(s).group.position.x - (mid.e - t().originE)) < 1e-6);
+  s.removeIfc();
+  // ohne Georeferenz, aber mit Gauß-Krüger-Koordinaten in der Datei: direkt platziert
+  s.WebIFC = fakeWebIfc(null, { coord: [-mid.e, -501, mid.n] });
+  vm.runInContext('webIfcApi = null; webIfcLoading = null', s);
+  await s.handleIfcFile(ifcFile('roh.ifc'));
+  assert.strictEqual(ifcPickOf(s), null, g('ifc-status').textContent);
+  assert.ok(g('ifc-status').textContent.indexOf('Koordinaten der Datei passen') > 0, g('ifc-status').textContent);
+  s.removeIfc();
+  g('project-crs').value = '';
+  await s.onProjectCrsChange();
+  g('project-crs').value = 'other';
+  g('project-epsg').value = '4326';
+  await s.onProjectCrsChange();
+  assert.strictEqual(t().epsg, 25832);
+  assert.ok(g('project-crs-note').textContent.indexOf('4326') > 0);
 });
 
 await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {

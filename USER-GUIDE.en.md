@@ -78,10 +78,17 @@ locked.
 | Buildings (2D) | **Shapefile** (`.shp` together with `.dbf`, `.prj`, `.cpg`) | choose all files at once; without `.prj` the coordinate system of the terrain is assumed, otherwise you choose it yourself |
 | Buildings (2D) | **INSPIRE GML** (`.xml`, `.gml`, buildings 2D) | for example the “INSPIRE buildings” export of the Czech ČÚZK (RÚIAN): footprints in latitude/longitude (EPSG:4258), number of floors and height only where populated (mostly not in this file: then choose a fixed height). It is recognised and not read as CityGML |
 | Buildings (2D) | **GeoJSON** (`.geojson`, `.json`) | WGS84 (longitude/latitude) unless stated, otherwise the `crs` member |
-| Buildings | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | also CityJSONSeq and feature lists (3DBAG); the highest level of detail per part, footprints and terrain are dropped. The coordinate system must match the terrain (3DBAG: Rijksdriehoek, matching the AHN) |
+| Buildings | **CityJSON** (`.json`, `.city.json`, `.jsonl`) | also CityJSONSeq and feature lists (3DBAG); the highest level of detail per part, footprints and terrain are dropped. If the file names another coordinate system than the terrain, it is converted (3DBAG: Rijksdriehoek, matching the AHN) |
 
 ESRI ASCII grids (`.asc`) and decimal commas in XYZ files are not read. Convert them to GeoTIFF
 first, for example with GDAL.
+
+**Choosing the coordinate system (CRS).** At the top of the **Data** window it says “as the terrain”. If you choose another system or type an EPSG code, **terrain and buildings are converted to it**, for example from UTM to Gauss-Krüger, so that a structure in Gauss-Krüger fits. This works before or after loading.
+
+- **Accuracy:** The note below states it. Between ETRS89/UTM and German Gauss-Krüger (DHDN) about **1 m** with the included BeTA2007 grid (about 3 m without it: outside Germany or if the file cannot be loaded), for Austrian Gauss-Krüger (MGI) about 2 m. Between systems with the same datum practically no error. **Heights are never converted.**
+- Because the systems can be rotated against each other, the terrain grid is computed anew; a narrow strip at the edges is lost.
+- Buildings are taken in the system their file names, otherwise in that of the terrain data.
+- Changing it after placing removes the **building blocks** (after a question). So best choose the system beforehand.
 
 **Very large GeoTIFF (for example BEV, 7.9 GB).** Files over 300 MB are **not read completely, only the area around the chosen place**.
 First set a pin on the start map or choose an address, then choose the file under “Data”. With the BEV raster this takes
@@ -102,7 +109,7 @@ to cut out an area yourself first, you can use
 |---|---|---|
 | **Address bar** | top left | search a place, links to the geodata |
 | **Overview** | left | terrain, height range, object count, list of blocks with quantities |
-| **Data** | left | terrain, buildings, structure (IFC), coordinate system for XYZ |
+| **Data** | left | coordinate system (CRS), terrain, buildings, structure (IFC) |
 | **Map** | bottom left | button for the OpenStreetMap map |
 | **Properties** | right | sizes and values of the selected block |
 | **Building blocks** | bottom | container, tower crane, mobile crane, haul road, excavation, IFC export, measure |
@@ -276,7 +283,7 @@ transmitted (see [privacy](datenschutz.html)). At the bottom left the attributio
   (ETRS89 and WGS 84), Gauss-Krüger (DHDN), Gauss-Krüger Austria (MGI, EPSG:31254 to 31256), the European
   ETRS89-LAEA (EPSG:3035, BEV) and the national systems of many EU countries (list in the [README](README.en.md#where-to-get-the-data)).
   For other systems, for example Hungary (EOV), the map switches itself off with a message.
-- For Bessel systems (DHDN, MGI) the map is accurate to about 1 to 2 m.
+- For Bessel systems the map is accurate to about: DHDN 1 m (BeTA2007 grid), MGI 2 m.
 - Depending on the terrain size the map loads up to 144 tiles at once. The smaller the terrain, the finer the zoom level and the smaller the labels look.
 - After a new terrain the map reloads on its own.
 
@@ -293,6 +300,8 @@ file stays in the browser and is not transmitted. Size up to 300 MB.
 - **Automatic:** If the file is georeferenced (`IfcMapConversion`) and uses the **same coordinate
   system (EPSG)** as the terrain, the structure appears at the right place, rotated and at the right
   height. Scale and length unit of the file are taken into account.
+  This also works without a georeference if the file itself holds national coordinates that lie within the terrain (common with Gauss-Krüger).
+  If the terrain is in another system, the message names the EPSG code you can choose above as **coordinate system (CRS)**; the structure then places itself.
 - **Align 4 points (2 + 2):** If the georeference is missing or the coordinate system differs, the
   message names the reason and starts the procedure: click alternately **point A on the structure**, then the
   **matching point A on the terrain**, then point B the same way. The point pairs give position and rotation. The structure
@@ -324,8 +333,8 @@ excavation lies below the terrain surface.
    **another coordinate system** (UTM 31N to 33N, Gauss-Krüger 2 to 5, Gauss-Krüger Austria and the national EU systems, for example
    RD New of the Netherlands, Lambert-93 of France, SWEREF 99 TM of Sweden, PL-1992 of Poland). Every
    point is then converted individually and written as absolute coordinates; heights stay unchanged.
-   For the Bessel systems (DHDN, MGI, marked ≈) the position is accurate to about 1 to 2 m only,
-   because no conversion grid is included. The file also names the coordinate system (EPSG code, datum,
+   For the Bessel systems (marked ≈) the position is less accurate: DHDN about 1 m with the BeTA2007 grid,
+   MGI about 2 m. The file also names the coordinate system (EPSG code, datum,
    zone) and carries latitude and longitude of the site where the system can be converted.
    **Export** downloads the file, **Cancel** or **Esc** aborts.
 
@@ -369,7 +378,7 @@ excavation lies below the terrain surface.
 | XYZ or LAS file does not load | Choose the coordinate system under “Coordinate system for XYZ files” or type an EPSG code |
 | LAS/LAZ: “set a pin” | the cloud is larger than 3 km: set a pin on the start map, then choose the file |
 | Warning “outside Europe” | The EPSG code does not match the coordinates: choose the right code |
-| Buildings are missing | They lie outside the terrain, or the coordinate system of the CityGML file differs |
+| Buildings are missing | They lie outside the terrain, or the building file is in another coordinate system and does not name it |
 | Map does not load | Offline or blocked; or the coordinate system is not supported |
 | No suggestions in the address bar | Type at least three characters; the search service may not be reachable |
 | A structure (for example a bridge) is not found | It is missing or named differently in OpenStreetMap: search the place name or street, or type the coordinates |

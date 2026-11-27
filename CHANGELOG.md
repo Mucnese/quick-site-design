@@ -9,6 +9,12 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-27
 
+### Neu
+- **Bezugssystem (KBS) wählen:** Im Datenfenster lässt sich ein Koordinatensystem wählen oder ein EPSG-Code eintippen; Gelände und Gebäude werden dorthin umgerechnet (etwa UTM nach Gauß-Krüger), mit Angabe der Genauigkeit. Höhen bleiben unverändert, Bausteine werden bei einem Wechsel nach Rückfrage entfernt.
+- **Genauer mit BeTA2007:** Zwischen Gauß-Krüger Deutschland (DHDN) und ETRS89 rechnet die Anwendung jetzt mit dem BeTA2007-Gitter der AdV (etwa 1 m statt etwa 3 m), auch beim IFC-Export und für die Karte.
+- **IFC mit Landeskoordinaten ohne Georeferenz** wird automatisch platziert, wenn die Koordinaten im Gelände liegen.
+- Gebäudedateien, die ein anderes Bezugssystem nennen als das Gelände, werden umgerechnet.
+
 ### Geändert
 - **„Entfernen“ bei allen Daten:** Auch das Gelände hat jetzt den Knopf; er steht bei Gelände, Gebäude und Bauwerk immer oben rechts. Beim Gelände wird nach einer Rückfrage alles entfernt, weil alles daran hängt.
 
