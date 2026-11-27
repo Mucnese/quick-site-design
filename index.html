@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-5u83gVV/cNQ76hwtgolvH9diqbFzogJdSySDPW3nnnk=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Do6tPEOiMnAv8wgEb/RcGovK5kWb5VkZ83jf1pMxub0=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -12611,7 +12611,8 @@ function crsAccuracyText(from, to) {
 }
 
 function updateProjectCrsNote() {
-  if (TERRAIN && TERRAIN.srcEpsg) setProjectCrsNote('EPSG:' + TERRAIN.srcEpsg + ' → ' + TERRAIN.epsg + ': ' + crsAccuracyText(TERRAIN.srcEpsg, TERRAIN.epsg), 'busy');
+  if (TERRAIN && TERRAIN.srcEpsg) setProjectCrsNote('EPSG:' + TERRAIN.srcEpsg + ' → ' + TERRAIN.epsg + ': ' + crsAccuracyText(TERRAIN.srcEpsg, TERRAIN.epsg),
+    crsAccuracy(TERRAIN.srcEpsg, TERRAIN.epsg) ? 'err' : 'busy');                 // Ungenauigkeit: rot
   else if (!projectCrs) setProjectCrsNote('');
   else if (!TERRAIN) setProjectCrsNote(T('projCrsPending'));
   else if (!TERRAIN.epsg) setProjectCrsNote(T('projCrsNoSrc'), 'err');

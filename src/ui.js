@@ -4250,7 +4250,8 @@ function crsAccuracyText(from, to) {
 }
 
 function updateProjectCrsNote() {
-  if (TERRAIN && TERRAIN.srcEpsg) setProjectCrsNote('EPSG:' + TERRAIN.srcEpsg + ' → ' + TERRAIN.epsg + ': ' + crsAccuracyText(TERRAIN.srcEpsg, TERRAIN.epsg), 'busy');
+  if (TERRAIN && TERRAIN.srcEpsg) setProjectCrsNote('EPSG:' + TERRAIN.srcEpsg + ' → ' + TERRAIN.epsg + ': ' + crsAccuracyText(TERRAIN.srcEpsg, TERRAIN.epsg),
+    crsAccuracy(TERRAIN.srcEpsg, TERRAIN.epsg) ? 'err' : 'busy');                 // Ungenauigkeit: rot
   else if (!projectCrs) setProjectCrsNote('');
   else if (!TERRAIN) setProjectCrsNote(T('projCrsPending'));
   else if (!TERRAIN.epsg) setProjectCrsNote(T('projCrsNoSrc'), 'err');

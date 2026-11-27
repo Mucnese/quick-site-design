@@ -2511,6 +2511,7 @@ await test('Bezugssystem wählen: Gelände und Gebäude werden umgerechnet und w
   const exp = s.crsTransformer(25832, 31468)(691995, 5335995);
   assert.ok(Math.abs(rings()[0][0] - exp.e) < 1e-6 && Math.abs(rings()[0][1] - exp.n) < 1e-6);
   assert.ok(g('project-crs-note').textContent.indexOf('EPSG:25832 → 31468') === 0 && g('project-crs-note').textContent.indexOf('etwa 3 m') > 0, g('project-crs-note').textContent);
+  assert.strictEqual(g('project-crs-note').className, 'file-status err', 'Genauigkeitswarnung in Rot');
   // mit Baustein: erst die Rückfrage, Abbrechen behält alles
   s.placeObject ? null : null;
   vm.runInContext("objects.push({ id: 99, type: 'x', group: new THREE.Group() })", s);

@@ -89,7 +89,7 @@ vorher in GeoTIFF um, zum Beispiel mit GDAL.
 
 **Bezugssystem (KBS) wählen.** Oben im Fenster **Daten** steht „wie das Gelände“. Wählst du ein anderes System oder tippst einen EPSG-Code ein, werden **Gelände und Gebäude dorthin umgerechnet**, zum Beispiel von UTM nach Gauß-Krüger, damit ein Bauwerk in Gauß-Krüger passt. Das geht vor oder nach dem Laden.
 
-- **Genauigkeit:** Die Meldung darunter nennt sie. Zwischen ETRS89/UTM und Gauß-Krüger Deutschland (DHDN) etwa **1 m** mit dem beiliegenden BeTA2007-Gitter (etwa 3 m ohne: außerhalb Deutschlands oder wenn die Datei nicht geladen werden kann), bei Gauß-Krüger Österreich (MGI) etwa 2 m. Zwischen Systemen mit gleichem Datum praktisch ohne Fehler. **Höhen werden nie umgerechnet.**
+- **Genauigkeit:** Die Meldung darunter nennt sie, in Rot, wenn die Umrechnung ungenau ist. Zwischen ETRS89/UTM und Gauß-Krüger Deutschland (DHDN) etwa **1 m** mit dem beiliegenden BeTA2007-Gitter (etwa 3 m ohne: außerhalb Deutschlands oder wenn die Datei nicht geladen werden kann), bei Gauß-Krüger Österreich (MGI) etwa 2 m. Zwischen Systemen mit gleichem Datum praktisch ohne Fehler. **Höhen werden nie umgerechnet.**
 - Weil die Systeme gegeneinander gedreht sein können, wird das Geländeraster neu gerechnet; an den Rändern fällt dabei ein schmaler Streifen weg.
 - Gebäude gelten im System, das ihre Datei nennt, sonst in dem der Geländedaten.
 - Ein Wechsel nach dem Platzieren entfernt die **Bausteine** (mit Rückfrage). Wähle das System also am besten vorher.

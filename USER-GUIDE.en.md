@@ -85,7 +85,7 @@ first, for example with GDAL.
 
 **Choosing the coordinate system (CRS).** At the top of the **Data** window it says “as the terrain”. If you choose another system or type an EPSG code, **terrain and buildings are converted to it**, for example from UTM to Gauss-Krüger, so that a structure in Gauss-Krüger fits. This works before or after loading.
 
-- **Accuracy:** The note below states it. Between ETRS89/UTM and German Gauss-Krüger (DHDN) about **1 m** with the included BeTA2007 grid (about 3 m without it: outside Germany or if the file cannot be loaded), for Austrian Gauss-Krüger (MGI) about 2 m. Between systems with the same datum practically no error. **Heights are never converted.**
+- **Accuracy:** The note below states it, in red if the conversion is inexact. Between ETRS89/UTM and German Gauss-Krüger (DHDN) about **1 m** with the included BeTA2007 grid (about 3 m without it: outside Germany or if the file cannot be loaded), for Austrian Gauss-Krüger (MGI) about 2 m. Between systems with the same datum practically no error. **Heights are never converted.**
 - Because the systems can be rotated against each other, the terrain grid is computed anew; a narrow strip at the edges is lost.
 - Buildings are taken in the system their file names, otherwise in that of the terrain data.
 - Changing it after placing removes the **building blocks** (after a question). So best choose the system beforehand.
