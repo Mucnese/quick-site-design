@@ -7324,16 +7324,27 @@ function ifcCombine(parts, anchor) {
 /* ---------- Filtern nach einem Attribut und Mengen ----------
    filter: { kind: 'class' | 'name' | 'desc' | 'objType' | 'tag' | 'guid' | 'typeName' | 'material' | 'container' | 'file' | 'prop',
    value, set und name (nur 'prop') } */
-function ifcMatches(info, fileName, f) {
-  if (f.kind === 'class') return info.type === f.value;
-  if (f.kind === 'name') return info.name === f.value;
-  if (f.kind === 'material') return info.material === f.value;
-  if (f.kind === 'container') return info.container === f.value;
-  if (f.kind === 'file') return fileName === f.value;
+function ifcValuesOf(info, fileName, f) {
+  if (f.kind === 'class') return [info.type];
+  if (f.kind === 'name') return [info.name];
+  if (f.kind === 'material') return [info.material];
+  if (f.kind === 'container') return [info.container];
+  if (f.kind === 'file') return [fileName];
+  const out = [];
   if (f.kind === 'prop') {
-    return info.sets.some(function (s) { return s.name === f.set && s.rows.some(function (r) { return r[0] === f.name && r[1] === f.value; }); });
+    info.sets.forEach(function (s) { if (s.name === f.set) s.rows.forEach(function (r) { if (r[0] === f.name) out.push(r[1]); }); });
+  } else {
+    info.rows.forEach(function (r) { if (r[0] === f.kind) out.push(r[1]); });
   }
-  return info.rows.some(function (r) { return r[0] === f.kind && r[1] === f.value; });
+  return out;
+}
+
+/* op 'has': der Wert enthält den Text (ohne Groß-/Kleinschreibung), sonst muss er gleich sein */
+function ifcMatches(info, fileName, f) {
+  const want = String(f.value);
+  return ifcValuesOf(info, fileName, f).some(function (v) {
+    return f.op === 'has' ? String(v).toLowerCase().indexOf(want.toLowerCase()) >= 0 : v === want;
+  });
 }
 
 /* Alle Bauteile (expressID) einer Datei, die ein Netz haben; die ausgeblendeten Netze eines Filters zählen mit */
@@ -8020,7 +8031,7 @@ if (typeof module !== 'undefined' && module.exports) {
     axisDragParam: axisDragParam,
     ringDragAngle: ringDragAngle,
     canonicalEpsg: canonicalEpsg,
-    ifcMatches: ifcMatches, ifcIsolate: ifcIsolate, ifcRestore: ifcRestore, ifcElementIds: ifcElementIds, ifcGeometryQuantities: ifcGeometryQuantities, ifcSumQuantities: ifcSumQuantities,
+    ifcValuesOf: ifcValuesOf, ifcMatches: ifcMatches, ifcIsolate: ifcIsolate, ifcRestore: ifcRestore, ifcElementIds: ifcElementIds, ifcGeometryQuantities: ifcGeometryQuantities, ifcSumQuantities: ifcSumQuantities,
     ifcElementAt: ifcElementAt, ifcPropIndex: ifcPropIndex, ifcElementProps: ifcElementProps, ifcValueText: ifcValueText, ifcCombine: ifcCombine, ifcCoreBox: ifcCoreBox, ifcChunkKey: ifcChunkKey,
     reprojectTerrain: reprojectTerrain, reprojectRings: reprojectRings, buildingTextEpsg: buildingTextEpsg, crsAccuracy: crsAccuracy,
     parseBeta2007: parseBeta2007, ensureBeta2007: ensureBeta2007, hasBeta2007: hasBeta2007, ifcRawPlacement: ifcRawPlacement, ifcGuessGk: ifcGuessGk,

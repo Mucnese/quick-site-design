@@ -2742,7 +2742,7 @@ await test('IFC-Bauteil anklicken: Dreieck -> Bauteil, Fenster mit Klasse, Mater
   assert.strictEqual(s.clickIfcElement({ clientX: 1, clientY: 1 }), false);
 });
 
-await test('IFC-Filter: Zeile anklicken zeigt nur gleiche Bauteile mit Mengen; Esc hebt erst den Filter auf, dann schließt es das Fenster', async function () {
+await test('IFC-Bauteil: Filter (Zeile oder von Hand), Isolieren und Ausblenden je Bauteil oder Datei, Alles anzeigen; Fenster schließen behält den Zustand', async function () {
   const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
   const g = function (id) { return s.document.getElementById(id); };
   s.initUI();
@@ -2750,27 +2750,74 @@ await test('IFC-Filter: Zeile anklicken zeigt nur gleiche Bauteile mit Mengen; E
   const m = ifcModelOf(s), full = m.group.children[0];
   full.userData.ranges = [{ end: 4, id: 100 }, { end: 8, id: 200 }, { end: 12, id: 300 }];
   const v = function (x) { return { value: x }; };
-  const lines = { 100: { Name: v('Pfeiler'), ObjectType: v('P') }, 200: { Name: v('Pfeiler'), ObjectType: v('P') }, 300: { Name: v('Platte'), ObjectType: v('D') } };
+  const lines = { 100: { Name: v('Pfeiler Nord'), ObjectType: v('P') }, 200: { Name: v('Pfeiler Süd'), ObjectType: v('P') }, 300: { Name: v('Platte'), ObjectType: v('D') } };
   const api = vm.runInContext('webIfcApi', s);
   api.GetLineIDsWithType = function () { return { size: function () { return 0; } }; };
   api.GetLine = function (id, eid) { return lines[eid]; };
   s.yieldToPaint = function () { return Promise.resolve(); };
-  s.showIfcElement(m.parts[0], 100);
+  const body = function () { return g('ifc-element-body'); };
   const all = function (el) { return (el.textContent || '') + (el.children || []).map(all).join('|'); };
+  const find = function (el, cls) {
+    if (String(el.className || '').split(' ').indexOf(cls) >= 0) return el;
+    for (const c of el.children || []) { const r = find(c, cls); if (r) return r; }
+    return null;
+  };
+  const shown = function () {
+    const meshes = m.group.children.filter(function (c) { return c.userData.ranges; });
+    return meshes.length ? meshes[0].userData.ranges.map(function (r) { return r.id; }).join(',') : '';
+  };
+  s.showIfcElement(m.parts[0], 100);
+  assert.ok(find(body(), 'ifc-filter'), 'Filter steht im Fenster');
+  assert.strictEqual(body().children[0], find(body(), 'ifc-filter'), 'ganz oben');
+  assert.strictEqual(g('ifc-show-all').style.display, 'none');
+  // Zeile anklicken (Filter nach Objekttyp)
   await s.applyIfcFilter({ kind: 'objType', value: 'P' });
-  const txt = all(g('ifc-element-body'));
-  assert.ok(txt.indexOf('Filter: Objekttyp = P') >= 0 && txt.indexOf('Bauteile|2') >= 0 && txt.indexOf('Filter aufheben') >= 0, txt);
-  const shown = m.group.children.filter(function (c) { return c.userData.ranges; });
-  assert.strictEqual(shown.length, 1);
-  assert.strictEqual(JSON.stringify(shown[0].userData.ranges), JSON.stringify([{ end: 4, id: 100 }, { end: 8, id: 200 }]));
-  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(shown(), '100,200');
+  assert.ok(all(body()).indexOf('Bauteile|2') >= 0, all(body()));
+  assert.strictEqual(find(body(), 'ifc-f-value').value, 'P');
+  // von Hand: Attribut Name, „enthält“, eigener Wert
+  const attr = find(body(), 'ifc-f-attr'), op = find(body(), 'ifc-f-op'), value = find(body(), 'ifc-f-value');
+  const nameIndex = attr.children.findIndex(function (o) { return o.textContent === 'Name'; });
+  attr.value = String(nameIndex); attr.fire('change');
+  op.value = 'has'; op.fire('change');
+  value.value = 'süd'; value.fire('input');
+  await s.applyIfcEditor();
+  assert.strictEqual(shown(), '200');
+  // Alles anzeigen
+  s.resetIfcView();
   assert.strictEqual(m.group.children.filter(function (c) { return c.userData.ranges; })[0], full, 'volles Netz zurück');
+  assert.strictEqual(g('ifc-show-all').style.display, 'none');
+  // Ausblenden: Bauteil, dann ein weiteres
+  s.showIfcElement(m.parts[0], 100);
+  await s.ifcHideSelected('element');
+  assert.strictEqual(shown(), '200,300');
+  s.showIfcElement(m.parts[0], 300);
+  await s.ifcHideSelected('element');
+  assert.strictEqual(shown(), '200');
+  assert.strictEqual(g('ifc-show-all').style.display, '');
+  // Fenster schließen: der Zustand bleibt, „Alles anzeigen“ steht im Datenfenster
+  s.hideIfcElement();
+  assert.strictEqual(shown(), '200');
+  s.resetIfcView();
+  // Isolieren: Bauteil und Datei; ausgeblendete Datei zeigt nichts
+  s.showIfcElement(m.parts[0], 300);
+  await s.ifcIsolateSelected('element');
+  assert.strictEqual(shown(), '300');
+  await s.ifcIsolateSelected('file');
+  assert.strictEqual(shown(), '100,200,300');
+  await s.ifcHideSelected('file');
+  assert.strictEqual(shown(), '');
+  // Esc: erst alles zeigen, dann Fenster schließen
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(shown(), '100,200,300');
   assert.strictEqual(g('ifc-element').style.display, 'block');
   s.onKeyDown({ key: 'Escape', target: {} });
   assert.strictEqual(g('ifc-element').style.display, 'none');
-  await s.applyIfcFilter({ kind: 'name', value: 'Platte' });
+  s.showIfcElement(m.parts[0], 100);
+  await s.ifcHideSelected('element');
   s.removeIfc();
   assert.strictEqual(ifcModelOf(s), null);
+  assert.strictEqual(g('ifc-show-all').style.display, 'none');
 });
 
 await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {

@@ -306,12 +306,14 @@ nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Grö�
 **Mehrere Dateien:** Liegt ein Bauwerk in Teilen vor (Überbau, Unterbau, Behelfe), wähle **alle zugleich**. Sie werden zu einem Bauwerk zusammengefasst, jede an ihrem Platz; Platzieren, Schieben, Drehen und Entfernen wirken auf alles.
 Dateien ohne Georeferenz gelten im System der anderen. Dateien in einem anderen Bezugssystem, weit entfernte (über 20 km) oder nicht lesbare werden weggelassen und genannt. Ist schon ein Bauwerk geladen, **kommt eine neue Auswahl dazu**; das Vorhandene bleibt genau an seiner Stelle, auch nach dem Ausrichten von Hand. Eine schon geladene Datei wird übergangen. Für ein anderes Bauwerk zuerst **Entfernen**.
 
-**Bauteil anklicken:** Ein Klick auf das Bauwerk hebt das Bauteil hervor und öffnet rechts das Fenster **Bauteil**: IFC-Klasse, Name, Objekttyp, Typ, Material, Lage im Bauwerk, Datei und alle Eigenschaften und Mengen aus der IFC.
+**Bauteil anklicken:** Ein Klick auf das Bauwerk hebt das Bauteil hervor und öffnet rechts das Fenster **Bauteil**. Von oben nach unten:
 
-**Filtern und Mengen:** Ein Klick auf eine **Zeile** (zum Beispiel Typ, Material oder eine Eigenschaft) zeigt **nur die Bauteile mit demselben Wert** und rechnet zusammen:
-- Anzahl, **Volumen** und **Oberfläche**, aus der Geometrie berechnet (überschlägig). Ein Volumen gibt es nur für geschlossene Körper; die Zahl der übrigen wird genannt.
-- **Summen aus der IFC**: Mengen, die in der Datei selbst stehen, mit der Zahl der Bauteile, die sie haben. Die Einheit ist die der Datei.
-**Filter aufheben** (oder **Esc**) zeigt wieder alles; ein zweites **Esc** schließt das Fenster.
+- **Filter:** Attribut wählen, **ist** oder **enthält**, Wert eintippen (mit Vorschlägen) und **Filtern** (oder Eingabetaste). Ein Klick auf eine **Zeile** weiter unten setzt den Filter und wendet ihn sofort an.
+- **Isolieren** oder **Ausblenden**, jeweils das **Bauteil** oder die ganze **Datei**. Ausgeblendetes summiert sich; Ausgeblendetes lässt sich nicht anklicken, man klickt hindurch.
+- **Mengen der angezeigten Bauteile** (nach Filtern oder Isolieren): Anzahl, **Volumen** und **Oberfläche**, aus der Geometrie berechnet (überschlägig; ein Volumen gibt es nur für geschlossene Körper, die Zahl der übrigen wird genannt), dazu **Summen aus der IFC** mit der Zahl der Bauteile, die sie haben (Einheit wie in der Datei).
+- Alle Angaben zum Bauteil: IFC-Klasse, Name, Objekttyp, Typ, Material, Lage im Bauwerk, Datei, Eigenschaften und Mengen.
+
+**Alles anzeigen** (im Fenster **Bauteil** und in der Zeile **Bauwerk · IFC**) zeigt wieder alles. **Schließen** lässt den Zustand stehen; **Esc** zeigt erst alles und schließt beim zweiten Mal das Fenster.
 
 - **Automatisch:** Ist die Datei georeferenziert (`IfcMapConversion`) und hat **dasselbe
   Bezugssystem (EPSG)** wie das Gelände, steht das Bauwerk sofort an der richtigen Stelle,

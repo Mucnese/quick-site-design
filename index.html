@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yVv2GP8G017igZROVaJJ8YFMDsWJai4MwbXmluyR/qI=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-C77z5uMGnI+drsas7vnqWd7VJ9iacVQfo1uGG/DGD4s=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -403,7 +403,13 @@
   .ifc-element-note.warn { color: var(--danger); }
   .ifc-filterable { cursor: pointer; }
   .ifc-filterable:hover, .ifc-filterable:focus-visible { background: var(--field); }
-  #ifc-element-body .btn-block { width: auto; margin: 8px 11px 4px; }
+  #ifc-element-body > .btn-block { width: auto; margin: 8px 11px 2px; }
+  .ifc-filter { display: grid; grid-template-columns: auto 1fr auto; gap: 5px; padding: 2px 11px 8px; border-bottom: 1px solid var(--border); }
+  .ifc-filter select, .ifc-filter input { min-width: 0; box-sizing: border-box; background: var(--field); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: inherit; font-size: 1em; padding: 3px 5px; }
+  .ifc-filter .ifc-f-attr { grid-column: 1 / -1; }
+  .ifc-filter .btn-block { margin: 0; padding: 3px 8px; width: auto; }
+  .ifc-actions-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 5px; align-items: center; padding: 8px 11px 2px; }
+  .ifc-actions-grid .btn-block { margin: 0; padding: 3px 6px; width: 100%; }
 
   /* ---------- Parameter ---------- */
   #param-wrap { flex: 1 1 auto; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
@@ -803,6 +809,7 @@
         <input type="file" id="ifc-input" multiple accept=".ifc">
         <div class="file-status" id="ifc-status">Keine Datei</div>
         <div id="ifc-tools">
+          <button class="btn-block accent" id="ifc-show-all" data-i18n="ifcShowAll" style="display:none">Alles anzeigen</button>
           <div id="ifc-modes">
             <button class="btn-block" id="ifc-manual-btn" data-i18n="ifcManualBtn">4 Punkte ausrichten</button>
             <button class="btn-block" id="ifc-move-btn" data-i18n="ifcMoveBtn">Schieben &amp; Drehen</button>
@@ -8310,16 +8317,27 @@ function ifcCombine(parts, anchor) {
 /* ---------- Filtern nach einem Attribut und Mengen ----------
    filter: { kind: 'class' | 'name' | 'desc' | 'objType' | 'tag' | 'guid' | 'typeName' | 'material' | 'container' | 'file' | 'prop',
    value, set und name (nur 'prop') } */
-function ifcMatches(info, fileName, f) {
-  if (f.kind === 'class') return info.type === f.value;
-  if (f.kind === 'name') return info.name === f.value;
-  if (f.kind === 'material') return info.material === f.value;
-  if (f.kind === 'container') return info.container === f.value;
-  if (f.kind === 'file') return fileName === f.value;
+function ifcValuesOf(info, fileName, f) {
+  if (f.kind === 'class') return [info.type];
+  if (f.kind === 'name') return [info.name];
+  if (f.kind === 'material') return [info.material];
+  if (f.kind === 'container') return [info.container];
+  if (f.kind === 'file') return [fileName];
+  const out = [];
   if (f.kind === 'prop') {
-    return info.sets.some(function (s) { return s.name === f.set && s.rows.some(function (r) { return r[0] === f.name && r[1] === f.value; }); });
+    info.sets.forEach(function (s) { if (s.name === f.set) s.rows.forEach(function (r) { if (r[0] === f.name) out.push(r[1]); }); });
+  } else {
+    info.rows.forEach(function (r) { if (r[0] === f.kind) out.push(r[1]); });
   }
-  return info.rows.some(function (r) { return r[0] === f.kind && r[1] === f.value; });
+  return out;
+}
+
+/* op 'has': der Wert enthält den Text (ohne Groß-/Kleinschreibung), sonst muss er gleich sein */
+function ifcMatches(info, fileName, f) {
+  const want = String(f.value);
+  return ifcValuesOf(info, fileName, f).some(function (v) {
+    return f.op === 'has' ? String(v).toLowerCase().indexOf(want.toLowerCase()) >= 0 : v === want;
+  });
 }
 
 /* Alle Bauteile (expressID) einer Datei, die ein Netz haben; die ausgeblendeten Netze eines Filters zählen mit */
@@ -8933,13 +8951,13 @@ const STRINGS = {
     ifcFail: 'IFC konnte nicht gelesen werden: {e}', ifcEmpty: 'Die IFC-Datei enthält keine darstellbare Geometrie.',
     ifcLibFail: 'Die IFC-Bibliothek (lib/web-ifc-api-iife.js) konnte nicht geladen werden.',
     ifcNeedTerrain: 'Zuerst ein Geländemodell laden.', ifcCancelled: 'Platzierung abgebrochen.', ifcRemoved: 'Bauwerk entfernt.',
-    ifcInfo: '{n} · {t} Dreiecke', ifcFiles: '{n} IFC-Dateien', multiOk: 'mehrere möglich', ifcSkipped: 'Weggelassen: {l}.', ifcSkipCrs: 'anderes Bezugssystem', ifcSkipFar: 'liegt weit weg', ifcSkipRead: 'nicht lesbar', ifcSkipDup: 'schon geladen', ifcAdded: '{n} Datei(en) dazugeladen.', ifcKept: 'Das bisher Geladene bleibt.', yes: 'ja', no: 'nein', ifcElTitle: 'Bauteil', ifcElType: 'IFC-Klasse', ifcElDesc: 'Beschreibung', ifcElObjType: 'Objekttyp', ifcElTag: 'Kennzeichen', ifcElGuid: 'GlobalId', ifcElTypeName: 'Typ', ifcElMat: 'Material', ifcElIn: 'Liegt in', ifcElFile: 'Datei', ifcElFromType: '(vom Typ)', ifcElNoSets: 'Keine weiteren Eigenschaften.', ifcElFail: 'Die Angaben zu diesem Bauteil lassen sich nicht lesen.', ifcElName: 'Name', ifcElFilter: 'Filter:', ifcElFilterHint: 'Zeile anklicken: nur gleiche Bauteile zeigen und Mengen rechnen', ifcElCount: 'Bauteile', ifcElVolume: 'Volumen', ifcElArea: 'Oberfläche', ifcElOpen: '{n} von {m} Bauteilen sind keine geschlossenen Körper und fehlen im Volumen.', ifcElGeomNote: 'Aus der Geometrie berechnet, überschlägig.', ifcElSums: 'Summen aus der IFC (Einheit wie in der Datei)', ifcElClear: 'Filter aufheben', busyIfcFilter: 'Bauteile werden gefiltert …',
+    ifcInfo: '{n} · {t} Dreiecke', ifcFiles: '{n} IFC-Dateien', multiOk: 'mehrere möglich', ifcSkipped: 'Weggelassen: {l}.', ifcSkipCrs: 'anderes Bezugssystem', ifcSkipFar: 'liegt weit weg', ifcSkipRead: 'nicht lesbar', ifcSkipDup: 'schon geladen', ifcAdded: '{n} Datei(en) dazugeladen.', ifcKept: 'Das bisher Geladene bleibt.', yes: 'ja', no: 'nein', ifcElTitle: 'Bauteil', ifcElType: 'IFC-Klasse', ifcElDesc: 'Beschreibung', ifcElObjType: 'Objekttyp', ifcElTag: 'Kennzeichen', ifcElGuid: 'GlobalId', ifcElTypeName: 'Typ', ifcElMat: 'Material', ifcElIn: 'Liegt in', ifcElFile: 'Datei', ifcElFromType: '(vom Typ)', ifcElNoSets: 'Keine weiteren Eigenschaften.', ifcElFail: 'Die Angaben zu diesem Bauteil lassen sich nicht lesen.', ifcElName: 'Name', ifcElFilter: 'Filter', ifcElAttr: 'Attribut', ifcElValue: 'Wert', ifcElOpIs: 'ist', ifcElOpHas: 'enthält', ifcElApply: 'Filtern', ifcElNone: 'Kein Bauteil passt.', ifcElQuantities: 'Mengen der angezeigten Bauteile', ifcViewIsolate: 'Isolieren', ifcViewHide: 'Ausblenden', ifcViewElement: 'Bauteil', ifcViewFile: 'Datei', ifcShowAll: 'Alles anzeigen', ifcElFilterHint: 'Zeile anklicken: nur gleiche Bauteile zeigen und Mengen rechnen', ifcElCount: 'Bauteile', ifcElVolume: 'Volumen', ifcElArea: 'Oberfläche', ifcElOpen: '{n} von {m} Bauteilen sind keine geschlossenen Körper und fehlen im Volumen.', ifcElGeomNote: 'Aus der Geometrie berechnet, überschlägig.', ifcElSums: 'Summen aus der IFC (Einheit wie in der Datei)', busyIfcFilter: 'Bauteile werden gefiltert …',
     helpBtn: 'Hilfe', helpGuide: 'Vollständige Anleitung auf GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/BENUTZERANLEITUNG.md',
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- IFC-Bauteil anklicken: Angaben rechts; eine Zeile anklicken filtert gleiche Bauteile und rechnet Mengen.\n- Passt das Bezugssystem nicht (zum Beispiel IFC in Gauß-Krüger, Gelände in UTM), wähle oben im Fenster „Daten“ das Bezugssystem (KBS): Gelände und Gebäude werden umgerechnet.\n- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- IFC-Bauteil anklicken: rechts Filter, Isolieren/Ausblenden (Bauteil oder Datei), Mengen und Angaben; „Alles anzeigen“ hebt es auf.\n- Passt das Bezugssystem nicht (zum Beispiel IFC in Gauß-Krüger, Gelände in UTM), wähle oben im Fenster „Daten“ das Bezugssystem (KBS): Gelände und Gebäude werden umgerechnet.\n- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -9138,13 +9156,13 @@ const STRINGS = {
     ifcFail: 'The IFC could not be read: {e}', ifcEmpty: 'The IFC file contains no displayable geometry.',
     ifcLibFail: 'The IFC library (lib/web-ifc-api-iife.js) could not be loaded.',
     ifcNeedTerrain: 'Load a terrain model first.', ifcCancelled: 'Placement cancelled.', ifcRemoved: 'Structure removed.',
-    ifcInfo: '{n} · {t} triangles', ifcFiles: '{n} IFC files', multiOk: 'several possible', ifcSkipped: 'Left out: {l}.', ifcSkipCrs: 'other coordinate system', ifcSkipFar: 'far away', ifcSkipRead: 'cannot be read', ifcSkipDup: 'already loaded', ifcAdded: '{n} file(s) added.', ifcKept: 'What was loaded stays.', yes: 'yes', no: 'no', ifcElTitle: 'Element', ifcElType: 'IFC class', ifcElDesc: 'Description', ifcElObjType: 'Object type', ifcElTag: 'Tag', ifcElGuid: 'GlobalId', ifcElTypeName: 'Type', ifcElMat: 'Material', ifcElIn: 'Contained in', ifcElFile: 'File', ifcElFromType: '(from type)', ifcElNoSets: 'No further properties.', ifcElFail: 'The data of this element cannot be read.', ifcElName: 'Name', ifcElFilter: 'Filter:', ifcElFilterHint: 'Click a row: show only equal elements and compute quantities', ifcElCount: 'Elements', ifcElVolume: 'Volume', ifcElArea: 'Surface area', ifcElOpen: '{n} of {m} elements are not closed solids and are missing from the volume.', ifcElGeomNote: 'Computed from the geometry, approximate.', ifcElSums: 'Sums from the IFC (units as in the file)', ifcElClear: 'Clear filter', busyIfcFilter: 'Filtering elements …',
+    ifcInfo: '{n} · {t} triangles', ifcFiles: '{n} IFC files', multiOk: 'several possible', ifcSkipped: 'Left out: {l}.', ifcSkipCrs: 'other coordinate system', ifcSkipFar: 'far away', ifcSkipRead: 'cannot be read', ifcSkipDup: 'already loaded', ifcAdded: '{n} file(s) added.', ifcKept: 'What was loaded stays.', yes: 'yes', no: 'no', ifcElTitle: 'Element', ifcElType: 'IFC class', ifcElDesc: 'Description', ifcElObjType: 'Object type', ifcElTag: 'Tag', ifcElGuid: 'GlobalId', ifcElTypeName: 'Type', ifcElMat: 'Material', ifcElIn: 'Contained in', ifcElFile: 'File', ifcElFromType: '(from type)', ifcElNoSets: 'No further properties.', ifcElFail: 'The data of this element cannot be read.', ifcElName: 'Name', ifcElFilter: 'Filter', ifcElAttr: 'Attribute', ifcElValue: 'Value', ifcElOpIs: 'is', ifcElOpHas: 'contains', ifcElApply: 'Filter', ifcElNone: 'No element matches.', ifcElQuantities: 'Quantities of the elements shown', ifcViewIsolate: 'Isolate', ifcViewHide: 'Hide', ifcViewElement: 'Element', ifcViewFile: 'File', ifcShowAll: 'Show all', ifcElFilterHint: 'Click a row: show only equal elements and compute quantities', ifcElCount: 'Elements', ifcElVolume: 'Volume', ifcElArea: 'Surface area', ifcElOpen: '{n} of {m} elements are not closed solids and are missing from the volume.', ifcElGeomNote: 'Computed from the geometry, approximate.', ifcElSums: 'Sums from the IFC (units as in the file)', busyIfcFilter: 'Filtering elements …',
     helpBtn: 'Help', helpGuide: 'Full user guide on GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/USER-GUIDE.en.md',
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- Click an IFC element: its data on the right; clicking a row filters equal elements and computes quantities.\n- If the coordinate systems differ (for example IFC in Gauss-Krüger, terrain in UTM), choose the coordinate system (CRS) at the top of the “Data” window: terrain and buildings are converted.\n- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- Click an IFC element: on the right a filter, isolate/hide (element or file), quantities and data; “Show all” undoes it.\n- If the coordinate systems differ (for example IFC in Gauss-Krüger, terrain in UTM), choose the coordinate system (CRS) at the top of the “Data” window: terrain and buildings are converted.\n- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -9836,7 +9854,7 @@ function isDrawTool(t) { return t === 'road' || t === 'pit'; }
 
 /* ---------- Werkzeugwahl ---------- */
 function selectTool(type) {
-  if (type && !ifcFilter) hideIfcElement();
+  if (type && !ifcView) hideIfcElement();
   if (rulerActive && type) stopRuler();
   clearRoadNodes();
   if (isDrawTool(activeTool) && type !== activeTool) { roadPoints = []; clearRoadPreview(); setRoadHint(false); }
@@ -11877,6 +11895,7 @@ async function handleIfcFile(input) {
     return;
   }
   hideIfcElement();
+  resetIfcView();
   stopIfcMove(true);
   const before = document.getElementById('ifc-status').textContent;
   setIfcStatus(T('ifcReading'), 'busy');
@@ -11914,9 +11933,12 @@ async function handleIfcFile(input) {
 }
 
 /* ---------- Bauteil anklicken: Fenster mit den Angaben aus der IFC ----------
-   Jede Zeile ist zugleich ein Filter: Anklicken zeigt nur die Bauteile mit diesem Wert und rechnet ihre Mengen. */
+   Oben ein Filter (Attribut, „ist“ oder „enthält“, Wert; auch von Hand zu ändern), darunter Isolieren und Ausblenden
+   je für das Bauteil oder die ganze Datei, dann die Mengen des Angezeigten und alle Angaben. Ein Klick auf eine Zeile
+   setzt den Filter. Was ausgeblendet ist, bleibt es, bis „Alles anzeigen“ (oder Esc). */
 let ifcSelected = null;        // { part, id, mesh (Hervorhebung) }
-let ifcFilter = null;          // { f, count, area, volume, closed, sums }
+let ifcView = null;            // { only: Map(Datei -> Set) | null, hidden: Map(Datei -> Set), result }
+let ifcEditor = null;          // { attr: { kind, set, name }, op: 'is' | 'has', value }
 
 /* Angaben eines Bauteils, je Datei gemerkt (die Sprache steckt in ja/nein) */
 function ifcInfoOf(part, id) {
@@ -11942,53 +11964,141 @@ function removeIfcHighlight() {
   ifcSelected.mesh = null;
 }
 
-function clearIfcFilter() {
-  if (!ifcFilter) return;
-  ifcFilter = null;
-  if (ifcModel) ifcModel.parts.forEach(ifcRestore);
-  renderIfcElement();
-}
-
+/* Fenster schließen; was ausgeblendet oder gefiltert ist, bleibt so */
 function hideIfcElement() {
   const box = document.getElementById('ifc-element');
   if (box) box.style.display = 'none';
-  if (ifcFilter) { ifcFilter = null; if (ifcModel) ifcModel.parts.forEach(ifcRestore); }
   if (!ifcSelected) return;
   removeIfcHighlight();
   ifcSelected = null;
   showPanel(!!(activeTool || selectedIds.length));
 }
 
-/* Nur die Bauteile mit dem Wert f zeigen und ihre Mengen zusammenzählen */
-async function applyIfcFilter(f) {
-  if (!ifcModel) return;
+function updateIfcShowAll() {
+  const b = document.getElementById('ifc-show-all');
+  if (b) b.style.display = ifcView ? '' : 'none';
+}
+
+/* Alles wieder zeigen */
+function resetIfcView() {
+  if (ifcView && ifcModel) ifcModel.parts.forEach(ifcRestore);
+  ifcView = null;
+  updateIfcShowAll();
+  renderIfcElement();
+}
+
+/* Sichtbarkeit nach ifcView herstellen und die Mengen des Angezeigten rechnen (nur bei Filter oder Isolieren) */
+async function refreshIfcView() {
+  if (!ifcView || !ifcModel) return;
   showBusy('busyIfcFilter');
   await yieldToPaint();
   try {
-    const infos = [];
-    const result = { f: f, count: 0, area: 0, volume: 0, closed: 0, sums: [] };
     removeIfcHighlight();
+    const infos = [];
+    const result = { count: 0, area: 0, volume: 0, closed: 0, sums: [] };
+    let changed = false;
     ifcModel.parts.forEach(function (part) {
-      const ids = new Set();
-      ifcElementIds(part).forEach(function (id) {
-        const info = ifcInfoOf(part, id);
-        if (info && ifcMatches(info, part.name, f)) { ids.add(id); infos.push(info); }
-      });
+      const all = ifcElementIds(part);
+      const only = ifcView.only && ifcView.only.get(part), hidden = ifcView.hidden.get(part);
+      const shown = new Set(all.filter(function (id) {
+        return (!ifcView.only || (only && only.has(id))) && !(hidden && hidden.has(id));
+      }));
+      if (shown.size === all.length) ifcRestore(part);
+      else { ifcIsolate(part, shown); changed = true; }
+      if (!ifcView.only) return;
+      shown.forEach(function (id) { const info = ifcInfoOf(part, id); if (info) infos.push(info); });
       const k = part.group === ifcModel.group ? ifcModel.group.scale.x : part.group.scale.x * ifcModel.group.scale.x;
-      const q = ifcGeometryQuantities(part, ids, k);
-      result.count += ids.size; result.area += q.area; result.volume += q.volume; result.closed += q.closed;
-      ifcIsolate(part, ids);
+      const q = ifcGeometryQuantities(part, shown, k);
+      result.count += shown.size; result.area += q.area; result.volume += q.volume; result.closed += q.closed;
     });
-    result.sums = ifcSumQuantities(infos);
-    ifcFilter = result;
+    if (!changed && !ifcView.only) ifcView = null;
+    else { result.sums = ifcSumQuantities(infos); ifcView.result = ifcView.only ? result : null; }
+    updateIfcShowAll();
     renderIfcElement();
   } finally {
     hideBusy();
   }
 }
 
+function ifcViewState() {
+  if (!ifcView) ifcView = { only: null, hidden: new Map(), result: null };
+  return ifcView;
+}
+
+/* what: 'element' (das angeklickte Bauteil) oder 'file' (seine ganze Datei) */
+function ifcIsolateSelected(what) {
+  if (!ifcSelected) return;
+  const part = ifcSelected.part, v = ifcViewState();
+  v.only = new Map([[part, new Set(what === 'file' ? ifcElementIds(part) : [ifcSelected.id])]]);
+  v.hidden = new Map();
+  return refreshIfcView();
+}
+
+function ifcHideSelected(what) {
+  if (!ifcSelected) return;
+  const part = ifcSelected.part, v = ifcViewState();
+  const set = v.hidden.get(part) || new Set();
+  (what === 'file' ? ifcElementIds(part) : [ifcSelected.id]).forEach(function (id) { set.add(id); });
+  v.hidden.set(part, set);
+  return refreshIfcView();
+}
+
+/* Nur die Bauteile zeigen, die zum Filter f passen ({ kind, set, name, value, op }) */
+function applyIfcFilter(f) {
+  if (!ifcModel) return;
+  ifcEditor = { attr: { kind: f.kind, set: f.set, name: f.name }, op: f.op || 'is', value: f.value };
+  const only = new Map();
+  ifcModel.parts.forEach(function (part) {
+    only.set(part, new Set(ifcElementIds(part).filter(function (id) {
+      const info = ifcInfoOf(part, id);
+      return !!info && ifcMatches(info, part.name, f);
+    })));
+  });
+  const v = ifcViewState();
+  v.only = only;
+  v.hidden = new Map();
+  return refreshIfcView();
+}
+
+function applyIfcEditor() {
+  if (!ifcEditor || String(ifcEditor.value) === '') return;
+  return applyIfcFilter(Object.assign({}, ifcEditor.attr, { op: ifcEditor.op, value: String(ifcEditor.value) }));
+}
+
+/* Alle vorkommenden Werte eines Attributs (für die Vorschläge im Wertfeld) */
+function ifcAttrValues(attr) {
+  const seen = new Set();
+  if (ifcModel) ifcModel.parts.forEach(function (part) {
+    ifcElementIds(part).forEach(function (id) {
+      const info = ifcInfoOf(part, id);
+      if (info) ifcValuesOf(info, part.name, attr).forEach(function (v) { if (v !== '') seen.add(v); });
+    });
+  });
+  return Array.from(seen).sort().slice(0, 200);
+}
+
 function ifcNumberText(v) {
   return v.toLocaleString(SETTINGS.language === 'en' ? 'en-GB' : 'de-DE', { maximumFractionDigits: v >= 100 ? 1 : 3 });
+}
+
+const IFC_ATTR_LABELS = { class: 'ifcElType', name: 'ifcElName', desc: 'ifcElDesc', objType: 'ifcElObjType', tag: 'ifcElTag', guid: 'ifcElGuid',
+  typeName: 'ifcElTypeName', material: 'ifcElMat', container: 'ifcElIn', file: 'ifcElFile' };
+
+function ifcAttrLabel(a) { return a.kind === 'prop' ? a.set + ' · ' + a.name : T(IFC_ATTR_LABELS[a.kind]); }
+
+/* Attribute des angeklickten Bauteils (und das gerade gefilterte) samt ihrem Wert */
+function ifcAttrChoices(info, fileName) {
+  const list = [];
+  const add = function (attr, value) {
+    if (!list.some(function (x) { return x.attr.kind === attr.kind && x.attr.set === attr.set && x.attr.name === attr.name; })) list.push({ attr: attr, value: value });
+  };
+  ['class', 'name', 'objType', 'typeName', 'material', 'container', 'file', 'tag', 'desc', 'guid'].forEach(function (kind) {
+    const v = ifcValuesOf(info, fileName, { kind: kind })[0];
+    if (v) add({ kind: kind }, v);
+  });
+  info.sets.forEach(function (set) { set.rows.forEach(function (r) { add({ kind: 'prop', set: set.name, name: r[0] }, r[1]); }); });
+  if (ifcEditor) add(ifcEditor.attr, ifcEditor.value);
+  return list;
 }
 
 function renderIfcElement() {
@@ -11997,69 +12107,115 @@ function renderIfcElement() {
   const part = ifcSelected.part, id = ifcSelected.id;
   const info = ifcInfoOf(part, id);
   body.textContent = '';
-  const line = function (cls, text) {
-    const d = document.createElement('div');
-    d.className = cls;
-    d.textContent = text;
-    body.appendChild(d);
+  const make = function (tag, cls, text, parent) {
+    const d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text !== undefined) d.textContent = text;              // Texte aus der Datei nur als Text einsetzen
+    (parent || body).appendChild(d);
     return d;
   };
-  // Texte aus der Datei nur als Text einsetzen; filter: beim Anklicken (oder mit Eingabetaste) danach filtern
-  const row = function (k, v, filter) {
-    const d = line('kv' + (filter ? ' ifc-filterable' : ''), '');
-    const a = document.createElement('span'); a.className = 'k'; a.textContent = k;
-    const b = document.createElement('span'); b.className = 'v'; b.textContent = v;
-    d.appendChild(a); d.appendChild(b);
-    if (!filter) return;
+  const line = function (cls, text) { return make('div', cls, text); };
+  const button = function (cls, text, action, parent) {
+    const b = make('button', cls, text, parent);
+    b.addEventListener('click', action);
+    return b;
+  };
+  const clickable = function (d, filter) {
     d.setAttribute('role', 'button');
     d.setAttribute('tabindex', '0');
     d.setAttribute('title', T('ifcElFilterHint'));
     d.addEventListener('click', function () { applyIfcFilter(filter); });
     d.addEventListener('keydown', function (e) { if (e && (e.key === 'Enter' || e.key === ' ')) { if (e.preventDefault) e.preventDefault(); applyIfcFilter(filter); } });
   };
+  const row = function (k, v, filter) {
+    const d = line('kv' + (filter ? ' ifc-filterable' : ''), '');
+    make('span', 'k', k, d);
+    make('span', 'v', v, d);
+    if (filter) clickable(d, filter);
+  };
   box.style.display = 'block';
+  updateIfcShowAll();
   if (!info) { line('ifc-element-note', T('ifcElFail')); return; }
-  const labels = { desc: 'ifcElDesc', objType: 'ifcElObjType', tag: 'ifcElTag', guid: 'ifcElGuid', typeName: 'ifcElTypeName' };
 
-  if (ifcFilter) {
-    const f = ifcFilter.f;
-    const name = f.kind === 'prop' ? f.name : f.kind === 'class' ? T('ifcElType') : f.kind === 'name' ? T('ifcElName') : f.kind === 'material' ? T('ifcElMat') :
-      f.kind === 'container' ? T('ifcElIn') : f.kind === 'file' ? T('ifcElFile') : T(labels[f.kind]);
-    line('ifc-element-set', T('ifcElFilter') + ' ' + name + ' = ' + f.value);
-    row(T('ifcElCount'), String(ifcFilter.count));
-    row(T('ifcElVolume'), ifcFilter.closed ? ifcNumberText(ifcFilter.volume) + ' m³' : '–');
-    if (ifcFilter.closed < ifcFilter.count) line('ifc-element-note warn', ifcFormat('ifcElOpen', { n: ifcFilter.count - ifcFilter.closed, m: ifcFilter.count }));
-    row(T('ifcElArea'), ifcNumberText(ifcFilter.area) + ' m²');
-    line('ifc-element-note', T('ifcElGeomNote'));
-    if (ifcFilter.sums.length) {
-      line('ifc-element-set', T('ifcElSums'));
-      ifcFilter.sums.forEach(function (q) { row(q.label, ifcNumberText(q.sum) + ' (' + q.n + ' ×)'); });
+  // Filter, auch von Hand
+  const choices = ifcAttrChoices(info, part.name);
+  const same = function (a, b) { return a.kind === b.kind && a.set === b.set && a.name === b.name; };
+  let current = 0;
+  if (ifcEditor) choices.forEach(function (c, i) { if (same(c.attr, ifcEditor.attr)) current = i; });
+  else {
+    const start = choices.findIndex(function (c) { return c.attr.kind === 'typeName'; });
+    current = start >= 0 ? start : 0;
+    if (choices[current]) ifcEditor = { attr: choices[current].attr, op: 'is', value: choices[current].value };
+  }
+  const editor = line('ifc-filter', '');
+  const attr = make('select', 'ifc-f-attr', undefined, editor);
+  attr.setAttribute('aria-label', T('ifcElAttr'));
+  choices.forEach(function (c, i) { const o = make('option', '', ifcAttrLabel(c.attr), attr); o.value = String(i); });
+  attr.value = String(current);
+  const op = make('select', 'ifc-f-op', undefined, editor);
+  op.setAttribute('aria-label', T('ifcElFilter'));
+  [['is', 'ifcElOpIs'], ['has', 'ifcElOpHas']].forEach(function (p) { const o = make('option', '', T(p[1]), op); o.value = p[0]; });
+  op.value = ifcEditor.op;
+  const value = make('input', 'ifc-f-value', undefined, editor);
+  value.type = 'text';
+  value.value = ifcEditor.value;
+  value.setAttribute('aria-label', T('ifcElValue'));
+  value.setAttribute('list', 'ifc-f-list');
+  const suggestions = make('datalist', '', undefined, editor);
+  suggestions.id = 'ifc-f-list';
+  attr.addEventListener('change', function () {
+    const c = choices[parseInt(attr.value, 10)];
+    ifcEditor = { attr: c.attr, op: ifcEditor.op, value: c.value };
+    value.value = c.value;
+    suggestions.textContent = '';
+  });
+  op.addEventListener('change', function () { ifcEditor.op = op.value; });
+  value.addEventListener('input', function () { ifcEditor.value = value.value; });
+  value.addEventListener('keydown', function (e) { if (e && e.key === 'Enter') { ifcEditor.value = value.value; applyIfcEditor(); } });
+  value.addEventListener('focus', function () {
+    if (suggestions.children && suggestions.children.length) return;
+    ifcAttrValues(ifcEditor.attr).forEach(function (v) { make('option', '', undefined, suggestions).value = v; });
+  });
+  button('btn-block ifc-f-apply', T('ifcElApply'), applyIfcEditor, editor);
+
+  // Isolieren und Ausblenden: Bauteil oder ganze Datei
+  const actions = line('ifc-actions-grid', '');
+  [['ifcViewIsolate', ifcIsolateSelected], ['ifcViewHide', ifcHideSelected]].forEach(function (a) {
+    make('span', 'k', T(a[0]), actions);
+    button('btn-block', T('ifcViewElement'), function () { a[1]('element'); }, actions);
+    button('btn-block', T('ifcViewFile'), function () { a[1]('file'); }, actions);
+  });
+  if (ifcView) button('btn-block accent', T('ifcShowAll'), resetIfcView);
+
+  const r = ifcView && ifcView.result;
+  if (r) {
+    line('ifc-element-set', T('ifcElQuantities'));
+    row(T('ifcElCount'), String(r.count));
+    if (!r.count) line('ifc-element-note', T('ifcElNone'));
+    else {
+      row(T('ifcElVolume'), r.closed ? ifcNumberText(r.volume) + ' m³' : '–');
+      if (r.closed < r.count) line('ifc-element-note warn', ifcFormat('ifcElOpen', { n: r.count - r.closed, m: r.count }));
+      row(T('ifcElArea'), ifcNumberText(r.area) + ' m²');
+      line('ifc-element-note', T('ifcElGeomNote'));
+      if (r.sums.length) {
+        line('ifc-element-set', T('ifcElSums'));
+        r.sums.forEach(function (q) { row(q.label, ifcNumberText(q.sum) + ' (' + q.n + ' ×)'); });
+      }
     }
-    const clear = document.createElement('button');
-    clear.className = 'btn-block accent';
-    clear.textContent = T('ifcElClear');
-    clear.addEventListener('click', clearIfcFilter);
-    body.appendChild(clear);
-  } else {
-    line('ifc-element-note', T('ifcElFilterHint'));
   }
 
-  const nameLine = line('ifc-element-name' + (info.name ? ' ifc-filterable' : ''), info.name || info.type || '#' + id);
-  if (info.name) {
-    nameLine.setAttribute('role', 'button');
-    nameLine.setAttribute('tabindex', '0');
-    nameLine.setAttribute('title', T('ifcElFilterHint'));
-    nameLine.addEventListener('click', function () { applyIfcFilter({ kind: 'name', value: info.name }); });
-  }
-  const f = function (kind, value) { return { kind: kind, value: value }; };
+  const nameLine = line('ifc-element-set ifc-element-name' + (info.name ? ' ifc-filterable' : ''), info.name || info.type || '#' + id);
+  if (info.name) clickable(nameLine, { kind: 'name', value: info.name });
+  line('ifc-element-note', T('ifcElFilterHint'));
+  const f = function (kind, v) { return { kind: kind, value: v }; };
   if (info.type) row(T('ifcElType'), info.type, f('class', info.type));
-  info.rows.forEach(function (r) { row(T(labels[r[0]]), r[1], r[0] === 'guid' ? null : f(r[0], r[1])); });
+  info.rows.forEach(function (x) { row(T(IFC_ATTR_LABELS[x[0]]), x[1], x[0] === 'guid' ? null : f(x[0], x[1])); });
   if (info.material) row(T('ifcElMat'), info.material, f('material', info.material));
   if (info.container) row(T('ifcElIn'), info.container, f('container', info.container));
   row(T('ifcElFile'), part.name, f('file', part.name));
   info.sets.forEach(function (set) {
     line('ifc-element-set', set.name + (set.fromType ? ' ' + T('ifcElFromType') : ''));
-    set.rows.forEach(function (r) { row(r[0], r[1], { kind: 'prop', set: set.name, name: r[0], value: r[1] }); });
+    set.rows.forEach(function (x) { row(x[0], x[1], { kind: 'prop', set: set.name, name: x[0], value: x[1] }); });
   });
   if (!info.sets.length) line('ifc-element-note', T('ifcElNoSets'));
 }
@@ -12068,7 +12224,7 @@ function showIfcElement(part, id) {
   removeIfcHighlight();
   ifcSelected = { part: part, id: id, mesh: null };
   ifcSelected.mesh = ifcHighlight(part, id);
-  if (ifcFilter) removeIfcHighlight();                    // beim Filtern zeigt der Filter, was gemeint ist
+  if (!ifcView) ifcEditor = null;                         // ohne laufenden Filter: Vorschlag vom neuen Bauteil
   showPanel(!!(activeTool || selectedIds.length));
   renderIfcElement();
 }
@@ -12113,6 +12269,7 @@ function ifcTryAutoPlace(model) {
    (eine Lage von Hand gilt nur für das alte Gelände) */
 function refreshIfcAfterTerrain() {
   hideIfcElement();
+  resetIfcView();
   if (ifcPick) { clearIfcMarkers(); ifcPick = null; showIfcHint(null); }
   stopIfcMove(true);
   if (!ifcModel) return;
@@ -12350,6 +12507,7 @@ function focusOnIfc() {
 
 function removeIfc() {
   hideIfcElement();
+  resetIfcView();
   cancelIfcPick(true);
   stopIfcMove(true);
   ifcRemoveModel();
@@ -13292,7 +13450,7 @@ function onCanvasClick(event) {
   }
 
   if (clickIfcElement(event)) return;
-  if (!ifcFilter) hideIfcElement();
+  if (!ifcView) hideIfcElement();
 
   const hit = raycastObjects(event);
   if (hit) {
@@ -13534,7 +13692,7 @@ function onKeyDown(event) {
     if (rulerActive) { stopRuler(); return; }
     if (ifcPick) { cancelIfcPick(); return; }
     if (ifcGizmo) { stopIfcMove(); return; }
-    if (ifcFilter) { clearIfcFilter(); return; }
+    if (ifcView) { resetIfcView(); return; }
     if (ifcSelected) { hideIfcElement(); return; }
     if (rectSelectActive) { cancelRectExport(); return; }
     if (isIfcPanelOpen()) { clearExportPreview(); setStatus(''); return; }
@@ -13618,6 +13776,7 @@ function initUI() {
   });
   document.getElementById('ifc-clear').addEventListener('click', removeIfc);
   document.getElementById('ifc-element-close').addEventListener('click', hideIfcElement);
+  document.getElementById('ifc-show-all').addEventListener('click', resetIfcView);
   document.getElementById('ruler-new').addEventListener('click', newRuler);
   document.getElementById('ruler-close').addEventListener('click', stopRuler);
   document.getElementById('ifc-manual-btn').addEventListener('click', function () { startIfcManual(false); });

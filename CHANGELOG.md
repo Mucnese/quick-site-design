@@ -11,7 +11,8 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ### Neu
 - **IFC-Bauteil anklicken:** Fenster mit Klasse, Name, Typ, Material, Lage und allen Eigenschaften und Mengen; das Bauteil wird hervorgehoben.
-- **Filtern nach jedem Attribut mit Mengen:** Ein Klick auf eine Zeile zeigt nur die Bauteile mit demselben Wert und rechnet Anzahl, Volumen, Oberfläche und die Mengen aus der IFC zusammen.
+- **Filtern nach jedem Attribut mit Mengen:** oben im Bauteilfenster (Attribut, „ist“ oder „enthält“, Wert von Hand änderbar) oder per Klick auf eine Zeile; dazu Anzahl, Volumen, Oberfläche und die Mengen aus der IFC.
+- **Isolieren und Ausblenden** je Bauteil oder ganze Datei, mit „Alles anzeigen“.
 - **IFC dazulegen:** Eine neue Auswahl kommt zum geladenen Bauwerk, statt es zu ersetzen.
 
 ### Geändert

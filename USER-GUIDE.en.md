@@ -301,12 +301,14 @@ file stays in the browser and is not transmitted. Size up to 300 MB (together).
 **Several files:** If a structure comes in parts (superstructure, substructure, temporary works), choose **all of them at once**. They are combined into one structure, each in its place; placing, moving, rotating and removing act on all of it.
 Files without a georeference are taken to be in the system of the others. Files in another coordinate system, far away (over 20 km) or unreadable are left out and named. If a structure is already loaded, **a new selection is added**; what is there stays exactly in place, also after aligning by hand. A file that is already loaded is skipped. For another structure, **Remove** first.
 
-**Clicking an element:** A click on the structure highlights the element and opens the **Element** window on the right: IFC class, name, object type, type, material, container, file and all properties and quantities from the IFC.
+**Clicking an element:** A click on the structure highlights the element and opens the **Element** window on the right. From top to bottom:
 
-**Filtering and quantities:** A click on a **row** (for example type, material or a property) shows **only the elements with the same value** and adds them up:
-- count, **volume** and **surface area**, computed from the geometry (approximate). Only closed solids have a volume; the number of the others is stated.
-- **Sums from the IFC**: quantities stored in the file itself, with the number of elements that have them. The unit is that of the file.
-**Clear filter** (or **Esc**) shows everything again; a second **Esc** closes the window.
+- **Filter:** choose an attribute, **is** or **contains**, type a value (with suggestions) and **Filter** (or Enter). Clicking a **row** further down sets the filter and applies it at once.
+- **Isolate** or **Hide**, each the **element** or the whole **file**. Hidden things add up; they cannot be clicked, you click through them.
+- **Quantities of the elements shown** (after filtering or isolating): count, **volume** and **surface area**, computed from the geometry (approximate; only closed solids have a volume, the number of the others is stated), plus **sums from the IFC** with the number of elements that have them (units as in the file).
+- All data of the element: IFC class, name, object type, type, material, container, file, properties and quantities.
+
+**Show all** (in the **Element** window and in the **Structure · IFC** row) shows everything again. **Close** keeps the state; **Esc** first shows all and closes the window the second time.
 
 - **Automatic:** If the file is georeferenced (`IfcMapConversion`) and uses the **same coordinate
   system (EPSG)** as the terrain, the structure appears at the right place, rotated and at the right

@@ -10,7 +10,8 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ### Added
 - **Click an IFC element:** a window with class, name, type, material, container and all properties and quantities; the element is highlighted.
-- **Filter by any attribute with quantities:** clicking a row shows only the elements with the same value and adds up count, volume, surface area and the quantities from the IFC.
+- **Filter by any attribute with quantities:** at the top of the element window (attribute, “is” or “contains”, value editable by hand) or by clicking a row; with count, volume, surface area and the quantities from the IFC.
+- **Isolate and hide** an element or a whole file, with “Show all”.
 - **Add IFC files:** a new selection is added to the loaded structure instead of replacing it.
 
 ### Changed
