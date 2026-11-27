@@ -152,7 +152,7 @@ function initScene(container) {
   controls.target.set(0, 20, 0);
   controls.maxDistance = 6000;
   controls.minDistance = 12;
-  controls.maxPolarAngle = Math.PI * 0.492;   // knapp unter die Horizontale, Draufsicht bleibt erlaubt
+  controls.maxPolarAngle = POLAR_GROUND;       // knapp unter die Horizontale, Draufsicht bleibt erlaubt; mit IFC auch von unten
   // Links drehen, rechts UND Mitte verschieben, Rad zoomt. (Standard von
   // OrbitControls ist Mitte = Zoomen; das Rad macht das ohnehin.)
   controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
@@ -173,6 +173,13 @@ function initScene(container) {
   scene.add(sun);
   scene.add(sun.target);
   MAT.__sun = sun;
+
+  // Licht von unten, nur beim Blick von unten an (Untersichten wären sonst fast schwarz); Stärke 0 statt unsichtbar,
+  // damit die Materialien nicht neu übersetzt werden
+  const under = new THREE.DirectionalLight(0xe8eefc, 0);
+  under.position.set(180, -420, 260);
+  scene.add(under);
+  MAT.__under = under;
 
   const fill = new THREE.DirectionalLight(0x6fa8c8, 0.22);
   fill.position.set(300, 180, -300);
@@ -6040,6 +6047,10 @@ function settleCameraFlight() {
 }
 
 /* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
+function updateUnderLight() {
+  if (MAT.__under) MAT.__under.intensity = camera.position.y < controls.target.y - 0.5 ? 0.6 : 0;
+}
+
 function updateControls() {
   // Fahren Zentrum und Kamera gemeinsam (Klick auf einen Punkt, Einrahmen), mit demselben Schritt: dann
   // verschiebt sich die Ansicht starr. Mit unterschiedlichen Schritten kippte die Blickrichtung kurz
@@ -7100,6 +7111,10 @@ const IFC_LIB_SCRIPT = 'lib/web-ifc-api-iife.js';
 const IFC_LIB_DIR = 'lib/';
 let webIfcApi = null;               // IfcAPI nach Init
 let webIfcLoading = null;           // laufendes Laden der Bibliothek
+/* Kippwinkel der Kamera (0 = senkrecht von oben): ohne Bauwerk nur bis zur Waagerechten, mit einem IFC-Bauwerk auch
+   von unten (Untersicht einer Brücke, Gründungen) */
+const POLAR_GROUND = Math.PI * 0.492;
+const POLAR_BELOW = Math.PI * 0.95;
 let ifcModel = null;                // { group, name, coord, georef, placement, de, dn, dz, rot, bbox }
 
 const IFC_PREFIX = { MILLI: 0.001, CENTI: 0.01, DECI: 0.1, KILO: 1000 };
@@ -7836,6 +7851,7 @@ function ifcRemoveModel() {
   disposeGroup(ifcModel.group);
   (ifcModel.parts || []).forEach(ifcClosePart);
   ifcModel = null;
+  if (controls) controls.maxPolarAngle = POLAR_GROUND;
 }
 
 /* Nimmt das Modell aus der Szene, ohne seine Dateien zu verwerfen (zum Dazulegen weiterer); liefert die Dateien,
@@ -7856,6 +7872,7 @@ function ifcSetModel(m) {
   ifcModel = { group: m.group, name: m.name, coord: m.coord, georef: m.georef, bbox: m.bbox, core: m.core, triangles: m.triangles,
                parts: m.parts || [Object.assign({}, m)], placement: null, de: 0, dn: 0, dz: 0, rot: 0, how: null };
   scene.add(ifcModel.group);
+  if (controls) controls.maxPolarAngle = POLAR_BELOW;
   return ifcModel;
 }
 

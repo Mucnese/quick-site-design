@@ -13,6 +13,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 - **Filter by any attribute with quantities:** at the top of the element window (attributes from A to Z, “is” or “contains”, value editable by hand) or by clicking a row; with count, volume, surface area and the quantities from the IFC.
 - **Isolate and hide** an element or a whole file, with “Show all”.
 - **Reset filter** removes only the filter.
+- With an IFC structure loaded, the view can also be turned from below.
 - **Add IFC files:** a new selection is added to the loaded structure instead of replacing it.
 
 ### Changed

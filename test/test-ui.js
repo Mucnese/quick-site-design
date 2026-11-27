@@ -2834,6 +2834,23 @@ await test('IFC-Bauteil: Filter (Zeile oder von Hand), Isolieren und Ausblenden 
   assert.strictEqual(g('ifc-show-all').style.display, 'none');
 });
 
+await test('Mit IFC-Bauwerk lässt sich die Ansicht unter das Bauteil drehen; ohne bleibt die Grenze an der Waagerechten', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  s.initUI();
+  const ctr = vm.runInContext('controls', s), cam = vm.runInContext('camera', s);
+  const before = ctr.maxPolarAngle;
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  assert.ok(ctr.maxPolarAngle > Math.PI * 0.9, String(ctr.maxPolarAngle));
+  // um einen Punkt kippen: die Kamera kommt unter das Drehzentrum
+  cam.position.set(0, 10, 40); ctr.target.set(0, 10, 0);
+  s.orbitAround({ x: 0, y: 10, z: 0 }, 0, 1.0);
+  const low1 = cam.position.y;
+  s.orbitAround({ x: 0, y: 10, z: 0 }, 0, -2.0);
+  assert.ok(Math.min(low1, cam.position.y) < 10, low1 + ' / ' + cam.position.y);
+  s.removeIfc();
+  assert.ok(ctr.maxPolarAngle < Math.PI / 2 && ctr.maxPolarAngle <= (before || Math.PI));
+});
+
 await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {
   const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
   const g = function (id) { return s.document.getElementById(id); };

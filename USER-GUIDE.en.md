@@ -128,6 +128,7 @@ to cut out an area yourself first, you can use
 - **Drag with the left mouse button:** orbit. If you click and drag on terrain, a building or a
   block, it rotates around exactly that point. If you click the background, the whole scene
   orbits around the centre.
+- **From below:** Without a structure, tilting ends at the horizontal. With an IFC structure loaded, you can also turn the view **underneath** it (underside, foundations).
 - **Drag with the right or middle button:** pan (brisk: about twice as fast as the pointer, measured at the point it is on when you press).
 - **Mouse wheel:** zoom in even steps (one step is a sixtieth of the terrain edge, at least 5 m), no matter how close the camera is. You can go up to 3 m before what is in the middle of the picture.
 - **Left click** on terrain or a building: sets a **measuring point**. It shows easting, northing
