@@ -2785,6 +2785,18 @@ await test('IFC-Bauteil: Filter (Zeile oder von Hand), Isolieren und Ausblenden 
   value.value = 'süd'; value.fire('input');
   await s.applyIfcEditor();
   assert.strictEqual(shown(), '200');
+  // Filter zurücksetzen: alles wieder da, Felder neu vorbelegt
+  await s.resetIfcFilter();
+  assert.strictEqual(shown(), '100,200,300');
+  assert.strictEqual(find(body(), 'ifc-f-op').value, 'is');
+  assert.strictEqual(g('ifc-show-all').style.display, 'none');
+  // Ausgeblendetes bleibt beim Filtern und beim Zurücksetzen ausgeblendet
+  s.showIfcElement(m.parts[0], 100);
+  await s.ifcHideSelected('element');
+  await s.applyIfcFilter({ kind: 'objType', value: 'P' });
+  assert.strictEqual(shown(), '200');
+  await s.resetIfcFilter();
+  assert.strictEqual(shown(), '200,300');
   // Alles anzeigen
   s.resetIfcView();
   assert.strictEqual(m.group.children.filter(function (c) { return c.userData.ranges; })[0], full, 'volles Netz zurück');

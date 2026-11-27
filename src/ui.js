@@ -84,7 +84,7 @@ const STRINGS = {
     ifcFail: 'IFC konnte nicht gelesen werden: {e}', ifcEmpty: 'Die IFC-Datei enthält keine darstellbare Geometrie.',
     ifcLibFail: 'Die IFC-Bibliothek (lib/web-ifc-api-iife.js) konnte nicht geladen werden.',
     ifcNeedTerrain: 'Zuerst ein Geländemodell laden.', ifcCancelled: 'Platzierung abgebrochen.', ifcRemoved: 'Bauwerk entfernt.',
-    ifcInfo: '{n} · {t} Dreiecke', ifcFiles: '{n} IFC-Dateien', multiOk: 'mehrere möglich', ifcSkipped: 'Weggelassen: {l}.', ifcSkipCrs: 'anderes Bezugssystem', ifcSkipFar: 'liegt weit weg', ifcSkipRead: 'nicht lesbar', ifcSkipDup: 'schon geladen', ifcAdded: '{n} Datei(en) dazugeladen.', ifcKept: 'Das bisher Geladene bleibt.', yes: 'ja', no: 'nein', ifcElTitle: 'Bauteil', ifcElType: 'IFC-Klasse', ifcElDesc: 'Beschreibung', ifcElObjType: 'Objekttyp', ifcElTag: 'Kennzeichen', ifcElGuid: 'GlobalId', ifcElTypeName: 'Typ', ifcElMat: 'Material', ifcElIn: 'Liegt in', ifcElFile: 'Datei', ifcElFromType: '(vom Typ)', ifcElNoSets: 'Keine weiteren Eigenschaften.', ifcElFail: 'Die Angaben zu diesem Bauteil lassen sich nicht lesen.', ifcElName: 'Name', ifcElFilter: 'Filter', ifcElAttr: 'Attribut', ifcElValue: 'Wert', ifcElOpIs: 'ist', ifcElOpHas: 'enthält', ifcElApply: 'Filtern', ifcElNone: 'Kein Bauteil passt.', ifcElQuantities: 'Mengen der angezeigten Bauteile', ifcViewIsolate: 'Isolieren', ifcViewHide: 'Ausblenden', ifcViewElement: 'Bauteil', ifcViewFile: 'Datei', ifcShowAll: 'Alles anzeigen', ifcElFilterHint: 'Zeile anklicken: nur gleiche Bauteile zeigen und Mengen rechnen', ifcElCount: 'Bauteile', ifcElVolume: 'Volumen', ifcElArea: 'Oberfläche', ifcElOpen: '{n} von {m} Bauteilen sind keine geschlossenen Körper und fehlen im Volumen.', ifcElGeomNote: 'Aus der Geometrie berechnet, überschlägig.', ifcElSums: 'Summen aus der IFC (Einheit wie in der Datei)', busyIfcFilter: 'Bauteile werden gefiltert …',
+    ifcInfo: '{n} · {t} Dreiecke', ifcFiles: '{n} IFC-Dateien', multiOk: 'mehrere möglich', ifcSkipped: 'Weggelassen: {l}.', ifcSkipCrs: 'anderes Bezugssystem', ifcSkipFar: 'liegt weit weg', ifcSkipRead: 'nicht lesbar', ifcSkipDup: 'schon geladen', ifcAdded: '{n} Datei(en) dazugeladen.', ifcKept: 'Das bisher Geladene bleibt.', yes: 'ja', no: 'nein', ifcElTitle: 'Bauteil', ifcElType: 'IFC-Klasse', ifcElDesc: 'Beschreibung', ifcElObjType: 'Objekttyp', ifcElTag: 'Kennzeichen', ifcElGuid: 'GlobalId', ifcElTypeName: 'Typ', ifcElMat: 'Material', ifcElIn: 'Liegt in', ifcElFile: 'Datei', ifcElFromType: '(vom Typ)', ifcElNoSets: 'Keine weiteren Eigenschaften.', ifcElFail: 'Die Angaben zu diesem Bauteil lassen sich nicht lesen.', ifcElName: 'Name', ifcElFilter: 'Filter', ifcElAttr: 'Attribut', ifcElValue: 'Wert', ifcElOpIs: 'ist', ifcElOpHas: 'enthält', ifcElApply: 'Filtern', ifcElReset: 'Filter zurücksetzen', ifcElNone: 'Kein Bauteil passt.', ifcElQuantities: 'Mengen der angezeigten Bauteile', ifcViewIsolate: 'Isolieren', ifcViewHide: 'Ausblenden', ifcViewElement: 'Bauteil', ifcViewFile: 'Datei', ifcShowAll: 'Alles anzeigen', ifcElFilterHint: 'Zeile anklicken: nur gleiche Bauteile zeigen und Mengen rechnen', ifcElCount: 'Bauteile', ifcElVolume: 'Volumen', ifcElArea: 'Oberfläche', ifcElOpen: '{n} von {m} Bauteilen sind keine geschlossenen Körper und fehlen im Volumen.', ifcElGeomNote: 'Aus der Geometrie berechnet, überschlägig.', ifcElSums: 'Summen aus der IFC (Einheit wie in der Datei)', busyIfcFilter: 'Bauteile werden gefiltert …',
     helpBtn: 'Hilfe', helpGuide: 'Vollständige Anleitung auf GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/BENUTZERANLEITUNG.md',
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
@@ -289,7 +289,7 @@ const STRINGS = {
     ifcFail: 'The IFC could not be read: {e}', ifcEmpty: 'The IFC file contains no displayable geometry.',
     ifcLibFail: 'The IFC library (lib/web-ifc-api-iife.js) could not be loaded.',
     ifcNeedTerrain: 'Load a terrain model first.', ifcCancelled: 'Placement cancelled.', ifcRemoved: 'Structure removed.',
-    ifcInfo: '{n} · {t} triangles', ifcFiles: '{n} IFC files', multiOk: 'several possible', ifcSkipped: 'Left out: {l}.', ifcSkipCrs: 'other coordinate system', ifcSkipFar: 'far away', ifcSkipRead: 'cannot be read', ifcSkipDup: 'already loaded', ifcAdded: '{n} file(s) added.', ifcKept: 'What was loaded stays.', yes: 'yes', no: 'no', ifcElTitle: 'Element', ifcElType: 'IFC class', ifcElDesc: 'Description', ifcElObjType: 'Object type', ifcElTag: 'Tag', ifcElGuid: 'GlobalId', ifcElTypeName: 'Type', ifcElMat: 'Material', ifcElIn: 'Contained in', ifcElFile: 'File', ifcElFromType: '(from type)', ifcElNoSets: 'No further properties.', ifcElFail: 'The data of this element cannot be read.', ifcElName: 'Name', ifcElFilter: 'Filter', ifcElAttr: 'Attribute', ifcElValue: 'Value', ifcElOpIs: 'is', ifcElOpHas: 'contains', ifcElApply: 'Filter', ifcElNone: 'No element matches.', ifcElQuantities: 'Quantities of the elements shown', ifcViewIsolate: 'Isolate', ifcViewHide: 'Hide', ifcViewElement: 'Element', ifcViewFile: 'File', ifcShowAll: 'Show all', ifcElFilterHint: 'Click a row: show only equal elements and compute quantities', ifcElCount: 'Elements', ifcElVolume: 'Volume', ifcElArea: 'Surface area', ifcElOpen: '{n} of {m} elements are not closed solids and are missing from the volume.', ifcElGeomNote: 'Computed from the geometry, approximate.', ifcElSums: 'Sums from the IFC (units as in the file)', busyIfcFilter: 'Filtering elements …',
+    ifcInfo: '{n} · {t} triangles', ifcFiles: '{n} IFC files', multiOk: 'several possible', ifcSkipped: 'Left out: {l}.', ifcSkipCrs: 'other coordinate system', ifcSkipFar: 'far away', ifcSkipRead: 'cannot be read', ifcSkipDup: 'already loaded', ifcAdded: '{n} file(s) added.', ifcKept: 'What was loaded stays.', yes: 'yes', no: 'no', ifcElTitle: 'Element', ifcElType: 'IFC class', ifcElDesc: 'Description', ifcElObjType: 'Object type', ifcElTag: 'Tag', ifcElGuid: 'GlobalId', ifcElTypeName: 'Type', ifcElMat: 'Material', ifcElIn: 'Contained in', ifcElFile: 'File', ifcElFromType: '(from type)', ifcElNoSets: 'No further properties.', ifcElFail: 'The data of this element cannot be read.', ifcElName: 'Name', ifcElFilter: 'Filter', ifcElAttr: 'Attribute', ifcElValue: 'Value', ifcElOpIs: 'is', ifcElOpHas: 'contains', ifcElApply: 'Filter', ifcElReset: 'Reset filter', ifcElNone: 'No element matches.', ifcElQuantities: 'Quantities of the elements shown', ifcViewIsolate: 'Isolate', ifcViewHide: 'Hide', ifcViewElement: 'Element', ifcViewFile: 'File', ifcShowAll: 'Show all', ifcElFilterHint: 'Click a row: show only equal elements and compute quantities', ifcElCount: 'Elements', ifcElVolume: 'Volume', ifcElArea: 'Surface area', ifcElOpen: '{n} of {m} elements are not closed solids and are missing from the volume.', ifcElGeomNote: 'Computed from the geometry, approximate.', ifcElSums: 'Sums from the IFC (units as in the file)', busyIfcFilter: 'Filtering elements …',
     helpBtn: 'Help', helpGuide: 'Full user guide on GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/USER-GUIDE.en.md',
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
@@ -3163,6 +3163,7 @@ function ifcIsolateSelected(what) {
   if (!ifcSelected) return;
   const part = ifcSelected.part, v = ifcViewState();
   v.only = new Map([[part, new Set(what === 'file' ? ifcElementIds(part) : [ifcSelected.id])]]);
+  v.filtered = false;
   v.hidden = new Map();
   return refreshIfcView();
 }
@@ -3189,8 +3190,20 @@ function applyIfcFilter(f) {
   });
   const v = ifcViewState();
   v.only = only;
-  v.hidden = new Map();
+  v.filtered = true;                                         // vorher Ausgeblendetes bleibt ausgeblendet
   return refreshIfcView();
+}
+
+/* Nur den Filter aufheben und die Felder neu vorbelegen; Ausgeblendetes bleibt („Alles anzeigen“ hebt auch das auf) */
+function resetIfcFilter() {
+  ifcEditor = null;
+  if (ifcView && ifcView.filtered) {
+    ifcView.only = null;
+    ifcView.filtered = false;
+    ifcView.result = null;
+    return refreshIfcView();
+  }
+  renderIfcElement();
 }
 
 function applyIfcEditor() {
@@ -3313,6 +3326,7 @@ function renderIfcElement() {
     ifcAttrValues(ifcEditor.attr).forEach(function (v) { make('option', '', undefined, suggestions).value = v; });
   });
   button('btn-block ifc-f-apply', T('ifcElApply'), applyIfcEditor, editor);
+  button('btn-block ifc-f-reset', T('ifcElReset'), resetIfcFilter, editor);
 
   // Isolieren und Ausblenden: Bauteil oder ganze Datei
   const actions = line('ifc-actions-grid', '');
@@ -5082,7 +5096,7 @@ if (typeof module !== 'undefined' && module.exports) {
     refreshIfcAfterTerrain: refreshIfcAfterTerrain,
     getIfcPick: function () { return ifcPick; },
     onProjectCrsChange: onProjectCrsChange, setProjectCrs: setProjectCrs,
-    ifcCrsWarning: ifcCrsWarning, applyIfcFilter: applyIfcFilter, applyIfcEditor: applyIfcEditor, resetIfcView: resetIfcView, ifcIsolateSelected: ifcIsolateSelected, ifcHideSelected: ifcHideSelected, showIfcElement: showIfcElement, hideIfcElement: hideIfcElement, clickIfcElement: clickIfcElement,
+    ifcCrsWarning: ifcCrsWarning, applyIfcFilter: applyIfcFilter, applyIfcEditor: applyIfcEditor, resetIfcFilter: resetIfcFilter, resetIfcView: resetIfcView, ifcIsolateSelected: ifcIsolateSelected, ifcHideSelected: ifcHideSelected, showIfcElement: showIfcElement, hideIfcElement: hideIfcElement, clickIfcElement: clickIfcElement,
     adjustPanSpeed: adjustPanSpeed, pushZoomTarget: pushZoomTarget,
     startIfcMove: startIfcMove, stopIfcMove: stopIfcMove, updateIfcGizmo: updateIfcGizmo, applyIfcShift: applyIfcShift,
     startIfcGizmoDrag: startIfcGizmoDrag, buildIfcGizmo: buildIfcGizmo, onIfcGizmoMove: onIfcGizmoMove, endIfcGizmoDrag: endIfcGizmoDrag,
