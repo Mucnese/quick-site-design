@@ -6929,7 +6929,7 @@ const IFC_LIB_SCRIPT = 'lib/web-ifc-api-iife.js';
 const IFC_LIB_DIR = 'lib/';
 let webIfcApi = null;               // IfcAPI nach Init
 let webIfcLoading = null;           // laufendes Laden der Bibliothek
-let ifcModel = null;                // { group, name, coord, georef, placement, de, dn, dz, bbox }
+let ifcModel = null;                // { group, name, coord, georef, placement, de, dn, dz, rot, bbox }
 
 const IFC_PREFIX = { MILLI: 0.001, CENTI: 0.01, DECI: 0.1, KILO: 1000 };
 
@@ -7036,19 +7036,27 @@ function ifcTwoPointPlacement(p1, p2, t1, t2, heightAt) {
   };
 }
 
-function ifcApplyPlacement(model, pl, dz, de, dn) {
-  const g = model.group;
-  g.rotation.y = pl.rotY;
-  g.scale.set(pl.scale, pl.scale, pl.scale);
+function ifcApplyPlacement(model, pl, dz, de, dn, rot) {
+  model.group.scale.set(pl.scale, pl.scale, pl.scale);
   model.placement = pl;
-  ifcSetShift(model, de || 0, dn || 0, dz || 0);
+  ifcSetShift(model, de || 0, dn || 0, dz || 0, rot || 0);
 }
 
-/* Verschiebung gegenüber der Platzierung in m: Ost, Nord, Höhe (in der Szene ist Norden -z) */
-function ifcSetShift(model, de, dn, dz) {
-  const pl = model.placement;
+/* Abweichung von der Platzierung: Verschiebung in m (Ost, Nord, Höhe; in der Szene ist Norden -z) und Drehung in Grad
+   um die Hochachse durch die Mitte des Bauwerks (positiv gegen den Uhrzeigersinn, von oben gesehen). */
+function ifcSetShift(model, de, dn, dz, rot) {
+  const pl = model.placement, b = model.bbox;
+  if (rot !== undefined) model.rot = rot;
   model.de = de; model.dn = dn; model.dz = dz;
-  model.group.position.set(pl.x + de, pl.y + dz, pl.z - dn);
+  const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+  const a0 = pl.rotY, a1 = a0 + (model.rot || 0) * Math.PI / 180;
+  const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+  model.group.rotation.y = a1;
+  // die Mitte bleibt beim Drehen an ihrer Stelle
+  model.group.position.set(
+    pl.x + de + pl.scale * ((c0 - c1) * cx + (s0 - s1) * cz),
+    pl.y + dz,
+    pl.z - dn + pl.scale * ((s1 - s0) * cx + (c0 - c1) * cz));
 }
 
 /* Mitte des Bauwerks in Szenenkoordinaten */
@@ -7073,6 +7081,18 @@ function axisDragParam(o, d, p0, a) {
   const aw = a.x * wx + a.y * wy + a.z * wz, dw = d.x * wx + d.y * wy + d.z * wz;
   return (b * dw - aw) / den;
 }
+
+/* Richtungswinkel (wie ifcAngle) des Punkts, in dem der Blickstrahl die waagerechte Ebene durch c trifft;
+   null, wenn man fast waagerecht blickt oder die Ebene hinter der Kamera liegt. */
+function ringDragAngle(o, d, c) {
+  if (Math.abs(d.y) < 0.05) return null;
+  const t = (c.y - o.y) / d.y;
+  if (!(t > 0)) return null;
+  return ifcAngle(o.x + t * d.x - c.x, o.z + t * d.z - c.z);
+}
+
+/* Winkel in Grad auf (-180, 180] bringen */
+function normDeg(a) { const r = ((a % 360) + 360) % 360; return r > 180 ? r - 360 : r; }
 
 /* Liegt der Mittelpunkt des Bauwerks (Gruppenkoordinaten) nach der Platzierung innerhalb des Geländes? */
 function ifcInsideTerrain(model, terrain) {
@@ -7172,7 +7192,7 @@ function ifcRemoveModel() {
 function ifcSetModel(m) {
   ifcRemoveModel();
   ifcModel = { group: m.group, name: m.name, coord: m.coord, georef: m.georef, bbox: m.bbox, triangles: m.triangles,
-               placement: null, de: 0, dn: 0, dz: 0, how: null };
+               placement: null, de: 0, dn: 0, dz: 0, rot: 0, how: null };
   scene.add(ifcModel.group);
   return ifcModel;
 }
@@ -7347,6 +7367,9 @@ if (typeof module !== 'undefined' && module.exports) {
     ifcSetModel: ifcSetModel,
     ifcRemoveModel: ifcRemoveModel,
     axisDragParam: axisDragParam,
+    ringDragAngle: ringDragAngle,
+    normDeg: normDeg,
+    ifcSetShift: ifcSetShift,
     ifcCenterWorld: ifcCenterWorld,
     getIfcModel: function () { return ifcModel; },
     ifcInsideTerrain: ifcInsideTerrain,

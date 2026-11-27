@@ -10,7 +10,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 ## 2026-11-27
 
 ### Neu
-- **IFC mit drei Achsen verschieben:** Neben dem Ausrichten mit vier Punkten gibt es „3 Achsen schieben“: Pfeile in der Mitte des Bauwerks (X Ost, Y Nord, Z Höhe) verschieben es jeweils nur in dieser Richtung. Die Verschiebung steht in drei Feldern und lässt sich eintippen (statt wie bisher nur „Höhe ±“).
+- **IFC verschieben und drehen:** Neben dem Ausrichten mit vier Punkten gibt es „Schieben & Drehen“: Pfeile in der Mitte des Bauwerks (X Ost, Y Nord, Z Höhe) verschieben es jeweils nur in dieser Richtung, ein Ring dreht es um die Hochachse durch seine Mitte. Verschiebung und Drehung stehen in vier Feldern und lassen sich eintippen (statt wie bisher nur „Höhe ±“).
   Der Knopf „Manuell platzieren“ heißt jetzt „4 Punkte ausrichten“.
 
 ## 2026-11-22

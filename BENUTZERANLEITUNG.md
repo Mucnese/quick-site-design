@@ -303,11 +303,11 @@ nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Grö�
   immer **waagerecht**; die Höhe richtet sich nach dem Gelände am ersten Punkt. Stimmen die beiden
   Abstände nicht überein, erscheint eine Warnung. **Esc** bricht ab. Mit **4 Punkte ausrichten** lässt sich
   das Verfahren später wiederholen.
-- **3 Achsen schieben:** In der Mitte des Bauwerks erscheinen drei Pfeile: **X** (rot, Ost), **Y** (grün, Nord), **Z** (blau, Höhe).
-  An einem Pfeil ziehen verschiebt das Bauwerk nur in dieser Richtung; gedreht wird dabei nicht. Die Ansicht lässt sich wie gewohnt drehen und zoomen. Blickt man fast
-  entlang einer Achse (z. B. Z in der Draufsicht), lässt sich dieser Pfeil nicht ziehen. **Esc** oder ein zweiter Klick auf den Knopf beendet das Verschieben.
+- **Schieben & Drehen:** In der Mitte des Bauwerks erscheinen drei Pfeile: **X** (rot, Ost), **Y** (grün, Nord), **Z** (blau, Höhe), dazu ein gelber Ring.
+  An einem Pfeil ziehen verschiebt das Bauwerk nur in dieser Richtung; am Ring ziehen dreht es um die Hochachse (Z) durch seine Mitte. Die Ansicht lässt sich wie gewohnt drehen und zoomen. Blickt man fast
+  entlang einer Achse (z. B. Z in der Draufsicht), lässt sich dieser Pfeil nicht ziehen; der Ring lässt sich nicht ziehen, wenn man fast waagerecht blickt. **Esc** oder ein zweiter Klick auf den Knopf beendet den Modus.
   Der Knopf geht auch mitten im Vier-Punkte-Verfahren: Ein neues Bauwerk bleibt dann dort, wo es zu sehen ist.
-- In den Feldern **X Ost**, **Y Nord**, **Z Höhe** steht die Verschiebung in Metern; man kann sie auch eintippen. **Entfernen** (rechts neben der Überschrift) nimmt das Bauwerk weg.
+- In den Feldern **X** (Ost), **Y** (Nord), **Z** (Höhe) steht die Verschiebung in Metern, in **Um Z** die Drehung in Grad (positiv gegen den Uhrzeigersinn, von oben gesehen); man kann alles auch eintippen. Ein neues Ausrichten mit 4 Punkten setzt die Felder auf 0. **Entfernen** (rechts neben der Überschrift) nimmt das Bauwerk weg.
 - Liegt das Bauwerk außerhalb des Geländes, erscheint ein Hinweis. Wird ein anderes Gelände geladen,
   wird ein automatisch platziertes Bauwerk neu gesetzt, ein manuell platziertes entfernt.
 - Nicht unterstützt: Längeneinheiten wie Fuß und Zoll (IfcConversionBasedUnit).

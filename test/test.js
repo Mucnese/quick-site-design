@@ -2733,6 +2733,15 @@ test('IFC-Import: Georeferenz wird aus IfcMapConversion und IfcProjectedCRS gele
   assert.strictEqual(app.ifcReadGeoref(api, 1, W).epsg, null);
 });
 
+test('Drehring: Richtungswinkel in der waagerechten Ebene (Ost 0, Nord 90 Grad), null beim waagerechten Blick; Winkel auf (-180, 180]', function () {
+  const c = { x: 5, y: 2, z: 5 }, down = { x: 0, y: -1, z: 0 };
+  assert.ok(Math.abs(app.ringDragAngle({ x: 9, y: 30, z: 5 }, down, c)) < 1e-9);
+  assert.ok(Math.abs(app.ringDragAngle({ x: 5, y: 30, z: 1 }, down, c) - Math.PI / 2) < 1e-9);
+  assert.strictEqual(app.ringDragAngle({ x: 9, y: 30, z: 5 }, { x: 1, y: 0, z: 0 }, c), null);
+  assert.strictEqual(app.ringDragAngle({ x: 9, y: 30, z: 5 }, { x: 0, y: 1, z: 0 }, c), null);
+  assert.deepStrictEqual([app.normDeg(190), app.normDeg(-190), app.normDeg(360), app.normDeg(180), app.normDeg(-180)], [-170, 170, 0, 180, 180]);
+});
+
 test('Achse unter dem Blickstrahl: Abstand entlang der Achse, null beim Blick entlang der Achse', function () {
   const p0 = { x: 10, y: 0, z: 0 }, east = { x: 1, y: 0, z: 0 };
   const down = { x: 0, y: -1, z: 0 };

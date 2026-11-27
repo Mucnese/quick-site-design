@@ -2400,7 +2400,7 @@ await test('IFC verschieben mit drei Achsen: Ziehen am Pfeil verschiebt nur entl
   s.startIfcMove();
   assert.strictEqual(g('ifc-move-btn').className, 'btn-block accent');
   assert.strictEqual(g('ifc-hint').style.display, 'block');
-  assert.strictEqual(g('gizmo-labels').children.length, 3);
+  assert.strictEqual(g('gizmo-labels').children.length, 4);
   const rc = vm.runInContext('raycaster', s);
   const drag = function (axis, from, to) {
     rc._results = [{ object: { userData: { ifcAxis: axis } } }];
@@ -2442,6 +2442,52 @@ await test('IFC verschieben mit drei Achsen: Ziehen am Pfeil verschiebt nur entl
   s.startIfcManual(false);
   s.onKeyDown({ key: 'Escape', target: {} });
   assert.ok(Math.abs(m.group.position.x - p0.x + 1.5) < 1e-9 && m.dn === 4 && m.dz === 2.5);
+});
+
+await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  const g = function (id) { return s.document.getElementById(id); };
+  s.initUI();
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  const m = ifcModelOf(s);
+  // Mitte des Quaders aus der Mitte rücken, damit eine Drehung um den falschen Punkt auffiele
+  m.bbox.minX += 6; m.bbox.maxX += 6;
+  s.ifcSetShift(m, 0, 0, 0);
+  const r0 = m.group.rotation.y;
+  const mid = function () {
+    const a = m.group.rotation.y, b = m.bbox, x = (b.minX + b.maxX) / 2, z = (b.minZ + b.maxZ) / 2;
+    return [m.group.position.x + Math.cos(a) * x + Math.sin(a) * z, m.group.position.z - Math.sin(a) * x + Math.cos(a) * z];
+  };
+  const c0 = mid();
+  s.startIfcMove();
+  const rc = vm.runInContext('raycaster', s);
+  const c = s.ifcCenterWorld(m);
+  const down = function (dx, dz) { return { origin: { x: c.x + dx, y: c.y + 100, z: c.z + dz }, direction: { x: 0, y: -1, z: 0 } }; };
+  rc._results = [{ object: { userData: { ifcAxis: 'r' } } }];
+  rc.ray = down(10, 0);                                       // Osten
+  assert.strictEqual(s.startIfcGizmoDrag({ button: 0, clientX: 1, clientY: 1 }), true);
+  rc.ray = down(0, -10);                                      // nach Norden gezogen: 90 Grad gegen den Uhrzeigersinn
+  s.onIfcGizmoMove({ clientX: 2, clientY: 2, buttons: 1 });
+  s.endIfcGizmoDrag();
+  assert.strictEqual(m.rot, 90);
+  assert.strictEqual(g('ifc-dr').value, '90');
+  assert.ok(Math.abs(m.group.rotation.y - r0 - Math.PI / 2) < 1e-9);
+  const c1 = mid();
+  assert.ok(Math.abs(c1[0] - c0[0]) < 1e-9 && Math.abs(c1[1] - c0[1]) < 1e-9, 'die Mitte bleibt: ' + c0 + ' / ' + c1);
+  s.applyIfcShift('r', '-30');
+  s.applyIfcShift('e', '5');
+  assert.strictEqual(m.rot, -30);
+  assert.ok(Math.abs(mid()[0] - c0[0] - 5) < 1e-9 && Math.abs(mid()[1] - c0[1]) < 1e-9);
+  // Vier Punkte abbrechen behält die Drehung, neu ausrichten setzt sie zurück
+  s.startIfcManual(false);
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.ok(m.rot === -30 && Math.abs(m.group.rotation.y - r0 + Math.PI / 6) < 1e-9);
+  s.startIfcManual(false);
+  const pick = ifcPickOf(s);
+  pick.p = [{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }]; pick.t = [{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }]; pick.markers = []; pick.step = 4;
+  s.finishIfcPick();
+  assert.ok(m.rot === 0 && m.de === 0 && Math.abs(m.group.rotation.y) < 1e-9);
+  assert.strictEqual(g('ifc-dr').value, '0');
 });
 
 await test('IFC verschieben: aus den vier Punkten umsteigen platziert ein neues Bauwerk; Entfernen beendet das Verschieben', async function () {

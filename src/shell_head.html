@@ -512,13 +512,15 @@
   #ifc-tools { display: none; }
   #ifc-modes { display: flex; gap: 6px; margin-top: 6px; }
   #ifc-modes .btn-block { flex: 1 1 0; margin: 0; padding: 6px 4px; }
-  #ifc-shift { display: flex; gap: 6px; margin-top: 6px; padding: 0 11px; }
-  #ifc-shift label { flex: 1 1 0; min-width: 0; font-size: 0.82em; color: var(--text-dim); }
-  #ifc-shift input { width: 100%; box-sizing: border-box; text-align: right; }
+  #ifc-shift { display: flex; gap: 4px; margin-top: 6px; padding: 0 11px; }
+  #ifc-shift label { flex: 1 1 0; min-width: 0; white-space: nowrap; font-size: 0.82em; color: var(--text-dim); }
+  #ifc-shift span { display: block; }
+  #ifc-shift input { display: block; min-width: 0; width: 100%; box-sizing: border-box; text-align: right; padding-left: 2px; padding-right: 2px; }
   #gizmo-labels { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 5; pointer-events: none; }
   .seg-label.gizmo-e { border-color: #e5484d; }
   .seg-label.gizmo-n { border-color: #46a758; }
   .seg-label.gizmo-z { border-color: #3e8eed; }
+  .seg-label.gizmo-r { border-color: #f2c037; }
   /* Hinweise und Meldungen: immer oben in der Mitte, untereinander, überall 12 px. Gestrichelt = Anleitung
      für den laufenden Schritt (Zeichnen, IFC), durchgezogen = kurze Meldung. */
   #notices {
@@ -776,12 +778,13 @@
         <div id="ifc-tools">
           <div id="ifc-modes">
             <button class="btn-block" id="ifc-manual-btn" data-i18n="ifcManualBtn">4 Punkte ausrichten</button>
-            <button class="btn-block" id="ifc-move-btn" data-i18n="ifcMoveBtn">3 Achsen schieben</button>
+            <button class="btn-block" id="ifc-move-btn" data-i18n="ifcMoveBtn">Schieben &amp; Drehen</button>
           </div>
           <div id="ifc-shift">
-            <label><span data-i18n="ifcDx">X Ost (m)</span><input type="number" id="ifc-dx" step="0.1" value="0"></label>
-            <label><span data-i18n="ifcDy">Y Nord (m)</span><input type="number" id="ifc-dy" step="0.1" value="0"></label>
-            <label><span data-i18n="ifcDz">Z Höhe (m)</span><input type="number" id="ifc-dz" step="0.1" value="0"></label>
+            <label><span data-i18n="ifcDx">X (m)</span><input type="number" id="ifc-dx" step="0.1" value="0"></label>
+            <label><span data-i18n="ifcDy">Y (m)</span><input type="number" id="ifc-dy" step="0.1" value="0"></label>
+            <label><span data-i18n="ifcDz">Z (m)</span><input type="number" id="ifc-dz" step="0.1" value="0"></label>
+            <label><span data-i18n="ifcDr">Um Z (°)</span><input type="number" id="ifc-dr" step="1" value="0"></label>
           </div>
         </div>
       </div>

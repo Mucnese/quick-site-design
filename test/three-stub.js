@@ -146,6 +146,9 @@ class BoxGeometry extends Geometry { constructor(w, h, d) { super('BoxGeometry',
 class CylinderGeometry extends Geometry {
   constructor(rt, rb, h, seg) { super('CylinderGeometry', ['radiusTop', 'radiusBottom', 'height', 'radialSegments'], [rt, rb, h, seg]); }
 }
+class TorusGeometry extends Geometry {
+  constructor(r, tube, rs, ts) { super('TorusGeometry', ['radius', 'tube', 'radialSegments', 'tubularSegments'], [r, tube, rs, ts]); }
+}
 class SphereGeometry extends Geometry {
   constructor(r, ws, hs) { super('SphereGeometry', ['radius', 'widthSegments', 'heightSegments'], [r, ws, hs]); }
 }
@@ -336,7 +339,7 @@ class OrbitControls {
 module.exports = {
   Vector2, Vector3, Color, Matrix4,
   Object3D, Group, Mesh, Line, LineLoop, LineSegments, InstancedMesh,
-  BoxGeometry, CylinderGeometry, SphereGeometry, PlaneGeometry, BufferGeometry, EdgesGeometry,
+  BoxGeometry, CylinderGeometry, TorusGeometry, SphereGeometry, PlaneGeometry, BufferGeometry, EdgesGeometry,
   BufferAttribute,
   MeshLambertMaterial, MeshBasicMaterial, LineBasicMaterial,
   HemisphereLight, DirectionalLight,
