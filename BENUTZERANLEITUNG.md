@@ -132,7 +132,7 @@ lieber selbst vorher einen Ausschnitt schneidet, kann `gdal_translate -projwin <
   zieht, dreht um genau diesen Punkt. Wer auf den Hintergrund klickt, kreist die ganze Szene
   um das Zentrum.
 - **Rechte oder mittlere Taste ziehen:** verschieben (zügig: etwa doppelt so schnell wie der Mauszeiger an dem Punkt, auf dem er beim Drücken steht).
-- **Mausrad:** zoomen, in gleichmäßigen Schritten (je Rastenschritt ein Sechzigstel der Geländekante, mindestens 5 m), egal wie nah die Kamera ist.
+- **Mausrad:** zoomen, in gleichmäßigen Schritten (je Rastenschritt ein Sechzigstel der Geländekante, mindestens 5 m), egal wie nah die Kamera ist. Heran geht es bis 3 m vor das, was in der Bildmitte steht.
 - **Linksklick** auf Gelände oder Gebäude: setzt einen **Messpunkt**. Er zeigt Rechtswert, Hochwert
   und Höhe und wird zum Dreh- und Zoomzentrum.
 - **2D:** senkrecht von oben. Ein Ziehen kippt die Ansicht wieder frei in den Raum.

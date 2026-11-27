@@ -18,6 +18,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 ### Fixed
 - **IFC import, length unit:** The project unit (`IfcProject.UnitsInContext`) now applies, not the first length unit in the file. Before, a structure from a file with further units (for example decimetres in Revit files) could appear at the wrong size.
 - **Panning was sluggish after zooming in close:** the speed now follows the point under the mouse pointer.
+- **Zooming in got stuck:** the mouse wheel stopped 12 m before the rotation centre even when what you saw was far away. The centre now moves along, up to 3 m before what is in the middle of the picture.
 - **Old Gauss-Krüger codes:** EPSG:31462 to 31465 (for example `31463` in Revit IFC files) and the variants 5676 to 5679 are now understood like 31466 to 31469.
 
 ### Added

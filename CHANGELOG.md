@@ -19,6 +19,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 ### Behoben
 - **IFC-Import, Längeneinheit:** Maßgeblich ist jetzt die Einheit des Projekts (`IfcProject.UnitsInContext`), nicht die erste Längeneinheit in der Datei. Bisher konnte ein Bauwerk aus einer Datei mit weiteren Einheiten (etwa Dezimeter in Revit-Dateien) in falscher Größe erscheinen.
 - **Verschieben der Ansicht war nach nahem Heranzoomen zäh:** Die Geschwindigkeit richtet sich jetzt nach dem Punkt unter dem Mauszeiger.
+- **Heranzoomen blieb stehen:** Das Mausrad hörte 12 m vor dem Drehzentrum auf, auch wenn das Gesehene weit entfernt war. Jetzt wandert das Zentrum mit, bis 3 m vor das, was in der Bildmitte steht.
 - **Alte Gauß-Krüger-Nummern:** EPSG:31462 bis 31465 (zum Beispiel `31463` in Revit-IFC-Dateien) und die Fassungen 5676 bis 5679 werden jetzt wie 31466 bis 31469 verstanden.
 
 ### Neu

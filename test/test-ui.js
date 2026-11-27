@@ -2636,6 +2636,26 @@ await test('Ansicht verschieben: die Geschwindigkeit richtet sich nach dem Punkt
   assert.strictEqual(ctr.panSpeed, 2.2, 'Drehen: unverändert');
 });
 
+await test('Mausrad: am Ende des Zoomwegs wandert das Drehzentrum mit, bis kurz vor das, was in der Bildmitte steht', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const cam = vm.runInContext('camera', s), ctr = vm.runInContext('controls', s);
+  ctr.minDistance = 12;
+  const set = function () { cam.position.set(0, 50, 12); ctr.target.set(0, 50, 0); };
+  const dist = function () { return cam.position.distanceTo(ctr.target); };
+  const step = s.wheelStepMeters();
+  set(); setTerrainHit(s, 0, 50, -300);                       // weit entfernt
+  s.pushZoomTarget(-100, 0);
+  assert.ok(Math.abs(dist() - (12 + step)) < 1e-9 && ctr.target.x === 0 && ctr.target.y === 50 && ctr.target.z < 0, dist() + ' ' + step);
+  set(); setTerrainHit(s, 0, 50, 8);                          // 4 m vor der Kamera: nur noch 1 m
+  s.pushZoomTarget(-100, 0);
+  assert.ok(Math.abs(dist() - 13) < 1e-9, String(dist()));
+  set(); s.pushZoomTarget(100, 0);                            // wegzoomen: nichts
+  assert.strictEqual(dist(), 12);
+  cam.position.set(0, 50, 500); ctr.target.set(0, 50, 0); s.pushZoomTarget(-100, 0);
+  assert.strictEqual(ctr.target.z, 0, 'mit Platz bleibt das Zentrum');
+});
+
 await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {
   const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
   const g = function (id) { return s.document.getElementById(id); };

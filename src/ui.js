@@ -4078,9 +4078,30 @@ function linearZoomSpeed(dist, deltaY, deltaMode) {
   return Math.log(f) / Math.log(0.95);
 }
 
+/* OrbitControls endet minDistance vor dem Drehzentrum. Liegt das Zentrum weit vor dem, was man sieht, bliebe die Ansicht
+   dort stehen. Beim Heranzoomen wandert es deshalb in Blickrichtung mit. Durch das, was in der Bildmitte steht (auch den
+   Boden), geht es nicht hindurch: ZOOM_STOP m davor ist Schluss. */
+const ZOOM_STOP = 3;
+
+function pushZoomTarget(deltaY, deltaMode) {
+  if (!(deltaY < 0) || !controls || !camera) return;
+  const dist = camera.position.distanceTo(controls.target);
+  if (!(dist > 0)) return;
+  const dy = (deltaMode === 1 ? 33 : 1) * -deltaY;
+  let step = wheelStepMeters() * Math.max(0.1, Math.min(3, dy / 100));
+  if (dist - step >= controls.minDistance) return;           // noch Platz bis zum Zentrum
+  const p = camera.position, t = controls.target;
+  const ux = (t.x - p.x) / dist, uy = (t.y - p.y) / dist, uz = (t.z - p.z) / dist;
+  const hit = raycastPivot({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+  if (hit) step = Math.min(step, Math.max(0, camera.position.distanceTo(new THREE.Vector3(hit.x, hit.y, hit.z)) - ZOOM_STOP));
+  const reach = controls.minDistance + step;                  // so legt OrbitControls genau diesen Schritt zurück
+  t.set(p.x + ux * reach, p.y + uy * reach, p.z + uz * reach);
+}
+
 function onCanvasWheel(event) {
   if (pivotDrag && !(event.buttons & 1)) endOrbitDrag();
   settleCameraFlight();
+  pushZoomTarget(event.deltaY, event.deltaMode);
   if (typeof controls !== 'undefined' && controls && typeof camera !== 'undefined' && camera && event.deltaY) {
     controls.zoomSpeed = linearZoomSpeed(camera.position.distanceTo(controls.target), event.deltaY, event.deltaMode);
   }
@@ -4684,7 +4705,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getIfcPick: function () { return ifcPick; },
     onProjectCrsChange: onProjectCrsChange, setProjectCrs: setProjectCrs,
     ifcCrsWarning: ifcCrsWarning,
-    adjustPanSpeed: adjustPanSpeed,
+    adjustPanSpeed: adjustPanSpeed, pushZoomTarget: pushZoomTarget,
     startIfcMove: startIfcMove, stopIfcMove: stopIfcMove, updateIfcGizmo: updateIfcGizmo, applyIfcShift: applyIfcShift,
     startIfcGizmoDrag: startIfcGizmoDrag, buildIfcGizmo: buildIfcGizmo, onIfcGizmoMove: onIfcGizmoMove, endIfcGizmoDrag: endIfcGizmoDrag,
     setIfcPick: function (p) { ifcPick = p; },
