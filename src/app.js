@@ -174,13 +174,6 @@ function initScene(container) {
   scene.add(sun.target);
   MAT.__sun = sun;
 
-  // Licht von unten, nur beim Blick von unten an (Untersichten wären sonst fast schwarz); Stärke 0 statt unsichtbar,
-  // damit die Materialien nicht neu übersetzt werden
-  const under = new THREE.DirectionalLight(0xe8eefc, 0);
-  under.position.set(180, -420, 260);
-  scene.add(under);
-  MAT.__under = under;
-
   const fill = new THREE.DirectionalLight(0x6fa8c8, 0.22);
   fill.position.set(300, 180, -300);
   scene.add(fill);
@@ -6047,9 +6040,8 @@ function settleCameraFlight() {
 }
 
 /* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
-function updateUnderLight() {
-  if (MAT.__under) MAT.__under.intensity = camera.position.y < controls.target.y - 0.5 ? 0.6 : 0;
-  // unter dem Gelände verdeckte der Sockelblock die Sicht auf Gründungen
+/* Unter dem Gelände verdeckte der Sockelblock die Sicht auf Gründungen */
+function updatePlinthVisibility() {
   if (plinthMesh) plinthMesh.visible = camera.position.y >= 0;
 }
 

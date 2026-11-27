@@ -32,7 +32,7 @@ function start() {
   function animate() {
     requestAnimationFrame(animate);
     updateControls();
-    updateUnderLight();
+    updatePlinthVisibility();
     updatePointLabel();
     updateSegLabels();
     updateIfcGizmo();
