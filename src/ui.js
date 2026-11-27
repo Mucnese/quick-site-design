@@ -3281,7 +3281,7 @@ function getXyzEpsg() {
   if (!sel) return null;
   const raw = sel.value === 'other' ? (inp ? inp.value : '') : sel.value;
   const v = parseInt(raw, 10);
-  return (isFinite(v) && v >= 1000 && v <= 99999) ? v : null;
+  return (isFinite(v) && v >= 1000 && v <= 99999) ? canonicalEpsg(v) : null;
 }
 
 function onXyzCrsChanged() {
@@ -3517,7 +3517,7 @@ function renderFpPanel() {
 function readFpOptions() {
   const g = function (id) { return document.getElementById(id); }, n = function (id, d) { const v = parseFloat(g(id).value); return isFinite(v) ? v : d; };
   let crs = g('fp-crs').value;
-  crs = crs === '' ? '' : (crs === 'other' ? (parseInt(g('fp-epsg').value, 10) || '') : parseInt(crs, 10));
+  crs = crs === '' ? '' : (crs === 'other' ? (canonicalEpsg(parseInt(g('fp-epsg').value, 10)) || '') : parseInt(crs, 10));
   return {
     ground: { src: g('fp-ground-src').value || 'terrain', attr: g('fp-ground-attr').value, fixed: n('fp-ground-fixed', 0) },
     height: { src: g('fp-h-src').value || 'fixed', attr: g('fp-h-attr').value, ref: g('fp-h-ref').value || 'rel', factor: n('fp-h-factor', 1), fixed: n('fp-h-fixed', 10) },
@@ -4281,7 +4281,7 @@ function onProjectCrsChange() {
     inp.style.display = '';
     if (!String(inp.value).trim()) { if (inp.focus) inp.focus(); return; }
   }
-  const code = sel.value === '' ? null : sel.value === 'other' ? parseInt(inp.value, 10) : parseInt(sel.value, 10);
+  const code = sel.value === '' ? null : canonicalEpsg(sel.value === 'other' ? parseInt(inp.value, 10) : parseInt(sel.value, 10));
   if (code !== null) {
     const def = code > 0 ? crsGeoDefinition(code) : null;
     if (!def || def.merc) { setProjectCrsNote(ifcFormat('projCrsBad', { c: inp.value }), 'err'); return; }

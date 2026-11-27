@@ -9,6 +9,9 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-27
 
+### Behoben
+- **Alte Gauß-Krüger-Nummern:** EPSG:31462 bis 31465 (zum Beispiel `31463` in Revit-IFC-Dateien) und die Fassungen 5676 bis 5679 werden jetzt wie 31466 bis 31469 verstanden.
+
 ### Neu
 - **Bezugssystem (KBS) wählen:** Im Datenfenster lässt sich ein Koordinatensystem wählen oder ein EPSG-Code eintippen; Gelände und Gebäude werden dorthin umgerechnet (etwa UTM nach Gauß-Krüger), mit Angabe der Genauigkeit. Höhen bleiben unverändert, Bausteine werden bei einem Wechsel nach Rückfrage entfernt.
 - **Genauer mit BeTA2007:** Zwischen Gauß-Krüger Deutschland (DHDN) und ETRS89 rechnet die Anwendung jetzt mit dem BeTA2007-Gitter der AdV (etwa 1 m statt etwa 3 m), auch beim IFC-Export und für die Karte.

@@ -2781,6 +2781,14 @@ test('IFC ohne Georeferenz: Landeskoordinaten in der Datei, die im Gelände lieg
   assert.strictEqual(app.ifcGuessGk(bbox, [-692000, 0, 5336000]), null);
 });
 
+test('Alte Gauß-Krüger-Nummern (31462 bis 31465, 5676 bis 5679) gelten wie 31466 bis 31469', function () {
+  assert.deepStrictEqual([31462, 31463, 31464, 31465, 5676, 5677, 5678, 5679, 25832, null].map(app.canonicalEpsg),
+    [31466, 31467, 31468, 31469, 31466, 31467, 31468, 31469, 25832, null]);
+  const a = app.crsTransformer(31463, 25832)(3479000, 5371775), b = app.crsTransformer(31467, 25832)(3479000, 5371775);
+  assert.ok(Math.abs(a.e - b.e) < 1e-9 && Math.abs(a.n - b.n) < 1e-9);
+  assert.strictEqual(app.buildingTextEpsg('<a srsName="EPSG:31463">'), 31467);
+});
+
 test('Drehring: Richtungswinkel in der waagerechten Ebene (Ost 0, Nord 90 Grad), null beim waagerechten Blick; Winkel auf (-180, 180]', function () {
   const c = { x: 5, y: 2, z: 5 }, down = { x: 0, y: -1, z: 0 };
   assert.ok(Math.abs(app.ringDragAngle({ x: 9, y: 30, z: 5 }, down, c)) < 1e-9);

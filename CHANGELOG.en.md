@@ -8,6 +8,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-27
 
+### Fixed
+- **Old Gauss-Krüger codes:** EPSG:31462 to 31465 (for example `31463` in Revit IFC files) and the variants 5676 to 5679 are now understood like 31466 to 31469.
+
 ### Added
 - **Choose the coordinate system (CRS):** In the data window you can choose a system or type an EPSG code; terrain and buildings are converted to it (for example UTM to Gauss-Krüger), with the accuracy stated. Heights stay unchanged; blocks are removed after a question when changing.
 - **More accurate with BeTA2007:** Between German Gauss-Krüger (DHDN) and ETRS89 the application now uses the AdV BeTA2007 grid (about 1 m instead of about 3 m), also for IFC export and the map.

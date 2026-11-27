@@ -1460,7 +1460,13 @@ const EU_NATIONAL_CRS = {
 };
 
 /* Beschreibt, wie ein EPSG-Code in Längen-/Breitengrad umgerechnet wird, oder null */
+/* Alte, abgekündigte Nummern derselben Gauß-Krüger-Systeme (31462 bis 31465, laut EPSG durch 31466 bis 31469 ersetzt) und
+   deren Fassungen „E-N“ (5676 bis 5679): Die Anwendung rechnet immer mit Rechtswert und Hochwert, also sind sie gleich. */
+const EPSG_ALIASES = { 31462: 31466, 31463: 31467, 31464: 31468, 31465: 31469, 5676: 31466, 5677: 31467, 5678: 31468, 5679: 31469 };
+function canonicalEpsg(code) { return EPSG_ALIASES[code] || code; }
+
 function crsGeoDefinition(epsg) {
+  epsg = canonicalEpsg(epsg);
   if (epsg === 4083) epsg = 25828;                                      // REGCAN95 / UTM 28N (Kanaren): wie ETRS89 / UTM 28N
   if (epsg === 4082) return { ell: GEO_ELL.grs80, lon0: -21, k0: 0.9996, fe: 500000, fn: 0 };   // REGCAN95 / UTM 27N (West-Hierro)
   if (epsg >= 25828 && epsg <= 25838) return { ell: GEO_ELL.grs80, lon0: (epsg - 25800) * 6 - 183, k0: 0.9996, fe: 500000, fn: 0 };
@@ -2112,7 +2118,7 @@ function tiffGeoInfo(image) {
   let epsg = null;
   try {
     const gk = image.getGeoKeys ? image.getGeoKeys() : null;
-    if (gk) epsg = gk.ProjectedCSTypeGeoKey || gk.GeographicTypeGeoKey || null;
+    if (gk) epsg = canonicalEpsg(gk.ProjectedCSTypeGeoKey || gk.GeographicTypeGeoKey || null);
   } catch (e) { /* ohne GeoKeys weiterarbeiten */ }
 
   return { originX: originX, originY: originY, resX: resX, resY: resY, nodata: nodata, epsg: epsg };
@@ -2390,7 +2396,7 @@ function lasVlrEpsg(b, dv, pos, count, extended) {
     }
     pos = d + len;
   }
-  return epsg;
+  return epsg ? canonicalEpsg(epsg) : null;
 }
 
 /* Kopf einer LAS/LAZ-Datei (b: mindestens der Kopf samt VLRs, bei LAS 1.4 gern auch die EVLRs am Dateiende ab evlrStart) */
@@ -3306,7 +3312,7 @@ function parseDbf(buf, encoding) {
 function fpPrjEpsg(wkt) {
   const s = String(wkt || '');
   let m = s.match(/(?:AUTHORITY\s*\[\s*"EPSG"\s*,\s*"?(\d+)"?\s*\]\s*\]\s*$|ID\s*\[\s*"EPSG"\s*,\s*(\d+)\s*\]\s*\]\s*$)/);
-  if (m) return parseInt(m[1] || m[2], 10);
+  if (m) return canonicalEpsg(parseInt(m[1] || m[2], 10));
   const name = (s.match(/^\s*(?:PROJCS|PROJCRS|GEOGCS|GEOGCRS|BASEGEOGCRS)\s*\[\s*"([^"]+)"/) || [])[1] || '';
   const n = name.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
   if ((m = n.match(/^ETRS_?(?:89|1989)_(?:\w*_)?UTM_ZONE_(\d+)N/))) return 25800 + parseInt(m[1], 10);
@@ -3652,7 +3658,7 @@ function fpLooksLikeInspireGml(head) {
 
 function fpGmlEpsg(srs) {
   const m = String(srs || '').match(/EPSG[/:]+(?:[0-9.]*[/:])?(\d{4,6})/i);
-  return m ? parseInt(m[1], 10) : null;
+  return m ? canonicalEpsg(parseInt(m[1], 10)) : null;
 }
 
 function parseInspireBuildings(text, name) {
@@ -7138,7 +7144,7 @@ function ifcReadGeoref(api, modelId, W) {
   if (crs) {
     crsName = String(ifcVal(crs.Name) || '');
     const m = (crsName + ' ' + String(ifcVal(crs.Description) || '')).match(/EPSG\s*:?\s*(\d{4,5})/i);
-    if (m) epsg = parseInt(m[1], 10);
+    if (m) epsg = canonicalEpsg(parseInt(m[1], 10));
   }
   function unitFactor(unitRef) {
     const r = ifcVal(unitRef);
@@ -7549,6 +7555,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ifcRemoveModel: ifcRemoveModel,
     axisDragParam: axisDragParam,
     ringDragAngle: ringDragAngle,
+    canonicalEpsg: canonicalEpsg,
     reprojectTerrain: reprojectTerrain, reprojectRings: reprojectRings, buildingTextEpsg: buildingTextEpsg, crsAccuracy: crsAccuracy,
     parseBeta2007: parseBeta2007, ensureBeta2007: ensureBeta2007, hasBeta2007: hasBeta2007, ifcRawPlacement: ifcRawPlacement, ifcGuessGk: ifcGuessGk,
     normDeg: normDeg,

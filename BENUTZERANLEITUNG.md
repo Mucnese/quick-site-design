@@ -92,6 +92,7 @@ vorher in GeoTIFF um, zum Beispiel mit GDAL.
 - **Genauigkeit:** Die Meldung darunter nennt sie, in Rot, wenn die Umrechnung ungenau ist. Zwischen ETRS89/UTM und Gauß-Krüger Deutschland (DHDN) etwa **1 m** mit dem beiliegenden BeTA2007-Gitter (etwa 3 m ohne: außerhalb Deutschlands oder wenn die Datei nicht geladen werden kann), bei Gauß-Krüger Österreich (MGI) etwa 2 m. Zwischen Systemen mit gleichem Datum praktisch ohne Fehler. **Höhen werden nie umgerechnet.**
 - Weil die Systeme gegeneinander gedreht sein können, wird das Geländeraster neu gerechnet; an den Rändern fällt dabei ein schmaler Streifen weg.
 - Gebäude gelten im System, das ihre Datei nennt, sonst in dem der Geländedaten.
+- Alte Nummern für Gauß-Krüger (31462 bis 31465, auch 5676 bis 5679) gelten wie 31466 bis 31469.
 - Ein Wechsel nach dem Platzieren entfernt die **Bausteine** (mit Rückfrage). Wähle das System also am besten vorher.
 
 **Sehr große GeoTIFF (zum Beispiel BEV, 7,9 GB).** Dateien über 300 MB liest das Tool **nicht ganz, sondern nur den Ausschnitt um

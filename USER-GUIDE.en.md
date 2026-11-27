@@ -88,6 +88,7 @@ first, for example with GDAL.
 - **Accuracy:** The note below states it, in red if the conversion is inexact. Between ETRS89/UTM and German Gauss-Krüger (DHDN) about **1 m** with the included BeTA2007 grid (about 3 m without it: outside Germany or if the file cannot be loaded), for Austrian Gauss-Krüger (MGI) about 2 m. Between systems with the same datum practically no error. **Heights are never converted.**
 - Because the systems can be rotated against each other, the terrain grid is computed anew; a narrow strip at the edges is lost.
 - Buildings are taken in the system their file names, otherwise in that of the terrain data.
+- Old Gauss-Krüger codes (31462 to 31465, also 5676 to 5679) count as 31466 to 31469.
 - Changing it after placing removes the **building blocks** (after a question). So best choose the system beforehand.
 
 **Very large GeoTIFF (for example BEV, 7.9 GB).** Files over 300 MB are **not read completely, only the area around the chosen place**.
