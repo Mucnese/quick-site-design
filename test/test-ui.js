@@ -2847,6 +2847,11 @@ await test('Mit IFC-Bauwerk lässt sich die Ansicht unter das Bauteil drehen; oh
   const low1 = cam.position.y;
   s.orbitAround({ x: 0, y: 10, z: 0 }, 0, -2.0);
   assert.ok(Math.min(low1, cam.position.y) < 10, low1 + ' / ' + cam.position.y);
+  const plinth = vm.runInContext('plinthMesh', s);
+  cam.position.set(0, -5, 40); s.updateUnderLight();
+  assert.strictEqual(plinth.visible, false, 'unter dem Gelände kein Sockel im Weg');
+  cam.position.set(0, 50, 40); s.updateUnderLight();
+  assert.strictEqual(plinth.visible, true);
   s.removeIfc();
   assert.ok(ctr.maxPolarAngle < Math.PI / 2 && ctr.maxPolarAngle <= (before || Math.PI));
 });

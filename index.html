@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-BC1JuP3dB6MshsYysMbWiKmBkz31cWuk0+DfHPx4nHU=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-eS57nQMOV8DH8B83TRN9klBc0rRGI10AM1XtEA5hnr4=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -7043,6 +7043,8 @@ function settleCameraFlight() {
 /* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
 function updateUnderLight() {
   if (MAT.__under) MAT.__under.intensity = camera.position.y < controls.target.y - 0.5 ? 0.6 : 0;
+  // unter dem Gelände verdeckte der Sockelblock die Sicht auf Gründungen
+  if (plinthMesh) plinthMesh.visible = camera.position.y >= 0;
 }
 
 function updateControls() {

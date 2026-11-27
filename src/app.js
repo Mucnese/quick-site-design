@@ -6049,6 +6049,8 @@ function settleCameraFlight() {
 /* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
 function updateUnderLight() {
   if (MAT.__under) MAT.__under.intensity = camera.position.y < controls.target.y - 0.5 ? 0.6 : 0;
+  // unter dem Gelände verdeckte der Sockelblock die Sicht auf Gründungen
+  if (plinthMesh) plinthMesh.visible = camera.position.y >= 0;
 }
 
 function updateControls() {
