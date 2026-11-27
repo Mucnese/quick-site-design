@@ -33,6 +33,7 @@ function start() {
     requestAnimationFrame(animate);
     updateControls();
     updatePlinthVisibility();
+    updateIfcFill();
     updatePointLabel();
     updateSegLabels();
     updateIfcGizmo();

@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-JoD8c9W745U77gtIQRfqrlwro/UYUkK02nxAo6GQBsM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZWhubMb316ayrnS04HKSKPUN/xnlpLsKdoh9v2AqpMU=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -7034,6 +7034,22 @@ function settleCameraFlight() {
 }
 
 /* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
+/* Beim Blick von unten wären Untersichten fast schwarz: dann leuchtet das IFC-Bauwerk (nur dieses, nicht Gelände oder
+   Gebäude) leicht in seiner eigenen Farbe */
+const IFC_FILL = 0.35;
+function updateIfcFill() {
+  if (!ifcModel) return;
+  const on = camera.position.y < controls.target.y - 0.5;
+  if (ifcModel.fill === on) return;
+  ifcModel.fill = on;
+  ifcModel.parts.forEach(function (part) {
+    (part.fullMeshes || part.group.children).forEach(function (mesh) {
+      const mat = mesh.userData && mesh.userData.ranges && mesh.material;
+      if (mat && mat.emissive) mat.emissive.copy(mat.color).multiplyScalar(on ? IFC_FILL : 0);
+    });
+  });
+}
+
 /* Unter dem Gelände verdeckte der Sockelblock die Sicht auf Gründungen */
 function updatePlinthVisibility() {
   if (plinthMesh) plinthMesh.visible = camera.position.y >= 0;
@@ -13972,6 +13988,7 @@ function start() {
     requestAnimationFrame(animate);
     updateControls();
     updatePlinthVisibility();
+    updateIfcFill();
     updatePointLabel();
     updateSegLabels();
     updateIfcGizmo();

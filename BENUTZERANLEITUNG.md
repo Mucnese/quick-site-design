@@ -131,7 +131,7 @@ lieber selbst vorher einen Ausschnitt schneidet, kann `gdal_translate -projwin <
 - **Linke Maustaste ziehen:** umkreisen. Wer auf Gelände, Gebäude oder einen Baustein klickt und
   zieht, dreht um genau diesen Punkt. Wer auf den Hintergrund klickt, kreist die ganze Szene
   um das Zentrum.
-- **Von unten:** Ohne Bauwerk endet das Kippen an der Waagerechten. Ist ein IFC-Bauwerk geladen, lässt sich die Ansicht auch **darunter** drehen (Untersicht, Gründungen).
+- **Von unten:** Ohne Bauwerk endet das Kippen an der Waagerechten. Ist ein IFC-Bauwerk geladen, lässt sich die Ansicht auch **darunter** drehen (Untersicht, Gründungen). Beim Blick von unten wird nur das Bauwerk leicht aufgehellt.
 - **Rechte oder mittlere Taste ziehen:** verschieben (zügig: etwa doppelt so schnell wie der Mauszeiger an dem Punkt, auf dem er beim Drücken steht).
 - **Mausrad:** zoomen, in gleichmäßigen Schritten (je Rastenschritt ein Sechzigstel der Geländekante, mindestens 5 m), egal wie nah die Kamera ist. Heran geht es bis 3 m vor das, was in der Bildmitte steht.
 - **Linksklick** auf Gelände oder Gebäude: setzt einen **Messpunkt**. Er zeigt Rechtswert, Hochwert

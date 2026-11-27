@@ -14,7 +14,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 - **Filtern nach jedem Attribut mit Mengen:** oben im Bauteilfenster (Attribute von A bis Z, „ist“ oder „enthält“, Wert von Hand änderbar) oder per Klick auf eine Zeile; dazu Anzahl, Volumen, Oberfläche und die Mengen aus der IFC.
 - **Isolieren und Ausblenden** je Bauteil oder ganze Datei, mit „Alles anzeigen“.
 - **Filter zurücksetzen** hebt nur den Filter auf.
-- Mit geladenem IFC-Bauwerk lässt sich die Ansicht auch von unten drehen.
+- Mit geladenem IFC-Bauwerk lässt sich die Ansicht auch von unten drehen; dabei wird nur das Bauwerk leicht aufgehellt.
 - **IFC dazulegen:** Eine neue Auswahl kommt zum geladenen Bauwerk, statt es zu ersetzen.
 
 ### Geändert

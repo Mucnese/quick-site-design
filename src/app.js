@@ -6040,6 +6040,22 @@ function settleCameraFlight() {
 }
 
 /* Pro Bild aufgerufen: weicher Übergang von Drehzentrum und Kamera */
+/* Beim Blick von unten wären Untersichten fast schwarz: dann leuchtet das IFC-Bauwerk (nur dieses, nicht Gelände oder
+   Gebäude) leicht in seiner eigenen Farbe */
+const IFC_FILL = 0.35;
+function updateIfcFill() {
+  if (!ifcModel) return;
+  const on = camera.position.y < controls.target.y - 0.5;
+  if (ifcModel.fill === on) return;
+  ifcModel.fill = on;
+  ifcModel.parts.forEach(function (part) {
+    (part.fullMeshes || part.group.children).forEach(function (mesh) {
+      const mat = mesh.userData && mesh.userData.ranges && mesh.material;
+      if (mat && mat.emissive) mat.emissive.copy(mat.color).multiplyScalar(on ? IFC_FILL : 0);
+    });
+  });
+}
+
 /* Unter dem Gelände verdeckte der Sockelblock die Sicht auf Gründungen */
 function updatePlinthVisibility() {
   if (plinthMesh) plinthMesh.visible = camera.position.y >= 0;
