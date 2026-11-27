@@ -8,6 +8,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-27
 
+### Changed
+- **Large IFC files respond faster:** clicking and turning the view on a large structure no longer blocks (the geometry is stored in spatial blocks).
+
 ### Added
 - **Several IFC files at once:** parts of a structure (superstructure, substructure, temporary works) are combined into one structure and placed together.
 - Single small parts far from the structure (such as a marker at height 0) no longer shift the centre used by the arrows, the rotation and the camera.

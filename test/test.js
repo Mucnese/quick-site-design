@@ -2824,6 +2824,13 @@ test('Mitte ohne Ausreißer: ein winziges Teil weit weg zählt nicht, ein normal
   assert.ok(core.minY >= 400 && core.maxX <= 99, JSON.stringify(core));
 });
 
+test('IFC-Netze in Raumblöcken: nahe Bauteile teilen sich ein Netz, ferne nicht, sehr große bekommen ein eigenes', function () {
+  const at = function (x, size) { return new Float32Array([x, 0, 0, x + size, 1, 1]); };
+  assert.strictEqual(app.ifcChunkKey(at(1, 2), 0), app.ifcChunkKey(at(10, 3), 1));
+  assert.notStrictEqual(app.ifcChunkKey(at(1, 2), 0), app.ifcChunkKey(at(200, 2), 1));
+  assert.strictEqual(app.ifcChunkKey(at(0, 120), 7), 'big7');
+});
+
 test('Drehring: Richtungswinkel in der waagerechten Ebene (Ost 0, Nord 90 Grad), null beim waagerechten Blick; Winkel auf (-180, 180]', function () {
   const c = { x: 5, y: 2, z: 5 }, down = { x: 0, y: -1, z: 0 };
   assert.ok(Math.abs(app.ringDragAngle({ x: 9, y: 30, z: 5 }, down, c)) < 1e-9);

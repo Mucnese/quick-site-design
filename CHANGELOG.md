@@ -9,6 +9,9 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-27
 
+### Geändert
+- **Große IFC flüssiger:** Das Anklicken und Drehen der Ansicht auf einem großen Bauwerk blockiert nicht mehr (die Geometrie liegt in Raumblöcken).
+
 ### Neu
 - **Mehrere IFC-Dateien zugleich:** Teile eines Bauwerks (Überbau, Unterbau, Behelfe) werden zu einem Bauwerk zusammengefasst und gemeinsam platziert.
 - Einzelne Kleinteile weit weg vom Bauwerk (etwa ein Marker auf Höhe 0) verschieben die Mitte für Pfeile, Drehzentrum und Kamera nicht mehr.

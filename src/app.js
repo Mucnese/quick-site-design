@@ -7413,6 +7413,23 @@ function ifcCoreBox(arrays, bbox) {
 /* Die für Mitte und Ausdehnung maßgebende Box */
 function ifcBox(model) { return model.core || model.bbox; }
 
+/* Netze je Farbe UND Raumblock: Beim Anklicken prüft three.js nur Netze, deren Box der Blickstrahl trifft. Mit einem
+   Netz je Farbe müsste jeder Klick alle Dreiecke prüfen (bei 1,5 Millionen eine halbe Sekunde). pos: Eckpunkte eines
+   Bauteils; sehr große Bauteile (über IFC_BIG m) bekommen ein eigenes Netz, damit sie die Blöcke nicht aufblähen. */
+const IFC_CELL = 25;
+const IFC_BIG = 50;
+function ifcChunkKey(pos, running) {
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let k = 0; k + 2 < pos.length; k += 3) {
+    for (let a = 0; a < 3; a++) {
+      if (pos[k + a] < lo[a]) lo[a] = pos[k + a];
+      if (pos[k + a] > hi[a]) hi[a] = pos[k + a];
+    }
+  }
+  if (hi[0] - lo[0] > IFC_BIG || hi[1] - lo[1] > IFC_BIG || hi[2] - lo[2] > IFC_BIG) return 'big' + running;
+  return [0, 1, 2].map(function (a) { return Math.floor((lo[a] + hi[a]) / 2 / IFC_CELL); }).join('_');
+}
+
 /* Liest eine IFC-Datei und baut daraus eine Gruppe (je Farbe ein Netz). Gibt {group, coord, georef, bbox, count}
    zurück. Die Gruppe wird noch nicht in die Szene gesetzt. */
 async function ifcReadModel(arrayBuffer, fileName) {
@@ -7422,8 +7439,8 @@ async function ifcReadModel(arrayBuffer, fileName) {
   if (id < 0) throw new Error('ifcNoModel');
   try {
     const georef = ifcReadGeoref(api, id, W);
-    const byColor = new Map();
-    let tris = 0;
+    const byChunk = new Map();
+    let tris = 0, parts = 0;
     api.StreamAllMeshes(id, function (mesh) {
       const gs = mesh.geometries;
       for (let i = 0; i < gs.size(); i++) {
@@ -7433,9 +7450,7 @@ async function ifcReadModel(arrayBuffer, fileName) {
         const idx = api.GetIndexArray(geo.GetIndexData(), geo.GetIndexDataSize());
         const m = pg.flatTransformation;
         const col = pg.color || { x: 0.7, y: 0.7, z: 0.7, w: 1 };
-        const key = [col.x, col.y, col.z, col.w].map(function (v) { return Math.round(v * 255); }).join(',');
-        let e = byColor.get(key);
-        if (!e) { e = { color: col, pos: [], nrm: [], idx: [], base: 0 }; byColor.set(key, e); }
+        const colorKey = [col.x, col.y, col.z, col.w].map(function (v) { return Math.round(v * 255); }).join(',');
         const nv = verts.length / 6;
         const pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3);
         for (let k = 0; k < nv; k++) {
@@ -7448,6 +7463,9 @@ async function ifcReadModel(arrayBuffer, fileName) {
           nrm[k * 3 + 1] = m[1] * nx + m[5] * ny + m[9] * nz;
           nrm[k * 3 + 2] = m[2] * nx + m[6] * ny + m[10] * nz;
         }
+        const key = colorKey + '|' + ifcChunkKey(pos, parts++);
+        let e = byChunk.get(key);
+        if (!e) { e = { color: col, colorKey: colorKey, pos: [], nrm: [], idx: [], base: 0 }; byChunk.set(key, e); }
         const ix = new Uint32Array(idx.length);
         for (let k = 0; k < idx.length; k++) ix[k] = idx[k] + e.base;
         e.pos.push(pos); e.nrm.push(nrm); e.idx.push(ix); e.base += nv;
@@ -7468,8 +7486,8 @@ async function ifcReadModel(arrayBuffer, fileName) {
       arrs.forEach(function (a) { out.set(a, o); o += a.length; });
       return out;
     }
-    const arrays = [];
-    byColor.forEach(function (e) {
+    const arrays = [], materials = new Map();
+    byChunk.forEach(function (e) {
       const pos = cat(e.pos, Float32Array);
       arrays.push(pos);
       for (let k = 0; k < pos.length; k += 3) {
@@ -7481,11 +7499,16 @@ async function ifcReadModel(arrayBuffer, fileName) {
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       g.setAttribute('normal', new THREE.BufferAttribute(cat(e.nrm, Float32Array), 3));
       g.setIndex(new THREE.BufferAttribute(cat(e.idx, Uint32Array), 1));
-      const a = e.color.w === undefined ? 1 : e.color.w;
-      const mat = new THREE.MeshLambertMaterial({
-        color: (Math.round(e.color.x * 255) << 16) | (Math.round(e.color.y * 255) << 8) | Math.round(e.color.z * 255),
-        side: THREE.DoubleSide, transparent: a < 0.99, opacity: a, depthWrite: a >= 0.99
-      });
+      if (g.computeBoundingBox) g.computeBoundingBox();             // für das schnelle Aussortieren beim Anklicken
+      let mat = materials.get(e.colorKey);
+      if (!mat) {
+        const a = e.color.w === undefined ? 1 : e.color.w;
+        mat = new THREE.MeshLambertMaterial({
+          color: (Math.round(e.color.x * 255) << 16) | (Math.round(e.color.y * 255) << 8) | Math.round(e.color.z * 255),
+          side: THREE.DoubleSide, transparent: a < 0.99, opacity: a, depthWrite: a >= 0.99
+        });
+        materials.set(e.colorKey, mat);
+      }
       const mesh = new THREE.Mesh(g, mat);
       mesh.castShadow = true;
       group.add(mesh);
@@ -7684,7 +7707,7 @@ if (typeof module !== 'undefined' && module.exports) {
     axisDragParam: axisDragParam,
     ringDragAngle: ringDragAngle,
     canonicalEpsg: canonicalEpsg,
-    ifcCombine: ifcCombine, ifcCoreBox: ifcCoreBox,
+    ifcCombine: ifcCombine, ifcCoreBox: ifcCoreBox, ifcChunkKey: ifcChunkKey,
     reprojectTerrain: reprojectTerrain, reprojectRings: reprojectRings, buildingTextEpsg: buildingTextEpsg, crsAccuracy: crsAccuracy,
     parseBeta2007: parseBeta2007, ensureBeta2007: ensureBeta2007, hasBeta2007: hasBeta2007, ifcRawPlacement: ifcRawPlacement, ifcGuessGk: ifcGuessGk,
     normDeg: normDeg,

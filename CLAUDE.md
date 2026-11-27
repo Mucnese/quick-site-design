@@ -347,6 +347,8 @@ Geländes setzt `refreshIfcAfterTerrain` automatisch platzierte Modelle neu, man
 **Bezugssystem des Projekts.** `projectCrs` (ui.js): `terrainFromTiles` rechnet das fertige Raster mit `reprojectTerrain` um (`TERRAIN.epsg` = Ziel, `TERRAIN.srcEpsg` = System der Daten). Gebäude bleiben wie gelesen in `gmlSource` (je Datei `{rings, epsg}`), `ringsForTerrain` rechnet sie um; `lastGmlRings` ist immer im System des Geländes. Daten ohne eigene Angabe (Grundrisse, Gebäude) gelten im `srcEpsg`.
 DHDN rechnet über `datumToWgs84`/`datumFromWgs84` mit `lib/de_adv_BETA2007.tif` (beim Start nachgeladen, `ensureBeta2007`; ohne Gitter Helmert). Referenzwerte nur mit ausdrücklichem PROJ-Rechenweg prüfen (`cct … +step +proj=hgridshift`). IFC ohne Georeferenz: `ifcRawPlacement`.
 
+**IFC-Netze.** Je Farbe und Raumblock ein Netz (`ifcChunkKey`), mit Bounding-Box: ein Netz je Farbe machte jeden Raycast über das Bauwerk (Drehzentrum, Vier-Punkte-Klick) bei 1,5 Mio. Dreiecken eine halbe Sekunde lang.
+
 **Mehrere IFC-Dateien.** `handleIfcFile` liest eine oder mehrere; `ifcCombine` hängt je Datei ein Teilnetz (aus `ifcAutoPlacement` relativ zu einem Bezugspunkt) in eine gemeinsame Gruppe mit eigenem `coord`/`georef`. Alles Weitere sieht nur dieses eine `ifcModel`.
 
 **IFC verschieben und drehen.** Zweite Platzierung von Hand (`startIfcMove`, `ifcGizmo` in `ui.js`). Die Lage ist `model.placement` plus Verschiebung `de`/`dn`/`dz` (Ost, Nord, Höhe; Norden = -z) und Drehung `rot` (Grad um die Hochachse durch die Mitte der Bounding-Box), gesetzt nur über `ifcSetShift`/`ifcApplyPlacement`.
