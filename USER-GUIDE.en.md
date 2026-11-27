@@ -292,12 +292,16 @@ file stays in the browser and is not transmitted. Size up to 300 MB.
 - **Automatic:** If the file is georeferenced (`IfcMapConversion`) and uses the **same coordinate
   system (EPSG)** as the terrain, the structure appears at the right place, rotated and at the right
   height. Scale and length unit of the file are taken into account.
-- **Manual (2 + 2 points):** If the georeference is missing or the coordinate system differs, the
+- **Align 4 points (2 + 2):** If the georeference is missing or the coordinate system differs, the
   message names the reason and starts the procedure: click alternately **point A on the structure**, then the
   **matching point A on the terrain**, then point B the same way. The point pairs give position and rotation. The structure
   always stays **level**; its height follows the terrain at the first point. If the two distances do
-  not match, a warning appears. **Esc** cancels. **Place manually** repeats the procedure later.
-- **Height ±** raises or lowers the structure, **✕** removes it.
+  not match, a warning appears. **Esc** cancels. **Align 4 points** repeats the procedure later.
+- **Move on 3 axes:** Three arrows appear at the centre of the structure: **X** (red, east), **Y** (green, north), **Z** (blue, height).
+  Dragging an arrow moves the structure only in that direction; it is not rotated. You can rotate and zoom the view as usual. If you look almost
+  along an axis (for example Z in the top view), that arrow cannot be dragged. **Esc** or a second click on the button ends moving.
+  The button also works in the middle of the four-point procedure: a new structure then stays where you see it.
+- The fields **X East**, **Y North**, **Z Height** hold the shift in metres; you can also type it. **Remove** (right of the heading) takes the structure away.
 - If the structure lies outside the terrain, a note appears. When other terrain is loaded, an
   automatically placed structure is placed again, a manually placed one is removed.
 - Not supported: length units such as feet and inches (IfcConversionBasedUnit).

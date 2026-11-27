@@ -6,6 +6,12 @@ because there are no fixed version numbers. German version: [CHANGELOG.md](CHANG
 
 Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy**.
 
+## 2026-11-27
+
+### Added
+- **Move an IFC structure on three axes:** Besides aligning with four points there is “Move on 3 axes”: arrows at the centre of the structure (X east, Y north, Z height) each move it only in that direction. The shift is shown in three fields and can be typed (before there was only “Height ±”).
+  The “Place manually” button is now called “Align 4 points”.
+
 ## 2026-11-22
 
 ### Changed

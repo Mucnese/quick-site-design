@@ -47,7 +47,8 @@ const STRINGS = {
     osmNoCrs: 'Das Bezugssystem {c} lässt sich nicht in Längen- und Breitengrad umrechnen.',
     osmNoTerrain: 'Zuerst ein Geländemodell laden.',
     osmAttrib: 'Kartendaten © OpenStreetMap-Mitwirkende',
-    ifcFile: 'Bauwerk · IFC', ifcManualBtn: 'Manuell platzieren', ifcDz: 'Höhe ±',
+    ifcFile: 'Bauwerk · IFC', ifcManualBtn: '4 Punkte ausrichten', ifcMoveBtn: '3 Achsen schieben', ifcDx: 'X Ost (m)', ifcDy: 'Y Nord (m)', ifcDz: 'Z Höhe (m)',
+    ifcAxisE: 'X Ost', ifcAxisN: 'Y Nord', ifcAxisU: 'Z Höhe', ifcMoveHint: 'Am roten, grünen oder blauen Pfeil ziehen, um das Bauwerk zu verschieben.', ifcMoveSub: 'X Ost · Y Nord · Z Höhe · Esc beendet', ifcMoveDone: 'Verschieben beendet.', ifcPlacedMove: 'Bauwerk von Hand platziert.', ifcShiftInfo: 'Verschiebung: Ost {x} m · Nord {y} m · Höhe {z} m',
     demWindow: 'Ausschnitt',
     gmlUnreadable: 'Gebäudedatei nicht lesbar:',
     fpTitle: '2D-Gebäudedaten · {n} Gebäude · {f}', fpTable: 'Tabelle', fpGround: 'Geländehöhe (Unterkante)', fpGroundTerrain: 'aus dem Geländemodell',
@@ -74,7 +75,7 @@ const STRINGS = {
     ifcStepSub: 'Schritt {n} von 4 · Esc bricht ab · Die Ansicht lässt sich zwischendurch drehen und zoomen.',
     ifcPlacedManual: 'Bauwerk platziert. Abstand A–B: Bauwerk {m} m, Gelände {t} m.',
     ifcDistWarn: 'Die Abstände weichen um {d} m ab; stimmen die Punkte?',
-    ifcOutside: 'Das Bauwerk liegt außerhalb des Geländes. „Manuell platzieren“ setzt es neu.',
+    ifcOutside: 'Das Bauwerk liegt außerhalb des Geländes. Mit „4 Punkte ausrichten“ oder „3 Achsen schieben“ setzt du es neu.',
     ifcTooBig: '{n}: {s} MB sind zu groß für den Browser (Grenze {m} MB).',
     ifcFail: 'IFC konnte nicht gelesen werden: {e}', ifcEmpty: 'Die IFC-Datei enthält keine darstellbare Geometrie.',
     ifcLibFail: 'Die IFC-Bibliothek (lib/web-ifc-api-iife.js) konnte nicht geladen werden.',
@@ -95,7 +96,7 @@ const STRINGS = {
     helpS5T: 'Mengen und Prüfungen',
     helpS5B: '- Baustraße: Längsneigung, Böschung 1:1 bis 1:2, Auftrag und Abtrag in m³.\n- Die Achslinie zeigt über der Mittellinie die Neigung, darunter die Länge je Abschnitt; beide lassen sich eintippen (Enter).\n- Baugrube: Tiefe, Höhe der Unterkante, Böschungswinkel, Aushub und Aufschüttung in m³.\n- Die Übersicht zeigt die Mengen je Gruppe.\n- „Schleppkurve Sattelzug prüfen“ (Baustraße): zeigt die überstrichene Fläche und ob die Straße breit genug ist.\n- Überschneiden sich Kranradien, warnt die Übersicht.\n- „Messen“ (Leiste): Punkte anklicken, an jeder Strecke stehen waagerechte Länge und Höhenunterschied (2 Nachkommastellen); Rechtsklick oder Leertaste beendet, Rücktaste nimmt den letzten Punkt zurück, Esc beendet.',
     helpS6T: 'Karte und Export',
-    helpS6B: '- Knopf „Karte“ (unten links) → „Karte · OpenStreetMap“ legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände, Gebäude und auf Wunsch die Bausteine als IFC-Datei heruntergeladen, auch in einem anderen Koordinatensystem.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
+    helpS6B: '- Bauwerk (IFC, Fenster „Daten“) von Hand setzen: „4 Punkte ausrichten“ oder „3 Achsen schieben“ (Pfeile X Ost, Y Nord, Z Höhe ziehen).\n- Knopf „Karte“ (unten links) → „Karte · OpenStreetMap“ legt eine Karte aufs Gelände. Dafür werden Kacheln von OpenStreetMap geladen.\n- IFC Export: In der 2D-Ansicht ein Rechteck aufziehen, dann werden Gelände, Gebäude und auf Wunsch die Bausteine als IFC-Datei heruntergeladen, auch in einem anderen Koordinatensystem.\n- IFC Import („Bauwerk · IFC“ im Fenster „Daten“): georeferenziert im gleichen Bezugssystem wie das Gelände = automatisch platziert, sonst je zwei Punkte am Bauwerk und im Gelände anklicken.',
     helpS7T: 'Tastatur',
     helpS7B: '- Esc: abbrechen und Auswahl aufheben.\n- Leertaste: Straße oder Baugrube abschließen.\n- Entf oder Rücktaste: ausgewählte Objekte löschen (nicht beim Tippen in Feldern).',
     addrPlaceholder: 'Wo ist deine Baustelle?',
@@ -250,7 +251,8 @@ const STRINGS = {
     osmNoCrs: 'The coordinate system {c} cannot be converted to latitude and longitude.',
     osmNoTerrain: 'Load a terrain model first.',
     osmAttrib: 'Map data © OpenStreetMap contributors',
-    ifcFile: 'Structure · IFC', ifcManualBtn: 'Place manually', ifcDz: 'Height ±',
+    ifcFile: 'Structure · IFC', ifcManualBtn: 'Align 4 points', ifcMoveBtn: 'Move on 3 axes', ifcDx: 'X East (m)', ifcDy: 'Y North (m)', ifcDz: 'Z Height (m)',
+    ifcAxisE: 'X East', ifcAxisN: 'Y North', ifcAxisU: 'Z Height', ifcMoveHint: 'Drag the red, green or blue arrow to move the structure.', ifcMoveSub: 'X East · Y North · Z Height · Esc ends', ifcMoveDone: 'Moving ended.', ifcPlacedMove: 'Structure placed by hand.', ifcShiftInfo: 'Shift: east {x} m · north {y} m · height {z} m',
     demWindow: 'extract',
     gmlUnreadable: 'Building file not readable:',
     fpTitle: '2D building data · {n} buildings · {f}', fpTable: 'Table', fpGround: 'Ground height (base)', fpGroundTerrain: 'from the terrain model',
@@ -277,7 +279,7 @@ const STRINGS = {
     ifcStepSub: 'Step {n} of 4 · Esc cancels · You can rotate and zoom the view in between.',
     ifcPlacedManual: 'Structure placed. Distance A–B: structure {m} m, terrain {t} m.',
     ifcDistWarn: 'The distances differ by {d} m; do the points match?',
-    ifcOutside: 'The structure lies outside the terrain. “Place manually” sets it again.',
+    ifcOutside: 'The structure lies outside the terrain. Set it again with “Align 4 points” or “Move on 3 axes”.',
     ifcTooBig: '{n}: {s} MB is too large for the browser (limit {m} MB).',
     ifcFail: 'The IFC could not be read: {e}', ifcEmpty: 'The IFC file contains no displayable geometry.',
     ifcLibFail: 'The IFC library (lib/web-ifc-api-iife.js) could not be loaded.',
@@ -298,7 +300,7 @@ const STRINGS = {
     helpS5T: 'Quantities and checks',
     helpS5B: '- Haul road: longitudinal slope, embankment 1:1 to 1:2, fill and cut in m³.\n- The axis line shows the slope above and the length below the centre line for every section; both can be typed in (Enter).\n- Excavation: depth, bottom level, slope angle, excavation and fill in m³.\n- The overview shows the quantities per group.\n- “Check swept path (semi-trailer)” (haul road): shows the swept area and whether the road is wide enough.\n- If crane radii overlap, the overview warns.\n- “Measure” (toolbar): click points, every segment shows horizontal length and height difference (2 decimals); right-click or space finishes, backspace removes the last point, Esc ends.',
     helpS6T: 'Map and export',
-    helpS6B: '- “Map” button (bottom left) → “Map · OpenStreetMap” puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain, buildings and, optionally, the blocks are downloaded as an IFC file, also in another coordinate system.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
+    helpS6B: '- Set a structure (IFC, “Data” window) by hand: “Align 4 points” or “Move on 3 axes” (drag the arrows X east, Y north, Z height).\n- “Map” button (bottom left) → “Map · OpenStreetMap” puts a map on the terrain. Tiles are loaded from OpenStreetMap for this.\n- IFC export: drag a rectangle in the 2D view; terrain, buildings and, optionally, the blocks are downloaded as an IFC file, also in another coordinate system.\n- IFC import (“Structure · IFC” in the “Data” window): georeferenced in the same coordinate system as the terrain = placed automatically, otherwise click two points on the structure and two on the terrain.',
     helpS7T: 'Keyboard',
     helpS7B: '- Esc: cancel and clear the selection.\n- Space: finish a road or excavation.\n- Delete or Backspace: delete the selected objects (not while typing in fields).',
     addrPlaceholder: 'Where is your construction site?',
@@ -745,6 +747,7 @@ function refreshTexts() {
   renderFpPanel();
   renderAddrUi();
   if (ifcPick) showIfcHint(ifcPick.step);
+  if (ifcGizmo) showIfcMoveHint();
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -1973,6 +1976,7 @@ function startRuler() {
   if (rectSelectActive) cancelRectExport();
   clearExportPreview();
   if (ifcPick) cancelIfcPick(true);
+  stopIfcMove(true);
   selectTool(null);
   hideMeasure();
   rulerActive = true; rulerDone = false; rulerPts = []; rulerHover = null;
@@ -2836,8 +2840,9 @@ function addIfcMarker(pt, step) {
 /* Startet die Platzierung von Hand; fresh = das Bauwerk ist neu und hat noch keine Lage */
 function startIfcManual(fresh, why) {
   if (!ifcModel) return;
+  stopIfcMove(true);
   ifcPick = { step: 0, p: [], t: [], markers: [], fresh: !!fresh,
-              before: ifcModel.placement ? { pl: ifcModel.placement, dz: ifcModel.dz } : null };
+              before: ifcModel.placement ? { pl: ifcModel.placement, dz: ifcModel.dz, de: ifcModel.de, dn: ifcModel.dn } : null };
   selectTool(null);
   ifcPreviewPlacement(ifcModel);
   frameIfcModel();
@@ -2846,9 +2851,8 @@ function startIfcManual(fresh, why) {
 }
 
 function frameIfcModel() {
-  const b = ifcModel.bbox, pl = ifcModel.placement;
-  const cx = pl.x + (b.minX + b.maxX) / 2, cz = pl.z + (b.minZ + b.maxZ) / 2;
-  const cy = pl.y + (b.minY + b.maxY) / 2;
+  const b = ifcModel.bbox, c = ifcCenterWorld(ifcModel);
+  const cx = c.x, cy = c.y, cz = c.z;
   const size = Math.max(b.maxX - b.minX, b.maxZ - b.minZ, b.maxY - b.minY, 5);
   // Blickrichtung beibehalten, Abstand nach der Größe des Bauwerks
   let dx = camera.position.x - controls.target.x, dy = camera.position.y - controls.target.y, dz = camera.position.z - controls.target.z;
@@ -2868,7 +2872,7 @@ function cancelIfcPick(silent) {
   ifcPick = null;
   showIfcHint(null);
   if (p.fresh && !p.before) { ifcRemoveModel(); renderIfcUi(); setIfcStatus(T('noFile')); }
-  else if (p.before && ifcModel) ifcApplyPlacement(ifcModel, p.before.pl, p.before.dz);
+  else if (p.before && ifcModel) ifcApplyPlacement(ifcModel, p.before.pl, p.before.dz, p.before.de, p.before.dn);
   if (!silent) setStatus(T('ifcCancelled'));
 }
 
@@ -2903,9 +2907,8 @@ function finishIfcPick() {
   clearIfcMarkers();
   ifcPick = null;
   showIfcHint(null);
-  ifcModel.dz = 0;
-  document.getElementById('ifc-dz').value = '0';
   ifcApplyPlacement(ifcModel, pl, 0);
+  updateIfcShiftFields();
   ifcModel.how = 'manual';
   let msg = ifcFormat('ifcPlacedManual', { m: pl.distModel.toFixed(2), t: pl.distTerrain.toFixed(2) });
   const diff = Math.abs(pl.distModel - pl.distTerrain);
@@ -2922,6 +2925,7 @@ async function handleIfcFile(file) {
     return;
   }
   if (ifcPick) cancelIfcPick(true);
+  stopIfcMove(true);
   setIfcStatus(T('ifcReading'), 'busy');
   showBusy('busyIfc');
   // dem Browser Zeit geben, die Meldung zu zeigen, bevor das Lesen blockiert
@@ -2930,7 +2934,7 @@ async function handleIfcFile(file) {
     const m = await ifcReadModel(await file.arrayBuffer(), file.name);
     const model = ifcSetModel(m);
     renderIfcUi();
-    document.getElementById('ifc-dz').value = '0';
+    ['ifc-dx', 'ifc-dy', 'ifc-dz'].forEach(function (id) { document.getElementById(id).value = '0'; });
     const g = model.georef;
     let why = '';
     if (!g) why = T('ifcWhyNoGeo');
@@ -2965,10 +2969,11 @@ async function handleIfcFile(file) {
    alles andere entfernen (die Lage gilt nur für das alte Gelände) */
 function refreshIfcAfterTerrain() {
   if (ifcPick) cancelIfcPick(true);
+  stopIfcMove(true);
   if (!ifcModel) return;
   const g = ifcModel.georef;
   if (ifcModel.how === 'auto' && g && g.epsg && g.epsg === TERRAIN.epsg) {
-    ifcApplyPlacement(ifcModel, ifcAutoPlacement(g, ifcModel.coord, TERRAIN), ifcModel.dz || 0);
+    ifcApplyPlacement(ifcModel, ifcAutoPlacement(g, ifcModel.coord, TERRAIN), ifcModel.dz, ifcModel.de, ifcModel.dn);
     return;
   }
   ifcRemoveModel();
@@ -2976,13 +2981,190 @@ function refreshIfcAfterTerrain() {
   setIfcStatus(T('noFile'));
 }
 
-/* Höhenversatz des Bauwerks in m (Feld "Höhe ±") */
-function applyIfcDz(value) {
+/* Verschiebung des Bauwerks in m aus den Feldern; axis: 'e' Ost, 'n' Nord, 'z' Höhe */
+function applyIfcShift(axis, value) {
   if (!ifcModel || !ifcModel.placement) return;
   const v = parseFloat(value);
   if (!isFinite(v)) return;
-  ifcModel.dz = v;
-  ifcModel.group.position.y = ifcModel.baseY + v;
+  ifcSetShift(ifcModel, axis === 'e' ? v : ifcModel.de, axis === 'n' ? v : ifcModel.dn, axis === 'z' ? v : ifcModel.dz);
+}
+
+function applyIfcDz(value) { applyIfcShift('z', value); }
+
+function updateIfcShiftFields() {
+  if (!ifcModel) return;
+  [['ifc-dx', ifcModel.de], ['ifc-dy', ifcModel.dn], ['ifc-dz', ifcModel.dz]].forEach(function (f) {
+    document.getElementById(f[0]).value = String(Math.round((f[1] || 0) * 100) / 100);
+  });
+}
+
+/* ---------- Verschieben mit drei Achsen ----------
+   Zweite Art der Platzierung von Hand neben den vier Punkten: In der Mitte des Bauwerks stehen drei Pfeile
+   (X = Ost, Y = Nord, Z = Höhe); an einem Pfeil gezogen, verschiebt sich das Bauwerk nur entlang dieser Achse.
+   Gedreht wird dabei nicht. Die Pfeile liegen immer obenauf und bleiben am Bildschirm etwa gleich groß. */
+let ifcGizmo = null;       // { group, labels, drag }
+
+const IFC_AXES = [
+  { key: 'e', dir: { x: 1, y: 0, z: 0 }, color: 0xe5484d, rot: [0, 0, -Math.PI / 2], text: 'ifcAxisE' },
+  { key: 'n', dir: { x: 0, y: 0, z: -1 }, color: 0x46a758, rot: [-Math.PI / 2, 0, 0], text: 'ifcAxisN' },
+  { key: 'z', dir: { x: 0, y: 1, z: 0 }, color: 0x3e8eed, rot: [0, 0, 0], text: 'ifcAxisU' }
+];
+const IFC_GIZMO_SIZE = 0.14;      // Pfeillänge im Verhältnis zum Abstand der Kamera
+
+function buildIfcGizmo() {
+  const group = new THREE.Group();
+  IFC_AXES.forEach(function (ax) {
+    const arrow = new THREE.Group();
+    arrow.rotation.set(ax.rot[0], ax.rot[1], ax.rot[2]);
+    const mat = new THREE.MeshBasicMaterial({ color: ax.color, depthTest: false, depthWrite: false, transparent: true, fog: false });
+    // unsichtbarer, dickerer Griff, damit der Pfeil leicht zu treffen ist
+    const grab = new THREE.MeshBasicMaterial({ color: ax.color, depthTest: false, depthWrite: false, transparent: true, opacity: 0 });
+    [[new THREE.CylinderGeometry(0.018, 0.018, 0.8, 8), mat, 0.4],
+     [new THREE.CylinderGeometry(0, 0.07, 0.2, 12), mat, 0.9],
+     [new THREE.CylinderGeometry(0.09, 0.09, 1, 8), grab, 0.55]].forEach(function (part) {
+      const mesh = new THREE.Mesh(part[0], part[1]);
+      mesh.position.y = part[2];
+      mesh.renderOrder = 20;
+      mesh.userData.ifcAxis = ax.key;
+      arrow.add(mesh);
+    });
+    group.add(arrow);
+  });
+  return group;
+}
+
+function showIfcMoveHint() {
+  const el = document.getElementById('ifc-hint');
+  el.textContent = '';
+  const main = document.createElement('div');
+  main.textContent = T('ifcMoveHint');
+  const sub = document.createElement('div');
+  sub.className = 'sub';
+  sub.textContent = T('ifcMoveSub');
+  el.appendChild(main); el.appendChild(sub);
+  el.style.display = 'block';
+}
+
+function startIfcMove() {
+  if (!ifcModel) return;
+  if (ifcPick) {
+    // aus den vier Punkten umsteigen: eine vorhandene Lage gilt wieder, ein neues Bauwerk bleibt, wo es zu sehen ist
+    const p = ifcPick;
+    clearIfcMarkers();
+    ifcPick = null;
+    showIfcHint(null);
+    if (p.before) ifcApplyPlacement(ifcModel, p.before.pl, p.before.dz, p.before.de, p.before.dn);
+    else { ifcModel.how = 'manual'; setIfcStatus(T('ifcPlacedMove'), 'ok'); }
+  }
+  if (!ifcModel.placement) return;
+  if (rulerActive) stopRuler();
+  if (rectSelectActive) cancelRectExport();
+  selectTool(null);
+  const group = buildIfcGizmo();
+  scene.add(group);
+  const box = document.getElementById('gizmo-labels');
+  const labels = IFC_AXES.map(function (ax) {
+    const d = document.createElement('div');
+    d.className = 'seg-label gizmo-' + ax.key;
+    box.appendChild(d);
+    return d;
+  });
+  ifcGizmo = { group: group, labels: labels, drag: null };
+  document.getElementById('ifc-move-btn').className = 'btn-block accent';
+  updateIfcShiftFields();
+  showIfcMoveHint();
+  updateIfcGizmo();
+}
+
+function stopIfcMove(silent) {
+  if (!ifcGizmo) return;
+  endIfcGizmoDrag();
+  scene.remove(ifcGizmo.group);
+  disposeGroup(ifcGizmo.group);
+  const box = document.getElementById('gizmo-labels');
+  ifcGizmo.labels.forEach(function (d) { box.removeChild(d); });
+  ifcGizmo = null;
+  document.getElementById('ifc-move-btn').className = 'btn-block';
+  showIfcHint(null);
+  if (!silent) setStatus(T('ifcMoveDone'));
+}
+
+function toggleIfcMove() {
+  if (ifcGizmo) stopIfcMove(); else startIfcMove();
+}
+
+/* Pro Bild: Pfeile in die Mitte des Bauwerks setzen, Größe nach dem Abstand, Beschriftung an die Spitzen */
+function updateIfcGizmo() {
+  if (!ifcGizmo) return;
+  if (!ifcModel) { stopIfcMove(true); return; }
+  const c = ifcCenterWorld(ifcModel);
+  const g = ifcGizmo.group;
+  g.position.set(c.x, c.y, c.z);
+  const size = Math.max(1, camera.position.distanceTo(g.position) * IFC_GIZMO_SIZE);
+  g.scale.set(size, size, size);
+  camera.updateMatrixWorld();
+  const v = new THREE.Vector3();
+  IFC_AXES.forEach(function (ax, i) {
+    const el = ifcGizmo.labels[i];
+    v.set(c.x + ax.dir.x * size * 1.15, c.y + ax.dir.y * size * 1.15, c.z + ax.dir.z * size * 1.15).project(camera);
+    if (v.z > 1) { el.style.display = 'none'; return; }
+    const txt = T(ax.text);
+    if (el.textContent !== txt) el.textContent = txt;
+    el.style.display = 'block';
+    el.style.transform = 'translate(' + Math.round((v.x * 0.5 + 0.5) * window.innerWidth) + 'px, ' +
+      Math.round((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px) translate(-50%, -50%)';
+  });
+}
+
+/* Abstand auf der Achse unter dem Mauszeiger, vom Ausgangspunkt origin aus */
+function ifcAxisUnderPointer(event, ax, origin) {
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  return axisDragParam(raycaster.ray.origin, raycaster.ray.direction, origin, ax.dir);
+}
+
+/* Taste auf einem Pfeil: Ziehen beginnt. Gibt true zurück, wenn der Druck dem Pfeil gehört. */
+function startIfcGizmoDrag(event) {
+  if (!ifcGizmo || (event.button !== undefined && event.button !== 0)) return false;
+  ifcGizmo.group.updateMatrixWorld();
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObject(ifcGizmo.group, true);
+  if (!hits.length) return false;
+  const ax = IFC_AXES.find(function (a) { return a.key === hits[0].object.userData.ifcAxis; });
+  if (!ax) return false;
+  const origin = ifcCenterWorld(ifcModel);
+  const s0 = ifcAxisUnderPointer(event, ax, origin);
+  ifcGizmo.drag = { axis: ax, origin: origin, s0: s0, de: ifcModel.de, dn: ifcModel.dn, dz: ifcModel.dz };
+  controls.enabled = false;
+  if (event.preventDefault) event.preventDefault();
+  if (event.stopPropagation) event.stopPropagation();      // weder drehen noch als Klick ins Gelände werten
+  window.addEventListener('pointermove', onIfcGizmoMove);
+  window.addEventListener('pointerup', endIfcGizmoDrag);
+  window.addEventListener('pointercancel', endIfcGizmoDrag);
+  return true;
+}
+
+function onIfcGizmoMove(event) {
+  const d = ifcGizmo && ifcGizmo.drag;
+  if (!d) return;
+  if (event.buttons !== undefined && !(event.buttons & 1)) { endIfcGizmoDrag(); return; }
+  const s = ifcAxisUnderPointer(event, d.axis, d.origin);
+  if (s === null || d.s0 === null) return;
+  const step = Math.round((s - d.s0) * 100) / 100;          // auf Zentimeter
+  const k = d.axis.key;
+  ifcSetShift(ifcModel, d.de + (k === 'e' ? step : 0), d.dn + (k === 'n' ? step : 0), d.dz + (k === 'z' ? step : 0));
+  updateIfcShiftFields();
+  setStatus(ifcFormat('ifcShiftInfo', { x: ifcModel.de.toFixed(2), y: ifcModel.dn.toFixed(2), z: ifcModel.dz.toFixed(2) }));
+}
+
+function endIfcGizmoDrag() {
+  if (!ifcGizmo || !ifcGizmo.drag) return;
+  ifcGizmo.drag = null;
+  controls.enabled = true;
+  window.removeEventListener('pointermove', onIfcGizmoMove);
+  window.removeEventListener('pointerup', endIfcGizmoDrag);
+  window.removeEventListener('pointercancel', endIfcGizmoDrag);
 }
 
 function focusOnIfc() {
@@ -2991,6 +3173,7 @@ function focusOnIfc() {
 
 function removeIfc() {
   cancelIfcPick(true);
+  stopIfcMove(true);
   ifcRemoveModel();
   renderIfcUi();
   setIfcStatus(T('noFile'));
@@ -3729,6 +3912,7 @@ let pivotDrag = null;
 
 function onOrbitPointerDown(event) {
   if (event.target !== renderer.domElement) return;
+  if (startIfcGizmoDrag(event)) return;           // Pfeil zum Verschieben des Bauwerks hat Vorrang
   if (event.button !== 0 || event.ctrlKey || event.shiftKey || event.metaKey || event.altKey) return;
   if (event.pointerType && event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
   if (rectSelectActive) return;               // Rechteck ziehen sperrt das Drehen
@@ -3996,6 +4180,7 @@ function onKeyDown(event) {
   if (event.key === 'Escape') {
     if (rulerActive) { stopRuler(); return; }
     if (ifcPick) { cancelIfcPick(); return; }
+    if (ifcGizmo) { stopIfcMove(); return; }
     if (rectSelectActive) { cancelRectExport(); return; }
     if (isIfcPanelOpen()) { clearExportPreview(); setStatus(''); return; }
     // Erst die Knotenauswahl lösen, die Objektauswahl bleibt bestehen
@@ -4080,8 +4265,11 @@ function initUI() {
   document.getElementById('ruler-new').addEventListener('click', newRuler);
   document.getElementById('ruler-close').addEventListener('click', stopRuler);
   document.getElementById('ifc-manual-btn').addEventListener('click', function () { startIfcManual(false); });
-  document.getElementById('ifc-dz').addEventListener('input', function (e) {
-    applyIfcDz((e && e.target ? e.target : this).value);
+  document.getElementById('ifc-move-btn').addEventListener('click', toggleIfcMove);
+  [['ifc-dx', 'e'], ['ifc-dy', 'n'], ['ifc-dz', 'z']].forEach(function (f) {
+    document.getElementById(f[0]).addEventListener('input', function (e) {
+      applyIfcShift(f[1], (e && e.target ? e.target : this).value);
+    });
   });
   ['fp-ground-src', 'fp-ground-attr', 'fp-ground-fixed', 'fp-h-src', 'fp-h-attr', 'fp-h-fixed', 'fp-h-ref', 'fp-h-factor', 'fp-fallback', 'fp-crs', 'fp-epsg'].forEach(function (id) {
     document.getElementById(id).addEventListener('change', onFpChanged);
@@ -4237,6 +4425,8 @@ if (typeof module !== 'undefined' && module.exports) {
     removeIfc: removeIfc,
     refreshIfcAfterTerrain: refreshIfcAfterTerrain,
     getIfcPick: function () { return ifcPick; },
+    startIfcMove: startIfcMove, stopIfcMove: stopIfcMove, updateIfcGizmo: updateIfcGizmo, applyIfcShift: applyIfcShift,
+    startIfcGizmoDrag: startIfcGizmoDrag, onIfcGizmoMove: onIfcGizmoMove, endIfcGizmoDrag: endIfcGizmoDrag,
     setIfcPick: function (p) { ifcPick = p; },
     buildHelpPanel: buildHelpPanel,
 

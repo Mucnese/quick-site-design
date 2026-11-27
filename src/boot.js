@@ -33,6 +33,7 @@ function start() {
     updateControls();
     updatePointLabel();
     updateSegLabels();
+    updateIfcGizmo();
     updateAxisLabels();
     updateRulerScale();
     updateCompass();

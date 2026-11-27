@@ -6929,7 +6929,7 @@ const IFC_LIB_SCRIPT = 'lib/web-ifc-api-iife.js';
 const IFC_LIB_DIR = 'lib/';
 let webIfcApi = null;               // IfcAPI nach Init
 let webIfcLoading = null;           // laufendes Laden der Bibliothek
-let ifcModel = null;                // { group, name, coord, georef, placement, baseY, bbox }
+let ifcModel = null;                // { group, name, coord, georef, placement, de, dn, dz, bbox }
 
 const IFC_PREFIX = { MILLI: 0.001, CENTI: 0.01, DECI: 0.1, KILO: 1000 };
 
@@ -7036,22 +7036,48 @@ function ifcTwoPointPlacement(p1, p2, t1, t2, heightAt) {
   };
 }
 
-function ifcApplyPlacement(model, pl, dz) {
+function ifcApplyPlacement(model, pl, dz, de, dn) {
   const g = model.group;
   g.rotation.y = pl.rotY;
   g.scale.set(pl.scale, pl.scale, pl.scale);
-  model.baseY = pl.y;
-  g.position.set(pl.x, pl.y + (dz || 0), pl.z);
   model.placement = pl;
+  ifcSetShift(model, de || 0, dn || 0, dz || 0);
+}
+
+/* Verschiebung gegenüber der Platzierung in m: Ost, Nord, Höhe (in der Szene ist Norden -z) */
+function ifcSetShift(model, de, dn, dz) {
+  const pl = model.placement;
+  model.de = de; model.dn = dn; model.dz = dz;
+  model.group.position.set(pl.x + de, pl.y + dz, pl.z - dn);
+}
+
+/* Mitte des Bauwerks in Szenenkoordinaten */
+function ifcCenterWorld(model) {
+  const b = model.bbox, pl = model.placement, s = pl.scale;
+  const cx = (b.minX + b.maxX) / 2, cy = ((b.minY + b.maxY) / 2) || 0, cz = (b.minZ + b.maxZ) / 2;
+  const c = Math.cos(pl.rotY), n = Math.sin(pl.rotY);
+  return {
+    x: pl.x + (model.de || 0) + s * (c * cx + n * cz),
+    y: pl.y + (model.dz || 0) + s * cy,
+    z: pl.z - (model.dn || 0) + s * (-n * cx + c * cz)
+  };
+}
+
+/* Stelle auf der Achse durch p0 (Einheitsrichtung a), die dem Blickstrahl (Ursprung o, Einheitsrichtung d) am nächsten
+   liegt, als Abstand von p0 in m. null, wenn man fast entlang der Achse blickt (dann lässt sich nicht ziehen). */
+function axisDragParam(o, d, p0, a) {
+  const wx = p0.x - o.x, wy = p0.y - o.y, wz = p0.z - o.z;
+  const b = a.x * d.x + a.y * d.y + a.z * d.z;
+  const den = 1 - b * b;
+  if (den < 0.01) return null;
+  const aw = a.x * wx + a.y * wy + a.z * wz, dw = d.x * wx + d.y * wy + d.z * wz;
+  return (b * dw - aw) / den;
 }
 
 /* Liegt der Mittelpunkt des Bauwerks (Gruppenkoordinaten) nach der Platzierung innerhalb des Geländes? */
 function ifcInsideTerrain(model, terrain) {
-  const b = model.bbox;
-  const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
-  const pl = model.placement, c = Math.cos(pl.rotY), s = Math.sin(pl.rotY);
-  const x = pl.x + pl.scale * (c * cx + s * cz), z = pl.z + pl.scale * (-s * cx + c * cz);
-  return Math.abs(x) <= terrain.w / 2 && Math.abs(z) <= terrain.d / 2;
+  const m = ifcCenterWorld(model);
+  return Math.abs(m.x) <= terrain.w / 2 && Math.abs(m.z) <= terrain.d / 2;
 }
 
 /* Liest eine IFC-Datei und baut daraus eine Gruppe (je Farbe ein Netz). Gibt {group, coord, georef, bbox, count}
@@ -7146,7 +7172,7 @@ function ifcRemoveModel() {
 function ifcSetModel(m) {
   ifcRemoveModel();
   ifcModel = { group: m.group, name: m.name, coord: m.coord, georef: m.georef, bbox: m.bbox, triangles: m.triangles,
-               placement: null, baseY: 0, dz: 0, how: null };
+               placement: null, de: 0, dn: 0, dz: 0, how: null };
   scene.add(ifcModel.group);
   return ifcModel;
 }
@@ -7320,6 +7346,8 @@ if (typeof module !== 'undefined' && module.exports) {
     ifcReadModel: ifcReadModel,
     ifcSetModel: ifcSetModel,
     ifcRemoveModel: ifcRemoveModel,
+    axisDragParam: axisDragParam,
+    ifcCenterWorld: ifcCenterWorld,
     getIfcModel: function () { return ifcModel; },
     ifcInsideTerrain: ifcInsideTerrain,
     ifcAngle: ifcAngle,

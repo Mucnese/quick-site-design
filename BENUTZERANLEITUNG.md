@@ -297,13 +297,17 @@ nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Grö�
 - **Automatisch:** Ist die Datei georeferenziert (`IfcMapConversion`) und hat **dasselbe
   Bezugssystem (EPSG)** wie das Gelände, steht das Bauwerk sofort an der richtigen Stelle,
   gedreht und in der richtigen Höhe. Maßstab und Längeneinheit der Datei werden berücksichtigt.
-- **Manuell (2 + 2 Punkte):** Fehlt die Georeferenz oder weicht das Bezugssystem ab, nennt die Meldung
+- **4 Punkte ausrichten (2 + 2):** Fehlt die Georeferenz oder weicht das Bezugssystem ab, nennt die Meldung
   den Grund und startet das Verfahren: abwechselnd **Punkt A am Bauwerk**, dann der **zugehörige
   Punkt A im Gelände**, danach ebenso Punkt B. Aus den Punktpaaren ergeben sich Lage und Drehung. Das Bauwerk bleibt
   immer **waagerecht**; die Höhe richtet sich nach dem Gelände am ersten Punkt. Stimmen die beiden
-  Abstände nicht überein, erscheint eine Warnung. **Esc** bricht ab. Mit **Manuell platzieren** lässt sich
+  Abstände nicht überein, erscheint eine Warnung. **Esc** bricht ab. Mit **4 Punkte ausrichten** lässt sich
   das Verfahren später wiederholen.
-- Mit **Höhe ±** hebt oder senkt man das Bauwerk, **✕** entfernt es.
+- **3 Achsen schieben:** In der Mitte des Bauwerks erscheinen drei Pfeile: **X** (rot, Ost), **Y** (grün, Nord), **Z** (blau, Höhe).
+  An einem Pfeil ziehen verschiebt das Bauwerk nur in dieser Richtung; gedreht wird dabei nicht. Die Ansicht lässt sich wie gewohnt drehen und zoomen. Blickt man fast
+  entlang einer Achse (z. B. Z in der Draufsicht), lässt sich dieser Pfeil nicht ziehen. **Esc** oder ein zweiter Klick auf den Knopf beendet das Verschieben.
+  Der Knopf geht auch mitten im Vier-Punkte-Verfahren: Ein neues Bauwerk bleibt dann dort, wo es zu sehen ist.
+- In den Feldern **X Ost**, **Y Nord**, **Z Höhe** steht die Verschiebung in Metern; man kann sie auch eintippen. **Entfernen** (rechts neben der Überschrift) nimmt das Bauwerk weg.
 - Liegt das Bauwerk außerhalb des Geländes, erscheint ein Hinweis. Wird ein anderes Gelände geladen,
   wird ein automatisch platziertes Bauwerk neu gesetzt, ein manuell platziertes entfernt.
 - Nicht unterstützt: Längeneinheiten wie Fuß und Zoll (IfcConversionBasedUnit).

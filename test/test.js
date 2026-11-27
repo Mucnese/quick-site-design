@@ -2733,6 +2733,15 @@ test('IFC-Import: Georeferenz wird aus IfcMapConversion und IfcProjectedCRS gele
   assert.strictEqual(app.ifcReadGeoref(api, 1, W).epsg, null);
 });
 
+test('Achse unter dem Blickstrahl: Abstand entlang der Achse, null beim Blick entlang der Achse', function () {
+  const p0 = { x: 10, y: 0, z: 0 }, east = { x: 1, y: 0, z: 0 };
+  const down = { x: 0, y: -1, z: 0 };
+  assert.ok(Math.abs(app.axisDragParam({ x: 14, y: 50, z: 7 }, down, p0, east) - 4) < 1e-9);
+  const k = Math.SQRT1_2;
+  assert.ok(Math.abs(app.axisDragParam({ x: 13, y: 20, z: 20 }, { x: 0, y: -k, z: -k }, p0, east) - 3) < 1e-9);
+  assert.strictEqual(app.axisDragParam({ x: 0, y: 50, z: 0 }, down, p0, { x: 0, y: 1, z: 0 }), null);
+});
+
 test('IFC-Import: liegt die Mitte des Bauwerks außerhalb des Geländes, wird das erkannt', function () {
   const model = { bbox: { minX: 0, maxX: 10, minZ: 0, maxZ: 10 }, placement: { rotY: 0, scale: 1, x: 0, y: 0, z: 0 } };
   assert.strictEqual(app.ifcInsideTerrain(model, { w: 100, d: 100 }), true);

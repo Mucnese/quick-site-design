@@ -2390,6 +2390,76 @@ await test('IFC-Import: anderes Bezugssystem oder keine Georeferenz - Platzierun
   assert.ok(g('ifc-status').textContent.indexOf('weichen um 15.00 m ab') >= 0 && g('ifc-status').className.indexOf('err') > 0, g('ifc-status').textContent);
 });
 
+await test('IFC verschieben mit drei Achsen: Ziehen am Pfeil verschiebt nur entlang dieser Achse, Felder und Esc', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  const g = function (id) { return s.document.getElementById(id); };
+  s.initUI();
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  const m = ifcModelOf(s);
+  const p0 = { x: m.group.position.x, y: m.group.position.y, z: m.group.position.z };
+  s.startIfcMove();
+  assert.strictEqual(g('ifc-move-btn').className, 'btn-block accent');
+  assert.strictEqual(g('ifc-hint').style.display, 'block');
+  assert.strictEqual(g('gizmo-labels').children.length, 3);
+  const rc = vm.runInContext('raycaster', s);
+  const drag = function (axis, from, to) {
+    rc._results = [{ object: { userData: { ifcAxis: axis } } }];
+    rc.ray = from;
+    assert.strictEqual(s.startIfcGizmoDrag({ button: 0, clientX: 1, clientY: 1 }), true);
+    rc.ray = to;
+    s.onIfcGizmoMove({ clientX: 2, clientY: 2, buttons: 1 });
+    s.endIfcGizmoDrag();
+  };
+  const c = s.ifcCenterWorld(m);
+  // senkrecht von oben auf die Achse Ost bzw. Nord
+  const down = function (dx, dz) { return { origin: { x: c.x + dx, y: c.y + 100, z: c.z + dz }, direction: { x: 0, y: -1, z: 0 } }; };
+  drag('e', down(2, 0), down(9, 3));
+  assert.deepStrictEqual([m.de, m.dn, m.dz], [7, 0, 0]);
+  assert.ok(Math.abs(m.group.position.x - p0.x - 7) < 1e-9 && m.group.position.z === p0.z);
+  assert.strictEqual(g('ifc-dx').value, '7');
+  const c2 = s.ifcCenterWorld(m);
+  const downN = function (dz) { return { origin: { x: c2.x, y: c2.y + 100, z: c2.z + dz }, direction: { x: 0, y: -1, z: 0 } }; };
+  drag('n', downN(0), downN(-4));                                // nach Norden = -z
+  assert.deepStrictEqual([m.de, m.dn, m.dz], [7, 4, 0]);
+  assert.ok(Math.abs(m.group.position.z - p0.z + 4) < 1e-9);
+  const c3 = s.ifcCenterWorld(m);
+  const side = function (dy) { return { origin: { x: c3.x, y: c3.y + dy, z: c3.z + 100 }, direction: { x: 0, y: 0, z: -1 } }; };
+  drag('z', side(1), side(3.5));
+  assert.deepStrictEqual([m.de, m.dn, m.dz], [7, 4, 2.5]);
+  assert.ok(Math.abs(m.group.position.y - p0.y - 2.5) < 1e-9);
+  // entlang der Höhenachse geblickt: keine Bewegung
+  drag('z', down(0, 0), down(5, 5));
+  assert.strictEqual(m.dz, 2.5);
+  // Feld und Esc
+  s.applyIfcShift('e', '-1.5');
+  assert.ok(Math.abs(m.group.position.x - p0.x + 1.5) < 1e-9);
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(g('ifc-move-btn').className, 'btn-block');
+  assert.strictEqual(g('gizmo-labels').children.length, 0);
+  rc._results = [{ object: { userData: { ifcAxis: 'e' } } }];
+  assert.strictEqual(s.startIfcGizmoDrag({ button: 0 }), false, 'ohne Pfeile kein Ziehen');
+  // Vier Punkte abbrechen behält die Verschiebung
+  s.startIfcManual(false);
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.ok(Math.abs(m.group.position.x - p0.x + 1.5) < 1e-9 && m.dn === 4 && m.dz === 2.5);
+});
+
+await test('IFC verschieben: aus den vier Punkten umsteigen platziert ein neues Bauwerk; Entfernen beendet das Verschieben', async function () {
+  const s = ifcScope(null);
+  const g = function (id) { return s.document.getElementById(id); };
+  s.initUI();
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  assert.ok(ifcPickOf(s));
+  s.startIfcMove();
+  assert.strictEqual(ifcPickOf(s), null);
+  assert.strictEqual(ifcModelOf(s).how, 'manual');
+  assert.ok(g('ifc-status').textContent.indexOf('von Hand platziert') >= 0);
+  s.updateIfcGizmo();
+  s.removeIfc();
+  assert.strictEqual(vm.runInContext('ifcGizmo', s), null);
+  assert.strictEqual(g('gizmo-labels').children.length, 0);
+});
+
 await test('Großes Gebäudemodell: Hinweis "wird verarbeitet/gerendert" erscheint während der Arbeit und verschwindet danach, auch bei Fehlern', async function () {
   const s = await scopeWithTerrain();
   const busy = s.document.getElementById('busy-hint');

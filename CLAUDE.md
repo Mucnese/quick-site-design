@@ -343,6 +343,9 @@ die Meshes (Meter, Y oben, `COORDINATE_TO_ORIGIN`); `ifcReadGeoref` holt IfcMapC
 Modell bleibt waagerecht. IfcConversionBasedUnit (z. B. Fuß) wird nicht ausgewertet. Nach dem Wechsel des
 Geländes setzt `refreshIfcAfterTerrain` automatisch platzierte Modelle neu, manuell platzierte entfallen.
 
+**IFC verschieben (drei Achsen).** Zweite Platzierung von Hand (`startIfcMove`, `ifcGizmo` in `ui.js`). Die Lage ist `model.placement` plus Verschiebung `de`/`dn`/`dz` (Ost, Nord, Höhe; Norden = -z), gesetzt nur über `ifcSetShift`/`ifcApplyPlacement`.
+Der Griff eines Pfeils wird in `onOrbitPointerDown` (Capture am Fenster) vor allem anderen geprüft und stoppt das Ereignis; die Strecke rechnet `axisDragParam` (null beim Blick fast entlang der Achse). `updateIfcGizmo` läuft pro Bild in `animate`. Wer einen neuen Modus einbaut, ruft `stopIfcMove`.
+
 **IFC-Export mit Bausteinen und Zielsystem.** `collectExportObjects` holt je Baustein die Dreiecke
 (`objectTriangles`: Meshes und Instanzen in Weltkoordinaten; Linien und `IFC_SKIP_KINDS`-Hilfsflächen der
 Straße bleiben draußen); `runIfcExport` ruft es erst beim Exportieren (Häkchen `ifc-objects`). `opts.targetEpsg`
