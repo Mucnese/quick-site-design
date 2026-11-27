@@ -8,6 +8,11 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-27
 
+### Added
+- **Click an IFC element:** a window with class, name, type, material, container and all properties and quantities; the element is highlighted.
+- **Filter by any attribute with quantities:** clicking a row shows only the elements with the same value and adds up count, volume, surface area and the quantities from the IFC.
+- **Add IFC files:** a new selection is added to the loaded structure instead of replacing it.
+
 ### Changed
 - **Large IFC files respond faster:** clicking and turning the view on a large structure no longer blocks (the geometry is stored in spatial blocks).
 

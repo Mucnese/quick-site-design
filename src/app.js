@@ -7255,20 +7255,32 @@ function ifcMapCentre(part) {
   return { e: sum.x / 8, n: -sum.z / 8, h: sum.y / 8 };
 }
 
-/* parts: gelesene Dateien wie aus ifcReadModel. Ergebnis { model, used, skipped: [{ name, why: 'crs' | 'far' }] } */
-function ifcCombine(parts) {
-  if (parts.length === 1) return { model: parts[0], used: 1, skipped: [] };
-  const centres = parts.map(ifcMapCentre);
-  // Bezug: die erste Datei mit genanntem Bezugssystem, sonst die mit den größten Koordinaten (Landeskoordinaten)
-  let a = parts.findIndex(function (p) { return p.georef && p.georef.epsg; });
-  if (a < 0) {
-    a = 0;
-    centres.forEach(function (c, i) { if (Math.abs(c.e) + Math.abs(c.n) > Math.abs(centres[a].e) + Math.abs(centres[a].n)) a = i; });
+/* parts: gelesene Dateien wie aus ifcReadModel. anchor: Index der Datei, in deren Koordinaten das zusammengefasste
+   Modell liegt (beim Dazulegen die schon geladene, dann bleibt sie genau an ihrer Stelle); ohne Angabe die erste mit
+   genanntem Bezugssystem, sonst die mit den größten Koordinaten (Landeskoordinaten).
+   Ergebnis { model (mit model.parts, Anker zuerst), used, skipped: [{ name, why: 'crs' | 'far' }] } */
+function ifcCombine(parts, anchor) {
+  if (parts.length === 1) {
+    const only = parts[0];
+    only.parts = [Object.assign({}, only, { parts: undefined })];
+    return { model: only, used: 1, skipped: [] };
   }
-  const epsg = parts[a].georef ? parts[a].georef.epsg : null;
-  const ref = { originE: Math.round(centres[a].e), originN: Math.round(centres[a].n), zmin: Math.round(centres[a].h) };
+  const centres = parts.map(ifcMapCentre);
+  let a = anchor;
+  if (a === undefined) {
+    a = parts.findIndex(function (p) { return p.georef && p.georef.epsg; });
+    if (a < 0) {
+      a = 0;
+      centres.forEach(function (c, i) { if (Math.abs(c.e) + Math.abs(c.n) > Math.abs(centres[a].e) + Math.abs(centres[a].n)) a = i; });
+    }
+  }
+  const A = parts[a];
+  const zero = { originE: 0, originN: 0, zmin: 0 };
+  const ta = ifcAutoPlacement(A.georef || IFC_PLAIN_GEOREF, A.coord, zero);
+  let epsg = A.georef && A.georef.epsg;
+  if (!epsg) parts.some(function (p) { epsg = p.georef && p.georef.epsg; return !!epsg; });
   const group = new THREE.Group();
-  const skipped = [];
+  const skipped = [], used = [];
   const empty = function () { return { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity }; };
   const box = empty(), core = empty();
   const grow = function (target, list) {
@@ -7278,13 +7290,20 @@ function ifcCombine(parts) {
       target.minZ = Math.min(target.minZ, q.z); target.maxZ = Math.max(target.maxZ, q.z);
     });
   };
-  let triangles = 0, used = 0, georef = false;
-  parts.forEach(function (p, i) {
+  let triangles = 0;
+  [a].concat(parts.map(function (p, i) { return i; }).filter(function (i) { return i !== a; })).forEach(function (i) {
+    const p = parts[i];
     const other = p.georef && p.georef.epsg;
     const why = other && epsg && other !== epsg ? 'crs'
       : Math.hypot(centres[i].e - centres[a].e, centres[i].n - centres[a].n) > IFC_MAX_SPREAD ? 'far' : null;
-    if (why) { skipped.push({ name: p.name, why: why }); disposeGroup(p.group); return; }
-    const pl = ifcAutoPlacement(p.georef || IFC_PLAIN_GEOREF, p.coord, ref);
+    if (why && i !== a) { skipped.push({ name: p.name, why: why }); ifcClosePart(p); disposeGroup(p.group); return; }
+    // Lage der Datei in Landeskoordinaten, zurückgerechnet in den Rahmen der Ankerdatei
+    const tp = ifcAutoPlacement(p.georef || IFC_PLAIN_GEOREF, p.coord, zero);
+    const c = Math.cos(ta.rotY), s = Math.sin(ta.rotY), dx = tp.x - ta.x, dz = tp.z - ta.z;
+    const pl = {
+      rotY: tp.rotY - ta.rotY, scale: tp.scale / ta.scale,
+      x: (c * dx - s * dz) / ta.scale, y: (tp.y - ta.y) / ta.scale, z: (s * dx + c * dz) / ta.scale
+    };
     p.group.rotation.y = pl.rotY;
     p.group.scale.set(pl.scale, pl.scale, pl.scale);
     p.group.position.set(pl.x, pl.y, pl.z);
@@ -7292,17 +7311,288 @@ function ifcCombine(parts) {
     grow(box, ifcBoxCorners(p.bbox, pl));
     grow(core, ifcBoxCorners(ifcBox(p), pl));
     triangles += p.triangles;
-    used++;
-    if (p.georef) georef = true;
+    used.push(p);
   });
+  let georef = A.georef;
+  if (!georef && epsg) georef = Object.assign({}, IFC_PLAIN_GEOREF, { epsg: epsg, crsName: 'EPSG:' + epsg });
   return {
-    model: {
-      group: group, name: '', bbox: box, core: core, triangles: triangles,
-      coord: [-ref.originE, -ref.zmin, ref.originN],
-      georef: georef || epsg ? Object.assign({}, IFC_PLAIN_GEOREF, { epsg: epsg, crsName: epsg ? 'EPSG:' + epsg : '' }) : null
-    },
-    used: used, skipped: skipped
+    model: { group: group, name: '', bbox: box, core: core, triangles: triangles, coord: A.coord, georef: georef, parts: used },
+    used: used.length, skipped: skipped
   };
+}
+
+/* ---------- Filtern nach einem Attribut und Mengen ----------
+   filter: { kind: 'class' | 'name' | 'desc' | 'objType' | 'tag' | 'guid' | 'typeName' | 'material' | 'container' | 'file' | 'prop',
+   value, set und name (nur 'prop') } */
+function ifcMatches(info, fileName, f) {
+  if (f.kind === 'class') return info.type === f.value;
+  if (f.kind === 'name') return info.name === f.value;
+  if (f.kind === 'material') return info.material === f.value;
+  if (f.kind === 'container') return info.container === f.value;
+  if (f.kind === 'file') return fileName === f.value;
+  if (f.kind === 'prop') {
+    return info.sets.some(function (s) { return s.name === f.set && s.rows.some(function (r) { return r[0] === f.name && r[1] === f.value; }); });
+  }
+  return info.rows.some(function (r) { return r[0] === f.kind && r[1] === f.value; });
+}
+
+/* Alle Bauteile (expressID) einer Datei, die ein Netz haben; die ausgeblendeten Netze eines Filters zählen mit */
+function ifcElementIds(part) {
+  const ids = new Set();
+  (part.fullMeshes || part.group.children).forEach(function (mesh) {
+    ((mesh.userData && mesh.userData.ranges) || []).forEach(function (r) { ids.add(r.id); });
+  });
+  return Array.from(ids);
+}
+
+/* Zeigt von einer Datei nur die Bauteile ids: neue Netze mit denselben Eckpunkten und nur deren Dreiecken ersetzen die
+   vollen (three.js blendet beim Anklicken nichts aus, deshalb werden die vollen aus der Gruppe genommen) */
+function ifcIsolate(part, ids) {
+  ifcRestore(part);
+  const full = part.group.children.filter(function (m) { return m.userData && m.userData.ranges; });
+  full.forEach(function (mesh) {
+    const index = mesh.geometry.index.array, idx = index.array || index;
+    const picked = [], ranges = [];
+    let start = 0, tris = 0;
+    mesh.userData.ranges.forEach(function (r) {
+      if (ids.has(r.id)) {
+        for (let k = start * 3; k < r.end * 3; k++) picked.push(idx[k]);
+        tris += r.end - start;
+        ranges.push({ end: tris, id: r.id });
+      }
+      start = r.end;
+    });
+    part.group.remove(mesh);
+    if (!picked.length) return;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', mesh.geometry.getAttribute('position'));
+    const normal = mesh.geometry.getAttribute('normal');
+    if (normal) g.setAttribute('normal', normal);
+    g.setIndex(new THREE.BufferAttribute(new Uint32Array(picked), 1));
+    const sub = new THREE.Mesh(g, mesh.material);
+    sub.castShadow = true;
+    sub.userData.ranges = ranges;
+    sub.userData.isFiltered = true;
+    part.group.add(sub);
+  });
+  part.fullMeshes = full;
+}
+
+function ifcRestore(part) {
+  if (!part.fullMeshes) return;
+  part.group.children.filter(function (m) { return m.userData && m.userData.isFiltered; }).forEach(function (m) {
+    part.group.remove(m);
+    if (m.geometry.dispose) m.geometry.dispose();
+  });
+  part.fullMeshes.forEach(function (m) { part.group.add(m); });
+  part.fullMeshes = null;
+}
+
+/* Oberfläche und Volumen je Bauteil aus den Dreiecken (Maßstab k). Ein Volumen hat nur ein geschlossener Körper: dann
+   heben sich die gerichteten Flächen auf; sonst zählt das Bauteil nicht zum Volumen. */
+function ifcGeometryQuantities(part, ids, k) {
+  const perElement = new Map();
+  (part.fullMeshes || part.group.children).forEach(function (mesh) {
+    const ranges = mesh.userData && mesh.userData.ranges;
+    if (!ranges) return;
+    const p = mesh.geometry.getAttribute('position').array;
+    const index = mesh.geometry.index.array, idx = index.array || index;
+    let start = 0;
+    ranges.forEach(function (r) {
+      if (ids.has(r.id)) {
+        let e = perElement.get(r.id);
+        if (!e) { e = { area: 0, vol: 0, sx: 0, sy: 0, sz: 0, o: null }; perElement.set(r.id, e); }
+        for (let t = start; t < r.end; t++) {
+          const a = idx[t * 3] * 3, b = idx[t * 3 + 1] * 3, c = idx[t * 3 + 2] * 3;
+          if (!e.o) e.o = [p[a], p[a + 1], p[a + 2]];                 // nahe Bezugsecke: weniger Rundungsfehler
+          const ax = p[a] - e.o[0], ay = p[a + 1] - e.o[1], az = p[a + 2] - e.o[2];
+          const bx = p[b] - e.o[0], by = p[b + 1] - e.o[1], bz = p[b + 2] - e.o[2];
+          const cx = p[c] - e.o[0], cy = p[c + 1] - e.o[1], cz = p[c + 2] - e.o[2];
+          const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
+          const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+          e.area += Math.sqrt(nx * nx + ny * ny + nz * nz) / 2;
+          e.sx += nx / 2; e.sy += ny / 2; e.sz += nz / 2;
+          e.vol += (ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)) / 6;
+        }
+      }
+      start = r.end;
+    });
+  });
+  const out = { area: 0, volume: 0, closed: 0, count: perElement.size };
+  perElement.forEach(function (e) {
+    out.area += e.area * k * k;
+    if (e.area > 0 && Math.sqrt(e.sx * e.sx + e.sy * e.sy + e.sz * e.sz) <= 1e-3 * e.area) {
+      out.volume += Math.abs(e.vol) * k * k * k;
+      out.closed++;
+    }
+  });
+  return out;
+}
+
+/* Summen der Mengen, die in der IFC selbst stehen (Mengensätze, dazu Eigenschaften mit Mengen-Namen).
+   infos: Liste wie aus ifcElementProps. Ergebnis [{ label, sum, n }] */
+const IFC_QUANTITY_NAMES = /volum|fl(ä|ae)che|area|l(ä|ae)nge|length|gewicht|weight|masse|\bmass|menge|anzahl|count/i;
+function ifcSumQuantities(infos) {
+  const sums = new Map();
+  infos.forEach(function (info) {
+    const seen = new Set();
+    info.sets.forEach(function (set) {
+      set.rows.forEach(function (r) {
+        if (r[2] === null || r[2] === undefined || !(set.quantity || IFC_QUANTITY_NAMES.test(r[0]))) return;
+        const label = set.name + ' · ' + r[0];
+        if (seen.has(label)) return;                            // am Bauteil und am Typ: nur einmal
+        seen.add(label);
+        let e = sums.get(label);
+        if (!e) { e = { label: label, sum: 0, n: 0 }; sums.set(label, e); }
+        e.sum += r[2]; e.n++;
+      });
+    });
+  });
+  return Array.from(sums.values()).sort(function (a, b) { return a.label.localeCompare(b.label); });
+}
+
+/* ---------- Bauteil anklicken ---------- */
+
+/* Schließt das offene web-ifc-Modell einer Datei */
+function ifcClosePart(part) {
+  if (webIfcApi && part && part.ifcId !== undefined && part.ifcId !== null) {
+    try { webIfcApi.CloseModel(part.ifcId); } catch (e) { /* schon zu */ }
+    part.ifcId = null;
+    part.propIndex = null;
+  }
+}
+
+/* Treffer eines Raycasts -> { part, id } (Datei und expressID des Bauteils) oder null */
+function ifcElementAt(hit) {
+  const mesh = hit && hit.object, ranges = mesh && mesh.userData && mesh.userData.ranges;
+  const part = mesh && mesh.parent && mesh.parent.userData.ifcPart;
+  if (!ranges || !part || hit.faceIndex === undefined || hit.faceIndex === null) return null;
+  let lo = 0, hi = ranges.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (hit.faceIndex < ranges[m].end) hi = m; else lo = m + 1; }
+  return { part: part, id: ranges[lo].id };
+}
+
+/* Alle Dreiecke eines Bauteils als hervorgehobenes Netz in der Gruppe seiner Datei (bewegt sich so mit) */
+function ifcHighlight(part, id) {
+  const pos = [];
+  part.group.children.forEach(function (mesh) {
+    const ranges = mesh.userData && mesh.userData.ranges;
+    if (!ranges) return;
+    const p = mesh.geometry.getAttribute('position').array, idx = mesh.geometry.index.array;
+    let start = 0;
+    ranges.forEach(function (r) {
+      if (r.id === id) {
+        for (let k = start * 3; k < r.end * 3; k++) { const v = (idx.array || idx)[k] * 3; pos.push(p[v], p[v + 1], p[v + 2]); }
+      }
+      start = r.end;
+    });
+  });
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffb000, side: THREE.DoubleSide, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.renderOrder = 5;
+  mesh.raycast = function () {};                    // nicht selbst anklickbar
+  mesh.userData.isHighlight = true;
+  part.group.add(mesh);
+  return mesh;
+}
+
+/* Verknüpfungen einer Datei einmal einlesen: Bauteil -> Eigenschaftssätze, Typ, Geschoss, Material */
+function ifcPropIndex(api, modelId, W) {
+  const index = { sets: new Map(), type: new Map(), container: new Map(), material: new Map() };
+  const each = function (typeCode, fn) {
+    if (typeCode === undefined) return;
+    const ids = api.GetLineIDsWithType(modelId, typeCode);
+    for (let i = 0; i < ids.size(); i++) {
+      try { fn(api.GetLine(modelId, ids.get(i))); } catch (e) { /* unlesbare Verknüpfung auslassen */ }
+    }
+  };
+  const objects = function (list, fn) { [].concat(list || []).forEach(function (o) { const id = ifcVal(o); if (id) fn(id); }); };
+  const push = function (map, key, value) { let list = map.get(key); if (!list) { list = []; map.set(key, list); } list.push(value); };
+  each(W.IFCRELDEFINESBYPROPERTIES, function (r) {
+    const def = ifcVal(r.RelatingPropertyDefinition);
+    if (def) objects(r.RelatedObjects, function (id) { push(index.sets, id, def); });
+  });
+  each(W.IFCRELDEFINESBYTYPE, function (r) { objects(r.RelatedObjects, function (id) { index.type.set(id, ifcVal(r.RelatingType)); }); });
+  each(W.IFCRELCONTAINEDINSPATIALSTRUCTURE, function (r) { objects(r.RelatedElements, function (id) { index.container.set(id, ifcVal(r.RelatingStructure)); }); });
+  each(W.IFCRELAGGREGATES, function (r) { objects(r.RelatedObjects, function (id) { if (!index.container.has(id)) index.container.set(id, ifcVal(r.RelatingObject)); }); });
+  each(W.IFCRELASSOCIATESMATERIAL, function (r) { objects(r.RelatedObjects, function (id) { index.material.set(id, ifcVal(r.RelatingMaterial)); }); });
+  return index;
+}
+
+/* Wert einer Eigenschaft als Text; yesNo: [ja, nein] */
+function ifcValueText(x, yesNo) {
+  if (Array.isArray(x)) return x.map(function (v) { return ifcValueText(v, yesNo); }).filter(function (v) { return v !== ''; }).join(', ');
+  let v = ifcVal(x);
+  if (v === null || v === undefined) return '';
+  const logical = x && typeof x === 'object' && /BOOLEAN|LOGICAL/i.test(String(x.name || ''));
+  if (v === true || v === 'T' || v === '.T.' || (logical && v === 1)) return yesNo[0];
+  if (v === false || v === 'F' || v === '.F.' || (logical && v === 0)) return yesNo[1];
+  if (typeof v === 'number') return String(Math.round(v * 10000) / 10000);
+  return String(v);
+}
+
+const IFC_MAX_ROWS = 300;           // je Eigenschaftssatz; Namen und Werte kommen aus der Datei
+
+/* Angaben zu einem Bauteil: { type, name, rows: [[Schlüssel, Wert]], material, container, sets: [{ name, fromType, rows }] } */
+function ifcElementProps(api, modelId, id, index, W, yesNo) {
+  const line = function (ref) { const r = ifcVal(ref); if (!r) return null; try { return api.GetLine(modelId, r); } catch (e) { return null; } };
+  const text = function (x) { const v = ifcVal(x); return v === null || v === undefined ? '' : String(v); };
+  const el = line(id) || {};
+  const out = {
+    type: api.GetNameFromTypeCode ? String(api.GetNameFromTypeCode(el.type) || '') : '',
+    name: text(el.Name),
+    rows: [['desc', text(el.Description)], ['objType', text(el.ObjectType)], ['tag', text(el.Tag)], ['guid', text(el.GlobalId)]].filter(function (r) { return r[1]; }),
+    material: '', container: '', sets: []
+  };
+  const type = line(index.type.get(id));
+  if (type && text(type.Name)) out.rows.push(['typeName', text(type.Name)]);
+  const box = line(index.container.get(id));
+  if (box) out.container = text(box.Name) || text(box.LongName);
+
+  const names = [];
+  const material = function (ref, depth) {
+    const m = line(ref);
+    if (!m || depth > 4) return;
+    let deeper = false;
+    ['ForLayerSet', 'ForProfileSet', 'Material'].forEach(function (k) { if (m[k]) { deeper = true; material(m[k], depth + 1); } });
+    ['MaterialLayers', 'Materials', 'MaterialProfiles', 'MaterialConstituents'].forEach(function (k) {
+      if (m[k]) { deeper = true; [].concat(m[k]).forEach(function (x) { material(x, depth + 1); }); }
+    });
+    if (!deeper && text(m.Name) && names.indexOf(text(m.Name)) < 0) names.push(text(m.Name));
+  };
+  material(index.material.get(id) || (type && index.material.get(ifcVal(index.type.get(id)))), 0);
+  out.material = names.join(', ');
+
+  const rowsOf = function (list, rows, prefix, depth) {
+    [].concat(list || []).forEach(function (ref) {
+      const p = line(ref);
+      if (!p || rows.length >= IFC_MAX_ROWS) return;
+      const label = prefix + text(p.Name);
+      if (p.HasProperties && depth < 3) { rowsOf(p.HasProperties, rows, label + ' · ', depth + 1); return; }
+      let value = '', number = null;
+      ['NominalValue', 'EnumerationValues', 'ListValues', 'LengthValue', 'AreaValue', 'VolumeValue', 'CountValue', 'WeightValue', 'TimeValue'].some(function (k) {
+        if (p[k] === undefined || p[k] === null) return false;
+        value = ifcValueText(p[k], yesNo);
+        const raw = ifcVal(p[k]);
+        if (typeof raw === 'number' && isFinite(raw) && !/BOOLEAN|LOGICAL/i.test(String((p[k] && p[k].name) || ''))) number = raw;
+        return true;
+      });
+      rows.push([label, value, number]);
+    });
+  };
+  const addSet = function (ref, fromType) {
+    const set = line(ref);
+    if (!set) return;
+    const rows = [];
+    rowsOf(set.HasProperties || set.Quantities, rows, '', 0);
+    if (rows.length) out.sets.push({ name: text(set.Name), fromType: fromType, quantity: !!set.Quantities, rows: rows });
+  };
+  (index.sets.get(id) || []).forEach(function (ref) { addSet(ref, false); });
+  if (type) [].concat(type.HasPropertySets || []).forEach(function (ref) { addSet(ref, true); });
+  return out;
 }
 
 /* Drehung um die Hochachse in der Szene: der Winkel eines Vektors (vx, vz) ist atan2(-vz, vx) */
@@ -7442,6 +7732,7 @@ async function ifcReadModel(arrayBuffer, fileName) {
     const byChunk = new Map();
     let tris = 0, parts = 0;
     api.StreamAllMeshes(id, function (mesh) {
+      const element = mesh.expressID;
       const gs = mesh.geometries;
       for (let i = 0; i < gs.size(); i++) {
         const pg = gs.get(i);
@@ -7465,10 +7756,14 @@ async function ifcReadModel(arrayBuffer, fileName) {
         }
         const key = colorKey + '|' + ifcChunkKey(pos, parts++);
         let e = byChunk.get(key);
-        if (!e) { e = { color: col, colorKey: colorKey, pos: [], nrm: [], idx: [], base: 0 }; byChunk.set(key, e); }
+        if (!e) { e = { color: col, colorKey: colorKey, pos: [], nrm: [], idx: [], base: 0, tris: 0, ranges: [] }; byChunk.set(key, e); }
         const ix = new Uint32Array(idx.length);
         for (let k = 0; k < idx.length; k++) ix[k] = idx[k] + e.base;
         e.pos.push(pos); e.nrm.push(nrm); e.idx.push(ix); e.base += nv;
+        // welche Dreiecke zu welchem Bauteil gehören (für das Anklicken)
+        e.tris += idx.length / 3;
+        const last = e.ranges[e.ranges.length - 1];
+        if (last && last.id === element) last.end = e.tris; else e.ranges.push({ end: e.tris, id: element });
         tris += idx.length / 3;
         if (geo.delete) geo.delete();
       }
@@ -7511,11 +7806,16 @@ async function ifcReadModel(arrayBuffer, fileName) {
       }
       const mesh = new THREE.Mesh(g, mat);
       mesh.castShadow = true;
+      mesh.userData.ranges = e.ranges;
       group.add(mesh);
     });
-    return { group: group, name: fileName, coord: coord, georef: georef, bbox: bbox, core: ifcCoreBox(arrays, bbox), triangles: tris };
-  } finally {
+    // Das Modell bleibt offen, damit beim Anklicken die Eigenschaften gelesen werden können (ifcClosePart schließt es)
+    const part = { group: group, name: fileName, coord: coord, georef: georef, bbox: bbox, core: ifcCoreBox(arrays, bbox), triangles: tris, ifcId: id };
+    group.userData.ifcPart = part;
+    return part;
+  } catch (e) {
     api.CloseModel(id);
+    throw e;
   }
 }
 
@@ -7523,14 +7823,27 @@ function ifcRemoveModel() {
   if (!ifcModel) return;
   scene.remove(ifcModel.group);
   disposeGroup(ifcModel.group);
+  (ifcModel.parts || []).forEach(ifcClosePart);
   ifcModel = null;
+}
+
+/* Nimmt das Modell aus der Szene, ohne seine Dateien zu verwerfen (zum Dazulegen weiterer); liefert die Dateien,
+   die Ankerdatei zuerst */
+function ifcDetachParts() {
+  if (!ifcModel) return [];
+  const model = ifcModel;
+  model.parts.forEach(ifcRestore);
+  scene.remove(model.group);
+  model.parts.forEach(function (p) { if (p.group !== model.group) model.group.remove(p.group); });
+  ifcModel = null;
+  return model.parts.slice();
 }
 
 /* Setzt ein gelesenes Modell in die Szene (ersetzt ein vorhandenes) */
 function ifcSetModel(m) {
   ifcRemoveModel();
   ifcModel = { group: m.group, name: m.name, coord: m.coord, georef: m.georef, bbox: m.bbox, core: m.core, triangles: m.triangles,
-               placement: null, de: 0, dn: 0, dz: 0, rot: 0, how: null };
+               parts: m.parts || [Object.assign({}, m)], placement: null, de: 0, dn: 0, dz: 0, rot: 0, how: null };
   scene.add(ifcModel.group);
   return ifcModel;
 }
@@ -7707,7 +8020,8 @@ if (typeof module !== 'undefined' && module.exports) {
     axisDragParam: axisDragParam,
     ringDragAngle: ringDragAngle,
     canonicalEpsg: canonicalEpsg,
-    ifcCombine: ifcCombine, ifcCoreBox: ifcCoreBox, ifcChunkKey: ifcChunkKey,
+    ifcMatches: ifcMatches, ifcIsolate: ifcIsolate, ifcRestore: ifcRestore, ifcElementIds: ifcElementIds, ifcGeometryQuantities: ifcGeometryQuantities, ifcSumQuantities: ifcSumQuantities,
+    ifcElementAt: ifcElementAt, ifcPropIndex: ifcPropIndex, ifcElementProps: ifcElementProps, ifcValueText: ifcValueText, ifcCombine: ifcCombine, ifcCoreBox: ifcCoreBox, ifcChunkKey: ifcChunkKey,
     reprojectTerrain: reprojectTerrain, reprojectRings: reprojectRings, buildingTextEpsg: buildingTextEpsg, crsAccuracy: crsAccuracy,
     parseBeta2007: parseBeta2007, ensureBeta2007: ensureBeta2007, hasBeta2007: hasBeta2007, ifcRawPlacement: ifcRawPlacement, ifcGuessGk: ifcGuessGk,
     normDeg: normDeg,

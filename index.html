@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-mMIibi/98TxGfC0CX0C5RU0RJnsiGdmZWkHA5VvnlS4=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yVv2GP8G017igZROVaJJ8YFMDsWJai4MwbXmluyR/qI=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -390,6 +390,20 @@
   #confirm-text { font-size: 0.92em; line-height: 1.5; margin-bottom: 14px; }
   #confirm-btns { display: flex; gap: 8px; justify-content: flex-end; }
   #confirm-btns .btn-block { width: auto; margin: 0; padding: 7px 14px; }
+
+  /* ---------- IFC-Bauteil ---------- */
+  #ifc-element { display: none; flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+  #ifc-element-body { padding: 4px 0 8px; font-size: 0.86em; }
+  #ifc-element-body .kv { gap: 0 10px; }
+  #ifc-element-body .v { overflow-wrap: anywhere; user-select: text; }
+  #ifc-element-body .k { overflow-wrap: anywhere; }
+  .ifc-element-name { padding: 2px 11px 5px; font-size: 1.08em; overflow-wrap: anywhere; }
+  .ifc-element-set { padding: 9px 11px 3px; border-top: 1px solid var(--border); margin-top: 6px; color: var(--accent); overflow-wrap: anywhere; }
+  .ifc-element-note { padding: 6px 11px; color: var(--text-dim2); }
+  .ifc-element-note.warn { color: var(--danger); }
+  .ifc-filterable { cursor: pointer; }
+  .ifc-filterable:hover, .ifc-filterable:focus-visible { background: var(--field); }
+  #ifc-element-body .btn-block { width: auto; margin: 8px 11px 4px; }
 
   /* ---------- Parameter ---------- */
   #param-wrap { flex: 1 1 auto; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
@@ -822,6 +836,10 @@
 </div>
 
 <div id="col-right">
+  <div id="ifc-element" class="panel">
+    <div class="sec"><span data-i18n="ifcElTitle">Bauteil</span><span class="act" id="ifc-element-close" data-i18n="close">Schließen</span></div>
+    <div id="ifc-element-body"></div>
+  </div>
   <div id="param-wrap" class="panel">
     <div id="param-title">–</div>
     <div id="param-hint">–</div>
@@ -8223,20 +8241,32 @@ function ifcMapCentre(part) {
   return { e: sum.x / 8, n: -sum.z / 8, h: sum.y / 8 };
 }
 
-/* parts: gelesene Dateien wie aus ifcReadModel. Ergebnis { model, used, skipped: [{ name, why: 'crs' | 'far' }] } */
-function ifcCombine(parts) {
-  if (parts.length === 1) return { model: parts[0], used: 1, skipped: [] };
-  const centres = parts.map(ifcMapCentre);
-  // Bezug: die erste Datei mit genanntem Bezugssystem, sonst die mit den größten Koordinaten (Landeskoordinaten)
-  let a = parts.findIndex(function (p) { return p.georef && p.georef.epsg; });
-  if (a < 0) {
-    a = 0;
-    centres.forEach(function (c, i) { if (Math.abs(c.e) + Math.abs(c.n) > Math.abs(centres[a].e) + Math.abs(centres[a].n)) a = i; });
+/* parts: gelesene Dateien wie aus ifcReadModel. anchor: Index der Datei, in deren Koordinaten das zusammengefasste
+   Modell liegt (beim Dazulegen die schon geladene, dann bleibt sie genau an ihrer Stelle); ohne Angabe die erste mit
+   genanntem Bezugssystem, sonst die mit den größten Koordinaten (Landeskoordinaten).
+   Ergebnis { model (mit model.parts, Anker zuerst), used, skipped: [{ name, why: 'crs' | 'far' }] } */
+function ifcCombine(parts, anchor) {
+  if (parts.length === 1) {
+    const only = parts[0];
+    only.parts = [Object.assign({}, only, { parts: undefined })];
+    return { model: only, used: 1, skipped: [] };
   }
-  const epsg = parts[a].georef ? parts[a].georef.epsg : null;
-  const ref = { originE: Math.round(centres[a].e), originN: Math.round(centres[a].n), zmin: Math.round(centres[a].h) };
+  const centres = parts.map(ifcMapCentre);
+  let a = anchor;
+  if (a === undefined) {
+    a = parts.findIndex(function (p) { return p.georef && p.georef.epsg; });
+    if (a < 0) {
+      a = 0;
+      centres.forEach(function (c, i) { if (Math.abs(c.e) + Math.abs(c.n) > Math.abs(centres[a].e) + Math.abs(centres[a].n)) a = i; });
+    }
+  }
+  const A = parts[a];
+  const zero = { originE: 0, originN: 0, zmin: 0 };
+  const ta = ifcAutoPlacement(A.georef || IFC_PLAIN_GEOREF, A.coord, zero);
+  let epsg = A.georef && A.georef.epsg;
+  if (!epsg) parts.some(function (p) { epsg = p.georef && p.georef.epsg; return !!epsg; });
   const group = new THREE.Group();
-  const skipped = [];
+  const skipped = [], used = [];
   const empty = function () { return { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity }; };
   const box = empty(), core = empty();
   const grow = function (target, list) {
@@ -8246,13 +8276,20 @@ function ifcCombine(parts) {
       target.minZ = Math.min(target.minZ, q.z); target.maxZ = Math.max(target.maxZ, q.z);
     });
   };
-  let triangles = 0, used = 0, georef = false;
-  parts.forEach(function (p, i) {
+  let triangles = 0;
+  [a].concat(parts.map(function (p, i) { return i; }).filter(function (i) { return i !== a; })).forEach(function (i) {
+    const p = parts[i];
     const other = p.georef && p.georef.epsg;
     const why = other && epsg && other !== epsg ? 'crs'
       : Math.hypot(centres[i].e - centres[a].e, centres[i].n - centres[a].n) > IFC_MAX_SPREAD ? 'far' : null;
-    if (why) { skipped.push({ name: p.name, why: why }); disposeGroup(p.group); return; }
-    const pl = ifcAutoPlacement(p.georef || IFC_PLAIN_GEOREF, p.coord, ref);
+    if (why && i !== a) { skipped.push({ name: p.name, why: why }); ifcClosePart(p); disposeGroup(p.group); return; }
+    // Lage der Datei in Landeskoordinaten, zurückgerechnet in den Rahmen der Ankerdatei
+    const tp = ifcAutoPlacement(p.georef || IFC_PLAIN_GEOREF, p.coord, zero);
+    const c = Math.cos(ta.rotY), s = Math.sin(ta.rotY), dx = tp.x - ta.x, dz = tp.z - ta.z;
+    const pl = {
+      rotY: tp.rotY - ta.rotY, scale: tp.scale / ta.scale,
+      x: (c * dx - s * dz) / ta.scale, y: (tp.y - ta.y) / ta.scale, z: (s * dx + c * dz) / ta.scale
+    };
     p.group.rotation.y = pl.rotY;
     p.group.scale.set(pl.scale, pl.scale, pl.scale);
     p.group.position.set(pl.x, pl.y, pl.z);
@@ -8260,17 +8297,288 @@ function ifcCombine(parts) {
     grow(box, ifcBoxCorners(p.bbox, pl));
     grow(core, ifcBoxCorners(ifcBox(p), pl));
     triangles += p.triangles;
-    used++;
-    if (p.georef) georef = true;
+    used.push(p);
   });
+  let georef = A.georef;
+  if (!georef && epsg) georef = Object.assign({}, IFC_PLAIN_GEOREF, { epsg: epsg, crsName: 'EPSG:' + epsg });
   return {
-    model: {
-      group: group, name: '', bbox: box, core: core, triangles: triangles,
-      coord: [-ref.originE, -ref.zmin, ref.originN],
-      georef: georef || epsg ? Object.assign({}, IFC_PLAIN_GEOREF, { epsg: epsg, crsName: epsg ? 'EPSG:' + epsg : '' }) : null
-    },
-    used: used, skipped: skipped
+    model: { group: group, name: '', bbox: box, core: core, triangles: triangles, coord: A.coord, georef: georef, parts: used },
+    used: used.length, skipped: skipped
   };
+}
+
+/* ---------- Filtern nach einem Attribut und Mengen ----------
+   filter: { kind: 'class' | 'name' | 'desc' | 'objType' | 'tag' | 'guid' | 'typeName' | 'material' | 'container' | 'file' | 'prop',
+   value, set und name (nur 'prop') } */
+function ifcMatches(info, fileName, f) {
+  if (f.kind === 'class') return info.type === f.value;
+  if (f.kind === 'name') return info.name === f.value;
+  if (f.kind === 'material') return info.material === f.value;
+  if (f.kind === 'container') return info.container === f.value;
+  if (f.kind === 'file') return fileName === f.value;
+  if (f.kind === 'prop') {
+    return info.sets.some(function (s) { return s.name === f.set && s.rows.some(function (r) { return r[0] === f.name && r[1] === f.value; }); });
+  }
+  return info.rows.some(function (r) { return r[0] === f.kind && r[1] === f.value; });
+}
+
+/* Alle Bauteile (expressID) einer Datei, die ein Netz haben; die ausgeblendeten Netze eines Filters zählen mit */
+function ifcElementIds(part) {
+  const ids = new Set();
+  (part.fullMeshes || part.group.children).forEach(function (mesh) {
+    ((mesh.userData && mesh.userData.ranges) || []).forEach(function (r) { ids.add(r.id); });
+  });
+  return Array.from(ids);
+}
+
+/* Zeigt von einer Datei nur die Bauteile ids: neue Netze mit denselben Eckpunkten und nur deren Dreiecken ersetzen die
+   vollen (three.js blendet beim Anklicken nichts aus, deshalb werden die vollen aus der Gruppe genommen) */
+function ifcIsolate(part, ids) {
+  ifcRestore(part);
+  const full = part.group.children.filter(function (m) { return m.userData && m.userData.ranges; });
+  full.forEach(function (mesh) {
+    const index = mesh.geometry.index.array, idx = index.array || index;
+    const picked = [], ranges = [];
+    let start = 0, tris = 0;
+    mesh.userData.ranges.forEach(function (r) {
+      if (ids.has(r.id)) {
+        for (let k = start * 3; k < r.end * 3; k++) picked.push(idx[k]);
+        tris += r.end - start;
+        ranges.push({ end: tris, id: r.id });
+      }
+      start = r.end;
+    });
+    part.group.remove(mesh);
+    if (!picked.length) return;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', mesh.geometry.getAttribute('position'));
+    const normal = mesh.geometry.getAttribute('normal');
+    if (normal) g.setAttribute('normal', normal);
+    g.setIndex(new THREE.BufferAttribute(new Uint32Array(picked), 1));
+    const sub = new THREE.Mesh(g, mesh.material);
+    sub.castShadow = true;
+    sub.userData.ranges = ranges;
+    sub.userData.isFiltered = true;
+    part.group.add(sub);
+  });
+  part.fullMeshes = full;
+}
+
+function ifcRestore(part) {
+  if (!part.fullMeshes) return;
+  part.group.children.filter(function (m) { return m.userData && m.userData.isFiltered; }).forEach(function (m) {
+    part.group.remove(m);
+    if (m.geometry.dispose) m.geometry.dispose();
+  });
+  part.fullMeshes.forEach(function (m) { part.group.add(m); });
+  part.fullMeshes = null;
+}
+
+/* Oberfläche und Volumen je Bauteil aus den Dreiecken (Maßstab k). Ein Volumen hat nur ein geschlossener Körper: dann
+   heben sich die gerichteten Flächen auf; sonst zählt das Bauteil nicht zum Volumen. */
+function ifcGeometryQuantities(part, ids, k) {
+  const perElement = new Map();
+  (part.fullMeshes || part.group.children).forEach(function (mesh) {
+    const ranges = mesh.userData && mesh.userData.ranges;
+    if (!ranges) return;
+    const p = mesh.geometry.getAttribute('position').array;
+    const index = mesh.geometry.index.array, idx = index.array || index;
+    let start = 0;
+    ranges.forEach(function (r) {
+      if (ids.has(r.id)) {
+        let e = perElement.get(r.id);
+        if (!e) { e = { area: 0, vol: 0, sx: 0, sy: 0, sz: 0, o: null }; perElement.set(r.id, e); }
+        for (let t = start; t < r.end; t++) {
+          const a = idx[t * 3] * 3, b = idx[t * 3 + 1] * 3, c = idx[t * 3 + 2] * 3;
+          if (!e.o) e.o = [p[a], p[a + 1], p[a + 2]];                 // nahe Bezugsecke: weniger Rundungsfehler
+          const ax = p[a] - e.o[0], ay = p[a + 1] - e.o[1], az = p[a + 2] - e.o[2];
+          const bx = p[b] - e.o[0], by = p[b + 1] - e.o[1], bz = p[b + 2] - e.o[2];
+          const cx = p[c] - e.o[0], cy = p[c + 1] - e.o[1], cz = p[c + 2] - e.o[2];
+          const ux = bx - ax, uy = by - ay, uz = bz - az, vx = cx - ax, vy = cy - ay, vz = cz - az;
+          const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+          e.area += Math.sqrt(nx * nx + ny * ny + nz * nz) / 2;
+          e.sx += nx / 2; e.sy += ny / 2; e.sz += nz / 2;
+          e.vol += (ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)) / 6;
+        }
+      }
+      start = r.end;
+    });
+  });
+  const out = { area: 0, volume: 0, closed: 0, count: perElement.size };
+  perElement.forEach(function (e) {
+    out.area += e.area * k * k;
+    if (e.area > 0 && Math.sqrt(e.sx * e.sx + e.sy * e.sy + e.sz * e.sz) <= 1e-3 * e.area) {
+      out.volume += Math.abs(e.vol) * k * k * k;
+      out.closed++;
+    }
+  });
+  return out;
+}
+
+/* Summen der Mengen, die in der IFC selbst stehen (Mengensätze, dazu Eigenschaften mit Mengen-Namen).
+   infos: Liste wie aus ifcElementProps. Ergebnis [{ label, sum, n }] */
+const IFC_QUANTITY_NAMES = /volum|fl(ä|ae)che|area|l(ä|ae)nge|length|gewicht|weight|masse|\bmass|menge|anzahl|count/i;
+function ifcSumQuantities(infos) {
+  const sums = new Map();
+  infos.forEach(function (info) {
+    const seen = new Set();
+    info.sets.forEach(function (set) {
+      set.rows.forEach(function (r) {
+        if (r[2] === null || r[2] === undefined || !(set.quantity || IFC_QUANTITY_NAMES.test(r[0]))) return;
+        const label = set.name + ' · ' + r[0];
+        if (seen.has(label)) return;                            // am Bauteil und am Typ: nur einmal
+        seen.add(label);
+        let e = sums.get(label);
+        if (!e) { e = { label: label, sum: 0, n: 0 }; sums.set(label, e); }
+        e.sum += r[2]; e.n++;
+      });
+    });
+  });
+  return Array.from(sums.values()).sort(function (a, b) { return a.label.localeCompare(b.label); });
+}
+
+/* ---------- Bauteil anklicken ---------- */
+
+/* Schließt das offene web-ifc-Modell einer Datei */
+function ifcClosePart(part) {
+  if (webIfcApi && part && part.ifcId !== undefined && part.ifcId !== null) {
+    try { webIfcApi.CloseModel(part.ifcId); } catch (e) { /* schon zu */ }
+    part.ifcId = null;
+    part.propIndex = null;
+  }
+}
+
+/* Treffer eines Raycasts -> { part, id } (Datei und expressID des Bauteils) oder null */
+function ifcElementAt(hit) {
+  const mesh = hit && hit.object, ranges = mesh && mesh.userData && mesh.userData.ranges;
+  const part = mesh && mesh.parent && mesh.parent.userData.ifcPart;
+  if (!ranges || !part || hit.faceIndex === undefined || hit.faceIndex === null) return null;
+  let lo = 0, hi = ranges.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (hit.faceIndex < ranges[m].end) hi = m; else lo = m + 1; }
+  return { part: part, id: ranges[lo].id };
+}
+
+/* Alle Dreiecke eines Bauteils als hervorgehobenes Netz in der Gruppe seiner Datei (bewegt sich so mit) */
+function ifcHighlight(part, id) {
+  const pos = [];
+  part.group.children.forEach(function (mesh) {
+    const ranges = mesh.userData && mesh.userData.ranges;
+    if (!ranges) return;
+    const p = mesh.geometry.getAttribute('position').array, idx = mesh.geometry.index.array;
+    let start = 0;
+    ranges.forEach(function (r) {
+      if (r.id === id) {
+        for (let k = start * 3; k < r.end * 3; k++) { const v = (idx.array || idx)[k] * 3; pos.push(p[v], p[v + 1], p[v + 2]); }
+      }
+      start = r.end;
+    });
+  });
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffb000, side: THREE.DoubleSide, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const mesh = new THREE.Mesh(g, mat);
+  mesh.renderOrder = 5;
+  mesh.raycast = function () {};                    // nicht selbst anklickbar
+  mesh.userData.isHighlight = true;
+  part.group.add(mesh);
+  return mesh;
+}
+
+/* Verknüpfungen einer Datei einmal einlesen: Bauteil -> Eigenschaftssätze, Typ, Geschoss, Material */
+function ifcPropIndex(api, modelId, W) {
+  const index = { sets: new Map(), type: new Map(), container: new Map(), material: new Map() };
+  const each = function (typeCode, fn) {
+    if (typeCode === undefined) return;
+    const ids = api.GetLineIDsWithType(modelId, typeCode);
+    for (let i = 0; i < ids.size(); i++) {
+      try { fn(api.GetLine(modelId, ids.get(i))); } catch (e) { /* unlesbare Verknüpfung auslassen */ }
+    }
+  };
+  const objects = function (list, fn) { [].concat(list || []).forEach(function (o) { const id = ifcVal(o); if (id) fn(id); }); };
+  const push = function (map, key, value) { let list = map.get(key); if (!list) { list = []; map.set(key, list); } list.push(value); };
+  each(W.IFCRELDEFINESBYPROPERTIES, function (r) {
+    const def = ifcVal(r.RelatingPropertyDefinition);
+    if (def) objects(r.RelatedObjects, function (id) { push(index.sets, id, def); });
+  });
+  each(W.IFCRELDEFINESBYTYPE, function (r) { objects(r.RelatedObjects, function (id) { index.type.set(id, ifcVal(r.RelatingType)); }); });
+  each(W.IFCRELCONTAINEDINSPATIALSTRUCTURE, function (r) { objects(r.RelatedElements, function (id) { index.container.set(id, ifcVal(r.RelatingStructure)); }); });
+  each(W.IFCRELAGGREGATES, function (r) { objects(r.RelatedObjects, function (id) { if (!index.container.has(id)) index.container.set(id, ifcVal(r.RelatingObject)); }); });
+  each(W.IFCRELASSOCIATESMATERIAL, function (r) { objects(r.RelatedObjects, function (id) { index.material.set(id, ifcVal(r.RelatingMaterial)); }); });
+  return index;
+}
+
+/* Wert einer Eigenschaft als Text; yesNo: [ja, nein] */
+function ifcValueText(x, yesNo) {
+  if (Array.isArray(x)) return x.map(function (v) { return ifcValueText(v, yesNo); }).filter(function (v) { return v !== ''; }).join(', ');
+  let v = ifcVal(x);
+  if (v === null || v === undefined) return '';
+  const logical = x && typeof x === 'object' && /BOOLEAN|LOGICAL/i.test(String(x.name || ''));
+  if (v === true || v === 'T' || v === '.T.' || (logical && v === 1)) return yesNo[0];
+  if (v === false || v === 'F' || v === '.F.' || (logical && v === 0)) return yesNo[1];
+  if (typeof v === 'number') return String(Math.round(v * 10000) / 10000);
+  return String(v);
+}
+
+const IFC_MAX_ROWS = 300;           // je Eigenschaftssatz; Namen und Werte kommen aus der Datei
+
+/* Angaben zu einem Bauteil: { type, name, rows: [[Schlüssel, Wert]], material, container, sets: [{ name, fromType, rows }] } */
+function ifcElementProps(api, modelId, id, index, W, yesNo) {
+  const line = function (ref) { const r = ifcVal(ref); if (!r) return null; try { return api.GetLine(modelId, r); } catch (e) { return null; } };
+  const text = function (x) { const v = ifcVal(x); return v === null || v === undefined ? '' : String(v); };
+  const el = line(id) || {};
+  const out = {
+    type: api.GetNameFromTypeCode ? String(api.GetNameFromTypeCode(el.type) || '') : '',
+    name: text(el.Name),
+    rows: [['desc', text(el.Description)], ['objType', text(el.ObjectType)], ['tag', text(el.Tag)], ['guid', text(el.GlobalId)]].filter(function (r) { return r[1]; }),
+    material: '', container: '', sets: []
+  };
+  const type = line(index.type.get(id));
+  if (type && text(type.Name)) out.rows.push(['typeName', text(type.Name)]);
+  const box = line(index.container.get(id));
+  if (box) out.container = text(box.Name) || text(box.LongName);
+
+  const names = [];
+  const material = function (ref, depth) {
+    const m = line(ref);
+    if (!m || depth > 4) return;
+    let deeper = false;
+    ['ForLayerSet', 'ForProfileSet', 'Material'].forEach(function (k) { if (m[k]) { deeper = true; material(m[k], depth + 1); } });
+    ['MaterialLayers', 'Materials', 'MaterialProfiles', 'MaterialConstituents'].forEach(function (k) {
+      if (m[k]) { deeper = true; [].concat(m[k]).forEach(function (x) { material(x, depth + 1); }); }
+    });
+    if (!deeper && text(m.Name) && names.indexOf(text(m.Name)) < 0) names.push(text(m.Name));
+  };
+  material(index.material.get(id) || (type && index.material.get(ifcVal(index.type.get(id)))), 0);
+  out.material = names.join(', ');
+
+  const rowsOf = function (list, rows, prefix, depth) {
+    [].concat(list || []).forEach(function (ref) {
+      const p = line(ref);
+      if (!p || rows.length >= IFC_MAX_ROWS) return;
+      const label = prefix + text(p.Name);
+      if (p.HasProperties && depth < 3) { rowsOf(p.HasProperties, rows, label + ' · ', depth + 1); return; }
+      let value = '', number = null;
+      ['NominalValue', 'EnumerationValues', 'ListValues', 'LengthValue', 'AreaValue', 'VolumeValue', 'CountValue', 'WeightValue', 'TimeValue'].some(function (k) {
+        if (p[k] === undefined || p[k] === null) return false;
+        value = ifcValueText(p[k], yesNo);
+        const raw = ifcVal(p[k]);
+        if (typeof raw === 'number' && isFinite(raw) && !/BOOLEAN|LOGICAL/i.test(String((p[k] && p[k].name) || ''))) number = raw;
+        return true;
+      });
+      rows.push([label, value, number]);
+    });
+  };
+  const addSet = function (ref, fromType) {
+    const set = line(ref);
+    if (!set) return;
+    const rows = [];
+    rowsOf(set.HasProperties || set.Quantities, rows, '', 0);
+    if (rows.length) out.sets.push({ name: text(set.Name), fromType: fromType, quantity: !!set.Quantities, rows: rows });
+  };
+  (index.sets.get(id) || []).forEach(function (ref) { addSet(ref, false); });
+  if (type) [].concat(type.HasPropertySets || []).forEach(function (ref) { addSet(ref, true); });
+  return out;
 }
 
 /* Drehung um die Hochachse in der Szene: der Winkel eines Vektors (vx, vz) ist atan2(-vz, vx) */
@@ -8410,6 +8718,7 @@ async function ifcReadModel(arrayBuffer, fileName) {
     const byChunk = new Map();
     let tris = 0, parts = 0;
     api.StreamAllMeshes(id, function (mesh) {
+      const element = mesh.expressID;
       const gs = mesh.geometries;
       for (let i = 0; i < gs.size(); i++) {
         const pg = gs.get(i);
@@ -8433,10 +8742,14 @@ async function ifcReadModel(arrayBuffer, fileName) {
         }
         const key = colorKey + '|' + ifcChunkKey(pos, parts++);
         let e = byChunk.get(key);
-        if (!e) { e = { color: col, colorKey: colorKey, pos: [], nrm: [], idx: [], base: 0 }; byChunk.set(key, e); }
+        if (!e) { e = { color: col, colorKey: colorKey, pos: [], nrm: [], idx: [], base: 0, tris: 0, ranges: [] }; byChunk.set(key, e); }
         const ix = new Uint32Array(idx.length);
         for (let k = 0; k < idx.length; k++) ix[k] = idx[k] + e.base;
         e.pos.push(pos); e.nrm.push(nrm); e.idx.push(ix); e.base += nv;
+        // welche Dreiecke zu welchem Bauteil gehören (für das Anklicken)
+        e.tris += idx.length / 3;
+        const last = e.ranges[e.ranges.length - 1];
+        if (last && last.id === element) last.end = e.tris; else e.ranges.push({ end: e.tris, id: element });
         tris += idx.length / 3;
         if (geo.delete) geo.delete();
       }
@@ -8479,11 +8792,16 @@ async function ifcReadModel(arrayBuffer, fileName) {
       }
       const mesh = new THREE.Mesh(g, mat);
       mesh.castShadow = true;
+      mesh.userData.ranges = e.ranges;
       group.add(mesh);
     });
-    return { group: group, name: fileName, coord: coord, georef: georef, bbox: bbox, core: ifcCoreBox(arrays, bbox), triangles: tris };
-  } finally {
+    // Das Modell bleibt offen, damit beim Anklicken die Eigenschaften gelesen werden können (ifcClosePart schließt es)
+    const part = { group: group, name: fileName, coord: coord, georef: georef, bbox: bbox, core: ifcCoreBox(arrays, bbox), triangles: tris, ifcId: id };
+    group.userData.ifcPart = part;
+    return part;
+  } catch (e) {
     api.CloseModel(id);
+    throw e;
   }
 }
 
@@ -8491,14 +8809,27 @@ function ifcRemoveModel() {
   if (!ifcModel) return;
   scene.remove(ifcModel.group);
   disposeGroup(ifcModel.group);
+  (ifcModel.parts || []).forEach(ifcClosePart);
   ifcModel = null;
+}
+
+/* Nimmt das Modell aus der Szene, ohne seine Dateien zu verwerfen (zum Dazulegen weiterer); liefert die Dateien,
+   die Ankerdatei zuerst */
+function ifcDetachParts() {
+  if (!ifcModel) return [];
+  const model = ifcModel;
+  model.parts.forEach(ifcRestore);
+  scene.remove(model.group);
+  model.parts.forEach(function (p) { if (p.group !== model.group) model.group.remove(p.group); });
+  ifcModel = null;
+  return model.parts.slice();
 }
 
 /* Setzt ein gelesenes Modell in die Szene (ersetzt ein vorhandenes) */
 function ifcSetModel(m) {
   ifcRemoveModel();
   ifcModel = { group: m.group, name: m.name, coord: m.coord, georef: m.georef, bbox: m.bbox, core: m.core, triangles: m.triangles,
-               placement: null, de: 0, dn: 0, dz: 0, rot: 0, how: null };
+               parts: m.parts || [Object.assign({}, m)], placement: null, de: 0, dn: 0, dz: 0, rot: 0, how: null };
   scene.add(ifcModel.group);
   return ifcModel;
 }
@@ -8602,13 +8933,13 @@ const STRINGS = {
     ifcFail: 'IFC konnte nicht gelesen werden: {e}', ifcEmpty: 'Die IFC-Datei enthält keine darstellbare Geometrie.',
     ifcLibFail: 'Die IFC-Bibliothek (lib/web-ifc-api-iife.js) konnte nicht geladen werden.',
     ifcNeedTerrain: 'Zuerst ein Geländemodell laden.', ifcCancelled: 'Platzierung abgebrochen.', ifcRemoved: 'Bauwerk entfernt.',
-    ifcInfo: '{n} · {t} Dreiecke', ifcFiles: '{n} IFC-Dateien', multiOk: 'mehrere möglich', ifcSkipped: 'Weggelassen: {l}.', ifcSkipCrs: 'anderes Bezugssystem', ifcSkipFar: 'liegt weit weg', ifcSkipRead: 'nicht lesbar',
+    ifcInfo: '{n} · {t} Dreiecke', ifcFiles: '{n} IFC-Dateien', multiOk: 'mehrere möglich', ifcSkipped: 'Weggelassen: {l}.', ifcSkipCrs: 'anderes Bezugssystem', ifcSkipFar: 'liegt weit weg', ifcSkipRead: 'nicht lesbar', ifcSkipDup: 'schon geladen', ifcAdded: '{n} Datei(en) dazugeladen.', ifcKept: 'Das bisher Geladene bleibt.', yes: 'ja', no: 'nein', ifcElTitle: 'Bauteil', ifcElType: 'IFC-Klasse', ifcElDesc: 'Beschreibung', ifcElObjType: 'Objekttyp', ifcElTag: 'Kennzeichen', ifcElGuid: 'GlobalId', ifcElTypeName: 'Typ', ifcElMat: 'Material', ifcElIn: 'Liegt in', ifcElFile: 'Datei', ifcElFromType: '(vom Typ)', ifcElNoSets: 'Keine weiteren Eigenschaften.', ifcElFail: 'Die Angaben zu diesem Bauteil lassen sich nicht lesen.', ifcElName: 'Name', ifcElFilter: 'Filter:', ifcElFilterHint: 'Zeile anklicken: nur gleiche Bauteile zeigen und Mengen rechnen', ifcElCount: 'Bauteile', ifcElVolume: 'Volumen', ifcElArea: 'Oberfläche', ifcElOpen: '{n} von {m} Bauteilen sind keine geschlossenen Körper und fehlen im Volumen.', ifcElGeomNote: 'Aus der Geometrie berechnet, überschlägig.', ifcElSums: 'Summen aus der IFC (Einheit wie in der Datei)', ifcElClear: 'Filter aufheben', busyIfcFilter: 'Bauteile werden gefiltert …',
     helpBtn: 'Hilfe', helpGuide: 'Vollständige Anleitung auf GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/BENUTZERANLEITUNG.md',
     helpChangelog: 'Änderungsprotokoll ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.md',
     helpNote: 'Die Anwendung ersetzt keine Statik- oder Traglastprüfung. Für Krane gilt allein die Traglasttabelle des Herstellers. Alle Ergebnisse sind überschlägig und ohne Gewähr; die Haftung ist ausgeschlossen, soweit gesetzlich zulässig (siehe Impressum).',
     helpS1T: 'Loslegen',
-    helpS1B: '- Passt das Bezugssystem nicht (zum Beispiel IFC in Gauß-Krüger, Gelände in UTM), wähle oben im Fenster „Daten“ das Bezugssystem (KBS): Gelände und Gebäude werden umgerechnet.\n- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
+    helpS1B: '- IFC-Bauteil anklicken: Angaben rechts; eine Zeile anklicken filtert gleiche Bauteile und rechnet Mengen.\n- Passt das Bezugssystem nicht (zum Beispiel IFC in Gauß-Krüger, Gelände in UTM), wähle oben im Fenster „Daten“ das Bezugssystem (KBS): Gelände und Gebäude werden umgerechnet.\n- Am Start zeigt die Seite eine Karte („Karte laden“ lädt erst dann Kacheln von OpenStreetMap): Ort anklicken (Pin).\n- Oder oben links die Adresse oder Koordinaten eingeben („Wo ist deine Baustelle?“): Du bekommst die Links zum Geländemodell (DGM) und zum Gebäudemodell deines Bundeslandes bzw. Landes (EU), in Großstädten zusätzlich die Stadtgeoportale.\n- Datei herunterladen und im Fenster „Daten“ laden: Gelände als GeoTIFF, XYZ oder Punktwolke LAS/LAZ (bei XYZ das Bezugssystem wählen), Gebäude als CityGML, CityJSON oder als 2D-Datei (GeoPackage, Shapefile, GeoJSON, INSPIRE-GML): Bei 2D wählst du danach Gelände- und Gebäudehöhe aus den Attributen. Mehrere Kacheln gehen zugleich.\n- Ohne Gelände bleiben die Bausteine gesperrt. Zum Ausprobieren gibt es den Demo-Link mit ?demo=1.',
     helpS2T: 'Ansicht steuern',
     helpS2B: '- Linke Maustaste ziehen: drehen. Rechte oder mittlere Taste ziehen: verschieben. Mausrad: zoomen.\n- Linksklick aufs Gelände setzt einen Messpunkt mit Rechtswert, Hochwert und Höhe.\n- 2D: Draufsicht. Kompass: nach Norden ausrichten. „Zurücksetzen“ in der Übersicht passt die Ansicht neu ein.\n- Darstellung: Schrift, Schriftgröße, Akzentfarbe, Fensterbreite. DE und EN wechseln die Sprache.',
     helpS3T: 'Bausteine setzen',
@@ -8807,13 +9138,13 @@ const STRINGS = {
     ifcFail: 'The IFC could not be read: {e}', ifcEmpty: 'The IFC file contains no displayable geometry.',
     ifcLibFail: 'The IFC library (lib/web-ifc-api-iife.js) could not be loaded.',
     ifcNeedTerrain: 'Load a terrain model first.', ifcCancelled: 'Placement cancelled.', ifcRemoved: 'Structure removed.',
-    ifcInfo: '{n} · {t} triangles', ifcFiles: '{n} IFC files', multiOk: 'several possible', ifcSkipped: 'Left out: {l}.', ifcSkipCrs: 'other coordinate system', ifcSkipFar: 'far away', ifcSkipRead: 'cannot be read',
+    ifcInfo: '{n} · {t} triangles', ifcFiles: '{n} IFC files', multiOk: 'several possible', ifcSkipped: 'Left out: {l}.', ifcSkipCrs: 'other coordinate system', ifcSkipFar: 'far away', ifcSkipRead: 'cannot be read', ifcSkipDup: 'already loaded', ifcAdded: '{n} file(s) added.', ifcKept: 'What was loaded stays.', yes: 'yes', no: 'no', ifcElTitle: 'Element', ifcElType: 'IFC class', ifcElDesc: 'Description', ifcElObjType: 'Object type', ifcElTag: 'Tag', ifcElGuid: 'GlobalId', ifcElTypeName: 'Type', ifcElMat: 'Material', ifcElIn: 'Contained in', ifcElFile: 'File', ifcElFromType: '(from type)', ifcElNoSets: 'No further properties.', ifcElFail: 'The data of this element cannot be read.', ifcElName: 'Name', ifcElFilter: 'Filter:', ifcElFilterHint: 'Click a row: show only equal elements and compute quantities', ifcElCount: 'Elements', ifcElVolume: 'Volume', ifcElArea: 'Surface area', ifcElOpen: '{n} of {m} elements are not closed solids and are missing from the volume.', ifcElGeomNote: 'Computed from the geometry, approximate.', ifcElSums: 'Sums from the IFC (units as in the file)', ifcElClear: 'Clear filter', busyIfcFilter: 'Filtering elements …',
     helpBtn: 'Help', helpGuide: 'Full user guide on GitHub ↗',
     helpGuideUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/USER-GUIDE.en.md',
     helpChangelog: 'Changelog ↗', helpChangelogUrl: 'https://github.com/Mucnese/quick-site-design/blob/main/CHANGELOG.en.md',
     helpNote: 'The application does not replace a structural or load-capacity check. For cranes only the manufacturer’s load chart counts. All results are rough and without warranty; liability is excluded to the extent permitted by law (see legal notice).',
     helpS1T: 'Getting started',
-    helpS1B: '- If the coordinate systems differ (for example IFC in Gauss-Krüger, terrain in UTM), choose the coordinate system (CRS) at the top of the “Data” window: terrain and buildings are converted.\n- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
+    helpS1B: '- Click an IFC element: its data on the right; clicking a row filters equal elements and computes quantities.\n- If the coordinate systems differ (for example IFC in Gauss-Krüger, terrain in UTM), choose the coordinate system (CRS) at the top of the “Data” window: terrain and buildings are converted.\n- At the start the page shows a map (“Load map” loads OpenStreetMap tiles only then): click a place (pin).\n- Or type the address or coordinates at the top left (“Where is your construction site?”): you get the links to the terrain model (DGM) and the building model of your state or country (EU), in large cities also the city geoportals.\n- Download the file and load it in the “Data” window: terrain as GeoTIFF, XYZ or LAS/LAZ point cloud (for XYZ choose the coordinate system), buildings as CityGML, CityJSON or as a 2D file (GeoPackage, shapefile, GeoJSON, INSPIRE GML): for 2D you then choose ground and building height from the attributes. Several tiles work at once.\n- Without terrain the building blocks stay locked. To try it out, use the demo link with ?demo=1.',
     helpS2T: 'Controlling the view',
     helpS2B: '- Drag with the left mouse button: rotate. Drag with the right or middle button: pan. Mouse wheel: zoom.\n- A left click on the terrain sets a measuring point with easting, northing and height.\n- 2D: top view. Compass: align north. “Reset” in the overview fits the view again.\n- Appearance: font, text size, accent colour, panel width. DE and EN switch the language.',
     helpS3T: 'Placing building blocks',
@@ -9271,6 +9602,7 @@ function refreshTexts() {
   renderAddrUi();
   if (ifcPick) showIfcHint(ifcPick.step);
   if (ifcGizmo) showIfcMoveHint();
+  renderIfcElement();
   const id = getSelectedId();
   if (id !== null) showObjectEditor(id);
   else if (activeTool) selectTool(activeTool);
@@ -9491,7 +9823,10 @@ function applyModelDefaults(values, refs, type) {
    Rechtes Fenster ein- und ausblenden
    ========================================================= */
 function showPanel(on) {
-  document.getElementById('col-right').style.display = on ? 'flex' : 'none';
+  // die Spalte bleibt auch für das Bauteilfenster der IFC offen; die Parameter nur mit Werkzeug oder Auswahl
+  const element = typeof ifcSelected !== 'undefined' && ifcSelected;
+  document.getElementById('col-right').style.display = on || element ? 'flex' : 'none';
+  document.getElementById('param-wrap').style.display = on ? '' : 'none';
 }
 
 /* Werkzeuge, bei denen man Punkt für Punkt zeichnet und mit Rechtsklick oder
@@ -9501,6 +9836,7 @@ function isDrawTool(t) { return t === 'road' || t === 'pit'; }
 
 /* ---------- Werkzeugwahl ---------- */
 function selectTool(type) {
+  if (type && !ifcFilter) hideIfcElement();
   if (rulerActive && type) stopRuler();
   clearRoadNodes();
   if (isDrawTool(activeTool) && type !== activeTool) { roadPoints = []; clearRoadPreview(); setRoadHint(false); }
@@ -11482,11 +11818,57 @@ function placeNewIfc(m) {
   startIfcManual(true, why, !!warn);
 }
 
-/* Eine Datei oder mehrere zugleich (ein Bauwerk in Teilen) */
+/* Weitere Dateien zum geladenen Bauwerk legen: die vorhandenen bleiben genau an ihrer Stelle, auch nach dem Ausrichten
+   von Hand. Gibt die übersprungenen zurück. */
+function addIfcParts(added) {
+  const old = ifcModel;
+  let keep = null;
+  if (ifcPick) {                                              // offenes Ausrichten beenden, ohne das Bauwerk zu verlieren
+    const p = ifcPick;
+    clearIfcMarkers(); ifcPick = null; showIfcHint(null);
+    if (p.before) ifcApplyPlacement(old, p.before.pl, p.before.dz, p.before.de, p.before.dn, p.before.rot);
+    if (!p.before) old.how = null;
+  }
+  if (old.how) {
+    const g = old.group.position;
+    keep = { pl: old.placement, de: old.de, dn: old.dn, dz: old.dz, rot: old.rot, how: old.how, placedCrs: old.placedCrs, x: g.x, z: g.z };
+  }
+  const had = old.parts.length;
+  const parts = ifcDetachParts().concat(added);
+  const res = ifcCombine(parts, 0);
+  res.model.name = ifcFormat('ifcFiles', { n: res.used });
+  if (!keep) { placeNewIfc(res.model); return res.skipped; }
+  const model = ifcSetModel(res.model);
+  ifcApplyPlacement(model, keep.pl, keep.dz, keep.de, keep.dn, keep.rot);
+  // beim Drehen verschiebt sich mit der neuen Mitte der Drehpunkt: so ausgleichen, dass das Vorhandene stehen bleibt
+  ifcSetShift(model, model.de + (keep.x - model.group.position.x), model.dn - (keep.z - model.group.position.z), model.dz);
+  model.how = keep.how;
+  model.placedCrs = keep.placedCrs;
+  renderIfcUi();
+  updateIfcShiftFields();
+  const msg = ifcFormat('ifcAdded', { n: res.used - had }) + ' ' + ifcFormat('ifcInfo', { n: model.name, t: model.triangles });
+  setIfcStatus(msg, 'ok');
+  setStatus(msg);
+  return res.skipped;
+}
+
+/* Eine Datei oder mehrere zugleich (ein Bauwerk in Teilen). Ist schon ein Bauwerk geladen, kommen sie dazu. */
 async function handleIfcFile(input) {
-  const files = !input ? [] : (input.name !== undefined ? [input] : Array.prototype.slice.call(input));
+  let files = !input ? [] : (input.name !== undefined ? [input] : Array.prototype.slice.call(input));
   if (!files.length) return;
   if (!TERRAIN) { setIfcStatus(T('ifcNeedTerrain'), 'err'); return; }
+  const loaded = ifcModel ? ifcModel.parts.map(function (p) { return p.name; }) : [];
+  const skipped = files.filter(function (f) { return loaded.indexOf(f.name) >= 0; }).map(function (f) { return { name: f.name, why: 'dup' }; });
+  files = files.filter(function (f) { return loaded.indexOf(f.name) < 0; });
+  const note = function (left) {
+    if (!left.length) return;
+    const why = { crs: 'ifcSkipCrs', far: 'ifcSkipFar', read: 'ifcSkipRead', dup: 'ifcSkipDup' };
+    const text = ifcFormat('ifcSkipped', { l: left.map(function (x) { return x.name + ' (' + T(why[x.why]) + ')'; }).join(', ') });
+    const el = document.getElementById('ifc-status');
+    setIfcStatus(el.textContent + ' ' + text, 'err');
+    setStatus(text, true);
+  };
+  if (!files.length) { note(skipped); return; }
   const many = files.length > 1;
   const total = files.reduce(function (sum, f) { return sum + (f.size || 0); }, 0);
   if (total > IFC_MAX_BYTES) {
@@ -11494,14 +11876,15 @@ async function handleIfcFile(input) {
     setIfcStatus(ifcFormat('ifcTooBig', { n: name, s: (total / 1e6).toFixed(0), m: IFC_MAX_BYTES / 1e6 }), 'err');
     return;
   }
-  if (ifcPick) cancelIfcPick(true);
+  hideIfcElement();
   stopIfcMove(true);
+  const before = document.getElementById('ifc-status').textContent;
   setIfcStatus(T('ifcReading'), 'busy');
   showBusy('busyIfc');
   // dem Browser Zeit geben, die Meldung zu zeigen, bevor das Lesen blockiert
   await new Promise(function (r) { setTimeout(r, 30); });
   try {
-    const parts = [], skipped = [];
+    const parts = [];
     let firstError = null;
     for (let i = 0; i < files.length; i++) {
       if (many) { setIfcStatus(T('ifcReading') + ' ' + (i + 1) + '/' + files.length, 'busy'); await yieldToPaint(); }
@@ -11513,26 +11896,200 @@ async function handleIfcFile(input) {
       }
     }
     if (!parts.length) throw firstError;
+    if (ifcModel) { note(skipped.concat(addIfcParts(parts))); return; }
     const res = ifcCombine(parts);
     if (res.used > 1) res.model.name = ifcFormat('ifcFiles', { n: res.used });
     else if (!res.model.name) res.model.name = files[0].name;
     placeNewIfc(res.model);
-    const left = skipped.concat(res.skipped);
-    if (left.length) {
-      const why = { crs: 'ifcSkipCrs', far: 'ifcSkipFar', read: 'ifcSkipRead' };
-      const note = ifcFormat('ifcSkipped', { l: left.map(function (x) { return x.name + ' (' + T(why[x.why]) + ')'; }).join(', ') });
-      const el = document.getElementById('ifc-status');
-      setIfcStatus(el.textContent + ' ' + note, 'err');
-      setStatus(note, true);
-    }
+    note(skipped.concat(res.skipped));
   } catch (e) {
     const code = e && e.message;
-    const msg = code === 'ifcLibFail' ? T('ifcLibFail') : code === 'ifcEmpty' ? T('ifcEmpty') : ifcFormat('ifcFail', { e: code });
+    let msg = code === 'ifcLibFail' ? T('ifcLibFail') : code === 'ifcEmpty' ? T('ifcEmpty') : ifcFormat('ifcFail', { e: code });
+    if (ifcModel && before) msg += ' ' + T('ifcKept');        // das schon Geladene bleibt
     setIfcStatus(msg, 'err');
     setStatus(msg, true);
   } finally {
     hideBusy();
   }
+}
+
+/* ---------- Bauteil anklicken: Fenster mit den Angaben aus der IFC ----------
+   Jede Zeile ist zugleich ein Filter: Anklicken zeigt nur die Bauteile mit diesem Wert und rechnet ihre Mengen. */
+let ifcSelected = null;        // { part, id, mesh (Hervorhebung) }
+let ifcFilter = null;          // { f, count, area, volume, closed, sums }
+
+/* Angaben eines Bauteils, je Datei gemerkt (die Sprache steckt in ja/nein) */
+function ifcInfoOf(part, id) {
+  const key = T('yes');
+  if (!part.infos || part.infosLang !== key) { part.infos = new Map(); part.infosLang = key; }
+  let info = part.infos.get(id);
+  if (info === undefined) {
+    try {
+      if (!part.propIndex) part.propIndex = ifcPropIndex(webIfcApi, part.ifcId, WebIFC);
+      info = ifcElementProps(webIfcApi, part.ifcId, id, part.propIndex, WebIFC, [T('yes'), T('no')]);
+    } catch (e) { info = null; }
+    part.infos.set(id, info);
+  }
+  return info;
+}
+
+function removeIfcHighlight() {
+  const m = ifcSelected && ifcSelected.mesh;
+  if (!m) return;
+  if (m.parent) m.parent.remove(m);
+  if (m.geometry.dispose) m.geometry.dispose();
+  if (m.material.dispose) m.material.dispose();
+  ifcSelected.mesh = null;
+}
+
+function clearIfcFilter() {
+  if (!ifcFilter) return;
+  ifcFilter = null;
+  if (ifcModel) ifcModel.parts.forEach(ifcRestore);
+  renderIfcElement();
+}
+
+function hideIfcElement() {
+  const box = document.getElementById('ifc-element');
+  if (box) box.style.display = 'none';
+  if (ifcFilter) { ifcFilter = null; if (ifcModel) ifcModel.parts.forEach(ifcRestore); }
+  if (!ifcSelected) return;
+  removeIfcHighlight();
+  ifcSelected = null;
+  showPanel(!!(activeTool || selectedIds.length));
+}
+
+/* Nur die Bauteile mit dem Wert f zeigen und ihre Mengen zusammenzählen */
+async function applyIfcFilter(f) {
+  if (!ifcModel) return;
+  showBusy('busyIfcFilter');
+  await yieldToPaint();
+  try {
+    const infos = [];
+    const result = { f: f, count: 0, area: 0, volume: 0, closed: 0, sums: [] };
+    removeIfcHighlight();
+    ifcModel.parts.forEach(function (part) {
+      const ids = new Set();
+      ifcElementIds(part).forEach(function (id) {
+        const info = ifcInfoOf(part, id);
+        if (info && ifcMatches(info, part.name, f)) { ids.add(id); infos.push(info); }
+      });
+      const k = part.group === ifcModel.group ? ifcModel.group.scale.x : part.group.scale.x * ifcModel.group.scale.x;
+      const q = ifcGeometryQuantities(part, ids, k);
+      result.count += ids.size; result.area += q.area; result.volume += q.volume; result.closed += q.closed;
+      ifcIsolate(part, ids);
+    });
+    result.sums = ifcSumQuantities(infos);
+    ifcFilter = result;
+    renderIfcElement();
+  } finally {
+    hideBusy();
+  }
+}
+
+function ifcNumberText(v) {
+  return v.toLocaleString(SETTINGS.language === 'en' ? 'en-GB' : 'de-DE', { maximumFractionDigits: v >= 100 ? 1 : 3 });
+}
+
+function renderIfcElement() {
+  const box = document.getElementById('ifc-element'), body = document.getElementById('ifc-element-body');
+  if (!ifcSelected || !box) return;
+  const part = ifcSelected.part, id = ifcSelected.id;
+  const info = ifcInfoOf(part, id);
+  body.textContent = '';
+  const line = function (cls, text) {
+    const d = document.createElement('div');
+    d.className = cls;
+    d.textContent = text;
+    body.appendChild(d);
+    return d;
+  };
+  // Texte aus der Datei nur als Text einsetzen; filter: beim Anklicken (oder mit Eingabetaste) danach filtern
+  const row = function (k, v, filter) {
+    const d = line('kv' + (filter ? ' ifc-filterable' : ''), '');
+    const a = document.createElement('span'); a.className = 'k'; a.textContent = k;
+    const b = document.createElement('span'); b.className = 'v'; b.textContent = v;
+    d.appendChild(a); d.appendChild(b);
+    if (!filter) return;
+    d.setAttribute('role', 'button');
+    d.setAttribute('tabindex', '0');
+    d.setAttribute('title', T('ifcElFilterHint'));
+    d.addEventListener('click', function () { applyIfcFilter(filter); });
+    d.addEventListener('keydown', function (e) { if (e && (e.key === 'Enter' || e.key === ' ')) { if (e.preventDefault) e.preventDefault(); applyIfcFilter(filter); } });
+  };
+  box.style.display = 'block';
+  if (!info) { line('ifc-element-note', T('ifcElFail')); return; }
+  const labels = { desc: 'ifcElDesc', objType: 'ifcElObjType', tag: 'ifcElTag', guid: 'ifcElGuid', typeName: 'ifcElTypeName' };
+
+  if (ifcFilter) {
+    const f = ifcFilter.f;
+    const name = f.kind === 'prop' ? f.name : f.kind === 'class' ? T('ifcElType') : f.kind === 'name' ? T('ifcElName') : f.kind === 'material' ? T('ifcElMat') :
+      f.kind === 'container' ? T('ifcElIn') : f.kind === 'file' ? T('ifcElFile') : T(labels[f.kind]);
+    line('ifc-element-set', T('ifcElFilter') + ' ' + name + ' = ' + f.value);
+    row(T('ifcElCount'), String(ifcFilter.count));
+    row(T('ifcElVolume'), ifcFilter.closed ? ifcNumberText(ifcFilter.volume) + ' m³' : '–');
+    if (ifcFilter.closed < ifcFilter.count) line('ifc-element-note warn', ifcFormat('ifcElOpen', { n: ifcFilter.count - ifcFilter.closed, m: ifcFilter.count }));
+    row(T('ifcElArea'), ifcNumberText(ifcFilter.area) + ' m²');
+    line('ifc-element-note', T('ifcElGeomNote'));
+    if (ifcFilter.sums.length) {
+      line('ifc-element-set', T('ifcElSums'));
+      ifcFilter.sums.forEach(function (q) { row(q.label, ifcNumberText(q.sum) + ' (' + q.n + ' ×)'); });
+    }
+    const clear = document.createElement('button');
+    clear.className = 'btn-block accent';
+    clear.textContent = T('ifcElClear');
+    clear.addEventListener('click', clearIfcFilter);
+    body.appendChild(clear);
+  } else {
+    line('ifc-element-note', T('ifcElFilterHint'));
+  }
+
+  const nameLine = line('ifc-element-name' + (info.name ? ' ifc-filterable' : ''), info.name || info.type || '#' + id);
+  if (info.name) {
+    nameLine.setAttribute('role', 'button');
+    nameLine.setAttribute('tabindex', '0');
+    nameLine.setAttribute('title', T('ifcElFilterHint'));
+    nameLine.addEventListener('click', function () { applyIfcFilter({ kind: 'name', value: info.name }); });
+  }
+  const f = function (kind, value) { return { kind: kind, value: value }; };
+  if (info.type) row(T('ifcElType'), info.type, f('class', info.type));
+  info.rows.forEach(function (r) { row(T(labels[r[0]]), r[1], r[0] === 'guid' ? null : f(r[0], r[1])); });
+  if (info.material) row(T('ifcElMat'), info.material, f('material', info.material));
+  if (info.container) row(T('ifcElIn'), info.container, f('container', info.container));
+  row(T('ifcElFile'), part.name, f('file', part.name));
+  info.sets.forEach(function (set) {
+    line('ifc-element-set', set.name + (set.fromType ? ' ' + T('ifcElFromType') : ''));
+    set.rows.forEach(function (r) { row(r[0], r[1], { kind: 'prop', set: set.name, name: r[0], value: r[1] }); });
+  });
+  if (!info.sets.length) line('ifc-element-note', T('ifcElNoSets'));
+}
+
+function showIfcElement(part, id) {
+  removeIfcHighlight();
+  ifcSelected = { part: part, id: id, mesh: null };
+  ifcSelected.mesh = ifcHighlight(part, id);
+  if (ifcFilter) removeIfcHighlight();                    // beim Filtern zeigt der Filter, was gemeint ist
+  showPanel(!!(activeTool || selectedIds.length));
+  renderIfcElement();
+}
+
+/* Klick auf das Bauwerk (vor Bausteinen, Gelände und Gebäuden): Angaben zeigen. true = erledigt */
+function clickIfcElement(event) {
+  if (!ifcModel || !ifcModel.placement) return false;
+  pointerToNDC(event);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObject(ifcModel.group, true)[0];
+  const element = hit && ifcElementAt(hit);
+  if (!element) return false;
+  const others = objects.map(function (o) { return o.group; });
+  if (terrainMesh) others.push(terrainMesh);
+  if (buildingsMesh) others.push(buildingsMesh);
+  const front = firstVisibleHit(raycaster.intersectObjects(others, true));
+  if (front && front.distance < hit.distance - 0.05) return false;           // etwas anderes liegt davor
+  selectTool(null);
+  hideMeasure();
+  showIfcElement(element.part, element.id);
+  return true;
 }
 
 /* Passt die Lage aus der Datei zum Gelände? Dann setzen: 'geo' (Georeferenz mit demselben EPSG) oder 'raw'
@@ -11555,6 +12112,7 @@ function ifcTryAutoPlace(model) {
 /* Nach neuem oder umgerechnetem Gelände: Passt die Lage aus der Datei, wird das Bauwerk neu gesetzt, sonst entfernt
    (eine Lage von Hand gilt nur für das alte Gelände) */
 function refreshIfcAfterTerrain() {
+  hideIfcElement();
   if (ifcPick) { clearIfcMarkers(); ifcPick = null; showIfcHint(null); }
   stopIfcMove(true);
   if (!ifcModel) return;
@@ -11791,6 +12349,7 @@ function focusOnIfc() {
 }
 
 function removeIfc() {
+  hideIfcElement();
   cancelIfcPick(true);
   stopIfcMove(true);
   ifcRemoveModel();
@@ -12732,6 +13291,9 @@ function onCanvasClick(event) {
     return;
   }
 
+  if (clickIfcElement(event)) return;
+  if (!ifcFilter) hideIfcElement();
+
   const hit = raycastObjects(event);
   if (hit) {
     hideMeasure();
@@ -12972,6 +13534,8 @@ function onKeyDown(event) {
     if (rulerActive) { stopRuler(); return; }
     if (ifcPick) { cancelIfcPick(); return; }
     if (ifcGizmo) { stopIfcMove(); return; }
+    if (ifcFilter) { clearIfcFilter(); return; }
+    if (ifcSelected) { hideIfcElement(); return; }
     if (rectSelectActive) { cancelRectExport(); return; }
     if (isIfcPanelOpen()) { clearExportPreview(); setStatus(''); return; }
     // Erst die Knotenauswahl lösen, die Objektauswahl bleibt bestehen
@@ -13050,9 +13614,10 @@ function initUI() {
 
   const ifcInput = document.getElementById('ifc-input');
   ifcInput.addEventListener('change', function () {
-    if (ifcInput.files && ifcInput.files.length) handleIfcFile(ifcInput.files);
+    if (ifcInput.files && ifcInput.files.length) handleIfcFile(ifcInput.files).then(function () { ifcInput.value = ''; });   // dieselbe Datei erneut wählbar
   });
   document.getElementById('ifc-clear').addEventListener('click', removeIfc);
+  document.getElementById('ifc-element-close').addEventListener('click', hideIfcElement);
   document.getElementById('ruler-new').addEventListener('click', newRuler);
   document.getElementById('ruler-close').addEventListener('click', stopRuler);
   document.getElementById('ifc-manual-btn').addEventListener('click', function () { startIfcManual(false); });

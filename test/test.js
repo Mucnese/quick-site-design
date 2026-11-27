@@ -2831,6 +2831,54 @@ test('IFC-Netze in Raumblöcken: nahe Bauteile teilen sich ein Netz, ferne nicht
   assert.strictEqual(app.ifcChunkKey(at(0, 120), 7), 'big7');
 });
 
+/* zwei Würfel (2 m Kante, geschlossen) und eine offene Fläche in einem Netz, wie beim IFC-Import */
+function ifcCubePart() {
+  const faces = [[0,2,1],[0,3,2],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[1,2,6],[1,6,5],[2,3,7],[2,7,6],[3,0,4],[3,4,7]];
+  const corners = [[0,0,0],[2,0,0],[2,2,0],[0,2,0],[0,0,2],[2,0,2],[2,2,2],[0,2,2]];
+  const pos = [], idx = [];
+  [0, 10].forEach(function (shift, n) { corners.forEach(function (c) { pos.push(c[0] + shift, c[1], c[2]); }); faces.forEach(function (f) { idx.push(f[0] + n * 8, f[1] + n * 8, f[2] + n * 8); }); });
+  idx.push(0, 1, 2);                                          // offene Fläche
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  g.setIndex(new THREE.BufferAttribute(new Uint32Array(idx), 1));
+  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({}));
+  mesh.userData.ranges = [{ end: 12, id: 1 }, { end: 24, id: 2 }, { end: 25, id: 3 }];
+  const group = new THREE.Group();
+  group.add(mesh);
+  return { group: group, mesh: mesh };
+}
+
+test('IFC-Mengen: Volumen nur geschlossener Körper, Oberfläche, Maßstab; Isolieren zeigt nur die gewählten und stellt wieder her', function () {
+  const p = ifcCubePart();
+  const q = app.ifcGeometryQuantities(p, new Set([1, 2, 3]), 1);
+  assert.strictEqual(q.count, 3);
+  assert.strictEqual(q.closed, 2);
+  assert.ok(Math.abs(q.volume - 16) < 1e-6 && Math.abs(q.area - (24 + 24 + 2)) < 1e-6, JSON.stringify(q));
+  assert.ok(Math.abs(app.ifcGeometryQuantities(p, new Set([2]), 0.5).volume - 1) < 1e-6);
+  app.ifcIsolate(p, new Set([2]));
+  assert.strictEqual(p.group.children.length, 1);
+  const sub = p.group.children[0];
+  assert.ok(sub !== p.mesh && sub.userData.ranges.length === 1 && sub.userData.ranges[0].id === 2 && sub.userData.ranges[0].end === 12);
+  assert.deepStrictEqual(app.ifcElementIds(p).sort(), [1, 2, 3], 'die vollen Netze zählen weiter');
+  app.ifcRestore(p);
+  assert.ok(p.group.children.length === 1 && p.group.children[0] === p.mesh);
+});
+
+test('IFC-Filter: Vergleich je Attribut, Mengen aus der IFC summieren', function () {
+  const info = function (vol, fam) {
+    return { type: 'IFCCOLUMN', name: 'S', material: 'Beton', container: 'EG', rows: [['objType', 'Stütze:30x30'], ['typeName', '30x30']],
+      sets: [{ name: 'Qto', quantity: true, rows: [['NetVolume', String(vol), vol]] }, { name: 'Pset', quantity: false, rows: [['Familie', fam, null], ['Länge', '3', 3], ['Nummer', '7', 7]] }] };
+  };
+  const a = info(1.5, 'A'), b = info(2.5, 'B');
+  assert.ok(app.ifcMatches(a, 'x.ifc', { kind: 'class', value: 'IFCCOLUMN' }));
+  assert.ok(app.ifcMatches(a, 'x.ifc', { kind: 'objType', value: 'Stütze:30x30' }));
+  assert.ok(app.ifcMatches(a, 'x.ifc', { kind: 'file', value: 'x.ifc' }));
+  assert.ok(app.ifcMatches(a, 'x.ifc', { kind: 'prop', set: 'Pset', name: 'Familie', value: 'A' }));
+  assert.ok(!app.ifcMatches(b, 'x.ifc', { kind: 'prop', set: 'Pset', name: 'Familie', value: 'A' }));
+  const sums = app.ifcSumQuantities([a, b]);
+  assert.deepStrictEqual(sums.map(function (s) { return s.label + '=' + s.sum + '/' + s.n; }), ['Pset · Länge=6/2', 'Qto · NetVolume=4/2']);
+});
+
 test('Drehring: Richtungswinkel in der waagerechten Ebene (Ost 0, Nord 90 Grad), null beim waagerechten Blick; Winkel auf (-180, 180]', function () {
   const c = { x: 5, y: 2, z: 5 }, down = { x: 0, y: -1, z: 0 };
   assert.ok(Math.abs(app.ringDragAngle({ x: 9, y: 30, z: 5 }, down, c)) < 1e-9);

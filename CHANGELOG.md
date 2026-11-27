@@ -9,6 +9,11 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-27
 
+### Neu
+- **IFC-Bauteil anklicken:** Fenster mit Klasse, Name, Typ, Material, Lage und allen Eigenschaften und Mengen; das Bauteil wird hervorgehoben.
+- **Filtern nach jedem Attribut mit Mengen:** Ein Klick auf eine Zeile zeigt nur die Bauteile mit demselben Wert und rechnet Anzahl, Volumen, Oberfläche und die Mengen aus der IFC zusammen.
+- **IFC dazulegen:** Eine neue Auswahl kommt zum geladenen Bauwerk, statt es zu ersetzen.
+
 ### Geändert
 - **Große IFC flüssiger:** Das Anklicken und Drehen der Ansicht auf einem großen Bauwerk blockiert nicht mehr (die Geometrie liegt in Raumblöcken).
 

@@ -304,7 +304,14 @@ IFC-Datei ein. Voraussetzung ist ein geladenes Gelände. Die Bibliothek zum Lese
 nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Größe bis 300 MB (zusammen).
 
 **Mehrere Dateien:** Liegt ein Bauwerk in Teilen vor (Überbau, Unterbau, Behelfe), wähle **alle zugleich**. Sie werden zu einem Bauwerk zusammengefasst, jede an ihrem Platz; Platzieren, Schieben, Drehen und Entfernen wirken auf alles.
-Dateien ohne Georeferenz gelten im System der anderen. Dateien in einem anderen Bezugssystem, weit entfernte (über 20 km) oder nicht lesbare werden weggelassen und genannt. Eine neue Auswahl ersetzt das bisherige Bauwerk.
+Dateien ohne Georeferenz gelten im System der anderen. Dateien in einem anderen Bezugssystem, weit entfernte (über 20 km) oder nicht lesbare werden weggelassen und genannt. Ist schon ein Bauwerk geladen, **kommt eine neue Auswahl dazu**; das Vorhandene bleibt genau an seiner Stelle, auch nach dem Ausrichten von Hand. Eine schon geladene Datei wird übergangen. Für ein anderes Bauwerk zuerst **Entfernen**.
+
+**Bauteil anklicken:** Ein Klick auf das Bauwerk hebt das Bauteil hervor und öffnet rechts das Fenster **Bauteil**: IFC-Klasse, Name, Objekttyp, Typ, Material, Lage im Bauwerk, Datei und alle Eigenschaften und Mengen aus der IFC.
+
+**Filtern und Mengen:** Ein Klick auf eine **Zeile** (zum Beispiel Typ, Material oder eine Eigenschaft) zeigt **nur die Bauteile mit demselben Wert** und rechnet zusammen:
+- Anzahl, **Volumen** und **Oberfläche**, aus der Geometrie berechnet (überschlägig). Ein Volumen gibt es nur für geschlossene Körper; die Zahl der übrigen wird genannt.
+- **Summen aus der IFC**: Mengen, die in der Datei selbst stehen, mit der Zahl der Bauteile, die sie haben. Die Einheit ist die der Datei.
+**Filter aufheben** (oder **Esc**) zeigt wieder alles; ein zweites **Esc** schließt das Fenster.
 
 - **Automatisch:** Ist die Datei georeferenziert (`IfcMapConversion`) und hat **dasselbe
   Bezugssystem (EPSG)** wie das Gelände, steht das Bauwerk sofort an der richtigen Stelle,

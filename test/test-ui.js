@@ -2353,10 +2353,12 @@ await test('IFC-Import: gleiches Bezugssystem - automatisch platziert, Lage aus 
             JSON.stringify(m.group.position));
   assert.strictEqual(ifcPickOf(s), null, 'keine manuelle Platzierung');
   assert.strictEqual(m.group.children.length, 1, 'ein Netz je Farbe');
-  assert.strictEqual(s.WebIFC.closed, 1, 'Modell im Leser wieder freigegeben');
+  assert.strictEqual(s.WebIFC.closed || 0, 0, 'Modell bleibt für die Bauteilangaben offen');
   // Höhenversatz
   s.applyIfcDz('2.5');
   assert.ok(Math.abs(m.group.position.y - 3.5) < 1e-6);
+  s.removeIfc();
+  assert.strictEqual(s.WebIFC.closed, 1, 'beim Entfernen geschlossen');
 });
 
 await test('IFC-Import: Längeneinheit des Projekts aus IfcProject.UnitsInContext, nicht aus der ersten IfcSIUnit', async function () {
@@ -2572,6 +2574,7 @@ await test('Bezugssystem wählen: Gelände und Gebäude werden umgerechnet und w
   assert.ok(g('ifc-status').textContent.indexOf('Warnung:') > 0 && g('ifc-status').className === 'file-status err', g('ifc-status').textContent);
   s.stopIfcMove(true);
   // Gauß-Krüger-Koordinaten ohne Georeferenz auf UTM-Gelände: auch eine Warnung
+  s.removeIfc();
   s.WebIFC = fakeWebIfc(null, { coord: [-mid.e, -501, mid.n] });
   vm.runInContext('webIfcApi = null; webIfcLoading = null', s);
   await s.handleIfcFile(ifcFile('roh.ifc'));
@@ -2654,6 +2657,120 @@ await test('Mausrad: am Ende des Zoomwegs wandert das Drehzentrum mit, bis kurz 
   assert.strictEqual(dist(), 12);
   cam.position.set(0, 50, 500); ctr.target.set(0, 50, 0); s.pushZoomTarget(-100, 0);
   assert.strictEqual(ctr.target.z, 0, 'mit Platz bleibt das Zentrum');
+});
+
+await test('IFC dazulegen: eine zweite Auswahl kommt zum Bauwerk, das Vorhandene bleibt auch nach Schieben und Drehen stehen; doppelte Datei wird genannt', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  const g = function (id) { return s.document.getElementById(id); };
+  await s.handleIfcFile(ifcFile('unterbau.ifc'));
+  const first = ifcModelOf(s);
+  const partGroup = first.group;
+  s.applyIfcShift('e', '7'); s.applyIfcShift('n', '-3'); s.applyIfcShift('z', '2'); s.applyIfcShift('r', '40');
+  // Weltlage eines Eckpunkts der ersten Datei vor dem Dazulegen
+  const world = function (m, p) {
+    const a = m.group.rotation.y, c = Math.cos(a), sn = Math.sin(a), k = m.group.scale.x;
+    return [m.group.position.x + k * (c * p[0] + sn * p[2]), m.group.position.y + k * p[1], m.group.position.z + k * (-sn * p[0] + c * p[2])];
+  };
+  const before = world(first, [3, 1, 2]);
+  s.WebIFC = fakeWebIfc({ E: 692560, N: 5336520, H: 501, epsg: 25832 });
+  vm.runInContext('webIfcApi = null; webIfcLoading = null', s);
+  await s.handleIfcFile(ifcFile('ueberbau.ifc'));
+  const m = ifcModelOf(s);
+  assert.strictEqual(m.parts.length, 2);
+  assert.strictEqual(m.parts[0].group, partGroup, 'dieselbe erste Datei, nicht neu gelesen');
+  assert.strictEqual(m.group.children.length, 2);
+  assert.ok(m.rot === 40, 'Drehung bleibt: ' + m.rot);
+  const after = world(m, [3, 1, 2]);
+  after.forEach(function (v, i) { assert.ok(Math.abs(v - before[i]) < 1e-6, i + ': ' + before + ' / ' + after); });
+  assert.ok(g('ifc-status').textContent.indexOf('1 Datei(en) dazugeladen') === 0 && g('ifc-status').textContent.indexOf('2 IFC-Dateien') > 0, g('ifc-status').textContent);
+  await s.handleIfcFile(ifcFile('ueberbau.ifc'));
+  assert.strictEqual(ifcModelOf(s).parts.length, 2);
+  assert.ok(g('ifc-status').textContent.indexOf('ueberbau.ifc (schon geladen)') > 0, g('ifc-status').textContent);
+  s.removeIfc();
+  assert.strictEqual(ifcModelOf(s), null);
+});
+
+await test('IFC-Bauteil anklicken: Dreieck -> Bauteil, Fenster mit Klasse, Material und Eigenschaftssätzen; Esc schließt', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  const g = function (id) { return s.document.getElementById(id); };
+  s.initUI();
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  const m = ifcModelOf(s), mesh = m.group.children[0];
+  assert.strictEqual(JSON.stringify(mesh.userData.ranges), JSON.stringify([{ end: 12, id: undefined }]));
+  mesh.userData.ranges = [{ end: 4, id: 100 }, { end: 12, id: 200 }];
+  assert.strictEqual(s.ifcElementAt({ object: mesh, faceIndex: 3 }).id, 100);
+  assert.strictEqual(s.ifcElementAt({ object: mesh, faceIndex: 4 }).id, 200);
+  const v = function (x) { return { value: x }; };
+  const lines = {
+    200: { type: 1, Name: v('Pfeiler 3'), GlobalId: v('abc'), Tag: v('P3') },
+    10: { RelatedObjects: [v(200)], RelatingPropertyDefinition: v(11) },
+    11: { Name: v('Pset_Pfeiler'), HasProperties: [v(12), v(13)] },
+    12: { Name: v('Beton'), NominalValue: v('C35/45') },
+    13: { Name: v('Tragend'), NominalValue: { value: 'T', name: 'IFCBOOLEAN' } },
+    20: { RelatedElements: [v(200)], RelatingStructure: v(21) }, 21: { Name: v('Achse 30') },
+    30: { RelatedObjects: [v(200)], RelatingMaterial: v(31) }, 31: { Name: v('<b>Stahlbeton</b>') }
+  };
+  const api = vm.runInContext('webIfcApi', s);
+  const types = { R1: [10], R3: [20], R4: [30] };
+  s.WebIFC.IFCRELDEFINESBYPROPERTIES = 'R1'; s.WebIFC.IFCRELCONTAINEDINSPATIALSTRUCTURE = 'R3'; s.WebIFC.IFCRELASSOCIATESMATERIAL = 'R4';
+  api.GetLineIDsWithType = function (id, t) { const a = types[t] || []; return { size: function () { return a.length; }, get: function (i) { return a[i]; } }; };
+  api.GetLine = function (id, eid) { return lines[eid]; };
+  api.GetNameFromTypeCode = function () { return 'IFCCOLUMN'; };
+  const rc = vm.runInContext('raycaster', s);
+  rc.intersectObject = function () { return [{ object: mesh, faceIndex: 7, distance: 10 }]; };
+  rc.intersectObjects = function () { return []; };
+  assert.strictEqual(s.clickIfcElement({ clientX: 1, clientY: 1 }), true);
+  assert.strictEqual(g('ifc-element').style.display, 'block');
+  assert.strictEqual(g('col-right').style.display, 'flex', 'die rechte Spalte ist sichtbar');
+  assert.strictEqual(g('param-wrap').style.display, 'none');
+  const all = function (el) { return (el.textContent || '') + (el.children || []).map(all).join('|'); };
+  const txt = all(g('ifc-element-body'));
+  ['Pfeiler 3', 'IFCCOLUMN', 'abc', 'P3', 'Pset_Pfeiler', 'C35/45', 'ja', 'Achse 30', '<b>Stahlbeton</b>', 'haus.ifc'].forEach(function (k) { assert.ok(txt.indexOf(k) >= 0, k + ' fehlt: ' + txt); });
+  assert.strictEqual(m.parts[0].group.children.length, 2, 'Hervorhebung liegt in der Gruppe der Datei');
+  s.selectTool('container');                                  // Werkzeug wählen: Fenster weicht den Parametern
+  assert.strictEqual(g('ifc-element').style.display, 'none');
+  assert.strictEqual(g('col-right').style.display, 'flex');
+  assert.strictEqual(g('param-wrap').style.display, '');
+  s.selectTool(null);
+  s.showIfcElement(m.parts[0], 200);
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(g('ifc-element').style.display, 'none');
+  assert.strictEqual(g('col-right').style.display, 'none');
+  assert.strictEqual(m.parts[0].group.children.length, 1);
+  // etwas davor (Gelände oder Baustein): kein Bauteil
+  rc.intersectObjects = function () { return [{ object: { userData: {} }, point: { x: 0, y: 0, z: 0 }, distance: 5 }]; };
+  assert.strictEqual(s.clickIfcElement({ clientX: 1, clientY: 1 }), false);
+});
+
+await test('IFC-Filter: Zeile anklicken zeigt nur gleiche Bauteile mit Mengen; Esc hebt erst den Filter auf, dann schließt es das Fenster', async function () {
+  const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
+  const g = function (id) { return s.document.getElementById(id); };
+  s.initUI();
+  await s.handleIfcFile(ifcFile('haus.ifc'));
+  const m = ifcModelOf(s), full = m.group.children[0];
+  full.userData.ranges = [{ end: 4, id: 100 }, { end: 8, id: 200 }, { end: 12, id: 300 }];
+  const v = function (x) { return { value: x }; };
+  const lines = { 100: { Name: v('Pfeiler'), ObjectType: v('P') }, 200: { Name: v('Pfeiler'), ObjectType: v('P') }, 300: { Name: v('Platte'), ObjectType: v('D') } };
+  const api = vm.runInContext('webIfcApi', s);
+  api.GetLineIDsWithType = function () { return { size: function () { return 0; } }; };
+  api.GetLine = function (id, eid) { return lines[eid]; };
+  s.yieldToPaint = function () { return Promise.resolve(); };
+  s.showIfcElement(m.parts[0], 100);
+  const all = function (el) { return (el.textContent || '') + (el.children || []).map(all).join('|'); };
+  await s.applyIfcFilter({ kind: 'objType', value: 'P' });
+  const txt = all(g('ifc-element-body'));
+  assert.ok(txt.indexOf('Filter: Objekttyp = P') >= 0 && txt.indexOf('Bauteile|2') >= 0 && txt.indexOf('Filter aufheben') >= 0, txt);
+  const shown = m.group.children.filter(function (c) { return c.userData.ranges; });
+  assert.strictEqual(shown.length, 1);
+  assert.strictEqual(JSON.stringify(shown[0].userData.ranges), JSON.stringify([{ end: 4, id: 100 }, { end: 8, id: 200 }]));
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(m.group.children.filter(function (c) { return c.userData.ranges; })[0], full, 'volles Netz zurück');
+  assert.strictEqual(g('ifc-element').style.display, 'block');
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(g('ifc-element').style.display, 'none');
+  await s.applyIfcFilter({ kind: 'name', value: 'Platte' });
+  s.removeIfc();
+  assert.strictEqual(ifcModelOf(s), null);
 });
 
 await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {
