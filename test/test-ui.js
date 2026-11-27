@@ -2381,7 +2381,9 @@ await test('IFC-Import: anderes Bezugssystem oder keine Georeferenz - Platzierun
   assert.strictEqual(g('ifc-hint').style.display, 'none');
   assert.ok(Math.abs(m.placement.rotY - Math.PI / 2) < 1e-9, 'um 90 Grad gedreht');
   assert.ok(g('ifc-status').textContent.indexOf('Abstand A–B: Bauwerk 10.00 m, Gelände 10.00 m') >= 0, g('ifc-status').textContent);
-  assert.strictEqual(g('ifc-status').className.indexOf('err') < 0, true, 'Abstände passen: keine Warnung');
+  assert.ok(g('ifc-status').textContent.indexOf('weichen um') < 0, 'Abstände passen: keine Abstandswarnung');
+  assert.ok(g('ifc-status').textContent.indexOf('Warnung: Das Bauwerk liegt in EPSG:25833, das Gelände in EPSG:25832') > 0, g('ifc-status').textContent);
+  assert.strictEqual(g('ifc-status').className, 'file-status err', 'anderes Bezugssystem: bleibt rot');
   // Abstände weichen stark ab: Warnung
   s.startIfcManual(false);
   const p2 = ifcPickOf(s);
@@ -2533,7 +2535,20 @@ await test('Bezugssystem wählen: Gelände und Gebäude werden umgerechnet und w
   s.WebIFC = fakeWebIfc({ E: mid.e, N: mid.n, H: 501, epsg: 31468 });
   await s.handleIfcFile(ifcFile('gk.ifc'));
   assert.ok(ifcPickOf(s), 'erst von Hand');
-  assert.ok(g('ifc-status').textContent.indexOf('EPSG:31468 wählen') > 0, g('ifc-status').textContent);
+  assert.ok(g('ifc-status').textContent.indexOf('Warnung: Das Bauwerk liegt in EPSG:31468') === 0 && g('ifc-status').textContent.indexOf('EPSG:31468 wählen') > 0, g('ifc-status').textContent);
+  assert.strictEqual(g('ifc-status').className, 'file-status err');
+  s.startIfcMove();                                           // Umsteigen aufs Schieben: die Warnung bleibt
+  assert.ok(g('ifc-status').textContent.indexOf('Warnung:') > 0 && g('ifc-status').className === 'file-status err', g('ifc-status').textContent);
+  s.stopIfcMove(true);
+  // Gauß-Krüger-Koordinaten ohne Georeferenz auf UTM-Gelände: auch eine Warnung
+  s.WebIFC = fakeWebIfc(null, { coord: [-mid.e, -501, mid.n] });
+  vm.runInContext('webIfcApi = null; webIfcLoading = null', s);
+  await s.handleIfcFile(ifcFile('roh.ifc'));
+  assert.ok(g('ifc-status').textContent.indexOf('sehen nach EPSG:31468 aus') > 0 && g('ifc-status').className === 'file-status err', g('ifc-status').textContent);
+  s.removeIfc();
+  s.WebIFC = fakeWebIfc({ E: mid.e, N: mid.n, H: 501, epsg: 31468 });
+  vm.runInContext('webIfcApi = null; webIfcLoading = null', s);
+  await s.handleIfcFile(ifcFile('gk.ifc'));
   g('project-crs').value = '31468';
   await s.onProjectCrsChange();
   assert.strictEqual(ifcPickOf(s), null);

@@ -13,6 +13,7 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 - **More accurate with BeTA2007:** Between German Gauss-Krüger (DHDN) and ETRS89 the application now uses the AdV BeTA2007 grid (about 1 m instead of about 3 m), also for IFC export and the map.
 - **IFC with national coordinates but no georeference** is placed automatically if the coordinates lie within the terrain.
 - Building files naming another coordinate system than the terrain are converted.
+- **Red warning** when an IFC structure is in another coordinate system than the terrain (stays after aligning by hand).
 
 ### Changed
 - **“Remove” for all data:** The terrain now has the button too; for terrain, buildings and structure it is always at the top right. For the terrain, after a question everything is removed, because everything depends on it.

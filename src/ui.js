@@ -72,7 +72,7 @@ const STRINGS = {
     busyGml: 'Gebäudemodell wird verarbeitet … bei großen Dateien kann das einige Sekunden dauern.', busyGmlRender: 'Gebäudemodell wird gerendert …',
     busyIfc: 'IFC-Datei wird gelesen und gerendert … bei großen Dateien kann das einige Sekunden dauern.',
     ifcReading: 'Lese IFC …', ifcPlacedAuto: 'Automatisch platziert (EPSG:{c}).',
-    ifcWhyNoGeo: 'Das Bauwerk ist nicht georeferenziert.', ifcWhyCrs: 'Das Bauwerk liegt in EPSG:{a}, das Gelände in EPSG:{b}.',
+    ifcWhyNoGeo: 'Das Bauwerk ist nicht georeferenziert.', ifcWhyCrs: 'Warnung: Das Bauwerk liegt in EPSG:{a}, das Gelände in EPSG:{b}.', ifcCrsGuess: 'Warnung: Die Koordinaten des Bauwerks sehen nach EPSG:{a} aus, das Gelände liegt in EPSG:{b}.',
     ifcWhyNoCrs: 'Das Bauwerk nennt kein Bezugssystem (EPSG-Code).', ifcWhyTerrainCrs: 'Das Gelände hat kein bekanntes Bezugssystem.',
     ifcStep0: 'Punkt A am Bauwerk anklicken (zum Beispiel eine Ecke).', ifcStep1: 'Jetzt im Gelände den Punkt anklicken, der A am Bauwerk entspricht.',
     ifcStep2: 'Punkt B am Bauwerk anklicken, möglichst weit von A entfernt.', ifcStep3: 'Im Gelände den Punkt anklicken, der B entspricht.',
@@ -277,7 +277,7 @@ const STRINGS = {
     busyGml: 'Building model is being processed … large files can take a few seconds.', busyGmlRender: 'Building model is being rendered …',
     busyIfc: 'IFC file is being read and rendered … large files can take a few seconds.',
     ifcReading: 'Reading IFC …', ifcPlacedAuto: 'Placed automatically (EPSG:{c}).',
-    ifcWhyNoGeo: 'The structure is not georeferenced.', ifcWhyCrs: 'The structure is in EPSG:{a}, the terrain in EPSG:{b}.',
+    ifcWhyNoGeo: 'The structure is not georeferenced.', ifcWhyCrs: 'Warning: the structure is in EPSG:{a}, the terrain in EPSG:{b}.', ifcCrsGuess: 'Warning: the coordinates of the structure look like EPSG:{a}, the terrain is in EPSG:{b}.',
     ifcWhyNoCrs: 'The structure names no coordinate system (EPSG code).', ifcWhyTerrainCrs: 'The terrain has no known coordinate system.',
     ifcStep0: 'Click point A on the structure (for example a corner).', ifcStep1: 'Now click the point in the terrain that matches A on the structure.',
     ifcStep2: 'Click point B on the structure, as far from A as possible.', ifcStep3: 'Click the point in the terrain that matches B.',
@@ -2842,8 +2842,20 @@ function addIfcMarker(pt, step) {
   ifcPick.markers.push(m);
 }
 
-/* Startet die Platzierung von Hand; fresh = das Bauwerk ist neu und hat noch keine Lage */
-function startIfcManual(fresh, why) {
+/* Warnung, wenn das Bauwerk in einem anderen Bezugssystem liegt als das Gelände (in der Datei genannt oder, ohne
+   Georeferenz, an Gauß-Krüger-Koordinaten erkannt), sonst '' */
+function ifcCrsWarning(model) {
+  if (!TERRAIN || !TERRAIN.epsg) return '';
+  const g = model.georef;
+  const code = g ? g.epsg : ifcGuessGk(model.bbox, model.coord);
+  if (!code || code === TERRAIN.epsg) return '';
+  let text = ifcFormat(g ? 'ifcWhyCrs' : 'ifcCrsGuess', { a: code, b: TERRAIN.epsg });
+  if (crsGeoDefinition(code) && lastDemTiles) text += ' ' + ifcFormat('ifcSuggestCrs', { c: code });
+  return text;
+}
+
+/* Startet die Platzierung von Hand; fresh = das Bauwerk ist neu und hat noch keine Lage; warn = der Grund ist eine Warnung (rot) */
+function startIfcManual(fresh, why, warn) {
   if (!ifcModel) return;
   stopIfcMove(true);
   ifcPick = { step: 0, p: [], t: [], markers: [], fresh: !!fresh,
@@ -2852,7 +2864,8 @@ function startIfcManual(fresh, why) {
   ifcPreviewPlacement(ifcModel);
   frameIfcModel();
   showIfcHint(0);
-  if (why) setIfcStatus(why + ' ' + T('ifcManualBtn') + ' …', 'busy');
+  if (why) setIfcStatus(why + ' ' + T('ifcManualBtn') + ' …', warn ? 'err' : 'busy');
+  if (warn) setStatus(why, true);
 }
 
 function frameIfcModel() {
@@ -2918,9 +2931,12 @@ function finishIfcPick() {
   ifcModel.placedCrs = TERRAIN.epsg;
   let msg = ifcFormat('ifcPlacedManual', { m: pl.distModel.toFixed(2), t: pl.distTerrain.toFixed(2) });
   const diff = Math.abs(pl.distModel - pl.distTerrain);
-  if (diff > Math.max(0.5, 0.02 * pl.distTerrain)) msg += ' ' + ifcFormat('ifcDistWarn', { d: diff.toFixed(2) });
-  setIfcStatus(msg, diff > Math.max(0.5, 0.02 * pl.distTerrain) ? 'err' : 'ok');
-  setStatus(msg, diff > Math.max(0.5, 0.02 * pl.distTerrain));
+  const far = diff > Math.max(0.5, 0.02 * pl.distTerrain);
+  if (far) msg += ' ' + ifcFormat('ifcDistWarn', { d: diff.toFixed(2) });
+  const warn = ifcCrsWarning(ifcModel);                       // bleibt auch nach dem Ausrichten stehen
+  if (warn) msg += ' ' + warn;
+  setIfcStatus(msg, far || warn ? 'err' : 'ok');
+  setStatus(msg, far || !!warn);
 }
 
 async function handleIfcFile(file) {
@@ -2955,14 +2971,10 @@ async function handleIfcFile(file) {
       return;
     }
     const g = model.georef;
-    let why = '';
-    if (!g) why = T('ifcWhyNoGeo');
-    else if (!g.epsg) why = T('ifcWhyNoCrs');
-    else if (!TERRAIN.epsg) why = T('ifcWhyTerrainCrs');
-    else why = ifcFormat('ifcWhyCrs', { a: g.epsg, b: TERRAIN.epsg });
-    const guess = g && g.epsg ? (crsGeoDefinition(g.epsg) ? g.epsg : null) : ifcGuessGk(m.bbox, m.coord);
-    if (guess && guess !== TERRAIN.epsg && lastDemTiles) why += ' ' + ifcFormat('ifcSuggestCrs', { c: guess });
-    startIfcManual(true, why);
+    const warn = ifcCrsWarning(model);
+    let why = warn;
+    if (!why) why = !g ? T('ifcWhyNoGeo') : !g.epsg ? T('ifcWhyNoCrs') : T('ifcWhyTerrainCrs');
+    startIfcManual(true, why, !!warn);
   } catch (e) {
     const code = e && e.message;
     const msg = code === 'ifcLibFail' ? T('ifcLibFail') : code === 'ifcEmpty' ? T('ifcEmpty') : ifcFormat('ifcFail', { e: code });
@@ -3088,7 +3100,12 @@ function startIfcMove() {
     ifcPick = null;
     showIfcHint(null);
     if (p.before) ifcApplyPlacement(ifcModel, p.before.pl, p.before.dz, p.before.de, p.before.dn, p.before.rot);
-    else { ifcModel.how = 'manual'; ifcModel.placedCrs = TERRAIN.epsg; setIfcStatus(T('ifcPlacedMove'), 'ok'); }
+    else {
+      ifcModel.how = 'manual';
+      ifcModel.placedCrs = TERRAIN.epsg;
+      const warn = ifcCrsWarning(ifcModel);
+      setIfcStatus(T('ifcPlacedMove') + (warn ? ' ' + warn : ''), warn ? 'err' : 'ok');
+    }
   }
   if (!ifcModel.placement) return;
   if (rulerActive) stopRuler();
@@ -4614,6 +4631,7 @@ if (typeof module !== 'undefined' && module.exports) {
     refreshIfcAfterTerrain: refreshIfcAfterTerrain,
     getIfcPick: function () { return ifcPick; },
     onProjectCrsChange: onProjectCrsChange, setProjectCrs: setProjectCrs,
+    ifcCrsWarning: ifcCrsWarning,
     startIfcMove: startIfcMove, stopIfcMove: stopIfcMove, updateIfcGizmo: updateIfcGizmo, applyIfcShift: applyIfcShift,
     startIfcGizmoDrag: startIfcGizmoDrag, buildIfcGizmo: buildIfcGizmo, onIfcGizmoMove: onIfcGizmoMove, endIfcGizmoDrag: endIfcGizmoDrag,
     setIfcPick: function (p) { ifcPick = p; },

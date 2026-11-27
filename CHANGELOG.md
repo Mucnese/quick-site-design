@@ -14,6 +14,7 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 - **Genauer mit BeTA2007:** Zwischen Gauß-Krüger Deutschland (DHDN) und ETRS89 rechnet die Anwendung jetzt mit dem BeTA2007-Gitter der AdV (etwa 1 m statt etwa 3 m), auch beim IFC-Export und für die Karte.
 - **IFC mit Landeskoordinaten ohne Georeferenz** wird automatisch platziert, wenn die Koordinaten im Gelände liegen.
 - Gebäudedateien, die ein anderes Bezugssystem nennen als das Gelände, werden umgerechnet.
+- **Rote Warnung**, wenn ein IFC-Bauwerk in einem anderen Bezugssystem liegt als das Gelände (bleibt auch nach dem Ausrichten von Hand).
 
 ### Geändert
 - **„Entfernen“ bei allen Daten:** Auch das Gelände hat jetzt den Knopf; er steht bei Gelände, Gebäude und Bauwerk immer oben rechts. Beim Gelände wird nach einer Rückfrage alles entfernt, weil alles daran hängt.

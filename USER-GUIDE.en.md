@@ -301,7 +301,7 @@ file stays in the browser and is not transmitted. Size up to 300 MB.
   system (EPSG)** as the terrain, the structure appears at the right place, rotated and at the right
   height. Scale and length unit of the file are taken into account.
   This also works without a georeference if the file itself holds national coordinates that lie within the terrain (common with Gauss-Krüger).
-  If the terrain is in another system, the message names the EPSG code you can choose above as **coordinate system (CRS)**; the structure then places itself.
+  If the structure is in another system than the terrain, a **red warning** appears, also after aligning by hand. It names the EPSG code you can choose above as **coordinate system (CRS)**; the structure then places itself.
 - **Align 4 points (2 + 2):** If the georeference is missing or the coordinate system differs, the
   message names the reason and starts the procedure: click alternately **point A on the structure**, then the
   **matching point A on the terrain**, then point B the same way. The point pairs give position and rotation. The structure

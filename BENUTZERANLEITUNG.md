@@ -306,7 +306,7 @@ nachgeladen; die Datei bleibt dabei im Browser und wird nicht übertragen. Grö�
   Bezugssystem (EPSG)** wie das Gelände, steht das Bauwerk sofort an der richtigen Stelle,
   gedreht und in der richtigen Höhe. Maßstab und Längeneinheit der Datei werden berücksichtigt.
   Das gilt auch ohne Georeferenz, wenn in der Datei selbst Landeskoordinaten stehen, die im Gelände liegen (häufig bei Gauß-Krüger).
-  Liegt das Gelände in einem anderen System, nennt die Meldung den EPSG-Code, den du oben als **Bezugssystem (KBS)** wählen kannst; das Bauwerk setzt sich dann selbst.
+  Liegt das Bauwerk in einem anderen System als das Gelände, erscheint eine **rote Warnung**, auch nach dem Ausrichten von Hand. Sie nennt den EPSG-Code, den du oben als **Bezugssystem (KBS)** wählen kannst; das Bauwerk setzt sich dann selbst.
 - **4 Punkte ausrichten (2 + 2):** Fehlt die Georeferenz oder weicht das Bezugssystem ab, nennt die Meldung
   den Grund und startet das Verfahren: abwechselnd **Punkt A am Bauwerk**, dann der **zugehörige
   Punkt A im Gelände**, danach ebenso Punkt B. Aus den Punktpaaren ergeben sich Lage und Drehung. Das Bauwerk bleibt
