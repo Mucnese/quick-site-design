@@ -2444,6 +2444,25 @@ await test('IFC verschieben mit drei Achsen: Ziehen am Pfeil verschiebt nur entl
   assert.ok(Math.abs(m.group.position.x - p0.x + 1.5) < 1e-9 && m.dn === 4 && m.dz === 2.5);
 });
 
+await test('Datenfenster: Gelände, Gebäude und Bauwerk haben je „Entfernen“; beim Gelände fragt es nach, Abbrechen behält alles', async function () {
+  const html = require('fs').readFileSync(require('path').join(__dirname, '../src/shell_head.html'), 'utf8');
+  ['dem-clear', 'gml-clear', 'ifc-clear'].forEach(function (id) { assert.ok(new RegExp('class="act" id="' + id + '" data-i18n="remove"').test(html), id); });
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const g = function (id) { return s.document.getElementById(id); };
+  g('dem-clear').fire('click');
+  assert.strictEqual(g('confirm-wrap').style.display, 'flex');
+  assert.ok(g('confirm-text').textContent.indexOf('Gelände entfernen?') === 0);
+  s.onKeyDown({ key: 'Escape', target: {} });
+  assert.strictEqual(g('confirm-wrap').style.display, 'none');
+  assert.ok(s.hasTerrain());
+  const leer = newScope();
+  leer.initUI();
+  leer.document.getElementById('dem-clear').fire('click');
+  assert.ok(leer.document.getElementById('confirm-wrap').style.display !== 'flex');
+  assert.strictEqual(leer.document.getElementById('status').textContent, leer.T('msgNoDem'));
+});
+
 await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {
   const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
   const g = function (id) { return s.document.getElementById(id); };

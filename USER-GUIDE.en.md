@@ -159,6 +159,7 @@ range is set to the limit.
   cranes). There the group can be deselected or deleted.
 - **Esc** clears the selection. **Delete** or **Backspace** deletes the selected objects.
 - **Clear** (bottom) removes all blocks, after a confirmation.
+- **Remove** is at the top right of terrain, buildings and structure in the **Data** window. For buildings and structure only that data set disappears. Everything depends on the terrain: after a question, removing it removes everything, like Reset.
 - **Reset** (bottom, below “Clear”) resets everything: terrain, buildings, structure (IFC) and all blocks are removed, the page restarts, nothing is loaded. This also asks first (Cancel is preselected, **Esc** cancels).
 
 ---

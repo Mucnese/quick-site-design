@@ -9,6 +9,9 @@ Kategorien: **Neu**, **Geändert**, **Behoben**, **Entfernt**, **Rechtliches und
 
 ## 2026-11-27
 
+### Geändert
+- **„Entfernen“ bei allen Daten:** Auch das Gelände hat jetzt den Knopf; er steht bei Gelände, Gebäude und Bauwerk immer oben rechts. Beim Gelände wird nach einer Rückfrage alles entfernt, weil alles daran hängt.
+
 ### Neu
 - **IFC verschieben und drehen:** Neben dem Ausrichten mit vier Punkten gibt es „Schieben & Drehen“: Pfeile in der Mitte des Bauwerks (X Ost, Y Nord, Z Höhe) verschieben es jeweils nur in dieser Richtung, ein Ring dreht es um die Hochachse durch seine Mitte. Verschiebung und Drehung stehen in vier Feldern und lassen sich eintippen (statt wie bisher nur „Höhe ±“).
   Der Knopf „Manuell platzieren“ heißt jetzt „4 Punkte ausrichten“.

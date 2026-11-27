@@ -8,6 +8,9 @@ Categories: **Added**, **Changed**, **Fixed**, **Removed**, **Legal and privacy*
 
 ## 2026-11-27
 
+### Changed
+- **“Remove” for all data:** The terrain now has the button too; for terrain, buildings and structure it is always at the top right. For the terrain, after a question everything is removed, because everything depends on it.
+
 ### Added
 - **Move and rotate an IFC structure:** Besides aligning with four points there is “Move & rotate”: arrows at the centre of the structure (X east, Y north, Z height) each move it only in that direction, a ring rotates it about the vertical axis through its centre. Shift and rotation are shown in four fields and can be typed (before there was only “Height ±”).
   The “Place manually” button is now called “Align 4 points”.

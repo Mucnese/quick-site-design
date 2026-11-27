@@ -162,6 +162,7 @@ Wert außerhalb des Bereichs wird auf die Grenze gesetzt.
   Mobilkrane). Dort lässt sich die Gruppe abwählen oder löschen.
 - **Esc** hebt die Auswahl auf. **Entf** oder **Rücktaste** löscht die gewählten Objekte.
 - **Leeren** (unten) entfernt alle Bausteine, nach einer Rückfrage.
+- **Entfernen** steht im Fenster **Daten** oben rechts bei Gelände, Gebäude und Bauwerk. Bei Gebäude und Bauwerk verschwindet nur dieser Datensatz. Beim Gelände hängt alles daran: Nach einer Rückfrage wird wie bei Reset alles entfernt.
 - **Reset** (unten, unter „Leeren“) setzt alles zurück: Gelände, Gebäude, Bauwerk (IFC) und alle Bausteine werden entfernt, die Seite startet neu, nichts ist geladen. Auch das fragt vorher nach (Abbrechen ist vorgewählt, **Esc** bricht ab).
 
 ---

@@ -23,6 +23,7 @@ const STRINGS = {
     clear: 'Leeren', resetAll: 'Reset', confirmNo: 'Abbrechen',
     confirmClear: 'Alle {n} Bausteine löschen? Das lässt sich nicht rückgängig machen. Gelände, Gebäude und Bauwerk bleiben.', confirmClearYes: 'Ja, löschen',
     confirmReset: 'Alles zurücksetzen? Gelände, Gebäude, Bauwerk (IFC) und alle Bausteine werden entfernt, die Seite startet neu und nichts ist geladen. Das lässt sich nicht rückgängig machen.', confirmResetYes: 'Ja, zurücksetzen',
+    confirmDem: 'Gelände entfernen? Alles andere hängt am Gelände: Gebäude, Bauwerk (IFC) und alle Bausteine werden mit entfernt, die Seite startet neu. Das lässt sich nicht rückgängig machen.', confirmDemYes: 'Ja, entfernen', msgNoDem: 'Es ist kein Gelände geladen.',
     msgNothingToClear: 'Es gibt keine Bausteine zu löschen.',
     appearance: 'Darstellung', close: 'Schließen', tweak: 'Darstellung',
     noTerrain: 'Kein Geländemodell geladen',
@@ -227,6 +228,7 @@ const STRINGS = {
     clear: 'Clear', resetAll: 'Reset', confirmNo: 'Cancel',
     confirmClear: 'Delete all {n} blocks? This cannot be undone. Terrain, buildings and structure stay.', confirmClearYes: 'Yes, delete',
     confirmReset: 'Reset everything? Terrain, buildings, structure (IFC) and all blocks are removed, the page restarts and nothing is loaded. This cannot be undone.', confirmResetYes: 'Yes, reset',
+    confirmDem: 'Remove the terrain? Everything else depends on it: buildings, structure (IFC) and all blocks are removed too, and the page restarts. This cannot be undone.', confirmDemYes: 'Yes, remove', msgNoDem: 'No terrain is loaded.',
     msgNothingToClear: 'There are no blocks to delete.',
     appearance: 'Appearance', close: 'Close', tweak: 'Appearance',
     noTerrain: 'No terrain model loaded',
@@ -4182,6 +4184,18 @@ function resetEverything() {
   try { window.location.replace(window.location.pathname || '.'); } catch (e) { window.location.reload(); }
 }
 
+/* „Entfernen“ beim Gelände: ohne Gelände hat nichts mehr eine Lage, deshalb wie Reset (nach Rückfrage) */
+function removeDem() {
+  if (!hasTerrain()) {                          // nur eine vorgemerkte oder fehlerhafte Datei: Auswahl leeren
+    pendingDemFiles = null;
+    document.getElementById('dem-input').value = '';
+    setFileStatus('dem', T('noFile'));
+    setStatus(T('msgNoDem'));
+    return;
+  }
+  askConfirm('confirmDem', {}, 'confirmDemYes', resetEverything);
+}
+
 function onKeyDown(event) {
   if (confirmAction) {                                       // solange die Bestätigung offen ist, gilt nur Esc
     if (event.key === 'Escape') closeConfirm();
@@ -4323,6 +4337,7 @@ function initUI() {
     else if (s.on) setOsmStatus('osmPartial', 'ok', { m: s.failed, n: s.tiles + s.failed });
   };
 
+  document.getElementById('dem-clear').addEventListener('click', removeDem);
   document.getElementById('gml-clear').addEventListener('click', function () {
     clearBuildings();
     lastGmlRings = null;
