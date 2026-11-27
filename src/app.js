@@ -156,7 +156,7 @@ function initScene(container) {
   // Links drehen, rechts UND Mitte verschieben, Rad zoomt. (Standard von
   // OrbitControls ist Mitte = Zoomen; das Rad macht das ohnehin.)
   controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
-  controls.panSpeed = 2.2;   // Verschieben mit Mitte/Rechts war zu zäh
+  controls.panSpeed = 2.2;   // Verschieben mit Mitte/Rechts war zu zäh (beim Drücken nach dem Abstand angepasst, adjustPanSpeed)
 
   raycaster = new THREE.Raycaster();
   pointer = new THREE.Vector2();

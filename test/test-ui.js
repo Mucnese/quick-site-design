@@ -2619,6 +2619,23 @@ await test('IFC-Import: mehrere Dateien zugleich werden ein Bauwerk; eine kaputt
   assert.ok(g('ifc-status').textContent.indexOf('400 MB') > 0, g('ifc-status').textContent);
 });
 
+await test('Ansicht verschieben: die Geschwindigkeit richtet sich nach dem Punkt unter dem Mauszeiger, nicht nach dem nahen Drehzentrum', async function () {
+  const s = await scopeWithTerrain();
+  s.initUI();
+  const cam = s.__bridge.camera || vm.runInContext("camera", s), ctr = vm.runInContext("controls", s);
+  cam.position.set(0, 10, 12); ctr.target.set(0, 10, 0); ctr.minDistance = 1;
+  setTerrainHit(s, 0, 10, 12 - 4);                              // etwas in 4 m Entfernung unter dem Zeiger
+  s.adjustPanSpeed({ button: 2, clientX: 5, clientY: 5 });
+  assert.ok(Math.abs(ctr.panSpeed - 2.2 * 4 / 12) < 1e-9, String(ctr.panSpeed));
+  ctr.target.set(0, 10, 11);                                    // Drehzentrum 1 m vor der Kamera
+  s.adjustPanSpeed({ button: 1, clientX: 5, clientY: 5 });
+  assert.ok(Math.abs(ctr.panSpeed - 2.2 * 4) < 1e-9, 'vierfach: ' + ctr.panSpeed);
+  s.adjustPanSpeed({ button: 0, shiftKey: true, clientX: 5, clientY: 5 });
+  assert.ok(ctr.panSpeed > 2.2, 'Umschalt+links verschiebt auch');
+  s.adjustPanSpeed({ button: 0, clientX: 5, clientY: 5 });
+  assert.strictEqual(ctr.panSpeed, 2.2, 'Drehen: unverändert');
+});
+
 await test('IFC drehen: der Ring dreht um die Hochachse durch die Mitte, Feld, Abbrechen und neue Vier-Punkte-Lage', async function () {
   const s = ifcScope({ E: 692480, N: 5336520, H: 501, epsg: 25832 });
   const g = function (id) { return s.document.getElementById(id); };

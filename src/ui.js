@@ -3987,8 +3987,28 @@ function onCanvasPointerUp(event) {
    Capture-Phase am Fenster, damit er vor OrbitControls entscheidet. */
 let pivotDrag = null;
 
+/* Verschieben der Ansicht: OrbitControls rechnet mit dem Abstand zum Drehzentrum. Nach nahem Heranzoomen liegt das
+   Zentrum wenige Meter vor der Kamera, während man auf Dinge in Hunderten Metern schaut - die Ansicht kam dann kaum
+   vom Fleck. Deshalb gilt beim Drücken der Abstand zum Punkt unter dem Mauszeiger (bei Himmel eine Strecke nach der
+   Geländegröße); die Geschwindigkeit bleibt PAN_SPEED mal Mauszeiger an diesem Punkt. */
+const PAN_SPEED = 2.2;
+
+function adjustPanSpeed(event) {
+  if (!controls) return;
+  const pans = event.button === 1 || event.button === 2 || (event.button === 0 && (event.ctrlKey || event.shiftKey || event.metaKey));
+  controls.panSpeed = PAN_SPEED;
+  if (!pans || !hasTerrain()) return;
+  const dist = camera.position.distanceTo(controls.target);
+  if (!(dist > 0)) return;
+  const far = Math.max(TERRAIN.w, TERRAIN.d) / 4;
+  const p = raycastPivot(event);
+  const depth = p ? camera.position.distanceTo(new THREE.Vector3(p.x, p.y, p.z)) : Math.max(dist, wheelStepMeters() * 10);
+  controls.panSpeed = PAN_SPEED * Math.max(controls.minDistance || 0, Math.min(depth, Math.max(far, dist))) / dist;
+}
+
 function onOrbitPointerDown(event) {
   if (event.target !== renderer.domElement) return;
+  adjustPanSpeed(event);
   if (startIfcGizmoDrag(event)) return;           // Pfeil zum Verschieben des Bauwerks hat Vorrang
   if (event.button !== 0 || event.ctrlKey || event.shiftKey || event.metaKey || event.altKey) return;
   if (event.pointerType && event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
@@ -4664,6 +4684,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getIfcPick: function () { return ifcPick; },
     onProjectCrsChange: onProjectCrsChange, setProjectCrs: setProjectCrs,
     ifcCrsWarning: ifcCrsWarning,
+    adjustPanSpeed: adjustPanSpeed,
     startIfcMove: startIfcMove, stopIfcMove: stopIfcMove, updateIfcGizmo: updateIfcGizmo, applyIfcShift: applyIfcShift,
     startIfcGizmoDrag: startIfcGizmoDrag, buildIfcGizmo: buildIfcGizmo, onIfcGizmoMove: onIfcGizmoMove, endIfcGizmoDrag: endIfcGizmoDrag,
     setIfcPick: function (p) { ifcPick = p; },

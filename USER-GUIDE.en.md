@@ -128,7 +128,7 @@ to cut out an area yourself first, you can use
 - **Drag with the left mouse button:** orbit. If you click and drag on terrain, a building or a
   block, it rotates around exactly that point. If you click the background, the whole scene
   orbits around the centre.
-- **Drag with the right or middle button:** pan.
+- **Drag with the right or middle button:** pan (brisk: about twice as fast as the pointer, measured at the point it is on when you press).
 - **Mouse wheel:** zoom in even steps (one step is a sixtieth of the terrain edge, at least 5 m), no matter how close the camera is.
 - **Left click** on terrain or a building: sets a **measuring point**. It shows easting, northing
   and height and becomes the centre for rotating and zooming.

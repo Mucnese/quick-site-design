@@ -27,7 +27,7 @@
 <!-- Content Security Policy: nur eigene Dateien, das eine Programm-Skript über seine Prüfsumme (build.py setzt sie ein),
      keine Inline-Ereignisse. Erlaubte Fremdverbindungen: Kartenkacheln (nur auf Wunsch) und Photon (nur auf Eingabe).
      'wasm-unsafe-eval' braucht web-ifc für das WebAssembly. frame-ancestors lässt sich in einem meta-Element nicht setzen. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-x79ln5dWIay9teNT1vaSM/zbnJEOfV2LNwlUASH+Up4=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ERKYHB+7i2QSy6JHQk2rMU1kCWjJgIUTRack8WopSR8=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Quick-Site-Design</title>
 <style>
   :root {
@@ -1124,7 +1124,7 @@ function initScene(container) {
   // Links drehen, rechts UND Mitte verschieben, Rad zoomt. (Standard von
   // OrbitControls ist Mitte = Zoomen; das Rad macht das ohnehin.)
   controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
-  controls.panSpeed = 2.2;   // Verschieben mit Mitte/Rechts war zu zäh
+  controls.panSpeed = 2.2;   // Verschieben mit Mitte/Rechts war zu zäh (beim Drücken nach dem Abstand angepasst, adjustPanSpeed)
 
   raycaster = new THREE.Raycaster();
   pointer = new THREE.Vector2();
@@ -12505,8 +12505,28 @@ function onCanvasPointerUp(event) {
    Capture-Phase am Fenster, damit er vor OrbitControls entscheidet. */
 let pivotDrag = null;
 
+/* Verschieben der Ansicht: OrbitControls rechnet mit dem Abstand zum Drehzentrum. Nach nahem Heranzoomen liegt das
+   Zentrum wenige Meter vor der Kamera, während man auf Dinge in Hunderten Metern schaut - die Ansicht kam dann kaum
+   vom Fleck. Deshalb gilt beim Drücken der Abstand zum Punkt unter dem Mauszeiger (bei Himmel eine Strecke nach der
+   Geländegröße); die Geschwindigkeit bleibt PAN_SPEED mal Mauszeiger an diesem Punkt. */
+const PAN_SPEED = 2.2;
+
+function adjustPanSpeed(event) {
+  if (!controls) return;
+  const pans = event.button === 1 || event.button === 2 || (event.button === 0 && (event.ctrlKey || event.shiftKey || event.metaKey));
+  controls.panSpeed = PAN_SPEED;
+  if (!pans || !hasTerrain()) return;
+  const dist = camera.position.distanceTo(controls.target);
+  if (!(dist > 0)) return;
+  const far = Math.max(TERRAIN.w, TERRAIN.d) / 4;
+  const p = raycastPivot(event);
+  const depth = p ? camera.position.distanceTo(new THREE.Vector3(p.x, p.y, p.z)) : Math.max(dist, wheelStepMeters() * 10);
+  controls.panSpeed = PAN_SPEED * Math.max(controls.minDistance || 0, Math.min(depth, Math.max(far, dist))) / dist;
+}
+
 function onOrbitPointerDown(event) {
   if (event.target !== renderer.domElement) return;
+  adjustPanSpeed(event);
   if (startIfcGizmoDrag(event)) return;           // Pfeil zum Verschieben des Bauwerks hat Vorrang
   if (event.button !== 0 || event.ctrlKey || event.shiftKey || event.metaKey || event.altKey) return;
   if (event.pointerType && event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;

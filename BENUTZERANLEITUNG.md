@@ -131,7 +131,7 @@ lieber selbst vorher einen Ausschnitt schneidet, kann `gdal_translate -projwin <
 - **Linke Maustaste ziehen:** umkreisen. Wer auf Gelände, Gebäude oder einen Baustein klickt und
   zieht, dreht um genau diesen Punkt. Wer auf den Hintergrund klickt, kreist die ganze Szene
   um das Zentrum.
-- **Rechte oder mittlere Taste ziehen:** verschieben (zügig: etwa doppelt so schnell wie der Mauszeiger auf dem Boden).
+- **Rechte oder mittlere Taste ziehen:** verschieben (zügig: etwa doppelt so schnell wie der Mauszeiger an dem Punkt, auf dem er beim Drücken steht).
 - **Mausrad:** zoomen, in gleichmäßigen Schritten (je Rastenschritt ein Sechzigstel der Geländekante, mindestens 5 m), egal wie nah die Kamera ist.
 - **Linksklick** auf Gelände oder Gebäude: setzt einen **Messpunkt**. Er zeigt Rechtswert, Hochwert
   und Höhe und wird zum Dreh- und Zoomzentrum.
