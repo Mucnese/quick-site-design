@@ -308,7 +308,7 @@ Dateien ohne Georeferenz gelten im System der anderen. Dateien in einem anderen 
 
 **Bauteil anklicken:** Ein Klick auf das Bauwerk hebt das Bauteil hervor und öffnet rechts das Fenster **Bauteil**. Von oben nach unten:
 
-- **Filter:** Attribut wählen, **ist** oder **enthält**, Wert eintippen (mit Vorschlägen) und **Filtern** (oder Eingabetaste). Ein Klick auf eine **Zeile** weiter unten setzt den Filter und wendet ihn sofort an.
+- **Filter:** Attribut wählen (von A bis Z sortiert), **ist** oder **enthält**, Wert eintippen (mit Vorschlägen) und **Filtern** (oder Eingabetaste). Ein Klick auf eine **Zeile** weiter unten setzt den Filter und wendet ihn sofort an.
 - **Isolieren** oder **Ausblenden**, jeweils das **Bauteil** oder die ganze **Datei**. Ausgeblendetes summiert sich; Ausgeblendetes lässt sich nicht anklicken, man klickt hindurch.
 - **Mengen der angezeigten Bauteile** (nach Filtern oder Isolieren): Anzahl, **Volumen** und **Oberfläche**, aus der Geometrie berechnet (überschlägig; ein Volumen gibt es nur für geschlossene Körper, die Zahl der übrigen wird genannt), dazu **Summen aus der IFC** mit der Zahl der Bauteile, die sie haben (Einheit wie in der Datei).
 - Alle Angaben zum Bauteil: IFC-Klasse, Name, Objekttyp, Typ, Material, Lage im Bauwerk, Datei, Eigenschaften und Mengen.

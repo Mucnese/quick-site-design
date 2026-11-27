@@ -303,7 +303,7 @@ Files without a georeference are taken to be in the system of the others. Files 
 
 **Clicking an element:** A click on the structure highlights the element and opens the **Element** window on the right. From top to bottom:
 
-- **Filter:** choose an attribute, **is** or **contains**, type a value (with suggestions) and **Filter** (or Enter). Clicking a **row** further down sets the filter and applies it at once.
+- **Filter:** choose an attribute (sorted A to Z), **is** or **contains**, type a value (with suggestions) and **Filter** (or Enter). Clicking a **row** further down sets the filter and applies it at once.
 - **Isolate** or **Hide**, each the **element** or the whole **file**. Hidden things add up; they cannot be clicked, you click through them.
 - **Quantities of the elements shown** (after filtering or isolating): count, **volume** and **surface area**, computed from the geometry (approximate; only closed solids have a volume, the number of the others is stated), plus **sums from the IFC** with the number of elements that have them (units as in the file).
 - All data of the element: IFC class, name, object type, type, material, container, file, properties and quantities.

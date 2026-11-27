@@ -3207,7 +3207,7 @@ function ifcAttrValues(attr) {
       if (info) ifcValuesOf(info, part.name, attr).forEach(function (v) { if (v !== '') seen.add(v); });
     });
   });
-  return Array.from(seen).sort().slice(0, 200);
+  return Array.from(seen).sort(ifcCompare).slice(0, 200);
 }
 
 function ifcNumberText(v) {
@@ -3216,6 +3216,9 @@ function ifcNumberText(v) {
 
 const IFC_ATTR_LABELS = { class: 'ifcElType', name: 'ifcElName', desc: 'ifcElDesc', objType: 'ifcElObjType', tag: 'ifcElTag', guid: 'ifcElGuid',
   typeName: 'ifcElTypeName', material: 'ifcElMat', container: 'ifcElIn', file: 'ifcElFile' };
+
+/* A bis Z, ohne Groß-/Kleinschreibung, Zahlen nach ihrem Wert (2 vor 10) */
+function ifcCompare(a, b) { return String(a).localeCompare(String(b), SETTINGS.language === 'en' ? 'en' : 'de', { numeric: true, sensitivity: 'base' }); }
 
 function ifcAttrLabel(a) { return a.kind === 'prop' ? a.set + ' · ' + a.name : T(IFC_ATTR_LABELS[a.kind]); }
 
@@ -3231,7 +3234,7 @@ function ifcAttrChoices(info, fileName) {
   });
   info.sets.forEach(function (set) { set.rows.forEach(function (r) { add({ kind: 'prop', set: set.name, name: r[0] }, r[1]); }); });
   if (ifcEditor) add(ifcEditor.attr, ifcEditor.value);
-  return list;
+  return list.sort(function (a, b) { return ifcCompare(ifcAttrLabel(a.attr), ifcAttrLabel(b.attr)); });
 }
 
 function renderIfcElement() {

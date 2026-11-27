@@ -2768,6 +2768,8 @@ await test('IFC-Bauteil: Filter (Zeile oder von Hand), Isolieren und Ausblenden 
   };
   s.showIfcElement(m.parts[0], 100);
   assert.ok(find(body(), 'ifc-filter'), 'Filter steht im Fenster');
+  const labels = find(body(), 'ifc-f-attr').children.map(function (o) { return o.textContent; });
+  assert.strictEqual(labels.join(','), 'Datei,Name,Objekttyp', 'Attribute von A bis Z');
   assert.strictEqual(body().children[0], find(body(), 'ifc-filter'), 'ganz oben');
   assert.strictEqual(g('ifc-show-all').style.display, 'none');
   // Zeile anklicken (Filter nach Objekttyp)
